@@ -23,11 +23,14 @@ import type { TimeSourceAdapter } from '../adapters/types.js';
 import type { ExternalSourceAdapter } from '../adapters/types.js';
 import type { EventProcessor } from '../../core/processing/event-processor.js';
 import { createLogger } from '../../shared/logger.js';
+import type { RuntimeEvent } from '../../shared/events.js';
 
 const logger = createLogger('tick-driver');
 
 /** Timeout for tmux send-keys command. */
 const TMUX_TIMEOUT_MS = 5_000;
+/** Interval between automatic event log compaction runs. */
+const COMPACTION_INTERVAL_MS = 3_600_000; // 1 hour
 /** Stable ID for the daemon auto-tick heartbeat in the EventScheduler. */
 const DAEMON_HEARTBEAT_ID = 'daemon:auto_tick';
 /** Event type emitted by the EventScheduler when the daemon tick fires. */
@@ -48,15 +51,11 @@ export interface TickDriverDeps {
    */
   hasPendingDirectives?: () => boolean;
   /**
-   * Event log for querying webhook events to deliver to the tmux session.
-   * Uses a minimal interface to avoid coupling to the full EventLog class.
+   * EventBus subscription interface for buffering webhook events.
+   * The TickDriver subscribes at construction time and drains the buffer each tick.
    */
-  eventLog?: {
-    query(filter: {
-      types?: import('../../shared/events.js').EventType[];
-      since?: number;
-      limit?: number;
-    }): Promise<import('../../shared/events.js').RuntimeEvent[]>;
+  eventBus?: {
+    on(handler: (event: RuntimeEvent) => void): void;
   };
   /**
    * Whether this process is the daemon process (GOODVIBES_EXECUTOR_MODE=daemon).
@@ -64,6 +63,11 @@ export interface TickDriverDeps {
    * ExecutorModeManager may return 'hybrid' even in the daemon process.
    */
   isDaemonProcess?: boolean;
+  /**
+   * Callback to trigger event log compaction. Called at most once per
+   * COMPACTION_INTERVAL_MS in daemon mode. Fire-and-forget.
+   */
+  compactEventLog?: () => Promise<void>;
 }
 
 export class TickDriver {
@@ -78,11 +82,12 @@ export class TickDriver {
   private readonly eventProcessor?: EventProcessor;
   private readonly staleWorkflowChecker?: () => void;
   private readonly hasPendingDirectives?: () => boolean;
-  private readonly eventLog?: TickDriverDeps['eventLog'];
   private readonly isDaemonProcess: boolean;
   private evalFailureCount = 0;
-  /** Epoch ms timestamp of the last webhook event delivered to tmux. */
-  private lastWebhookDeliveredAt = 0;
+  private lastCompactionAt = 0;
+  private readonly compactEventLog?: () => Promise<void>;
+  /** In-memory buffer of webhook events received via EventBus subscription. Drained each tick. */
+  private pendingWebhookEvents: RuntimeEvent[] = [];
 
   constructor(deps: TickDriverDeps) {
     this.config = deps.config;
@@ -92,8 +97,17 @@ export class TickDriver {
     this.eventProcessor = deps.eventProcessor;
     this.staleWorkflowChecker = deps.staleWorkflowChecker;
     this.hasPendingDirectives = deps.hasPendingDirectives;
-    this.eventLog = deps.eventLog;
     this.isDaemonProcess = deps.isDaemonProcess ?? false;
+    this.compactEventLog = deps.compactEventLog;
+
+    // Subscribe to EventBus and buffer webhook events for delivery each tick.
+    if (deps.eventBus) {
+      deps.eventBus.on((event) => {
+        if (event.type.startsWith('webhook:')) {
+          this.pendingWebhookEvents.push(event);
+        }
+      });
+    }
 
     this.timer = new Timer({
       callback: () => this.evaluate(),
@@ -353,12 +367,21 @@ export class TickDriver {
       }
     }
 
-    // Step 6: In daemon process, deliver undelivered webhook events to tmux session
-    if (this.isDaemonProcess && this.eventLog) {
-      this.deliverWebhookEvents().catch((err) => {
-        const msg = err instanceof Error ? err.message : String(err);
-        logger.warn('deliverWebhookEvents() error', { error: msg });
-      });
+    // Step 6: In daemon process, deliver buffered webhook events to tmux session
+    if (this.isDaemonProcess && this.pendingWebhookEvents.length > 0) {
+      this.deliverWebhookEvents();
+    }
+
+    // Step 7: In daemon process, compact the event log at most once per COMPACTION_INTERVAL_MS
+    if (this.isDaemonProcess && this.compactEventLog) {
+      const now = Date.now();
+      if (now - this.lastCompactionAt >= COMPACTION_INTERVAL_MS) {
+        this.lastCompactionAt = now;
+        this.compactEventLog().catch((err) => {
+          const msg = err instanceof Error ? err.message : String(err);
+          logger.warn('compactEventLog() error', { error: msg });
+        });
+      }
     }
   }
 
@@ -384,39 +407,22 @@ export class TickDriver {
   }
 
   /**
-   * Query the event log for undelivered webhook events and send each to the
-   * tmux session as user input. Fire-and-forget from evaluate().
+   * Drain the in-memory webhook event buffer and send each event to the tmux
+   * session as user input. Synchronous — no file I/O or queries required.
    */
-  private async deliverWebhookEvents(): Promise<void> {
-    if (!this.eventLog) return;
-
-    const allEvents = await this.eventLog.query({
-      since: this.lastWebhookDeliveredAt > 0 ? this.lastWebhookDeliveredAt : undefined,
-      limit: 50,
-    });
-
-    const events = allEvents.filter((e) => e.type.startsWith('webhook:'));
-
+  private deliverWebhookEvents(): void {
+    const events = this.pendingWebhookEvents.splice(0);
     if (events.length === 0) return;
 
     const sessionName = this.config.daemon.tmux_session_name;
-    let deliveredCount = 0;
 
     for (const event of events) {
-      // Skip events already delivered (since filter is inclusive of the boundary ms)
-      if (event.timestamp <= this.lastWebhookDeliveredAt) continue;
-
       const content = this.formatWebhookEvent(event);
       this.sendToTmux(sessionName, content);
-      deliveredCount++;
-
-      if (event.timestamp > this.lastWebhookDeliveredAt) {
-        this.lastWebhookDeliveredAt = event.timestamp;
-      }
     }
 
     logger.info('webhook events delivered to tmux', {
-      count: deliveredCount,
+      count: events.length,
       session: sessionName,
     });
   }
@@ -466,7 +472,7 @@ export class TickDriver {
    * Format a webhook event payload into a concise human-readable message
    * suitable for delivery to the Claude Code tmux session.
    */
-  private formatWebhookEvent(event: import('../../shared/events.js').RuntimeEvent): string {
+  private formatWebhookEvent(event: RuntimeEvent): string {
     const payload = event.payload as Record<string, unknown>;
     const action = payload['action'] as string | undefined;
 

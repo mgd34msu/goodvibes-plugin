@@ -442,9 +442,11 @@ describe('TickDriver', () => {
   // ─── deliverWebhookEvents ────────────────────────────────────────────────────
 
   describe('deliverWebhookEvents', () => {
-    function makeEventLog(events: any[] = []) {
+    function makeEventBus() {
+      let handler: ((event: any) => void) | null = null;
       return {
-        query: vi.fn(() => Promise.resolve(events)),
+        on: vi.fn((h: (event: any) => void) => { handler = h; }),
+        emit(event: any) { handler?.(event); },
       };
     }
 
@@ -461,144 +463,132 @@ describe('TickDriver', () => {
       };
     }
 
-    it('delivers webhook events to tmux in daemon mode with eventLog', async () => {
+    it('delivers webhook events to tmux in daemon mode with eventBus', () => {
       mockExecFile.mockImplementation((_cmd: any, _args: any, _opts: any, cb: any) => {
         cb?.(null);
         return {} as any;
       });
-      const event = makeWebhookEvent({ timestamp: 2000 });
-      const eventLog = makeEventLog([event]);
+      const eventBus = makeEventBus();
       const executorMode = makeExecutorMode('daemon');
-      const deps = makeDeps({ mode: 'daemon', executorMode, eventLog });
+      const deps = makeDeps({ mode: 'daemon', executorMode, eventBus });
       const driver = new TickDriver(deps);
 
-      await (driver as any).deliverWebhookEvents();
+      // Push a webhook event through the bus — buffered in pendingWebhookEvents
+      eventBus.emit(makeWebhookEvent({ timestamp: 2000 }));
 
-      expect(eventLog.query).toHaveBeenCalledOnce();
+      (driver as any).deliverWebhookEvents();
+
       // sendToTmux calls execFile 3 times per event
       expect(mockExecFile).toHaveBeenCalledTimes(3);
     });
 
-    it('filters out non-webhook events (keeps only webhook: prefix)', async () => {
+    it('filters out non-webhook events at subscription time (buffer only holds webhook: prefix)', () => {
       mockExecFile.mockImplementation((_cmd: any, _args: any, _opts: any, cb: any) => {
         cb?.(null);
         return {} as any;
       });
-      const webhookEvent = makeWebhookEvent({ type: 'webhook:push', timestamp: 2000 });
-      const nonWebhookEvent = makeWebhookEvent({ id: 'evt-2', type: 'daemon:tick', timestamp: 3000 });
-      const eventLog = makeEventLog([webhookEvent, nonWebhookEvent]);
-      const deps = makeDeps({ mode: 'daemon', eventLog });
+      const eventBus = makeEventBus();
+      const deps = makeDeps({ mode: 'daemon', eventBus });
       const driver = new TickDriver(deps);
 
-      await (driver as any).deliverWebhookEvents();
+      // Emit one webhook event and one non-webhook event
+      eventBus.emit(makeWebhookEvent({ type: 'webhook:push', timestamp: 2000 }));
+      eventBus.emit(makeWebhookEvent({ id: 'evt-2', type: 'daemon:tick', timestamp: 3000 }));
+
+      (driver as any).deliverWebhookEvents();
 
       // Only 1 event delivered (3 execFile calls for one sendToTmux)
       expect(mockExecFile).toHaveBeenCalledTimes(3);
     });
 
-    it('updates lastWebhookDeliveredAt after delivering events', async () => {
+    it('drains pendingWebhookEvents buffer after delivery', () => {
       mockExecFile.mockImplementation((_cmd: any, _args: any, _opts: any, cb: any) => {
         cb?.(null);
         return {} as any;
       });
-      const event = makeWebhookEvent({ timestamp: 5000 });
-      const eventLog = makeEventLog([event]);
-      const deps = makeDeps({ mode: 'daemon', eventLog });
+      const eventBus = makeEventBus();
+      const deps = makeDeps({ mode: 'daemon', eventBus });
       const driver = new TickDriver(deps);
 
-      expect((driver as any).lastWebhookDeliveredAt).toBe(0);
-      await (driver as any).deliverWebhookEvents();
-      expect((driver as any).lastWebhookDeliveredAt).toBe(5000);
+      eventBus.emit(makeWebhookEvent({ timestamp: 5000 }));
+
+      expect((driver as any).pendingWebhookEvents.length).toBe(1);
+      (driver as any).deliverWebhookEvents();
+      // Buffer is drained after delivery
+      expect((driver as any).pendingWebhookEvents.length).toBe(0);
     });
 
-    it('skips events at or before lastWebhookDeliveredAt', async () => {
+    it('delivers multiple buffered events in order', () => {
       mockExecFile.mockImplementation((_cmd: any, _args: any, _opts: any, cb: any) => {
         cb?.(null);
         return {} as any;
       });
-      const oldEvent = makeWebhookEvent({ id: 'old', timestamp: 1000 });
-      const newEvent = makeWebhookEvent({ id: 'new', timestamp: 2000 });
-      const eventLog = makeEventLog([oldEvent, newEvent]);
-      const deps = makeDeps({ mode: 'daemon', eventLog });
-      const driver = new TickDriver(deps);
-      // Set lastWebhookDeliveredAt to 1000 — oldEvent should be skipped
-      (driver as any).lastWebhookDeliveredAt = 1000;
-
-      await (driver as any).deliverWebhookEvents();
-
-      // Only newEvent delivered → 3 execFile calls
-      expect(mockExecFile).toHaveBeenCalledTimes(3);
-      expect(eventLog.query).toHaveBeenCalledWith(
-        expect.objectContaining({ since: 1000, limit: 50 }),
-      );
-    });
-
-    it('processes multiple events and updates lastWebhookDeliveredAt to highest timestamp', async () => {
-      mockExecFile.mockImplementation((_cmd: any, _args: any, _opts: any, cb: any) => {
-        cb?.(null);
-        return {} as any;
-      });
-      const event1 = makeWebhookEvent({ id: 'evt-a', type: 'webhook:push', timestamp: 2000 });
-      const event2 = makeWebhookEvent({ id: 'evt-b', type: 'webhook:issues', timestamp: 3000 });
-      const eventLog = makeEventLog([event1, event2]);
-      const deps = makeDeps({ mode: 'daemon', eventLog });
+      const eventBus = makeEventBus();
+      const deps = makeDeps({ mode: 'daemon', eventBus });
       const driver = new TickDriver(deps);
 
-      await (driver as any).deliverWebhookEvents();
+      eventBus.emit(makeWebhookEvent({ id: 'evt-a', type: 'webhook:push', timestamp: 2000 }));
+      eventBus.emit(makeWebhookEvent({ id: 'evt-b', type: 'webhook:issues', timestamp: 3000 }));
+
+      (driver as any).deliverWebhookEvents();
 
       // Both events delivered → 3 execFile calls each = 6 total
       expect(mockExecFile).toHaveBeenCalledTimes(6);
-      // lastWebhookDeliveredAt updated to highest timestamp
-      expect((driver as any).lastWebhookDeliveredAt).toBe(3000);
+      // Buffer is fully drained
+      expect((driver as any).pendingWebhookEvents.length).toBe(0);
     });
 
-    it('does nothing when no webhook events exist', async () => {
-      const eventLog = makeEventLog([{ id: 'e', type: 'daemon:tick', timestamp: 1, source: 'x', payload: {}, priority: 0, metadata: {} }]);
-      const deps = makeDeps({ mode: 'daemon', eventLog });
+    it('does nothing when buffer is empty', () => {
+      const eventBus = makeEventBus();
+      const deps = makeDeps({ mode: 'daemon', eventBus });
       const driver = new TickDriver(deps);
 
-      await (driver as any).deliverWebhookEvents();
+      // No events emitted — buffer is empty
+      (driver as any).deliverWebhookEvents();
 
       expect(mockExecFile).not.toHaveBeenCalled();
     });
 
-    it('handles eventLog.query() rejection gracefully via evaluate catch wrapper', async () => {
-      const eventLog = { query: vi.fn(() => Promise.reject(new Error('db error'))) };
+    it('step 6 gate triggers when pendingWebhookEvents has entries', () => {
+      mockExecFile.mockImplementation((_cmd: any, _args: any, _opts: any, cb: any) => {
+        cb?.(null);
+        return {} as any;
+      });
+      const eventBus = makeEventBus();
       const timePlugin = makeTimePlugin();
       vi.mocked(timePlugin.onTick).mockReturnValue({ heartbeat_emitted: false, scheduled_emitted: 0 });
       const executorMode = makeExecutorMode('daemon');
-      const deps = makeDeps({ mode: 'daemon', isDaemonProcess: true, executorMode, timePlugin, eventLog });
+      const deps = makeDeps({ mode: 'daemon', isDaemonProcess: true, executorMode, timePlugin, eventBus });
       const driver = new TickDriver(deps);
 
-      // evaluate() wraps deliverWebhookEvents in .catch() — should not throw
-      expect(() => (driver as any).evaluate()).not.toThrow();
-      // Let promise rejection propagate and be caught
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      // No crash — evalFailureCount stays at 0 (rejected promise is caught by .catch)
-      expect(driver.getEvalFailureCount()).toBe(0);
+      // Push event before evaluate — step 6 should fire
+      eventBus.emit(makeWebhookEvent({ timestamp: 1000 }));
+      (driver as any).evaluate();
+
+      // deliverWebhookEvents called synchronously → execFile called
+      expect(mockExecFile).toHaveBeenCalled();
     });
 
-    it('queries with a limit of 50', async () => {
-      const eventLog = makeEventLog([]);
-      const deps = makeDeps({ mode: 'daemon', eventLog });
+    it('step 6 gate does NOT trigger when pendingWebhookEvents is empty', () => {
+      const eventBus = makeEventBus();
+      const timePlugin = makeTimePlugin();
+      vi.mocked(timePlugin.onTick).mockReturnValue({ heartbeat_emitted: false, scheduled_emitted: 0 });
+      const executorMode = makeExecutorMode('daemon');
+      const deps = makeDeps({ mode: 'daemon', isDaemonProcess: true, executorMode, timePlugin, eventBus });
       const driver = new TickDriver(deps);
 
-      await (driver as any).deliverWebhookEvents();
+      // No events pushed — buffer is empty — step 6 skipped
+      (driver as any).evaluate();
 
-      expect(eventLog.query).toHaveBeenCalledWith(
-        expect.objectContaining({ limit: 50 }),
-      );
+      expect(mockExecFile).not.toHaveBeenCalled();
     });
 
-    it('queries without types filter (post-fix: filters in JS with startsWith)', async () => {
-      const eventLog = makeEventLog([]);
-      const deps = makeDeps({ mode: 'daemon', eventLog });
-      const driver = new TickDriver(deps);
+    it('subscribes to eventBus on construction', () => {
+      const eventBus = makeEventBus();
+      const deps = makeDeps({ mode: 'daemon', eventBus });
+      new TickDriver(deps);
 
-      await (driver as any).deliverWebhookEvents();
-
-      const callArg = eventLog.query.mock.calls[0][0];
-      expect(callArg).not.toHaveProperty('types');
+      expect(eventBus.on).toHaveBeenCalledOnce();
     });
   });
 

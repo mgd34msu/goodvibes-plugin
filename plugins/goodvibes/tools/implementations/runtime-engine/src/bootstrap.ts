@@ -572,8 +572,9 @@ export class RuntimeEngine {
         eventProcessor: this.coreRuntime.eventProcessor,
         staleWorkflowChecker: () => this.watchdog?.checkStaleWorkflows(),
         hasPendingDirectives: () => (this.directives?.directiveQueue?.peek('subagent_stop')?.length ?? 0) > 0,
-        eventLog: this.events?.eventLog ?? undefined,
+        eventBus: this.events?.eventBus ?? undefined,
         isDaemonProcess,
+        compactEventLog: async () => { await this.events?.eventLog?.compact(); },
       });
     }
 
