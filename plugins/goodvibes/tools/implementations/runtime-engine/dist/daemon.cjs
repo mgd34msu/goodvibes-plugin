@@ -12592,6 +12592,7 @@ var TickDriver = class _TickDriver {
   externalPlugin;
   eventProcessor;
   staleWorkflowChecker;
+  hasPendingDirectives;
   eventLog;
   evalFailureCount = 0;
   /** Epoch ms timestamp of the last webhook event delivered to tmux. */
@@ -12603,6 +12604,7 @@ var TickDriver = class _TickDriver {
     this.externalPlugin = deps.externalPlugin;
     this.eventProcessor = deps.eventProcessor;
     this.staleWorkflowChecker = deps.staleWorkflowChecker;
+    this.hasPendingDirectives = deps.hasPendingDirectives;
     this.eventLog = deps.eventLog;
     this.timer = new Timer({
       callback: () => this.evaluate(),
@@ -12812,11 +12814,14 @@ var TickDriver = class _TickDriver {
       }
     }
     if ((timeResult.heartbeat_emitted || timeResult.scheduled_emitted > 0) && this.executorMode.getMode() === "daemon") {
-      logger44.debug("heartbeat or scheduled events fired \u2014 sending tmux tick", {
-        heartbeat_emitted: timeResult.heartbeat_emitted,
-        scheduled_emitted: timeResult.scheduled_emitted
-      });
-      this.sendTick();
+      const hasPending = this.hasPendingDirectives?.() ?? false;
+      if (hasPending) {
+        logger44.debug("pending directives found \u2014 sending tmux tick", {
+          heartbeat_emitted: timeResult.heartbeat_emitted,
+          scheduled_emitted: timeResult.scheduled_emitted
+        });
+        this.sendTick();
+      }
     }
     if (this.executorMode.getMode() === "daemon" && this.eventLog) {
       this.deliverWebhookEvents().catch((err) => {
@@ -15556,13 +15561,13 @@ var RuntimeEngine = class {
     } catch (err) {
       logger59.warn("External plugin initialisation failed", { err: toErrorMessage(err) });
     }
-    const isDaemonLike = this.executorSubsystem?.executorMode?.getMode() === "daemon" || this.executorSubsystem?.executorMode?.getMode() === "hybrid";
-    if (httpEnabled && !isDaemonLike) {
-      logger59.debug("Skipping HTTP webhook listener \u2014 not in daemon/hybrid mode", {
+    const isDaemonProcess = process.env["GOODVIBES_EXECUTOR_MODE"] === "daemon";
+    if (httpEnabled && !isDaemonProcess) {
+      logger59.debug("Skipping HTTP webhook listener \u2014 only the daemon process binds the port", {
         mode: this.executorSubsystem?.executorMode?.getMode() ?? "unknown"
       });
     }
-    if (httpEnabled && isDaemonLike) {
+    if (httpEnabled && isDaemonProcess) {
       try {
         await this.externalPlugin.startHttpListener();
         logger59.info("HTTP webhook listener started", {
@@ -15596,6 +15601,7 @@ var RuntimeEngine = class {
         externalPlugin: createExternalAdapter(this.externalPlugin),
         eventProcessor: this.coreRuntime.eventProcessor,
         staleWorkflowChecker: () => this.watchdog?.checkStaleWorkflows(),
+        hasPendingDirectives: () => (this.directives?.directiveQueue?.peek("subagent_stop")?.length ?? 0) > 0,
         eventLog: this.events?.eventLog ?? void 0
       });
     }
