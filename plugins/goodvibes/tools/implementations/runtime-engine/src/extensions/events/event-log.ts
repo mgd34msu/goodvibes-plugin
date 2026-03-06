@@ -36,6 +36,23 @@ const FLUSH_INTERVAL_MS = 100;
 /** Flush buffer when it exceeds this many bytes. */
 const FLUSH_THRESHOLD_BYTES = 64 * 1024; // 64 KB
 
+/**
+ * Normalizes a timestamp value to epoch milliseconds.
+ *
+ * Handles mixed timestamp formats in the event log:
+ * - Numbers are returned as-is (already epoch ms)
+ * - ISO 8601 strings are parsed via Date.getTime()
+ * - Anything else (undefined, null, unparseable) returns 0
+ */
+function normalizeTimestamp(ts: unknown): number {
+  if (typeof ts === 'number') return ts;
+  if (typeof ts === 'string') {
+    const ms = new Date(ts).getTime();
+    return isNaN(ms) ? 0 : ms;
+  }
+  return 0;
+}
+
 /** Statistics snapshot for the event log. */
 export interface EventLogStats {
   /** Total number of events in the log. */
@@ -380,8 +397,9 @@ export class EventLog {
             skippedLines++;
             return true;
           }
-          // Timestamps are compared as epoch ms numbers.
-          const ts = event.timestamp ?? 0;
+          // Timestamps are normalised to epoch ms to handle mixed formats
+          // (ISO string from hook scripts vs. number from runtime).
+          const ts = normalizeTimestamp(event.timestamp);
           if (ts < cutoff) {
             toArchive.push(line);
           } else {
@@ -678,8 +696,8 @@ export class EventLog {
     if (filter.types && filter.types.length > 0) {
       if (!filter.types.includes(event.type as (typeof filter.types)[number])) return false;
     }
-    if (filter.since && event.timestamp && event.timestamp < filter.since) return false;
-    if (filter.until && event.timestamp && event.timestamp > filter.until) return false;
+    if (filter.since && normalizeTimestamp(event.timestamp) < filter.since) return false;
+    if (filter.until && normalizeTimestamp(event.timestamp) > filter.until) return false;
     if (filter.since_sequence !== undefined && (
       typeof event.metadata?.sequence !== 'number' ||
       event.metadata.sequence <= filter.since_sequence
