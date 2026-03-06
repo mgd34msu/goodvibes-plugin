@@ -35154,10 +35154,8 @@ var TickDriver = class _TickDriver {
     this.isDaemonProcess = deps.isDaemonProcess ?? false;
     this.compactEventLog = deps.compactEventLog;
     if (deps.eventBus) {
-      deps.eventBus.on((event) => {
-        if (event.type.startsWith("webhook:")) {
-          this.pendingWebhookEvents.push(event);
-        }
+      deps.eventBus.on("webhook:*", (event) => {
+        this.pendingWebhookEvents.push(event);
       });
     }
     this.timer = new Timer({
