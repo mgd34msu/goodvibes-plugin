@@ -495,6 +495,28 @@ describe('TickDriver', () => {
 
       // Only newEvent delivered → 3 execFile calls
       expect(mockExecFile).toHaveBeenCalledTimes(3);
+      expect(eventLog.query).toHaveBeenCalledWith(
+        expect.objectContaining({ since: 1000, limit: 50 }),
+      );
+    });
+
+    it('processes multiple events and updates lastWebhookDeliveredAt to highest timestamp', async () => {
+      mockExecFile.mockImplementation((_cmd: any, _args: any, _opts: any, cb: any) => {
+        cb?.(null);
+        return {} as any;
+      });
+      const event1 = makeWebhookEvent({ id: 'evt-a', type: 'webhook:push', timestamp: 2000 });
+      const event2 = makeWebhookEvent({ id: 'evt-b', type: 'webhook:issues', timestamp: 3000 });
+      const eventLog = makeEventLog([event1, event2]);
+      const deps = makeDeps({ mode: 'daemon', eventLog });
+      const driver = new TickDriver(deps);
+
+      await (driver as any).deliverWebhookEvents();
+
+      // Both events delivered → 3 execFile calls each = 6 total
+      expect(mockExecFile).toHaveBeenCalledTimes(6);
+      // lastWebhookDeliveredAt updated to highest timestamp
+      expect((driver as any).lastWebhookDeliveredAt).toBe(3000);
     });
 
     it('does nothing when no webhook events exist', async () => {
@@ -693,8 +715,8 @@ describe('TickDriver', () => {
         issue: { number: 1, title: 'Big issue', body: longBody },
       });
       const result = (new TickDriver(makeDeps()) as any).formatWebhookEvent(event);
-      const bodyPart = result.split('Body: ')[1].split(' | ')[0];
-      expect(bodyPart).toHaveLength(500);
+      expect(result).toContain('Body: ' + 'x'.repeat(500));
+      expect(result).not.toContain('x'.repeat(501));
     });
 
     it('truncates long comment body to 500 chars', () => {
@@ -703,8 +725,8 @@ describe('TickDriver', () => {
         comment: { body: longComment },
       });
       const result = (new TickDriver(makeDeps()) as any).formatWebhookEvent(event);
-      const commentPart = result.split('Comment: ')[1];
-      expect(commentPart).toHaveLength(500);
+      expect(result).toContain('Comment: ' + 'c'.repeat(500));
+      expect(result).not.toContain('c'.repeat(501));
     });
 
     it('handles minimal event with no optional fields', () => {
