@@ -162,7 +162,7 @@ export type IPCMessage =
  */
 export type IPCQuery =
   | { kind: 'get_system_message' }
-  | { kind: 'get_directives'; agent_id?: string }
+  | { kind: 'get_directives'; agent_id?: string; session_id?: string }
   | { kind: 'get_workflow_state'; workflow_id: string }
   | { kind: 'get_agent_status'; agent_id: string }
   | { kind: 'should_block_tool'; tool_name: string; tool_input: Record<string, unknown> }
@@ -241,4 +241,11 @@ export interface Directive {
    * agent chain.
    */
   workflow_id?: string;
+  /**
+   * Optional session ID that scoped this directive. Used to prevent the daemon
+   * session's UPS/PreToolUse hooks from stealing directives meant for the
+   * orchestrator session. When set, only `get_directives` queries that carry
+   * a matching session_id will receive this directive.
+   */
+  session_id?: string;
 }

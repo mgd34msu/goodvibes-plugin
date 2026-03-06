@@ -77,24 +77,38 @@ export class DirectiveQueue {
    *   matching this workflow_id are returned and removed; the rest remain in
    *   the queue. When omitted, ALL directives for the target are returned and
    *   the queue is cleared (backward-compatible behaviour).
+   * @param sessionId - Optional session ID. When provided, only directives
+   *   matching this session_id (or directives with no session_id) are returned
+   *   and removed; directives scoped to a different session remain in the queue.
+   *   When omitted, ALL directives are eligible regardless of session_id.
    * @returns Array of directives in FIFO order (may be empty).
    */
-  drain(target: string, workflowId?: string): Directive[] {
+  drain(target: string, workflowId?: string, sessionId?: string): Directive[] {
     const queue = this.queues.get(target);
     if (!queue || queue.length === 0) return [];
 
-    if (workflowId === undefined) {
+    // Build a filter predicate combining workflow_id and session_id criteria.
+    // A directive matches when:
+    //   - workflowId is absent OR the directive's workflow_id equals workflowId
+    //   - sessionId is absent OR the directive has no session_id OR its session_id equals sessionId
+    const matches = (d: Directive): boolean => {
+      if (workflowId !== undefined && d.workflow_id !== workflowId) return false;
+      if (sessionId !== undefined && d.session_id !== undefined && d.session_id !== sessionId) return false;
+      return true;
+    };
+
+    if (workflowId === undefined && sessionId === undefined) {
       // Backward-compatible: return all and clear
       const items = [...queue];
       this.queues.delete(target);
       return items;
     }
 
-    // Per-workflow drain: partition into matching and remaining
+    // Filtered drain: partition into matching and remaining
     const matching: Directive[] = [];
     const remaining: Directive[] = [];
     for (const d of queue) {
-      if (d.workflow_id === workflowId) {
+      if (matches(d)) {
         matching.push(d);
       } else {
         remaining.push(d);
@@ -111,9 +125,13 @@ export class DirectiveQueue {
   /**
    * Drain directives into a held state instead of permanently removing them.
    * Held directives can be released (confirmed delivered) or re-enqueued (delivery failed).
+   *
+   * @param target - Hook target name.
+   * @param workflowId - Optional workflow ID filter (same semantics as drain).
+   * @param sessionId - Optional session ID filter (same semantics as drain).
    */
-  holdDrain(target: string, workflowId?: string): { holdId: string; directives: Directive[] } {
-    const directives = this.drain(target, workflowId);
+  holdDrain(target: string, workflowId?: string, sessionId?: string): { holdId: string; directives: Directive[] } {
+    const directives = this.drain(target, workflowId, sessionId);
     if (directives.length === 0) {
       // Returns empty holdId when nothing was drained — callers check with `if (holdId)`.
       return { holdId: '', directives: [] };

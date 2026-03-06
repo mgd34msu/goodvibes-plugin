@@ -27,7 +27,7 @@ import type { ToolGateEvaluator } from './tool-gating.js';
 import type { ContextInjector } from './context-injector.js';
 import { createLogger } from '../../shared/logger.js';
 import { toErrorMessage } from '../../shared/utils.js';
-import { writeFileSync, unlinkSync } from 'node:fs';
+import { writeFileSync, unlinkSync, readdirSync, statSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 export type { IHookProcessor as IHookProcessorInterface } from './types.js';
@@ -210,9 +210,13 @@ export class IPCRouter {
    * @param workflowId - Optional workflow ID for per-workflow isolation.
    *   When provided, only directives with a matching workflow_id are drained.
    *   When omitted, all directives for the target are drained (backward compat).
+   * @param sessionId - Optional session ID for cross-session isolation.
+   *   When provided, only directives with a matching session_id (or no session_id)
+   *   are drained. Directives scoped to a different session remain in the queue.
+   *   When omitted, all directives are eligible regardless of session_id.
    */
-  private drainDirectiveMessages(workflowId?: string): DrainResult {
-    const result = this.directiveQueue?.holdDrain('subagent_stop', workflowId)
+  private drainDirectiveMessages(workflowId?: string, sessionId?: string): DrainResult {
+    const result = this.directiveQueue?.holdDrain('subagent_stop', workflowId, sessionId)
       ?? { holdId: '', directives: [] };
     const message = result.directives
       .filter((d) => d.type === 'inject_system_message')
@@ -230,8 +234,11 @@ export class IPCRouter {
    * @param agentId - Optional agent ID from the query. When provided and a
    *   resolver is registered, it is used to scope the drain to that agent's
    *   workflow, preventing cross-workflow directive delivery.
+   * @param sessionId - Optional session ID from the query. When provided, only
+   *   directives scoped to this session (or with no session_id) are returned.
+   *   This prevents the daemon session from stealing orchestrator directives.
    */
-  private buildDirectivesResponse(msgId: string, agentId?: string): ResponseEnvelope {
+  private buildDirectivesResponse(msgId: string, agentId?: string, sessionId?: string): ResponseEnvelope {
     let workflowId: string | undefined;
     if (agentId && this.agentWorkflowResolver) {
       const resolved = this.agentWorkflowResolver(agentId);
@@ -248,7 +255,7 @@ export class IPCRouter {
         };
       }
     }
-    const { message, directives, holdId } = this.drainDirectiveMessages(workflowId);
+    const { message, directives, holdId } = this.drainDirectiveMessages(workflowId, sessionId);
     return {
       response: {
         id: msgId,
@@ -355,6 +362,78 @@ export class IPCRouter {
           });
         }
       }
+      // Clean up stale session files and socket pointers on each new session
+      if (this.stateDir) {
+        try {
+          // Keep the 10 most recent session files — enough history for debugging without unbounded growth.
+          const KEEP_SESSION_COUNT = 10;
+          const entries = readdirSync(this.stateDir);
+
+          // --- Clean session_*.json files: keep the 10 most recent ---
+          const sessionFiles = entries
+            .filter((f) => f.startsWith('session_') && f.endsWith('.json'))
+            .map((f) => {
+              const fullPath = join(this.stateDir!, f);
+              try {
+                const stat = statSync(fullPath);
+                return { path: fullPath, mtime: stat.mtimeMs };
+              } catch {
+                return { path: fullPath, mtime: 0 };
+              }
+            })
+            .sort((a, b) => b.mtime - a.mtime); // newest first
+
+          const staleSessionFiles = sessionFiles.slice(KEEP_SESSION_COUNT);
+          for (const { path } of staleSessionFiles) {
+            try { unlinkSync(path); } catch { /* ignore */ }
+          }
+          if (staleSessionFiles.length > 0) {
+            logger.info('Session cleanup: removed stale session_*.json files', {
+              count: staleSessionFiles.length,
+              total: sessionFiles.length,
+            });
+          }
+
+          // --- Clean runtime-*.socket pointer files ---
+          const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          const PID_RE = /^\d+$/;
+
+          const socketPointers = entries.filter((f) => f.startsWith('runtime-') && f.endsWith('.socket'));
+          for (const file of socketPointers) {
+            // Extract the key: the part between "runtime-" and ".socket"
+            const key = file.slice('runtime-'.length, -'.socket'.length);
+            const pointerFilePath = join(this.stateDir!, file);
+            let shouldDelete = false;
+
+            if (UUID_RE.test(key)) {
+              // Session-keyed: delete if session is not actively-registered
+              shouldDelete = !this.registeredSessions.has(key);
+            } else if (PID_RE.test(key)) {
+              // PID-keyed: delete if the process is no longer alive
+              try {
+                process.kill(Number(key), 0);
+                // process is alive
+              } catch {
+                shouldDelete = true;
+              }
+            }
+
+            if (shouldDelete) {
+              try {
+                // Read the pointer to get the actual socket path
+                const socketTarget = readFileSync(pointerFilePath, 'utf-8').trim();
+                if (socketTarget) {
+                  try { unlinkSync(socketTarget); } catch { /* already gone */ }
+                }
+              } catch { /* cannot read pointer */ }
+              try { unlinkSync(pointerFilePath); } catch { /* ignore */ }
+              logger.info('Session cleanup: removed stale socket pointer', { file, key });
+            }
+          }
+        } catch (err) {
+          logger.warn('Session cleanup failed', { error: toErrorMessage(err) });
+        }
+      }
     }
     // Store WRFC config when config:loaded event arrives
     if (msg.hook_name === 'config:loaded' && this.directiveQueue) {
@@ -393,7 +472,13 @@ export class IPCRouter {
   private async handleQuery(msg: QueryMessage): Promise<IPCResponse | ResponseEnvelope> {
     const q = msg.query;
     if (q.kind === 'get_directives') {
-      return this.buildDirectivesResponse(msg.id, q.agent_id);
+      // Extract session_id for cross-session isolation (daemon vs orchestrator).
+      // When present, drain only returns directives matching this session.
+      const querySessionId = typeof (q as { session_id?: string }).session_id === 'string'
+        && (q as { session_id?: string }).session_id!.length > 0
+        ? (q as { session_id?: string }).session_id
+        : undefined;
+      return this.buildDirectivesResponse(msg.id, q.agent_id, querySessionId);
     }
     if (q.kind === 'get_system_message') {
       // Return empty — get_system_message is for subagent context injection only.

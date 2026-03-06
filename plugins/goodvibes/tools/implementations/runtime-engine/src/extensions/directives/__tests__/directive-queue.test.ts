@@ -89,6 +89,83 @@ describe('DirectiveQueue', () => {
     });
   });
 
+  // ─── session_id filtering ────────────────────────────────────────────────────
+
+  describe('session_id scoping on drain', () => {
+    it('drain without sessionId returns all directives regardless of session_id', () => {
+      const d1 = makeDirective({ content: 'sess-a', session_id: 'sess-a' });
+      const d2 = makeDirective({ content: 'sess-b', session_id: 'sess-b' });
+      const d3 = makeDirective({ content: 'no-sess' });
+      q.enqueue('target', d1);
+      q.enqueue('target', d2);
+      q.enqueue('target', d3);
+
+      const drained = q.drain('target');
+      expect(drained).toHaveLength(3);
+    });
+
+    it('drain with sessionId returns only matching session directives and unscoped ones', () => {
+      const d1 = makeDirective({ content: 'sess-a', session_id: 'sess-a' });
+      const d2 = makeDirective({ content: 'sess-b', session_id: 'sess-b' });
+      const d3 = makeDirective({ content: 'no-sess' });
+      q.enqueue('target', d1);
+      q.enqueue('target', d2);
+      q.enqueue('target', d3);
+
+      const drained = q.drain('target', undefined, 'sess-a');
+      // Returns d1 (session-a match) and d3 (no session_id = always eligible)
+      expect(drained).toHaveLength(2);
+      expect(drained.map(d => d.content)).toContain('sess-a');
+      expect(drained.map(d => d.content)).toContain('no-sess');
+
+      // d2 (sess-b) remains in queue
+      expect(q.size('target')).toBe(1);
+      const remaining = q.drain('target');
+      expect(remaining[0].content).toBe('sess-b');
+    });
+
+    it('drain with sessionId that matches no directive returns empty and leaves queue intact', () => {
+      const d1 = makeDirective({ content: 'sess-a', session_id: 'sess-a' });
+      q.enqueue('target', d1);
+
+      const drained = q.drain('target', undefined, 'sess-z');
+      expect(drained).toHaveLength(0);
+      // Queue still intact
+      expect(q.size('target')).toBe(1);
+    });
+
+    it('drain with both workflowId and sessionId applies both filters', () => {
+      const d1 = makeDirective({ content: 'wf1-sess-a', workflow_id: 'wf-1', session_id: 'sess-a' });
+      const d2 = makeDirective({ content: 'wf1-sess-b', workflow_id: 'wf-1', session_id: 'sess-b' });
+      const d3 = makeDirective({ content: 'wf2-sess-a', workflow_id: 'wf-2', session_id: 'sess-a' });
+      q.enqueue('target', d1);
+      q.enqueue('target', d2);
+      q.enqueue('target', d3);
+
+      const drained = q.drain('target', 'wf-1', 'sess-a');
+      expect(drained).toHaveLength(1);
+      expect(drained[0].content).toBe('wf1-sess-a');
+
+      // d2 and d3 remain
+      expect(q.size('target')).toBe(2);
+    });
+
+    it('holdDrain passes sessionId filter to drain', () => {
+      const d1 = makeDirective({ content: 'sess-a', session_id: 'sess-a' });
+      const d2 = makeDirective({ content: 'sess-b', session_id: 'sess-b' });
+      q.enqueue('target', d1);
+      q.enqueue('target', d2);
+
+      const { holdId, directives } = q.holdDrain('target', undefined, 'sess-a');
+      expect(directives).toHaveLength(1);
+      expect(directives[0].content).toBe('sess-a');
+      expect(holdId).not.toBe('');
+
+      // d2 remains in queue
+      expect(q.size('target')).toBe(1);
+    });
+  });
+
   // ─── MAX_QUEUE_DEPTH eviction ────────────────────────────────────────────────
 
   describe('MAX_QUEUE_DEPTH enforcement', () => {

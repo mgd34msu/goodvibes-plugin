@@ -65,6 +65,10 @@ export class ActionExecutor implements ActionExecutorInterface {
           priority,
           source: 'wrfc',
           ...(workflowId !== undefined && { workflow_id: workflowId }),
+          // Tag with session_id (non-'default') so drain can scope delivery
+          // to only the session that originated this directive, preventing the
+          // daemon session from stealing orchestrator-bound directives.
+          ...(sessionId !== 'default' && { session_id: sessionId }),
         };
 
         try {

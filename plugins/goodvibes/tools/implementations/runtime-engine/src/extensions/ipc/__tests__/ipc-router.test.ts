@@ -8,10 +8,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const {
   mockWriteFileSync,
   mockUnlinkSync,
+  mockReaddirSync,
+  mockStatSync,
+  mockReadFileSync,
   mockValidateWRFCConfig,
 } = vi.hoisted(() => ({
   mockWriteFileSync: vi.fn(),
   mockUnlinkSync: vi.fn(),
+  mockReaddirSync: vi.fn().mockReturnValue([]),
+  mockStatSync: vi.fn().mockReturnValue({ mtimeMs: 0 }),
+  mockReadFileSync: vi.fn().mockReturnValue(''),
   mockValidateWRFCConfig: vi.fn((cfg: Record<string, unknown>) => cfg),
 }));
 
@@ -19,6 +25,9 @@ const {
 vi.mock('node:fs', () => ({
   writeFileSync: mockWriteFileSync,
   unlinkSync: mockUnlinkSync,
+  readdirSync: mockReaddirSync,
+  statSync: mockStatSync,
+  readFileSync: mockReadFileSync,
 }));
 
 vi.mock('node:path', () => ({
@@ -234,6 +243,12 @@ describe('IPCRouter', () => {
       router = new IPCRouter(deps);
       mockWriteFileSync.mockClear();
       mockUnlinkSync.mockClear();
+      mockReaddirSync.mockReset();
+      mockReaddirSync.mockReturnValue([]);
+      mockStatSync.mockReset();
+      mockStatSync.mockReturnValue({ mtimeMs: 0 });
+      mockReadFileSync.mockReset();
+      mockReadFileSync.mockReturnValue('');
       mockValidateWRFCConfig.mockImplementation((cfg: Record<string, unknown>) => cfg);
     });
 
@@ -452,6 +467,123 @@ describe('IPCRouter', () => {
         );
         expect((stateStore as unknown as { keys: ReturnType<typeof vi.fn> }).keys).toHaveBeenCalledWith('wrfc.sessions.default');
         expect((stateStore as unknown as { delete: ReturnType<typeof vi.fn> }).delete).toHaveBeenCalledWith('wrfc.sessions.default.workflows.wf-stale');
+      });
+
+      // ─── Session file pruning ─────────────────────────────────────────────────
+
+      it('prunes session_*.json files when count exceeds 10 (keeps 10 most recent)', async () => {
+        // 12 files: newest 10 should be kept, 2 oldest should be deleted
+        const files = Array.from({ length: 12 }, (_, i) => `session_${String(i).padStart(3, '0')}.json`);
+        mockReaddirSync.mockReturnValueOnce(files);
+        mockStatSync.mockImplementation((_path: string) => {
+          // extract index from filename to assign increasing mtimes (higher index = newer)
+          const match = _path.match(/(\d+)\.json$/);
+          const idx = match ? parseInt(match[1], 10) : 0;
+          return { mtimeMs: idx * 1000 };
+        });
+        await router.route(
+          makeHookEventMsg({ hook_name: 'session:started', hook_input: { session_id: 'sess-prune' } })
+        );
+        // Files with index 0 and 1 are oldest; they should be deleted
+        expect(mockUnlinkSync).toHaveBeenCalledWith('/tmp/state/session_000.json');
+        expect(mockUnlinkSync).toHaveBeenCalledWith('/tmp/state/session_001.json');
+      });
+
+      it('does not delete session_*.json files when count is exactly 10', async () => {
+        const files = Array.from({ length: 10 }, (_, i) => `session_${String(i).padStart(3, '0')}.json`);
+        mockReaddirSync.mockReturnValueOnce(files);
+        mockStatSync.mockReturnValue({ mtimeMs: 1000 });
+        mockWriteFileSync.mockClear();
+        mockUnlinkSync.mockClear();
+        await router.route(
+          makeHookEventMsg({ hook_name: 'session:started', hook_input: { session_id: 'sess-exact10' } })
+        );
+        // Only writeFileSync for the socket pointer; no session file deletions
+        const sessionFileDeletions = mockUnlinkSync.mock.calls.filter(
+          ([p]: [string]) => p.includes('session_')
+        );
+        expect(sessionFileDeletions).toHaveLength(0);
+      });
+
+      it('does not delete session_*.json files when count is below 10', async () => {
+        const files = ['session_001.json', 'session_002.json'];
+        mockReaddirSync.mockReturnValueOnce(files);
+        mockStatSync.mockReturnValue({ mtimeMs: 1000 });
+        mockUnlinkSync.mockClear();
+        await router.route(
+          makeHookEventMsg({ hook_name: 'session:started', hook_input: { session_id: 'sess-few' } })
+        );
+        const sessionFileDeletions = mockUnlinkSync.mock.calls.filter(
+          ([p]: [string]) => p.includes('session_')
+        );
+        expect(sessionFileDeletions).toHaveLength(0);
+      });
+
+      // ─── Socket pointer cleanup ───────────────────────────────────────────────
+
+      it('deletes UUID-keyed socket pointer when session is not in registeredSessions', async () => {
+        const unregisteredUuid = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+        mockReaddirSync.mockReturnValueOnce([`runtime-${unregisteredUuid}.socket`]);
+        mockReadFileSync.mockReturnValueOnce('/tmp/actual.sock');
+        mockUnlinkSync.mockClear();
+        await router.route(
+          makeHookEventMsg({ hook_name: 'session:started', hook_input: { session_id: 'sess-uuid-clean' } })
+        );
+        expect(mockUnlinkSync).toHaveBeenCalledWith('/tmp/actual.sock');
+        expect(mockUnlinkSync).toHaveBeenCalledWith(`/tmp/state/runtime-${unregisteredUuid}.socket`);
+      });
+
+      it('does not delete UUID-keyed socket pointer when session IS in registeredSessions', async () => {
+        const activeSessionId = 'sess-active-uuid';
+        // First register the session
+        await router.route(
+          makeHookEventMsg({ hook_name: 'session:started', hook_input: { session_id: activeSessionId } })
+        );
+        // Now simulate a second session:started with the active session in the dir
+        mockReaddirSync.mockReturnValueOnce([`runtime-${activeSessionId}.socket`]);
+        mockUnlinkSync.mockClear();
+        await router.route(
+          makeHookEventMsg({ hook_name: 'session:started', hook_input: { session_id: 'sess-new' } })
+        );
+        const socketDeletions = mockUnlinkSync.mock.calls.filter(
+          ([p]: [string]) => p.includes(`runtime-${activeSessionId}`)
+        );
+        expect(socketDeletions).toHaveLength(0);
+      });
+
+      it('deletes PID-keyed socket pointer when process is not alive', async () => {
+        const deadPid = '99999999';
+        mockReaddirSync.mockReturnValueOnce([`runtime-${deadPid}.socket`]);
+        mockReadFileSync.mockReturnValueOnce('/tmp/dead.sock');
+        mockUnlinkSync.mockClear();
+        // process.kill(deadPid, 0) will throw — process not alive
+        await router.route(
+          makeHookEventMsg({ hook_name: 'session:started', hook_input: { session_id: 'sess-pid-dead' } })
+        );
+        expect(mockUnlinkSync).toHaveBeenCalledWith('/tmp/dead.sock');
+        expect(mockUnlinkSync).toHaveBeenCalledWith(`/tmp/state/runtime-${deadPid}.socket`);
+      });
+
+      it('keeps PID-keyed socket pointer when process is alive (current process)', async () => {
+        const livePid = String(process.pid);
+        mockReaddirSync.mockReturnValueOnce([`runtime-${livePid}.socket`]);
+        mockUnlinkSync.mockClear();
+        await router.route(
+          makeHookEventMsg({ hook_name: 'session:started', hook_input: { session_id: 'sess-pid-live' } })
+        );
+        const pidSocketDeletions = mockUnlinkSync.mock.calls.filter(
+          ([p]: [string]) => p.includes(`runtime-${livePid}`)
+        );
+        expect(pidSocketDeletions).toHaveLength(0);
+      });
+
+      it('does not throw when cleanup outer catch fires (readdirSync throws)', async () => {
+        mockReaddirSync.mockImplementationOnce(() => { throw new Error('EACCES'); });
+        await expect(
+          router.route(
+            makeHookEventMsg({ hook_name: 'session:started', hook_input: { session_id: 'sess-catch' } })
+          )
+        ).resolves.toBeDefined();
       });
 
       it('propagates session_id from hook_input into emitted event metadata', async () => {
@@ -725,7 +857,7 @@ describe('IPCRouter', () => {
         await router.route(makeQueryMsg('get_directives', { agent_id: 'agent-a' }));
         expect(
           (deps.directiveQueue as unknown as { holdDrain: ReturnType<typeof vi.fn> }).holdDrain
-        ).toHaveBeenCalledWith('subagent_stop', 'wf-123');
+        ).toHaveBeenCalledWith('subagent_stop', 'wf-123', undefined);
       });
 
       it('does not scope drain when agent_id is missing from get_directives', async () => {
@@ -733,7 +865,7 @@ describe('IPCRouter', () => {
         await router.route(makeQueryMsg('get_directives'));
         expect(
           (deps.directiveQueue as unknown as { holdDrain: ReturnType<typeof vi.fn> }).holdDrain
-        ).toHaveBeenCalledWith('subagent_stop', undefined);
+        ).toHaveBeenCalledWith('subagent_stop', undefined, undefined);
       });
 
       it('returns empty when directiveQueue is null', async () => {
@@ -1086,7 +1218,7 @@ describe('IPCRouter', () => {
       expect(resolver).toHaveBeenCalledWith('test-agent');
       expect(
         (deps.directiveQueue as unknown as { holdDrain: ReturnType<typeof vi.fn> }).holdDrain
-      ).toHaveBeenCalledWith('subagent_stop', 'wf-from-resolver');
+      ).toHaveBeenCalledWith('subagent_stop', 'wf-from-resolver', undefined);
     });
   });
 });

@@ -181,11 +181,15 @@ function sendMessage(socketPath, message, timeoutMs) {
   });
 }
 
-async function drainAllDirectives(socketPath) {
+async function drainAllDirectives(socketPath, sessionId) {
+  const query = { kind: 'get_directives' };
+  // Pass session_id so the runtime engine only returns directives scoped to
+  // this session, preventing the daemon session from stealing orchestrator directives.
+  if (sessionId) query.session_id = sessionId;
   const message = {
     type: 'query',
     id: generateId(),
-    query: { kind: 'get_directives' },  // No agent_id = drain ALL pending
+    query,
   };
   const response = await sendMessage(socketPath, message, QUERY_TIMEOUT_MS);
   if (!response || response.status === 'error') return null;
@@ -270,8 +274,8 @@ async function main() {
     return respond(allowResponse());
   }
 
-  // Drain ALL pending directives from the queue (no agent_id = drain everything)
-  const result = await drainAllDirectives(socketPath);
+  // Drain ALL pending directives from the queue (scoped to this session)
+  const result = await drainAllDirectives(socketPath, sessionId);
 
   // Also check urgent file fallback
   const urgentDirectives = checkUrgentFile(projectDir);

@@ -182,9 +182,12 @@ function sendMessage(socketPath, message, timeoutMs) {
   });
 }
 
-async function queryDirectives(socketPath, agentId) {
+async function queryDirectives(socketPath, agentId, sessionId) {
   const query = { kind: 'get_directives' };
   if (agentId) query.agent_id = agentId;
+  // Pass session_id so the runtime engine only returns directives scoped to
+  // this session, preventing the daemon session from stealing orchestrator directives.
+  if (sessionId) query.session_id = sessionId;
   const message = {
     type: 'query',
     id: generateId(),
@@ -341,7 +344,7 @@ try {
   // Allows time for the runtime to process agent:completed -> triggers -> directive enqueue.
   // 850ms total is short enough to not noticeably delay the orchestrator's response.
   const RETRY_DELAYS = [100, 250, 500];
-  let result = await queryDirectives(socketPath, null);
+  let result = await queryDirectives(socketPath, null, sessionId);
   console.error('[UPS-Directives] initial query result:', result ? `${result.directives?.length ?? 0} directives` : 'null (IPC error)');
 
   if (!result || !result.directives || result.directives.length === 0) {
@@ -349,7 +352,7 @@ try {
       const delay = RETRY_DELAYS[retryIdx];
       console.error(`[UPS-Directives] no directives yet, retry ${retryIdx + 1}/${RETRY_DELAYS.length} in ${delay}ms`);
       await sleep(delay);
-      result = await queryDirectives(socketPath, null);
+      result = await queryDirectives(socketPath, null, sessionId);
       console.error(`[UPS-Directives] retry ${retryIdx + 1} result:`, result ? `${result.directives?.length ?? 0} directives` : 'null (IPC error)');
       if (result?.directives?.length > 0) break;
     }
