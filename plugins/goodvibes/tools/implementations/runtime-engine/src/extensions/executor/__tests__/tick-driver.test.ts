@@ -90,13 +90,14 @@ function makeExecutorMode(mode: 'daemon' | 'engaged' = 'engaged') {
 }
 
 function makeDeps(
-  overrides: Partial<Record<keyof TickDriverDeps, unknown>> & { mode?: 'daemon' | 'engaged' } = {},
+  overrides: Partial<Record<keyof TickDriverDeps, unknown>> & { mode?: 'daemon' | 'engaged' | 'hybrid'; isDaemonProcess?: boolean } = {},
 ): TickDriverDeps {
-  const { mode = 'engaged', ...rest } = overrides;
+  const { mode = 'engaged', isDaemonProcess, ...rest } = overrides;
   return {
     config: makeConfig(),
-    executorMode: makeExecutorMode(mode),
+    executorMode: makeExecutorMode(mode as 'daemon' | 'engaged'),
     timePlugin: makeTimePlugin(),
+    isDaemonProcess: isDaemonProcess ?? false,
     ...rest,
   } as TickDriverDeps;
 }
@@ -131,6 +132,7 @@ describe('TickDriver', () => {
     it('does not start when auto_tick is false', () => {
       const deps = makeDeps({
         mode: 'daemon',
+        isDaemonProcess: true,
         config: makeConfig({ auto_tick: false }),
       });
       const driver = new TickDriver(deps);
@@ -141,6 +143,7 @@ describe('TickDriver', () => {
     it('does not start when tick_interval_ms is 0', () => {
       const deps = makeDeps({
         mode: 'daemon',
+        isDaemonProcess: true,
         config: makeConfig({ tick_interval_ms: 0 }),
       });
       const driver = new TickDriver(deps);
@@ -152,7 +155,7 @@ describe('TickDriver', () => {
       mockExecFileSync.mockImplementationOnce(() => {
         throw new Error('tmux not found');
       });
-      const deps = makeDeps({ mode: 'daemon' });
+      const deps = makeDeps({ mode: 'daemon', isDaemonProcess: true });
       const driver = new TickDriver(deps);
       driver.start();
       expect(driver.isRunning()).toBe(false);
@@ -163,6 +166,7 @@ describe('TickDriver', () => {
       mockExecFileSync.mockReturnValueOnce(Buffer.from(''));
       const deps = makeDeps({
         mode: 'daemon',
+        isDaemonProcess: true,
         config: makeConfig({ tmux_session_name: 'bad session!!' }),
       });
       const driver = new TickDriver(deps);
@@ -174,6 +178,7 @@ describe('TickDriver', () => {
       mockExecFileSync.mockReturnValueOnce(Buffer.from(''));
       const deps = makeDeps({
         mode: 'daemon',
+        isDaemonProcess: true,
         config: makeConfig({ tick_command: 'bad command; rm -rf' }),
       });
       const driver = new TickDriver(deps);
@@ -185,7 +190,7 @@ describe('TickDriver', () => {
       mockExecFileSync.mockReturnValueOnce(Buffer.from(''));
       const scheduler = makeScheduler();
       const timePlugin = makeTimePlugin(scheduler);
-      const deps = makeDeps({ mode: 'daemon', timePlugin });
+      const deps = makeDeps({ mode: 'daemon', isDaemonProcess: true, timePlugin });
       const driver = new TickDriver(deps);
       driver.start();
       expect(driver.isRunning()).toBe(true);
@@ -204,7 +209,7 @@ describe('TickDriver', () => {
       // Pre-populate the stale heartbeat with a different interval
       scheduler._items.set('daemon:auto_tick', { id: 'daemon:auto_tick', interval_ms: 999 });
       const timePlugin = makeTimePlugin(scheduler);
-      const deps = makeDeps({ mode: 'daemon', timePlugin });
+      const deps = makeDeps({ mode: 'daemon', isDaemonProcess: true, timePlugin });
       const driver = new TickDriver(deps);
       driver.start();
       expect(scheduler.cancel).toHaveBeenCalledWith('daemon:auto_tick');
@@ -217,7 +222,7 @@ describe('TickDriver', () => {
       // Pre-populate with matching interval
       scheduler._items.set('daemon:auto_tick', { id: 'daemon:auto_tick', interval_ms: 60_000 });
       const timePlugin = makeTimePlugin(scheduler);
-      const deps = makeDeps({ mode: 'daemon', timePlugin });
+      const deps = makeDeps({ mode: 'daemon', isDaemonProcess: true, timePlugin });
       const driver = new TickDriver(deps);
       driver.start();
       expect(scheduler.scheduleHeartbeat).not.toHaveBeenCalled();
@@ -239,7 +244,7 @@ describe('TickDriver', () => {
       mockExecFileSync.mockReturnValueOnce(Buffer.from(''));
       const scheduler = makeScheduler();
       const timePlugin = makeTimePlugin(scheduler);
-      const deps = makeDeps({ mode: 'daemon', timePlugin });
+      const deps = makeDeps({ mode: 'daemon', isDaemonProcess: true, timePlugin });
       const driver = new TickDriver(deps);
       driver.start();
       driver.stop();
@@ -363,7 +368,7 @@ describe('TickDriver', () => {
         scheduled_emitted: 2,
       });
       const executorMode = makeExecutorMode('daemon');
-      const deps = makeDeps({ mode: 'daemon', timePlugin, executorMode, hasPendingDirectives: () => true });
+      const deps = makeDeps({ mode: 'daemon', isDaemonProcess: true, timePlugin, executorMode, hasPendingDirectives: () => true });
       const driver = new TickDriver(deps);
       // Manually trigger evaluate without starting the timer (avoids tmux guard)
       (driver as any).evaluate();
@@ -377,7 +382,35 @@ describe('TickDriver', () => {
         scheduled_emitted: 0,
       });
       const executorMode = makeExecutorMode('daemon');
-      const deps = makeDeps({ mode: 'daemon', timePlugin, executorMode, hasPendingDirectives: () => true });
+      const deps = makeDeps({ mode: 'daemon', isDaemonProcess: true, timePlugin, executorMode, hasPendingDirectives: () => true });
+      const driver = new TickDriver(deps);
+      (driver as any).evaluate();
+      expect(mockExecFile).toHaveBeenCalled();
+    });
+
+    it('does not send tmux tick when isDaemonProcess=false even if executorMode returns daemon', () => {
+      const timePlugin = makeTimePlugin();
+      vi.mocked(timePlugin.onTick).mockReturnValueOnce({
+        heartbeat_emitted: false,
+        scheduled_emitted: 2,
+      });
+      // executorMode returns 'daemon' but isDaemonProcess is false
+      const executorMode = makeExecutorMode('daemon');
+      const deps = makeDeps({ mode: 'daemon', isDaemonProcess: false, timePlugin, executorMode, hasPendingDirectives: () => true });
+      const driver = new TickDriver(deps);
+      (driver as any).evaluate();
+      expect(mockExecFile).not.toHaveBeenCalled();
+    });
+
+    it('sends tmux tick when isDaemonProcess=true even if executorMode returns hybrid', () => {
+      const timePlugin = makeTimePlugin();
+      vi.mocked(timePlugin.onTick).mockReturnValueOnce({
+        heartbeat_emitted: false,
+        scheduled_emitted: 2,
+      });
+      // executorMode returns 'hybrid' but isDaemonProcess is true (the actual fix)
+      const executorMode = { getMode: vi.fn(() => 'hybrid' as any) };
+      const deps = makeDeps({ mode: 'engaged', isDaemonProcess: true, timePlugin, executorMode, hasPendingDirectives: () => true });
       const driver = new TickDriver(deps);
       (driver as any).evaluate();
       expect(mockExecFile).toHaveBeenCalled();
@@ -534,7 +567,7 @@ describe('TickDriver', () => {
       const timePlugin = makeTimePlugin();
       vi.mocked(timePlugin.onTick).mockReturnValue({ heartbeat_emitted: false, scheduled_emitted: 0 });
       const executorMode = makeExecutorMode('daemon');
-      const deps = makeDeps({ mode: 'daemon', executorMode, timePlugin, eventLog });
+      const deps = makeDeps({ mode: 'daemon', isDaemonProcess: true, executorMode, timePlugin, eventLog });
       const driver = new TickDriver(deps);
 
       // evaluate() wraps deliverWebhookEvents in .catch() — should not throw

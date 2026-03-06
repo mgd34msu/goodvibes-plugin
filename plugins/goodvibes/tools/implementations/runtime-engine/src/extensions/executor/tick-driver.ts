@@ -58,6 +58,12 @@ export interface TickDriverDeps {
       limit?: number;
     }): Promise<import('../../shared/events.js').RuntimeEvent[]>;
   };
+  /**
+   * Whether this process is the daemon process (GOODVIBES_EXECUTOR_MODE=daemon).
+   * Used to gate daemon-only behaviors (sendTick, deliverWebhookEvents) since
+   * ExecutorModeManager may return 'hybrid' even in the daemon process.
+   */
+  isDaemonProcess?: boolean;
 }
 
 export class TickDriver {
@@ -73,6 +79,7 @@ export class TickDriver {
   private readonly staleWorkflowChecker?: () => void;
   private readonly hasPendingDirectives?: () => boolean;
   private readonly eventLog?: TickDriverDeps['eventLog'];
+  private readonly isDaemonProcess: boolean;
   private evalFailureCount = 0;
   /** Epoch ms timestamp of the last webhook event delivered to tmux. */
   private lastWebhookDeliveredAt = 0;
@@ -86,6 +93,7 @@ export class TickDriver {
     this.staleWorkflowChecker = deps.staleWorkflowChecker;
     this.hasPendingDirectives = deps.hasPendingDirectives;
     this.eventLog = deps.eventLog;
+    this.isDaemonProcess = deps.isDaemonProcess ?? false;
 
     this.timer = new Timer({
       callback: () => this.evaluate(),
@@ -110,7 +118,7 @@ export class TickDriver {
 
     const mode = this.executorMode.getMode();
 
-    if (mode === 'daemon') {
+    if (this.isDaemonProcess) {
       if (!this.config.daemon.auto_tick) {
         logger.info('tick driver disabled — auto_tick is false');
         return;
@@ -164,7 +172,7 @@ export class TickDriver {
         session: sessionName,
       });
     } else {
-      logger.info('tick driver starting in engaged mode', {
+      logger.info(`tick driver starting in ${mode} mode`, {
         eval_interval_ms: this.config.daemon.eval_interval_ms,
       });
     }
@@ -333,8 +341,8 @@ export class TickDriver {
       }
     }
 
-    // Step 5: In daemon mode, send tmux tick ONLY when there are pending directives
-    if ((timeResult.heartbeat_emitted || timeResult.scheduled_emitted > 0) && this.executorMode.getMode() === 'daemon') {
+    // Step 5: In daemon process, send tmux tick ONLY when there are pending directives
+    if ((timeResult.heartbeat_emitted || timeResult.scheduled_emitted > 0) && this.isDaemonProcess) {
       const hasPending = this.hasPendingDirectives?.() ?? false;
       if (hasPending) {
         logger.debug('pending directives found — sending tmux tick', {
@@ -345,8 +353,8 @@ export class TickDriver {
       }
     }
 
-    // Step 6: In daemon mode, deliver undelivered webhook events to tmux session
-    if (this.executorMode.getMode() === 'daemon' && this.eventLog) {
+    // Step 6: In daemon process, deliver undelivered webhook events to tmux session
+    if (this.isDaemonProcess && this.eventLog) {
       this.deliverWebhookEvents().catch((err) => {
         const msg = err instanceof Error ? err.message : String(err);
         logger.warn('deliverWebhookEvents() error', { error: msg });
