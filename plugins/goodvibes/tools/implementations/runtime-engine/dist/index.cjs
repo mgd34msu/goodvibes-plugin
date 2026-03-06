@@ -34336,6 +34336,17 @@ var HttpListener = class {
   }
   server = null;
   running = false;
+  eventBus = null;
+  normalizers = null;
+  /**
+   * Wire an EventBus + NormalizerRegistry for direct webhook delivery.
+   * When set, webhooks are normalized and emitted directly to the EventBus,
+   * bypassing the file drop directory entirely.
+   */
+  setDirectEmit(eventBus, normalizers) {
+    this.eventBus = eventBus;
+    this.normalizers = normalizers;
+  }
   /**
    * Start the HTTP server.
    * Resolves when the server is listening.
@@ -34446,6 +34457,19 @@ var HttpListener = class {
         } else if (Array.isArray(value)) {
           forwardedHeaders[key.toLowerCase()] = value.join(", ");
         }
+      }
+      if (this.eventBus !== null && this.normalizers !== null) {
+        try {
+          const event = this.normalizers.normalize(source, parsedPayload, forwardedHeaders);
+          this.eventBus.emit(event);
+          logger43.info("webhook emitted directly to EventBus", { source, type: event.type });
+          sendJson(res, 202, { accepted: true, source, type: event.type });
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          logger43.error("failed to normalize/emit webhook", { source, error: msg });
+          sendJson(res, 500, { error: "Failed to process webhook" });
+        }
+        return;
       }
       const fileId = crypto2.randomUUID();
       const filename = `${Date.now()}_${source}_${fileId}.json`;
@@ -34797,6 +34821,17 @@ var ExternalPlugin = class {
     });
     await this.listener.start();
     logger44.info("HTTP webhook listener is running", { port: this.config.http_listener.port });
+  }
+  /**
+   * Wire an EventBus for direct webhook delivery.
+   * When set, the HTTP listener normalizes payloads inline and emits
+   * directly to the EventBus — bypassing the file drop entirely.
+   */
+  setDirectEmit(eventBus) {
+    if (this.listener !== null) {
+      this.listener.setDirectEmit(eventBus, this.normalizers);
+      logger44.info("Direct EventBus emission enabled for HTTP listener");
+    }
   }
   /**
    * Stop the HTTP listener gracefully.
@@ -35504,6 +35539,14 @@ var TickDriver = class _TickDriver {
     const comment = payload["comment"];
     if (comment?.["body"])
       parts.push(`Comment: ${String(comment["body"]).slice(0, 500)}`);
+    if (payload["text"])
+      parts.push(`Text: ${String(payload["text"]).slice(0, 500)}`);
+    if (payload["user"])
+      parts.push(`User: ${payload["user"]}`);
+    if (payload["channel"])
+      parts.push(`Channel: ${payload["channel"]}`);
+    if (payload["thread_ts"])
+      parts.push(`Thread: ${payload["thread_ts"]}`);
     return parts.join(" | ");
   }
   /**
@@ -38198,7 +38241,10 @@ var RuntimeEngine = class {
     if (httpEnabled && isDaemonProcess) {
       try {
         await this.externalPlugin.startHttpListener();
-        logger60.info("HTTP webhook listener started", {
+        if (this.events?.eventBus) {
+          this.externalPlugin.setDirectEmit(this.events.eventBus);
+        }
+        logger60.info("HTTP webhook listener started (direct EventBus emission)", {
           port: this.config.external.http_listener.port,
           host: this.config.external.http_listener.address
         });
