@@ -527,14 +527,13 @@ export class RuntimeEngine {
     } catch (err) {
       logger.warn('External plugin initialisation failed', { err: toErrorMessage(err) });
     }
-    const isDaemonLike = this.executorSubsystem?.executorMode?.getMode() === 'daemon'
-      || this.executorSubsystem?.executorMode?.getMode() === 'hybrid';
-    if (httpEnabled && !isDaemonLike) {
-      logger.debug('Skipping HTTP webhook listener — not in daemon/hybrid mode', {
+    const isDaemonProcess = process.env['GOODVIBES_EXECUTOR_MODE'] === 'daemon';
+    if (httpEnabled && !isDaemonProcess) {
+      logger.debug('Skipping HTTP webhook listener — only the daemon process binds the port', {
         mode: this.executorSubsystem?.executorMode?.getMode() ?? 'unknown',
       });
     }
-    if (httpEnabled && isDaemonLike) {
+    if (httpEnabled && isDaemonProcess) {
       try {
         await this.externalPlugin.startHttpListener();
         logger.info('HTTP webhook listener started', {
