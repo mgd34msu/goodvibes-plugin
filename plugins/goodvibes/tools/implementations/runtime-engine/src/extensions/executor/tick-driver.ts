@@ -102,10 +102,8 @@ export class TickDriver {
 
     // Subscribe to EventBus and buffer webhook events for delivery each tick.
     if (deps.eventBus) {
-      deps.eventBus.on((event) => {
-        if (event.type.startsWith('webhook:')) {
-          this.pendingWebhookEvents.push(event);
-        }
+      deps.eventBus.on('webhook:*', (event) => {
+        this.pendingWebhookEvents.push(event);
       });
     }
 

@@ -444,9 +444,16 @@ describe('TickDriver', () => {
   describe('deliverWebhookEvents', () => {
     function makeEventBus() {
       let handler: ((event: any) => void) | null = null;
+      let pattern: string | null = null;
       return {
-        on: vi.fn((h: (event: any) => void) => { handler = h; }),
-        emit(event: any) { handler?.(event); },
+        on: vi.fn((p: string, h: (event: any) => void) => { pattern = p; handler = h; }),
+        emit(event: any) {
+          if (pattern && pattern.endsWith('*')) {
+            const prefix = pattern.slice(0, -1);
+            if (!event.type.startsWith(prefix)) return;
+          }
+          handler?.(event);
+        },
       };
     }
 
