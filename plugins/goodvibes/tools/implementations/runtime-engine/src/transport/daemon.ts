@@ -43,6 +43,13 @@ async function main(): Promise<void> {
     try { unlinkSync(hookSocketPath); } catch { /* ignore */ }
   }
 
+  // Set executor mode to daemon before bootstrap — this ensures the
+  // ExecutorModeManager detects daemon mode and the HTTP listener only
+  // starts in this process.
+  if (!process.env['GOODVIBES_EXECUTOR_MODE']) {
+    process.env['GOODVIBES_EXECUTOR_MODE'] = 'daemon';
+  }
+
   // Bootstrap runtime engine
   const config = loadConfig(projectRoot);
   const engine = new RuntimeEngine(config, projectRoot);
