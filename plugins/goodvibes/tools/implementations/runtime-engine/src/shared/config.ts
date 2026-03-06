@@ -121,7 +121,6 @@ export const VALID_EXECUTOR_MODES: ReadonlyArray<ExecutorMode> = ['engaged', 'da
 /** Daemon-specific configuration. */
 export interface DaemonConfig {
   /** Whether to clear context after processing each event batch. */
-  clear_context_after_batch: boolean;
   /** Name of the tmux session running the daemon. */
   tmux_session_name: string;
   /** Command string that triggers a tick (typed into the session). */
@@ -386,7 +385,6 @@ export const DEFAULT_CONFIG: RuntimeConfig = {
   executor: {
     mode: 'engaged',
     daemon: {
-      clear_context_after_batch: true,
       tmux_session_name: 'claude-daemon',
       tick_command: 'tick',
       tick_interval_ms: 30_000,

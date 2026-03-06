@@ -51,7 +51,6 @@ function makeConfig(
       eval_interval_ms: 10_000,
       tmux_session_name: 'my-session',
       tick_command: '/usr/local/bin/gv-tick',
-      clear_context_after_batch: false,
       ...daemonOverrides,
     },
     budget: {

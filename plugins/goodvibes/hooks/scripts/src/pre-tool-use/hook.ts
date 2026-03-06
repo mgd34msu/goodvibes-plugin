@@ -64,15 +64,6 @@ async function handleBashTool(input: HookInput): Promise<void> {
     return;
   }
 
-  // PROOF OF CONCEPT: Count single quotes and replace command
-  const singleQuoteCount = (command.match(/'/g) || []).length;
-  if (singleQuoteCount > 0) {
-    const modifiedInput = { ...input.tool_input as Record<string, unknown> };
-    modifiedInput.command = `echo "${singleQuoteCount} single quotes detected"`;
-    respond(allowTool('PreToolUse', undefined, modifiedInput));
-    return;
-  }
-
 
   // LAYER 1: Platform path mapping (rewrite /tmp, /dev/null on Windows)
   const pathResult = rewritePlatformPaths(command);

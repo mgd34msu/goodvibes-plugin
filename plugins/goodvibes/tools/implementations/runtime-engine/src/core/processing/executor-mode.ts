@@ -112,17 +112,6 @@ export class ExecutorModeManager {
   }
 
   /**
-   * Check if context should be cleared after a batch.
-   * Only daemon mode with clear_context_after_batch clears context.
-   */
-  shouldClearContext(): boolean {
-    return (
-      this.currentMode === 'daemon' &&
-      this.config.daemon.clear_context_after_batch
-    );
-  }
-
-  /**
    * Update the config reference for hot-reload support.
    * Called by RuntimeEngine.updateConfig() when runtime_config changes.
    */

@@ -333,8 +333,6 @@ export type EventType =
   | 'executor:tick_received'
   /** A daemon tick batch completed processing. */
   | 'executor:tick_completed'
-  /** Context clearing was initiated (daemon/hybrid mode). */
-  | 'executor:context_clearing'
   /** Executor budget warning threshold reached. */
   | 'executor:budget_warning'
   /** Executor budget cap reached; processing paused. */
@@ -674,7 +672,6 @@ export type EventPayload =
   | { type: 'executor:mode_set'; data: { mode: 'engaged' | 'daemon' | 'hybrid'; previous_mode?: 'engaged' | 'daemon' | 'hybrid'; detection_method: 'explicit' | 'inferred' | 'default' } }
   | { type: 'executor:tick_received'; data: { tick_number: number; pending_events: number } }
   | { type: 'executor:tick_completed'; data: { tick_number: number; events_processed: number; duration_ms: number } }
-  | { type: 'executor:context_clearing'; data: { method: 'tmux' | 'queue_injection'; success: boolean } }
   | { type: 'executor:budget_warning'; data: { cap_type: 'flat' | 'daily'; spent_usd: number; cap_usd: number; threshold: number } }
   // Core internal events
   | { type: 'core:handler_error'; data: { trigger_id: string; error_message: string; original_event_id: string; original_event_type: string } }

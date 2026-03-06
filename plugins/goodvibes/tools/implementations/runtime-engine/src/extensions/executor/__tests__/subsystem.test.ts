@@ -28,7 +28,6 @@ vi.mock('../../../core/processing/executor-mode.js', () => ({
     this.getDetectionMethod = vi.fn(() => ctrl.detectionMethod);
     this.setMode = vi.fn();
     this.shouldProcessQueue = vi.fn().mockReturnValue(true);
-    this.shouldClearContext = vi.fn().mockReturnValue(false);
     this.detectMode = vi.fn(() => ctrl.mode);
     this.updateConfig = vi.fn();
   }),
@@ -82,7 +81,6 @@ function makeConfig(): any {
     executor: {
       mode: 'engaged' as const,
       daemon: {
-        clear_context_after_batch: false,
         tmux_session_name: 'gv',
         tick_command: '/tick',
         tick_interval_ms: 0,

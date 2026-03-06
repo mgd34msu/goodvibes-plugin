@@ -12,7 +12,6 @@ import { createLogger } from '../../shared/logger.js';
 import { generateEventId, timestamp } from '../../shared/utils.js';
 import type { ExecutorModeManager } from '../../core/processing/executor-mode.js';
 import type { ExecutorBudgetManager } from './executor-budget.js';
-import { ContextClearer } from './context-clearer.js';
 
 const logger = createLogger('daemon-tick-handler');
 
@@ -21,7 +20,6 @@ export interface TickResult {
   tick_number: number;
   events_processed: number;
   duration_ms: number;
-  context_cleared: boolean;
   budget_status: 'ok' | 'warning' | 'exceeded';
 }
 
@@ -31,7 +29,6 @@ export class DaemonTickHandler {
   private readonly budgetManager: ExecutorBudgetManager;
   private readonly eventBus: EventBus;
   private config: ExecutorConfig;
-  private readonly contextClearer: ContextClearer;
   /** Returns the current core event queue depth. Wired after plugin init via setQueueDepthGetter(). */
   private getQueueDepth: () => number = () => 0;
 
@@ -45,7 +42,6 @@ export class DaemonTickHandler {
     this.budgetManager = deps.budgetManager;
     this.eventBus = deps.eventBus;
     this.config = deps.config;
-    this.contextClearer = new ContextClearer(deps.config.daemon);
   }
 
   /**
@@ -65,7 +61,6 @@ export class DaemonTickHandler {
    * 3. Emit executor:tick_received
    * 4. Build additionalContext with active workflows, pending events, memory state
    * 5. Emit executor:tick_completed
-   * 6. If daemon mode: initiate context clearing
    */
   async handleTick(): Promise<TickResult> {
     const startMs = Date.now();
@@ -81,7 +76,6 @@ export class DaemonTickHandler {
         tick_number: tickNumber,
         events_processed: 0,
         duration_ms: Date.now() - startMs,
-        context_cleared: false,
         budget_status: 'exceeded',
       };
     }
@@ -139,37 +133,10 @@ export class DaemonTickHandler {
       },
     });
 
-    // Step 6: Context clearing (daemon mode only)
-    let contextCleared = false;
-    if (this.executorMode.shouldClearContext()) {
-      try {
-        const result = await this.contextClearer.clearContext();
-        contextCleared = result.success;
-
-        this.eventBus.emit({
-          id: generateEventId(),
-          timestamp: timestamp(),
-          type: 'executor:context_clearing',
-          source: { kind: 'system' },
-          payload: {
-            type: 'executor:context_clearing',
-            data: {
-              method: result.method,
-              success: result.success,
-            },
-          },
-        });
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        logger.error('Context clearing failed', { tick_number: tickNumber, error: msg });
-      }
-    }
-
     logger.info('Daemon tick completed', {
       tick_number: tickNumber,
       events_processed: eventsProcessed,
       duration_ms: Date.now() - startMs,
-      context_cleared: contextCleared,
       budget_status: budgetStatus,
     });
 
@@ -177,7 +144,6 @@ export class DaemonTickHandler {
       tick_number: tickNumber,
       events_processed: eventsProcessed,
       duration_ms: Date.now() - startMs,
-      context_cleared: contextCleared,
       budget_status: budgetStatus,
     };
   }

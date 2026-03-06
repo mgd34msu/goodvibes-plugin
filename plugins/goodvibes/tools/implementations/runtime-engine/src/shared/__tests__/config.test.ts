@@ -96,7 +96,6 @@ describe('DEFAULT_CONFIG', () => {
 
   it('has correct executor defaults', () => {
     expect(DEFAULT_CONFIG.executor.mode).toBe('engaged');
-    expect(DEFAULT_CONFIG.executor.daemon.clear_context_after_batch).toBe(true);
     expect(DEFAULT_CONFIG.executor.daemon.tmux_session_name).toBe('claude-daemon');
     expect(DEFAULT_CONFIG.executor.daemon.tick_command).toBe('tick');
     expect(DEFAULT_CONFIG.executor.daemon.tick_interval_ms).toBe(30000);

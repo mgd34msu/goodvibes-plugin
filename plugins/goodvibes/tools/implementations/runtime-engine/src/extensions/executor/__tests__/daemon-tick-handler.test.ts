@@ -17,18 +17,9 @@ vi.mock('../../../shared/utils.js', () => ({
   timestamp: vi.fn(() => 'mock-timestamp'),
 }));
 
-// Mock ContextClearer — we don't want real tmux calls
-// Must use a class or regular function (not arrow) so it can be called with `new`.
-vi.mock('../context-clearer.js', () => ({
-  ContextClearer: vi.fn(function MockContextClearer(this: any) {
-    this.clearContext = vi.fn(() => Promise.resolve({ success: true, method: 'tmux' }));
-  }),
-}));
-
 function makeConfig(overrides: Partial<ExecutorConfig['budget']> = {}): ExecutorConfig {
   return {
     daemon: {
-      clear_context_after_batch: false,
       tmux_session_name: 'test-session',
       tick_command: '/usr/local/bin/tick',
       tick_interval_ms: 60_000,
@@ -53,10 +44,9 @@ function makeBudgetManager(canProcess = true, spending = { total_usd: 0, daily_u
   };
 }
 
-function makeExecutorMode(shouldClear = false) {
+function makeExecutorMode() {
   return {
     getMode: vi.fn(() => 'daemon'),
-    shouldClearContext: vi.fn(() => shouldClear),
   };
 }
 
@@ -78,7 +68,7 @@ function makeDeps(overrides: Record<string, unknown> = {}) {
 }
 
 describe('DaemonTickHandler', () => {
-  // ─── handleTick — budget exceeded ───────────────────────────────────────────
+  // ─── handleTick — budget exceeded ─────────────────────────────────────────────────
 
   describe('handleTick — budget exceeded', () => {
     it('returns budget_status=exceeded and does not emit events', async () => {
@@ -91,7 +81,6 @@ describe('DaemonTickHandler', () => {
       const result = await handler.handleTick();
       expect(result.budget_status).toBe('exceeded');
       expect(result.events_processed).toBe(0);
-      expect(result.context_cleared).toBe(false);
       expect(eventBus.emit).not.toHaveBeenCalled();
     });
 
@@ -106,7 +95,7 @@ describe('DaemonTickHandler', () => {
     });
   });
 
-  // ─── handleTick — normal flow ────────────────────────────────────────────────
+  // ─── handleTick — normal flow ────────────────────────────────────────────────────
 
   describe('handleTick — normal flow', () => {
     it('emits tick_received and tick_completed events', async () => {
@@ -168,43 +157,7 @@ describe('DaemonTickHandler', () => {
     });
   });
 
-  // ─── handleTick — context clearing ─────────────────────────────────────────
-
-  describe('handleTick — context clearing', () => {
-    it('clears context when shouldClearContext returns true', async () => {
-      const executorMode = makeExecutorMode(true);
-      const eventBus = makeEventBus();
-      const handler = new DaemonTickHandler(
-        makeDeps({ executorMode, eventBus }) as any,
-      );
-      const result = await handler.handleTick();
-      expect(result.context_cleared).toBe(true);
-      const emittedTypes = eventBus.emit.mock.calls.map((c: any) => c[0].type);
-      expect(emittedTypes).toContain('executor:context_clearing');
-    });
-
-    it('does not clear context when shouldClearContext returns false', async () => {
-      const executorMode = makeExecutorMode(false);
-      const handler = new DaemonTickHandler(makeDeps({ executorMode }) as any);
-      const result = await handler.handleTick();
-      expect(result.context_cleared).toBe(false);
-    });
-
-    it('handles context clearing failure gracefully', async () => {
-      const { ContextClearer } = await import('../context-clearer.js');
-      vi.mocked(ContextClearer).mockImplementationOnce(function MockFailing(this: any) {
-        this.clearContext = vi.fn(() => Promise.reject(new Error('tmux gone')));
-      } as any);
-
-      const executorMode = makeExecutorMode(true);
-      const handler = new DaemonTickHandler(makeDeps({ executorMode }) as any);
-      const result = await handler.handleTick();
-      // Should not throw — context_cleared is false when clearing fails
-      expect(result.context_cleared).toBe(false);
-    });
-  });
-
-  // ─── tick_received payload ───────────────────────────────────────────────────
+  // ─── tick_received payload ────────────────────────────────────────────────────────
 
   describe('tick_received payload', () => {
     it('includes tick_number and pending_events in tick_received payload', async () => {
@@ -222,7 +175,7 @@ describe('DaemonTickHandler', () => {
     });
   });
 
-  // ─── setQueueDepthGetter ────────────────────────────────────────────────────
+  // ─── setQueueDepthGetter ─────────────────────────────────────────────────────────
 
   describe('setQueueDepthGetter', () => {
     it('uses 0 as default queue depth when no getter is set', async () => {
@@ -247,7 +200,7 @@ describe('DaemonTickHandler', () => {
     });
   });
 
-  // ─── buildTickContext ───────────────────────────────────────────────────────
+  // ─── buildTickContext ─────────────────────────────────────────────────────────────
 
   describe('buildTickContext', () => {
     it('returns a string containing tick count, mode, budget, and event info', async () => {
@@ -270,7 +223,7 @@ describe('DaemonTickHandler', () => {
     });
   });
 
-  // ─── getTickCount / getTickCommand ──────────────────────────────────────────
+  // ─── getTickCount / getTickCommand ───────────────────────────────────────────────
 
   describe('getTickCount', () => {
     it('returns 0 initially', () => {
