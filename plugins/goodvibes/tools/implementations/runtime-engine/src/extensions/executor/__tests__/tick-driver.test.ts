@@ -470,11 +470,11 @@ describe('TickDriver', () => {
       };
     }
 
+    beforeEach(() => {
+      vi.spyOn(TickDriver.prototype as any, 'sleepSync').mockImplementation(() => {});
+    });
+
     it('delivers webhook events to tmux in daemon mode with eventBus', () => {
-      mockExecFile.mockImplementation((_cmd: any, _args: any, _opts: any, cb: any) => {
-        cb?.(null);
-        return {} as any;
-      });
       const eventBus = makeEventBus();
       const executorMode = makeExecutorMode('daemon');
       const deps = makeDeps({ mode: 'daemon', executorMode, eventBus });
@@ -485,15 +485,11 @@ describe('TickDriver', () => {
 
       (driver as any).deliverWebhookEvents();
 
-      // sendToTmux calls execFile 3 times per event
-      expect(mockExecFile).toHaveBeenCalledTimes(3);
+      // sendToTmux calls execFileSync 3 times per event (content, Enter, Enter)
+      expect(mockExecFileSync).toHaveBeenCalledTimes(3);
     });
 
     it('filters out non-webhook events at subscription time (buffer only holds webhook: prefix)', () => {
-      mockExecFile.mockImplementation((_cmd: any, _args: any, _opts: any, cb: any) => {
-        cb?.(null);
-        return {} as any;
-      });
       const eventBus = makeEventBus();
       const deps = makeDeps({ mode: 'daemon', eventBus });
       const driver = new TickDriver(deps);
@@ -504,15 +500,11 @@ describe('TickDriver', () => {
 
       (driver as any).deliverWebhookEvents();
 
-      // Only 1 event delivered (3 execFile calls for one sendToTmux)
-      expect(mockExecFile).toHaveBeenCalledTimes(3);
+      // Only 1 event delivered (3 execFileSync calls for one sendToTmux)
+      expect(mockExecFileSync).toHaveBeenCalledTimes(3);
     });
 
     it('drains pendingWebhookEvents buffer after delivery', () => {
-      mockExecFile.mockImplementation((_cmd: any, _args: any, _opts: any, cb: any) => {
-        cb?.(null);
-        return {} as any;
-      });
       const eventBus = makeEventBus();
       const deps = makeDeps({ mode: 'daemon', eventBus });
       const driver = new TickDriver(deps);
@@ -526,10 +518,6 @@ describe('TickDriver', () => {
     });
 
     it('delivers multiple buffered events in order', () => {
-      mockExecFile.mockImplementation((_cmd: any, _args: any, _opts: any, cb: any) => {
-        cb?.(null);
-        return {} as any;
-      });
       const eventBus = makeEventBus();
       const deps = makeDeps({ mode: 'daemon', eventBus });
       const driver = new TickDriver(deps);
@@ -539,8 +527,8 @@ describe('TickDriver', () => {
 
       (driver as any).deliverWebhookEvents();
 
-      // Both events delivered → 3 execFile calls each = 6 total
-      expect(mockExecFile).toHaveBeenCalledTimes(6);
+      // Both events delivered → 3 execFileSync calls each = 6 total
+      expect(mockExecFileSync).toHaveBeenCalledTimes(6);
       // Buffer is fully drained
       expect((driver as any).pendingWebhookEvents.length).toBe(0);
     });
@@ -553,14 +541,10 @@ describe('TickDriver', () => {
       // No events emitted — buffer is empty
       (driver as any).deliverWebhookEvents();
 
-      expect(mockExecFile).not.toHaveBeenCalled();
+      expect(mockExecFileSync).not.toHaveBeenCalled();
     });
 
     it('step 6 gate triggers when pendingWebhookEvents has entries', () => {
-      mockExecFile.mockImplementation((_cmd: any, _args: any, _opts: any, cb: any) => {
-        cb?.(null);
-        return {} as any;
-      });
       const eventBus = makeEventBus();
       const timePlugin = makeTimePlugin();
       vi.mocked(timePlugin.onTick).mockReturnValue({ heartbeat_emitted: false, scheduled_emitted: 0 });
@@ -572,8 +556,8 @@ describe('TickDriver', () => {
       eventBus.emit(makeWebhookEvent({ timestamp: 1000 }));
       (driver as any).evaluate();
 
-      // deliverWebhookEvents called synchronously → execFile called
-      expect(mockExecFile).toHaveBeenCalled();
+      // deliverWebhookEvents called synchronously → execFileSync called
+      expect(mockExecFileSync).toHaveBeenCalled();
     });
 
     it('step 6 gate does NOT trigger when pendingWebhookEvents is empty', () => {
@@ -587,7 +571,7 @@ describe('TickDriver', () => {
       // No events pushed — buffer is empty — step 6 skipped
       (driver as any).evaluate();
 
-      expect(mockExecFile).not.toHaveBeenCalled();
+      expect(mockExecFileSync).not.toHaveBeenCalled();
     });
 
     it('subscribes to eventBus on construction', () => {
@@ -602,35 +586,33 @@ describe('TickDriver', () => {
   // ─── sendToTmux ──────────────────────────────────────────────────────────────
 
   describe('sendToTmux', () => {
-    it('sends content with -l flag, then two Enter commands (3 execFile calls)', () => {
-      // All three calls succeed
-      mockExecFile.mockImplementation((_cmd: any, _args: any, _opts: any, cb: any) => {
-        cb?.(null);
-        return {} as any;
-      });
+    beforeEach(() => {
+      vi.spyOn(TickDriver.prototype as any, 'sleepSync').mockImplementation(() => {});
+    });
+
+    it('sends content with -l flag, then two Enter commands (3 separate execFileSync calls)', () => {
       const deps = makeDeps();
       const driver = new TickDriver(deps);
 
       (driver as any).sendToTmux('my-session', 'hello world');
 
-      expect(mockExecFile).toHaveBeenCalledTimes(3);
+      expect(mockExecFileSync).toHaveBeenCalledTimes(3);
       // First call: content with -l flag
-      const firstCall = mockExecFile.mock.calls[0];
+      const firstCall = mockExecFileSync.mock.calls[0];
       expect(firstCall[0]).toBe('tmux');
       expect(firstCall[1]).toEqual(['send-keys', '-l', '-t', 'my-session', 'hello world']);
       // Second call: first Enter (no -l)
-      const secondCall = mockExecFile.mock.calls[1];
+      const secondCall = mockExecFileSync.mock.calls[1];
       expect(secondCall[1]).toEqual(['send-keys', '-t', 'my-session', 'Enter']);
       // Third call: second Enter (no -l)
-      const thirdCall = mockExecFile.mock.calls[2];
+      const thirdCall = mockExecFileSync.mock.calls[2];
       expect(thirdCall[1]).toEqual(['send-keys', '-t', 'my-session', 'Enter']);
     });
 
-    it('stops on first execFile failure — does not send Enter if content send fails', () => {
-      // First call fails, no subsequent calls
-      mockExecFile.mockImplementationOnce((_cmd: any, _args: any, _opts: any, cb: any) => {
-        cb?.(new Error('send failed'));
-        return {} as any;
+    it('stops on first execFileSync failure — does not send Enter if content send fails', () => {
+      // First call throws, no subsequent calls
+      mockExecFileSync.mockImplementationOnce(() => {
+        throw new Error('send failed');
       });
       const deps = makeDeps();
       const driver = new TickDriver(deps);
@@ -638,19 +620,15 @@ describe('TickDriver', () => {
       (driver as any).sendToTmux('my-session', 'test content');
 
       // Only 1 call — subsequent Enters are not made
-      expect(mockExecFile).toHaveBeenCalledTimes(1);
+      expect(mockExecFileSync).toHaveBeenCalledTimes(1);
     });
 
-    it('stops on second execFile failure — does not send second Enter', () => {
-      // First call succeeds, second fails
-      mockExecFile
-        .mockImplementationOnce((_cmd: any, _args: any, _opts: any, cb: any) => {
-          cb?.(null);
-          return {} as any;
-        })
-        .mockImplementationOnce((_cmd: any, _args: any, _opts: any, cb: any) => {
-          cb?.(new Error('first Enter failed'));
-          return {} as any;
+    it('stops on second execFileSync failure — does not send second Enter', () => {
+      // First call succeeds (default mock), second throws
+      mockExecFileSync
+        .mockImplementationOnce(() => Buffer.from(''))
+        .mockImplementationOnce(() => {
+          throw new Error('first Enter failed');
         });
       const deps = makeDeps();
       const driver = new TickDriver(deps);
@@ -658,25 +636,33 @@ describe('TickDriver', () => {
       (driver as any).sendToTmux('my-session', 'test content');
 
       // 2 calls — third Enter is not made
-      expect(mockExecFile).toHaveBeenCalledTimes(2);
+      expect(mockExecFileSync).toHaveBeenCalledTimes(2);
     });
 
     it('all three calls use correct session name and timeout', () => {
-      mockExecFile.mockImplementation((_cmd: any, _args: any, _opts: any, cb: any) => {
-        cb?.(null);
-        return {} as any;
-      });
       const deps = makeDeps({ config: makeConfig({ tmux_session_name: 'test-session' }) });
       const driver = new TickDriver(deps);
 
       (driver as any).sendToTmux('test-session', 'payload');
 
-      for (const call of mockExecFile.mock.calls) {
+      for (const call of mockExecFileSync.mock.calls) {
         // Session name appears in args
         expect(call[1]).toContain('test-session');
         // Timeout option is set
         expect((call[2] as any).timeout).toBe(5_000);
       }
+    });
+
+    it('calls sleepSync between each tmux command', () => {
+      const sleepSpy = vi.spyOn(TickDriver.prototype as any, 'sleepSync');
+      const deps = makeDeps();
+      const driver = new TickDriver(deps);
+
+      (driver as any).sendToTmux('my-session', 'test');
+
+      // sleepSync called twice (between call 1→2, and between call 2→3)
+      expect(sleepSpy).toHaveBeenCalledTimes(2);
+      expect(sleepSpy).toHaveBeenCalledWith(200);
     });
   });
 

@@ -29,6 +29,8 @@ const logger = createLogger('tick-driver');
 
 /** Timeout for tmux send-keys command. */
 const TMUX_TIMEOUT_MS = 5_000;
+/** Delay between separate tmux send-keys calls (content, Enter, Enter). */
+const TMUX_ENTER_DELAY_MS = 200;
 /** Interval between automatic event log compaction runs. */
 const COMPACTION_INTERVAL_MS = 3_600_000; // 1 hour
 /** Stable ID for the daemon auto-tick heartbeat in the EventScheduler. */
@@ -426,44 +428,53 @@ export class TickDriver {
   }
 
   /**
-   * Send content to the tmux session using three separate execFile calls:
-   * 1. The message text (no Enter)
-   * 2. Enter (first press)
-   * 3. Enter (second press — required for Claude Code to submit)
+   * Send content to the tmux session using three separate, sequential,
+   * synchronous execFileSync calls with a synchronous sleep between each.
+   * No callbacks, no chaining, no nesting.
+   * 1. The message text (with -l flag, no Enter)
+   * 2. Sleep 200ms, then Enter (first press)
+   * 3. Sleep 200ms, then Enter (second press — required for Claude Code to submit)
    */
   private sendToTmux(sessionName: string, content: string): void {
-    execFile(
-      'tmux',
-      ['send-keys', '-l', '-t', sessionName, content],
-      { timeout: TMUX_TIMEOUT_MS },
-      (err) => {
-        if (err) {
-          logger.warn('failed to send webhook content via tmux', { error: err.message });
-          return;
-        }
-        execFile(
-          'tmux',
-          ['send-keys', '-t', sessionName, 'Enter'],
-          { timeout: TMUX_TIMEOUT_MS },
-          (err2) => {
-            if (err2) {
-              logger.warn('failed to send first Enter via tmux', { error: err2.message });
-              return;
-            }
-            execFile(
-              'tmux',
-              ['send-keys', '-t', sessionName, 'Enter'],
-              { timeout: TMUX_TIMEOUT_MS },
-              (err3) => {
-                if (err3) {
-                  logger.warn('failed to send second Enter via tmux', { error: err3.message });
-                }
-              }
-            );
-          }
-        );
-      }
-    );
+    // Call 1: send the content text
+    try {
+      execFileSync('tmux', ['send-keys', '-l', '-t', sessionName, content], { timeout: TMUX_TIMEOUT_MS });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.warn('failed to send webhook content via tmux', { error: msg });
+      return;
+    }
+
+    // Synchronous delay
+    this.sleepSync(TMUX_ENTER_DELAY_MS);
+
+    // Call 2: send first Enter
+    try {
+      execFileSync('tmux', ['send-keys', '-t', sessionName, 'Enter'], { timeout: TMUX_TIMEOUT_MS });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.warn('failed to send first Enter via tmux', { error: msg });
+      return;
+    }
+
+    // Synchronous delay
+    this.sleepSync(TMUX_ENTER_DELAY_MS);
+
+    // Call 3: send second Enter
+    try {
+      execFileSync('tmux', ['send-keys', '-t', sessionName, 'Enter'], { timeout: TMUX_TIMEOUT_MS });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.warn('failed to send second Enter via tmux', { error: msg });
+    }
+  }
+
+  /**
+   * Synchronous blocking sleep using Atomics.wait.
+   * No callbacks, no promises — blocks the thread for the specified duration.
+   */
+  private sleepSync(ms: number): void {
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
   }
 
   /**
