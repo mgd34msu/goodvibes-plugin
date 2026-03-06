@@ -35112,6 +35112,7 @@ var TickDriver = class _TickDriver {
   staleWorkflowChecker;
   hasPendingDirectives;
   eventLog;
+  isDaemonProcess;
   evalFailureCount = 0;
   /** Epoch ms timestamp of the last webhook event delivered to tmux. */
   lastWebhookDeliveredAt = 0;
@@ -35124,6 +35125,7 @@ var TickDriver = class _TickDriver {
     this.staleWorkflowChecker = deps.staleWorkflowChecker;
     this.hasPendingDirectives = deps.hasPendingDirectives;
     this.eventLog = deps.eventLog;
+    this.isDaemonProcess = deps.isDaemonProcess ?? false;
     this.timer = new Timer({
       callback: () => this.evaluate(),
       intervalMs: deps.config.daemon.eval_interval_ms,
@@ -35145,7 +35147,7 @@ var TickDriver = class _TickDriver {
     if (this.timer.isRunning())
       return;
     const mode = this.executorMode.getMode();
-    if (mode === "daemon") {
+    if (this.isDaemonProcess) {
       if (!this.config.daemon.auto_tick) {
         logger45.info("tick driver disabled \u2014 auto_tick is false");
         return;
@@ -35191,7 +35193,7 @@ var TickDriver = class _TickDriver {
         session: sessionName
       });
     } else {
-      logger45.info("tick driver starting in engaged mode", {
+      logger45.info(`tick driver starting in ${mode} mode`, {
         eval_interval_ms: this.config.daemon.eval_interval_ms
       });
     }
@@ -35331,7 +35333,7 @@ var TickDriver = class _TickDriver {
         }
       }
     }
-    if ((timeResult.heartbeat_emitted || timeResult.scheduled_emitted > 0) && this.executorMode.getMode() === "daemon") {
+    if ((timeResult.heartbeat_emitted || timeResult.scheduled_emitted > 0) && this.isDaemonProcess) {
       const hasPending = this.hasPendingDirectives?.() ?? false;
       if (hasPending) {
         logger45.debug("pending directives found \u2014 sending tmux tick", {
@@ -35341,7 +35343,7 @@ var TickDriver = class _TickDriver {
         this.sendTick();
       }
     }
-    if (this.executorMode.getMode() === "daemon" && this.eventLog) {
+    if (this.isDaemonProcess && this.eventLog) {
       this.deliverWebhookEvents().catch((err) => {
         const msg = err instanceof Error ? err.message : String(err);
         logger45.warn("deliverWebhookEvents() error", { error: msg });
@@ -38120,7 +38122,8 @@ var RuntimeEngine = class {
         eventProcessor: this.coreRuntime.eventProcessor,
         staleWorkflowChecker: () => this.watchdog?.checkStaleWorkflows(),
         hasPendingDirectives: () => (this.directives?.directiveQueue?.peek("subagent_stop")?.length ?? 0) > 0,
-        eventLog: this.events?.eventLog ?? void 0
+        eventLog: this.events?.eventLog ?? void 0,
+        isDaemonProcess
       });
     }
     if (this.executorSubsystem?.executorBudget && this.coreRuntime.stateStore) {
