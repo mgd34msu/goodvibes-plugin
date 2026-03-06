@@ -248,7 +248,7 @@ export class TickDriver {
    * 2. externalPlugin.onTick() — file-drop scan
    * 3. eventProcessor.processBatch() — drain queue through triggers
    * 4. staleWorkflowChecker() — re-enqueue lost directives
-   * 5. (daemon only) sendTick() if scheduled events fired
+   * 5. (daemon only) sendTick() if heartbeat or scheduled events fired
    */
   private evaluate(): void {
     // Step 1: Time events
@@ -311,9 +311,10 @@ export class TickDriver {
       }
     }
 
-    // Step 5: In daemon mode, send tmux tick when scheduled events fire
-    if (timeResult.scheduled_emitted > 0 && this.executorMode.getMode() === 'daemon') {
-      logger.debug('scheduled events fired — sending tmux tick', {
+    // Step 5: In daemon mode, send tmux tick when heartbeat or scheduled events fire
+    if ((timeResult.heartbeat_emitted || timeResult.scheduled_emitted > 0) && this.executorMode.getMode() === 'daemon') {
+      logger.debug('heartbeat or scheduled events fired — sending tmux tick', {
+        heartbeat_emitted: timeResult.heartbeat_emitted,
         scheduled_emitted: timeResult.scheduled_emitted,
       });
       this.sendTick();

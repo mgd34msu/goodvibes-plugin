@@ -6,7 +6,7 @@
 
 import { existsSync, readFileSync, unlinkSync, openSync, writeSync, closeSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { createConnection } from 'node:net';
 import { createLogger } from '../shared/logger.js';
 import { toErrorMessage } from '../shared/utils.js';
@@ -131,6 +131,8 @@ export class DaemonLifecycle {
   }
 
   private async doStartLocked(): Promise<void> {
+    // Kill any orphan daemon processes before starting a fresh one
+    this.killOrphanDaemons();
     // Clean up any stale files from a previous run
     this.cleanupStaleFiles();
 
@@ -254,6 +256,7 @@ export class DaemonLifecycle {
    */
   async stop(): Promise<void> {
     this.stopHealthCheck();
+    this.killOrphanDaemons();
     const pid = this.readPid();
     if (pid === null) {
       logger.info('No daemon PID file found');
@@ -464,6 +467,67 @@ export class DaemonLifecycle {
         done(false);
       });
     });
+  }
+
+  /**
+   * Find and kill all runtime-engine daemon processes that are not tracked
+   * by the current pidfile (orphans from crashes, races, or pidfile overwrites).
+   * Sends SIGTERM first, then SIGKILL after 2s if the process survives.
+   * Skips the current process to avoid self-kill.
+   */
+  private killOrphanDaemons(): void {
+    let output: string;
+    try {
+      const daemonEntryBasename = DAEMON_ENTRY.split('/').pop()!.replace('.', '\\.');
+      output = execFileSync('pgrep', ['-f', `runtime-engine.*${daemonEntryBasename}`], {
+        encoding: 'utf-8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      });
+    } catch {
+      // pgrep exits with code 1 when no matches — not an error
+      return;
+    }
+
+    const knownPid = this.readPid();
+    const orphans = output
+      .split('\n')
+      .map((s) => parseInt(s.trim(), 10))
+      .filter((p) => Number.isFinite(p) && p !== process.pid && p !== knownPid);
+
+    if (orphans.length === 0) return;
+
+    logger.info('killing orphan daemon processes', { pids: orphans });
+
+    for (const pid of orphans) {
+      try {
+        process.kill(pid, 'SIGTERM');
+      } catch {
+        // Process may have already exited
+        continue;
+      }
+
+      // Wait up to 2s for graceful exit, then SIGKILL
+      const deadline = Date.now() + 2000;
+      while (Date.now() < deadline) {
+        try {
+          process.kill(pid, 0);
+        } catch {
+          break; // Process is dead
+        }
+        // Synchronous sleep via a tight loop is intentional here — this runs
+        // only during startup/stop paths, not in the hot eval loop.
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100);
+      }
+
+      // Force kill if still alive
+      try {
+        process.kill(pid, 0); // Check if still alive
+        process.kill(pid, 'SIGKILL');
+        logger.warn('orphan daemon did not exit gracefully, SIGKILL sent', { pid });
+      } catch {
+        // Already dead — good
+      }
+    }
   }
 
   private cleanupStaleFiles(): void {

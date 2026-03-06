@@ -370,6 +370,19 @@ describe('TickDriver', () => {
       expect(mockExecFile).toHaveBeenCalled();
     });
 
+    it('sends tmux tick when heartbeat_emitted is true in daemon mode', () => {
+      const timePlugin = makeTimePlugin();
+      vi.mocked(timePlugin.onTick).mockReturnValueOnce({
+        heartbeat_emitted: true,
+        scheduled_emitted: 0,
+      });
+      const executorMode = makeExecutorMode('daemon');
+      const deps = makeDeps({ mode: 'daemon', timePlugin, executorMode });
+      const driver = new TickDriver(deps);
+      (driver as any).evaluate();
+      expect(mockExecFile).toHaveBeenCalled();
+    });
+
     it('does not send tmux tick in engaged mode even when scheduled_emitted > 0', () => {
       const timePlugin = makeTimePlugin();
       vi.mocked(timePlugin.onTick).mockReturnValueOnce({
