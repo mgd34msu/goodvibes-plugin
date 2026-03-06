@@ -42,6 +42,17 @@ export interface TickDriverDeps {
   externalPlugin?: ExternalSourceAdapter;
   eventProcessor?: EventProcessor;
   staleWorkflowChecker?: () => void;
+  /**
+   * Event log for querying webhook events to deliver to the tmux session.
+   * Uses a minimal interface to avoid coupling to the full EventLog class.
+   */
+  eventLog?: {
+    query(filter: {
+      types?: import('../../shared/events.js').EventType[];
+      since?: number;
+      limit?: number;
+    }): Promise<import('../../shared/events.js').RuntimeEvent[]>;
+  };
 }
 
 export class TickDriver {
@@ -55,7 +66,10 @@ export class TickDriver {
   private readonly externalPlugin?: ExternalSourceAdapter;
   private readonly eventProcessor?: EventProcessor;
   private readonly staleWorkflowChecker?: () => void;
+  private readonly eventLog?: TickDriverDeps['eventLog'];
   private evalFailureCount = 0;
+  /** Epoch ms timestamp of the last webhook event delivered to tmux. */
+  private lastWebhookDeliveredAt = 0;
 
   constructor(deps: TickDriverDeps) {
     this.config = deps.config;
@@ -64,6 +78,7 @@ export class TickDriver {
     this.externalPlugin = deps.externalPlugin;
     this.eventProcessor = deps.eventProcessor;
     this.staleWorkflowChecker = deps.staleWorkflowChecker;
+    this.eventLog = deps.eventLog;
 
     this.timer = new Timer({
       callback: () => this.evaluate(),
@@ -319,6 +334,14 @@ export class TickDriver {
       });
       this.sendTick();
     }
+
+    // Step 6: In daemon mode, deliver undelivered webhook events to tmux session
+    if (this.executorMode.getMode() === 'daemon' && this.eventLog) {
+      this.deliverWebhookEvents().catch((err) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        logger.warn('deliverWebhookEvents() error', { error: msg });
+      });
+    }
   }
 
   /**
@@ -340,6 +363,126 @@ export class TickDriver {
         }
       }
     );
+  }
+
+  /**
+   * Query the event log for undelivered webhook events and send each to the
+   * tmux session as user input. Fire-and-forget from evaluate().
+   */
+  private async deliverWebhookEvents(): Promise<void> {
+    if (!this.eventLog) return;
+
+    const allEvents = await this.eventLog.query({
+      since: this.lastWebhookDeliveredAt > 0 ? this.lastWebhookDeliveredAt : undefined,
+      limit: 50,
+    });
+
+    const events = allEvents.filter((e) => e.type.startsWith('webhook:'));
+
+    if (events.length === 0) return;
+
+    const sessionName = this.config.daemon.tmux_session_name;
+    let deliveredCount = 0;
+
+    for (const event of events) {
+      // Skip events already delivered (since filter is inclusive of the boundary ms)
+      if (event.timestamp <= this.lastWebhookDeliveredAt) continue;
+
+      const content = this.formatWebhookEvent(event);
+      this.sendToTmux(sessionName, content);
+      deliveredCount++;
+
+      if (event.timestamp > this.lastWebhookDeliveredAt) {
+        this.lastWebhookDeliveredAt = event.timestamp;
+      }
+    }
+
+    logger.info('webhook events delivered to tmux', {
+      count: deliveredCount,
+      session: sessionName,
+    });
+  }
+
+  /**
+   * Send content to the tmux session using three separate execFile calls:
+   * 1. The message text (no Enter)
+   * 2. Enter (first press)
+   * 3. Enter (second press — required for Claude Code to submit)
+   */
+  private sendToTmux(sessionName: string, content: string): void {
+    execFile(
+      'tmux',
+      ['send-keys', '-l', '-t', sessionName, content],
+      { timeout: TMUX_TIMEOUT_MS },
+      (err) => {
+        if (err) {
+          logger.warn('failed to send webhook content via tmux', { error: err.message });
+          return;
+        }
+        execFile(
+          'tmux',
+          ['send-keys', '-t', sessionName, 'Enter'],
+          { timeout: TMUX_TIMEOUT_MS },
+          (err2) => {
+            if (err2) {
+              logger.warn('failed to send first Enter via tmux', { error: err2.message });
+              return;
+            }
+            execFile(
+              'tmux',
+              ['send-keys', '-t', sessionName, 'Enter'],
+              { timeout: TMUX_TIMEOUT_MS },
+              (err3) => {
+                if (err3) {
+                  logger.warn('failed to send second Enter via tmux', { error: err3.message });
+                }
+              }
+            );
+          }
+        );
+      }
+    );
+  }
+
+  /**
+   * Format a webhook event payload into a concise human-readable message
+   * suitable for delivery to the Claude Code tmux session.
+   */
+  private formatWebhookEvent(event: import('../../shared/events.js').RuntimeEvent): string {
+    const payload = event.payload as Record<string, unknown>;
+    const action = payload['action'] as string | undefined;
+
+    const parts: string[] = [`[Webhook: ${event.type}]`];
+
+    if (action) parts.push(`Action: ${action}`);
+
+    // Repository
+    const repo = payload['repository'] as Record<string, unknown> | undefined;
+    if (repo?.['full_name']) parts.push(`Repo: ${repo['full_name']}`);
+
+    // Issue
+    const issue = payload['issue'] as Record<string, unknown> | undefined;
+    if (issue) {
+      parts.push(`Issue #${issue['number']}: ${issue['title']}`);
+      if (issue['body']) parts.push(`Body: ${String(issue['body']).slice(0, 500)}`);
+    }
+
+    // Pull request
+    const pr = payload['pull_request'] as Record<string, unknown> | undefined;
+    if (pr) {
+      parts.push(`PR #${pr['number']}: ${pr['title']}`);
+    }
+
+    // Push / ref
+    if (payload['ref']) parts.push(`Ref: ${payload['ref']}`);
+    const headCommit = payload['head_commit'] as Record<string, unknown> | undefined;
+    if (headCommit?.['message']) parts.push(`Commit: ${headCommit['message']}`);
+
+    // Comment
+    const comment = payload['comment'] as Record<string, unknown> | undefined;
+    if (comment?.['body']) parts.push(`Comment: ${String(comment['body']).slice(0, 500)}`);
+
+    return parts.join(' | ');
   }
 
   /**
