@@ -38074,7 +38074,13 @@ var RuntimeEngine = class {
     } catch (err) {
       logger60.warn("External plugin initialisation failed", { err: toErrorMessage(err) });
     }
-    if (httpEnabled) {
+    const isDaemonLike = this.executorSubsystem?.executorMode?.getMode() === "daemon" || this.executorSubsystem?.executorMode?.getMode() === "hybrid";
+    if (httpEnabled && !isDaemonLike) {
+      logger60.debug("Skipping HTTP webhook listener \u2014 not in daemon/hybrid mode", {
+        mode: this.executorSubsystem?.executorMode?.getMode() ?? "unknown"
+      });
+    }
+    if (httpEnabled && isDaemonLike) {
       try {
         await this.externalPlugin.startHttpListener();
         logger60.info("HTTP webhook listener started", {
