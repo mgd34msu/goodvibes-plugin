@@ -152,6 +152,8 @@ export interface DaemonTransportConfig {
     /** Maximum delay cap in ms. Default: 10000. */
     max_delay_ms: number;
   };
+  /** Health check ping interval in ms (default: 10000). */
+  health_check_interval_ms?: number;
 }
 
 /** Two-tier budget configuration for executor cost controls. */

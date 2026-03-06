@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ─── Hoisted mock variables ────────────────────────────────────────────────────────────
 // vi.hoisted ensures these are initialised before vi.mock() factories run.
@@ -470,6 +470,291 @@ describe('RuntimeEngineServer', () => {
       expect(typeof ctx['getDirectiveQueue']).toBe('function');
       expect(typeof ctx['getCoreStateStore']).toBe('function');
     });
+  });
+});
+
+// ─── Health check and recovery ───────────────────────────────────────────────
+
+describe('health check and recovery', () => {
+  let server: RuntimeEngineServer;
+  const mockGetConnectionState = vi.fn();
+  const mockRemoteGetUptime = vi.fn();
+  const mockDisconnect = vi.fn().mockResolvedValue(undefined);
+
+  function makeRemoteTransport(state: string) {
+    mockGetConnectionState.mockReturnValue(state);
+    return {
+      mode: 'remote' as const,
+      disconnect: mockDisconnect,
+      getConnectionState: mockGetConnectionState,
+      getUptime: mockRemoteGetUptime,
+    };
+  }
+
+  // Helper: start server in daemon mode with a remote transport mock
+  async function startDaemonServer(remoteTransport: ReturnType<typeof makeRemoteTransport>) {
+    const { createTransport } = await import('../../../transport/factory.js');
+    const mockCreateTransport = createTransport as ReturnType<typeof vi.fn>;
+    mockCreateTransport.mockResolvedValue(remoteTransport);
+
+    mocks.mockLoadConfig.mockReturnValue({
+      executor: {
+        mode: 'daemon',
+        transport: { auto_start: false, reconnect: null },
+      },
+    });
+
+    server = new RuntimeEngineServer();
+    await server.start();
+    return mockCreateTransport;
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockConnect.mockResolvedValue(undefined);
+    mockClose.mockResolvedValue(undefined);
+    mockDisconnect.mockResolvedValue(undefined);
+    mockRemoteGetUptime.mockResolvedValue(42);
+    mockMcpServerCtor.mockImplementation(function (this: Record<string, unknown>) {
+      this['setRequestHandler'] = mockSetRequestHandler;
+      this['connect'] = mockConnect;
+      this['close'] = mockClose;
+      this['onerror'] = null;
+    });
+    MockRuntimeEngine.mockImplementation(function (this: Record<string, unknown>) {
+      Object.assign(this, mocks.makeEngineInstance());
+    });
+    mockStdioServerTransport.mockImplementation(function (this: Record<string, unknown>) {
+      void this;
+    });
+    mockListHandlers.mockReturnValue(['runtime_status']);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('health check skips when healthCheckInProgress is true', async () => {
+    vi.useFakeTimers();
+    const remote = makeRemoteTransport('connected');
+    await startDaemonServer(remote);
+
+    // Manually set healthCheckInProgress to true to simulate in-progress check
+    (server as any).healthCheckInProgress = true;
+
+    // Advance timer to fire health check interval
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    // getConnectionState should NOT have been called because guard returned early
+    expect(mockGetConnectionState).not.toHaveBeenCalled();
+  });
+
+  it('health check skips if transport is not remote mode', async () => {
+    vi.useFakeTimers();
+    const { createTransport } = await import('../../../transport/factory.js');
+    const mockCreateTransport = createTransport as ReturnType<typeof vi.fn>;
+    // Return a non-remote transport
+    mockCreateTransport.mockResolvedValue({ mode: 'engaged', disconnect: mockDisconnect });
+
+    mocks.mockLoadConfig.mockReturnValue({
+      executor: {
+        mode: 'daemon',
+        transport: { auto_start: false, reconnect: null },
+      },
+    });
+
+    server = new RuntimeEngineServer();
+    await server.start();
+
+    // Override runtimeTransport with non-remote mode
+    (server as any).runtimeTransport = { mode: 'engaged', disconnect: mockDisconnect };
+
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    // getConnectionState should never be called (not a remote transport)
+    expect(mockGetConnectionState).not.toHaveBeenCalled();
+  });
+
+  it('health check detects dead transport and triggers recovery (createTransport called)', async () => {
+    vi.useFakeTimers();
+    const remote = makeRemoteTransport('dead');
+    const mockCreateTransport = await startDaemonServer(remote);
+
+    // Reset call count after initial start (do NOT change mockGetConnectionState)
+    mockCreateTransport.mockClear();
+    mockDisconnect.mockClear();
+    // Recovery will call createTransport again — return a fresh connected transport
+    // without calling makeRemoteTransport (which would overwrite mockGetConnectionState)
+    mockCreateTransport.mockResolvedValue({
+      mode: 'remote' as const,
+      disconnect: mockDisconnect,
+      getConnectionState: mockGetConnectionState,
+      getUptime: mockRemoteGetUptime,
+    });
+
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    // disconnect should be called (old transport cleanup)
+    expect(mockDisconnect).toHaveBeenCalled();
+    // createTransport should be called again for recovery
+    expect(mockCreateTransport).toHaveBeenCalled();
+  });
+
+  it('health check detects idle transport and triggers recovery', async () => {
+    vi.useFakeTimers();
+    const remote = makeRemoteTransport('idle');
+    const mockCreateTransport = await startDaemonServer(remote);
+
+    mockCreateTransport.mockClear();
+    // Do NOT call makeRemoteTransport — that would overwrite mockGetConnectionState
+    mockCreateTransport.mockResolvedValue({
+      mode: 'remote' as const,
+      disconnect: mockDisconnect,
+      getConnectionState: mockGetConnectionState,
+      getUptime: mockRemoteGetUptime,
+    });
+
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    expect(mockCreateTransport).toHaveBeenCalled();
+  });
+
+  it('health check skips when state is reconnecting', async () => {
+    vi.useFakeTimers();
+    const remote = makeRemoteTransport('reconnecting');
+    const mockCreateTransport = await startDaemonServer(remote);
+
+    mockCreateTransport.mockClear();
+
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    // No recovery attempt when reconnecting
+    expect(mockCreateTransport).not.toHaveBeenCalled();
+  });
+
+  it('health check skips when state is connecting', async () => {
+    vi.useFakeTimers();
+    const remote = makeRemoteTransport('connecting');
+    const mockCreateTransport = await startDaemonServer(remote);
+
+    mockCreateTransport.mockClear();
+
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    expect(mockCreateTransport).not.toHaveBeenCalled();
+  });
+
+  it('health check ping succeeds — no recovery triggered', async () => {
+    vi.useFakeTimers();
+    const remote = makeRemoteTransport('connected');
+    mockRemoteGetUptime.mockResolvedValue(100);
+    const mockCreateTransport = await startDaemonServer(remote);
+
+    mockCreateTransport.mockClear();
+
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    // Ping succeeded — no recovery
+    expect(mockRemoteGetUptime).toHaveBeenCalled();
+    expect(mockCreateTransport).not.toHaveBeenCalled();
+  });
+
+  it('health check ping failure is handled gracefully — no crash, warning logged', async () => {
+    vi.useFakeTimers();
+    const remote = makeRemoteTransport('connected');
+    mockRemoteGetUptime.mockRejectedValue(new Error('ping failed'));
+    await startDaemonServer(remote);
+
+    // Should not throw
+    await expect(vi.advanceTimersByTimeAsync(10_000)).resolves.not.toThrow();
+
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Health check ping failed'),
+      expect.any(Object)
+    );
+  });
+
+  it('recovery handles createTransport failure gracefully — no crash, warning logged', async () => {
+    vi.useFakeTimers();
+    const remote = makeRemoteTransport('dead');
+    const mockCreateTransport = await startDaemonServer(remote);
+
+    mockCreateTransport.mockClear();
+    // Recovery's createTransport call throws
+    mockCreateTransport.mockRejectedValue(new Error('transport creation failed'));
+
+    await expect(vi.advanceTimersByTimeAsync(10_000)).resolves.not.toThrow();
+
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('recovery failed'),
+      expect.any(Object)
+    );
+  });
+
+  it('healthCheckInProgress is reset to false after ping completes', async () => {
+    vi.useFakeTimers();
+    const remote = makeRemoteTransport('connected');
+    mockRemoteGetUptime.mockResolvedValue(100);
+    await startDaemonServer(remote);
+
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    expect((server as any).healthCheckInProgress).toBe(false);
+  });
+
+  it('healthCheckInProgress is reset to false after recovery completes', async () => {
+    vi.useFakeTimers();
+    const remote = makeRemoteTransport('dead');
+    const mockCreateTransport = await startDaemonServer(remote);
+
+    mockCreateTransport.mockResolvedValue(makeRemoteTransport('connected'));
+
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    expect((server as any).healthCheckInProgress).toBe(false);
+  });
+
+  it('stop() clears the health check timer', async () => {
+    vi.useFakeTimers();
+    const clearIntervalSpy = vi.spyOn(globalThis, 'clearInterval');
+    const remote = makeRemoteTransport('connected');
+    await startDaemonServer(remote);
+
+    await server.stop();
+
+    expect(clearIntervalSpy).toHaveBeenCalled();
+    clearIntervalSpy.mockRestore();
+  });
+
+  it('handleTransportDead logs a warning', async () => {
+    vi.useFakeTimers();
+    const remote = makeRemoteTransport('connected');
+    await startDaemonServer(remote);
+
+    // Call the private method directly
+    const error = new Error('transport died');
+    (server as any).handleTransportDead('/proj', {}, error);
+
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Transport declared dead'),
+      expect.objectContaining({ error: 'transport died' })
+    );
+  });
+
+  it('startHealthCheck does not create a second timer if called twice', async () => {
+    vi.useFakeTimers();
+    const setIntervalSpy = vi.spyOn(globalThis, 'setInterval');
+    const remote = makeRemoteTransport('connected');
+    await startDaemonServer(remote);
+
+    const callCountAfterStart = setIntervalSpy.mock.calls.length;
+
+    // Call startHealthCheck again directly
+    (server as any).startHealthCheck('/proj', {});
+
+    // No additional setInterval calls
+    expect(setIntervalSpy.mock.calls.length).toBe(callCountAfterStart);
+    setIntervalSpy.mockRestore();
   });
 });
 

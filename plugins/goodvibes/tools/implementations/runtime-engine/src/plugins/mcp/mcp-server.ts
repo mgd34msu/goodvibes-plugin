@@ -18,6 +18,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 
 import { createTransport } from '../../transport/factory.js';
+import { RemoteTransport } from '../../transport/remote-transport.js';
 import type { RuntimeTransport } from '../../transport/types.js';
 import { loadConfig, ensureRuntimeSections } from '../../shared/config.js';
 import { ENGINE_VERSION } from '../../shared/constants.js';
@@ -52,6 +53,8 @@ export class RuntimeEngineServer {
   private readonly server: Server;
   private processManager: RuntimeEngine | null = null;
   private runtimeTransport: RuntimeTransport | null = null;
+  private healthCheckTimer: ReturnType<typeof setInterval> | null = null;
+  private healthCheckInProgress = false;
 
   constructor() {
     this.server = new Server(
@@ -174,22 +177,14 @@ export class RuntimeEngineServer {
     if (mode === 'daemon') {
       // Pure daemon mode: no local engine, connect to daemon
       await this.ensureDaemonRunning(projectRoot, config);
-      this.runtimeTransport = await createTransport({
-        mode: 'daemon',
-        projectRoot,
-        connectTimeoutMs: config.executor.transport?.rpc_timeout_ms,
-        sessionId: this.getSessionId(),
-      });
+      this.runtimeTransport = await createTransport(this.buildDaemonTransportOptions(projectRoot, config));
+      this.startHealthCheck(projectRoot, config);
     } else if (mode === 'hybrid') {
       // Hybrid: try daemon first, create local engine only if daemon unavailable
       try {
         await this.ensureDaemonRunning(projectRoot, config);
-        this.runtimeTransport = await createTransport({
-          mode: 'daemon',
-          projectRoot,
-          connectTimeoutMs: config.executor.transport?.rpc_timeout_ms,
-          sessionId: this.getSessionId(),
-        });
+        this.runtimeTransport = await createTransport(this.buildDaemonTransportOptions(projectRoot, config));
+        this.startHealthCheck(projectRoot, config);
         // Daemon available — no local engine needed
       } catch {
         // Daemon unavailable — fall back to local engine
@@ -244,6 +239,105 @@ export class RuntimeEngineServer {
       ?? `mcp-${process.pid}`;
   }
 
+  private buildDaemonTransportOptions(
+    projectRoot: string,
+    config: ReturnType<typeof loadConfig>,
+  ): Parameters<typeof createTransport>[0] {
+    const reconnectCfg = config.executor.transport?.reconnect;
+    return {
+      mode: 'daemon' as const,
+      projectRoot,
+      connectTimeoutMs: config.executor.transport?.rpc_timeout_ms,
+      sessionId: this.getSessionId(),
+      reconnect: reconnectCfg ? {
+        enabled: reconnectCfg.enabled ?? true,
+        maxAttempts: reconnectCfg.max_attempts ?? 10,
+        baseDelayMs: reconnectCfg.base_delay_ms ?? 100,
+        maxDelayMs: reconnectCfg.max_delay_ms ?? 10_000,
+      } : { enabled: true, maxAttempts: 10, baseDelayMs: 100, maxDelayMs: 10_000 },
+      onDead: (error) => this.handleTransportDead(projectRoot, config, error),
+    };
+  }
+
+  // ─── Health Check ────────────────────────────────────────────────────────────
+
+  private startHealthCheck(
+    projectRoot: string,
+    config: ReturnType<typeof loadConfig>,
+  ): void {
+    if (this.healthCheckTimer) return;
+    const intervalMs = config.executor.transport?.health_check_interval_ms ?? 10_000;
+
+    this.healthCheckTimer = setInterval(async () => {
+      if (this.healthCheckInProgress) return;
+      if (!this.runtimeTransport || this.runtimeTransport.mode !== 'remote') return;
+
+      const remote = this.runtimeTransport as RemoteTransport;
+      const state = remote.getConnectionState();
+
+      // Skip if already reconnecting or connecting
+      if (state === 'reconnecting' || state === 'connecting') return;
+
+      // If dead or idle, attempt recovery
+      if (state === 'dead' || state === 'idle') {
+        this.healthCheckInProgress = true;
+        try {
+          await this.recoverTransport(projectRoot, config);
+        } finally {
+          this.healthCheckInProgress = false;
+        }
+        return;
+      }
+
+      // If connected, ping to verify liveness
+      if (state === 'connected') {
+        this.healthCheckInProgress = true;
+        try {
+          await remote.getUptime();
+        } catch (err) {
+          logger.warn('Health check ping failed — transport will reconnect', { error: toErrorMessage(err) });
+        } finally {
+          this.healthCheckInProgress = false;
+        }
+      }
+    }, intervalMs);
+    this.healthCheckTimer.unref();
+  }
+
+  private async recoverTransport(
+    projectRoot: string,
+    config: ReturnType<typeof loadConfig>,
+  ): Promise<void> {
+    logger.info('Attempting daemon transport recovery');
+
+    if (this.runtimeTransport) {
+      try { await this.runtimeTransport.disconnect(); } catch (err) {
+        logger.debug('Disconnect during recovery failed', { error: toErrorMessage(err) });
+      }
+    }
+
+    try {
+      await this.ensureDaemonRunning(projectRoot, config);
+    } catch (err) {
+      logger.warn('Failed to ensure daemon running during recovery', { error: toErrorMessage(err) });
+    }
+
+    try {
+      this.runtimeTransport = await createTransport(this.buildDaemonTransportOptions(projectRoot, config));
+      logger.info('Daemon transport recovered successfully');
+    } catch (err) {
+      logger.warn('Daemon transport recovery failed', { error: toErrorMessage(err) });
+    }
+  }
+
+  private handleTransportDead(
+    _projectRoot: string,
+    _config: ReturnType<typeof loadConfig>,
+    error: Error,
+  ): void {
+    logger.warn('Transport declared dead, health check will attempt recovery', { error: error.message });
+  }
+
   private async ensureDaemonRunning(
     projectRoot: string,
     config: ReturnType<typeof loadConfig>,
@@ -265,9 +359,17 @@ export class RuntimeEngineServer {
   async stop(): Promise<void> {
     logger.info('Stopping runtime engine');
 
+    // Stop health check timer
+    if (this.healthCheckTimer) {
+      clearInterval(this.healthCheckTimer);
+      this.healthCheckTimer = null;
+    }
+
     // Disconnect runtime transport
     if (this.runtimeTransport) {
-      try { await this.runtimeTransport.disconnect(); } catch { /* ignore */ }
+      try { await this.runtimeTransport.disconnect(); } catch (err) {
+        logger.debug('Disconnect during stop failed', { error: toErrorMessage(err) });
+      }
       this.runtimeTransport = null;
     }
 
