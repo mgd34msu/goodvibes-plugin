@@ -22,6 +22,7 @@ import { FileWatcher, FileWatcherConfig, DEFAULT_FILE_WATCHER_CONFIG } from './f
 import { HttpListener, HttpListenerConfig } from './http-listener.js';
 import { NormalizerRegistry, createDefaultRegistry } from './normalizers/index.js';
 import { createLogger } from '../../shared/logger.js';
+import type { EventBus } from '../../extensions/events/event-bus.js';
 
 const logger = createLogger('external-plugin');
 
@@ -122,6 +123,18 @@ export class ExternalPlugin {
     });
     await this.listener.start();
     logger.info('HTTP webhook listener is running', { port: this.config.http_listener.port });
+  }
+
+  /**
+   * Wire an EventBus for direct webhook delivery.
+   * When set, the HTTP listener normalizes payloads inline and emits
+   * directly to the EventBus — bypassing the file drop entirely.
+   */
+  setDirectEmit(eventBus: EventBus): void {
+    if (this.listener !== null) {
+      this.listener.setDirectEmit(eventBus, this.normalizers);
+      logger.info('Direct EventBus emission enabled for HTTP listener');
+    }
   }
 
   /**

@@ -536,7 +536,11 @@ export class RuntimeEngine {
     if (httpEnabled && isDaemonProcess) {
       try {
         await this.externalPlugin.startHttpListener();
-        logger.info('HTTP webhook listener started', {
+        // Wire direct EventBus emission — webhooks bypass file drop entirely
+        if (this.events?.eventBus) {
+          this.externalPlugin.setDirectEmit(this.events.eventBus);
+        }
+        logger.info('HTTP webhook listener started (direct EventBus emission)', {
           port: this.config.external.http_listener.port,
           host: this.config.external.http_listener.address,
         });

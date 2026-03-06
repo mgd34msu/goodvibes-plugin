@@ -26,6 +26,8 @@ import { DEFAULT_HTTP_LISTENER_PORT } from '../../shared/constants.js';
 import { ConfigError } from '../../shared/errors.js';
 import { safeJsonParse } from '../../shared/utils.js';
 import { readStreamBody } from '../../core/state/stream-reader.js';
+import type { NormalizerRegistry } from './normalizers/index.js';
+import type { EventBus } from '../../extensions/events/event-bus.js';
 
 const logger = createLogger('http-listener');
 
@@ -71,12 +73,24 @@ function sendJson(
 export class HttpListener {
   private server: http.Server | null = null;
   private running = false;
+  private eventBus: EventBus | null = null;
+  private normalizers: NormalizerRegistry | null = null;
 
   constructor(
     /** Directory where received webhook files are written (picked up by FileWatcher). */
     private readonly dropDir: string,
     private readonly config: HttpListenerConfig,
   ) {}
+
+  /**
+   * Wire an EventBus + NormalizerRegistry for direct webhook delivery.
+   * When set, webhooks are normalized and emitted directly to the EventBus,
+   * bypassing the file drop directory entirely.
+   */
+  setDirectEmit(eventBus: EventBus, normalizers: NormalizerRegistry): void {
+    this.eventBus = eventBus;
+    this.normalizers = normalizers;
+  }
 
   /**
    * Start the HTTP server.
@@ -238,7 +252,24 @@ export class HttpListener {
         }
       }
 
-      // Write to drop directory as a structured JSON file
+      // ─── Direct EventBus emission (fast path) ─────────────────────────
+      // When an EventBus and NormalizerRegistry are wired, normalize the
+      // payload inline and emit directly. No file drop, no tick delay.
+      if (this.eventBus !== null && this.normalizers !== null) {
+        try {
+          const event = this.normalizers.normalize(source, parsedPayload, forwardedHeaders);
+          this.eventBus.emit(event);
+          logger.info('webhook emitted directly to EventBus', { source, type: event.type });
+          sendJson(res, 202, { accepted: true, source, type: event.type });
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          logger.error('failed to normalize/emit webhook', { source, error: msg });
+          sendJson(res, 500, { error: 'Failed to process webhook' });
+        }
+        return;
+      }
+
+      // ─── File drop fallback (slow path) ────────────────────────────────
       const fileId = crypto.randomUUID();
       const filename = `${Date.now()}_${source}_${fileId}.json`;
       const filepath = path.join(this.dropDir, filename);
