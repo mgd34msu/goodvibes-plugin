@@ -40,6 +40,19 @@ interface GithubPayload {
     login?: string;
     type?: string;
   };
+  issue?: {
+    number?: number;
+    title?: string;
+    body?: string;
+    state?: string;
+    html_url?: string;
+    labels?: Array<{ name?: string }>;
+  };
+  comment?: {
+    id?: number;
+    body?: string;
+    html_url?: string;
+  };
   pull_request?: {
     number?: number;
     title?: string;
@@ -98,6 +111,27 @@ export function normalizeGithub(
       sender: {
         login: payload.sender.login,
         type: payload.sender.type,
+      },
+    }),
+    // Issue-specific fields
+    ...(payload.issue !== undefined && {
+      issue: {
+        number: payload.issue.number,
+        title: payload.issue.title,
+        body: payload.issue.body,
+        state: payload.issue.state,
+        html_url: payload.issue.html_url,
+        ...(Array.isArray(payload.issue.labels) && {
+          labels: payload.issue.labels.map(l => l.name).filter(Boolean),
+        }),
+      },
+    }),
+    // Comment-specific fields
+    ...(payload.comment !== undefined && {
+      comment: {
+        id: payload.comment.id,
+        body: payload.comment.body,
+        html_url: payload.comment.html_url,
       },
     }),
     // PR-specific fields

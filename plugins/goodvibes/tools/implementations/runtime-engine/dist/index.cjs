@@ -34473,6 +34473,27 @@ function normalizeGithub(rawPayload, headers) {
         type: payload.sender.type
       }
     },
+    // Issue-specific fields
+    ...payload.issue !== void 0 && {
+      issue: {
+        number: payload.issue.number,
+        title: payload.issue.title,
+        body: payload.issue.body,
+        state: payload.issue.state,
+        html_url: payload.issue.html_url,
+        ...Array.isArray(payload.issue.labels) && {
+          labels: payload.issue.labels.map((l) => l.name).filter(Boolean)
+        }
+      }
+    },
+    // Comment-specific fields
+    ...payload.comment !== void 0 && {
+      comment: {
+        id: payload.comment.id,
+        body: payload.comment.body,
+        html_url: payload.comment.html_url
+      }
+    },
     // PR-specific fields
     ...payload.pull_request !== void 0 && {
       pull_request: {
