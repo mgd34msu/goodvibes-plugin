@@ -35274,7 +35274,7 @@ var TickDriver = class _TickDriver {
    * 2. externalPlugin.onTick() — file-drop scan
    * 3. eventProcessor.processBatch() — drain queue through triggers
    * 4. staleWorkflowChecker() — re-enqueue lost directives
-   * 5. (daemon only) sendTick() if scheduled events fired
+   * 5. (daemon only) sendTick() if heartbeat or scheduled events fired
    */
   evaluate() {
     let timeResult = { heartbeat_emitted: false, scheduled_emitted: 0 };
@@ -35325,8 +35325,9 @@ var TickDriver = class _TickDriver {
         }
       }
     }
-    if (timeResult.scheduled_emitted > 0 && this.executorMode.getMode() === "daemon") {
-      logger45.debug("scheduled events fired \u2014 sending tmux tick", {
+    if ((timeResult.heartbeat_emitted || timeResult.scheduled_emitted > 0) && this.executorMode.getMode() === "daemon") {
+      logger45.debug("heartbeat or scheduled events fired \u2014 sending tmux tick", {
+        heartbeat_emitted: timeResult.heartbeat_emitted,
         scheduled_emitted: timeResult.scheduled_emitted
       });
       this.sendTick();
@@ -38396,6 +38397,7 @@ var DaemonLifecycle = class {
     }
   }
   async doStartLocked() {
+    this.killOrphanDaemons();
     this.cleanupStaleFiles();
     const pluginRoot = process.env["CLAUDE_PLUGIN_ROOT"] ?? process.cwd();
     const daemonScript = (0, import_node_path22.resolve)(
@@ -38499,6 +38501,7 @@ var DaemonLifecycle = class {
    */
   async stop() {
     this.stopHealthCheck();
+    this.killOrphanDaemons();
     const pid = this.readPid();
     if (pid === null) {
       logger61.info("No daemon PID file found");
@@ -38686,6 +38689,51 @@ var DaemonLifecycle = class {
         done(false);
       });
     });
+  }
+  /**
+   * Find and kill all runtime-engine daemon processes that are not tracked
+   * by the current pidfile (orphans from crashes, races, or pidfile overwrites).
+   * Sends SIGTERM first, then SIGKILL after 2s if the process survives.
+   * Skips the current process to avoid self-kill.
+   */
+  killOrphanDaemons() {
+    let output;
+    try {
+      const daemonEntryBasename = DAEMON_ENTRY.split("/").pop().replace(".", "\\.");
+      output = (0, import_node_child_process5.execFileSync)("pgrep", ["-f", `runtime-engine.*${daemonEntryBasename}`], {
+        encoding: "utf-8",
+        stdio: ["ignore", "pipe", "ignore"]
+      });
+    } catch {
+      return;
+    }
+    const knownPid = this.readPid();
+    const orphans = output.split("\n").map((s) => parseInt(s.trim(), 10)).filter((p) => Number.isFinite(p) && p !== process.pid && p !== knownPid);
+    if (orphans.length === 0)
+      return;
+    logger61.info("killing orphan daemon processes", { pids: orphans });
+    for (const pid of orphans) {
+      try {
+        process.kill(pid, "SIGTERM");
+      } catch {
+        continue;
+      }
+      const deadline = Date.now() + 2e3;
+      while (Date.now() < deadline) {
+        try {
+          process.kill(pid, 0);
+        } catch {
+          break;
+        }
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100);
+      }
+      try {
+        process.kill(pid, 0);
+        process.kill(pid, "SIGKILL");
+        logger61.warn("orphan daemon did not exit gracefully, SIGKILL sent", { pid });
+      } catch {
+      }
+    }
   }
   cleanupStaleFiles() {
     for (const path4 of [this.pidFilePath, this.socketPointerPath]) {
@@ -41120,6 +41168,8 @@ var RuntimeEngineServer = class {
   server;
   processManager = null;
   runtimeTransport = null;
+  healthCheckTimer = null;
+  healthCheckInProgress = false;
   constructor() {
     this.server = new Server(
       { name: SERVER_NAME, version: ENGINE_VERSION },
@@ -41227,21 +41277,13 @@ var RuntimeEngineServer = class {
     const mode = config2.executor.mode;
     if (mode === "daemon") {
       await this.ensureDaemonRunning(projectRoot, config2);
-      this.runtimeTransport = await createTransport({
-        mode: "daemon",
-        projectRoot,
-        connectTimeoutMs: config2.executor.transport?.rpc_timeout_ms,
-        sessionId: this.getSessionId()
-      });
+      this.runtimeTransport = await createTransport(this.buildDaemonTransportOptions(projectRoot, config2));
+      this.startHealthCheck(projectRoot, config2);
     } else if (mode === "hybrid") {
       try {
         await this.ensureDaemonRunning(projectRoot, config2);
-        this.runtimeTransport = await createTransport({
-          mode: "daemon",
-          projectRoot,
-          connectTimeoutMs: config2.executor.transport?.rpc_timeout_ms,
-          sessionId: this.getSessionId()
-        });
+        this.runtimeTransport = await createTransport(this.buildDaemonTransportOptions(projectRoot, config2));
+        this.startHealthCheck(projectRoot, config2);
       } catch {
         this.processManager = new RuntimeEngine(config2, projectRoot);
         await this.processManager.startup();
@@ -41284,6 +41326,82 @@ var RuntimeEngineServer = class {
   getSessionId() {
     return process.env.CLAUDE_SESSION_ID ?? process.env.SESSION_ID ?? `mcp-${process.pid}`;
   }
+  buildDaemonTransportOptions(projectRoot, config2) {
+    const reconnectCfg = config2.executor.transport?.reconnect;
+    return {
+      mode: "daemon",
+      projectRoot,
+      connectTimeoutMs: config2.executor.transport?.rpc_timeout_ms,
+      sessionId: this.getSessionId(),
+      reconnect: reconnectCfg ? {
+        enabled: reconnectCfg.enabled ?? true,
+        maxAttempts: reconnectCfg.max_attempts ?? 10,
+        baseDelayMs: reconnectCfg.base_delay_ms ?? 100,
+        maxDelayMs: reconnectCfg.max_delay_ms ?? 1e4
+      } : { enabled: true, maxAttempts: 10, baseDelayMs: 100, maxDelayMs: 1e4 },
+      onDead: (error2) => this.handleTransportDead(projectRoot, config2, error2)
+    };
+  }
+  // ─── Health Check ────────────────────────────────────────────────────────────
+  startHealthCheck(projectRoot, config2) {
+    if (this.healthCheckTimer)
+      return;
+    const intervalMs = config2.executor.transport?.health_check_interval_ms ?? 1e4;
+    this.healthCheckTimer = setInterval(async () => {
+      if (this.healthCheckInProgress)
+        return;
+      if (!this.runtimeTransport || this.runtimeTransport.mode !== "remote")
+        return;
+      const remote = this.runtimeTransport;
+      const state = remote.getConnectionState();
+      if (state === "reconnecting" || state === "connecting")
+        return;
+      if (state === "dead" || state === "idle") {
+        this.healthCheckInProgress = true;
+        try {
+          await this.recoverTransport(projectRoot, config2);
+        } finally {
+          this.healthCheckInProgress = false;
+        }
+        return;
+      }
+      if (state === "connected") {
+        this.healthCheckInProgress = true;
+        try {
+          await remote.getUptime();
+        } catch (err) {
+          logger73.warn("Health check ping failed \u2014 transport will reconnect", { error: toErrorMessage(err) });
+        } finally {
+          this.healthCheckInProgress = false;
+        }
+      }
+    }, intervalMs);
+    this.healthCheckTimer.unref();
+  }
+  async recoverTransport(projectRoot, config2) {
+    logger73.info("Attempting daemon transport recovery");
+    if (this.runtimeTransport) {
+      try {
+        await this.runtimeTransport.disconnect();
+      } catch (err) {
+        logger73.debug("Disconnect during recovery failed", { error: toErrorMessage(err) });
+      }
+    }
+    try {
+      await this.ensureDaemonRunning(projectRoot, config2);
+    } catch (err) {
+      logger73.warn("Failed to ensure daemon running during recovery", { error: toErrorMessage(err) });
+    }
+    try {
+      this.runtimeTransport = await createTransport(this.buildDaemonTransportOptions(projectRoot, config2));
+      logger73.info("Daemon transport recovered successfully");
+    } catch (err) {
+      logger73.warn("Daemon transport recovery failed", { error: toErrorMessage(err) });
+    }
+  }
+  handleTransportDead(_projectRoot, _config, error2) {
+    logger73.warn("Transport declared dead, health check will attempt recovery", { error: error2.message });
+  }
   async ensureDaemonRunning(projectRoot, config2) {
     if (!config2.executor.transport?.auto_start)
       return;
@@ -41302,10 +41420,15 @@ var RuntimeEngineServer = class {
    */
   async stop() {
     logger73.info("Stopping runtime engine");
+    if (this.healthCheckTimer) {
+      clearInterval(this.healthCheckTimer);
+      this.healthCheckTimer = null;
+    }
     if (this.runtimeTransport) {
       try {
         await this.runtimeTransport.disconnect();
-      } catch {
+      } catch (err) {
+        logger73.debug("Disconnect during stop failed", { error: toErrorMessage(err) });
       }
       this.runtimeTransport = null;
     }

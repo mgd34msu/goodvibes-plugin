@@ -12756,7 +12756,7 @@ var TickDriver = class _TickDriver {
    * 2. externalPlugin.onTick() — file-drop scan
    * 3. eventProcessor.processBatch() — drain queue through triggers
    * 4. staleWorkflowChecker() — re-enqueue lost directives
-   * 5. (daemon only) sendTick() if scheduled events fired
+   * 5. (daemon only) sendTick() if heartbeat or scheduled events fired
    */
   evaluate() {
     let timeResult = { heartbeat_emitted: false, scheduled_emitted: 0 };
@@ -12807,8 +12807,9 @@ var TickDriver = class _TickDriver {
         }
       }
     }
-    if (timeResult.scheduled_emitted > 0 && this.executorMode.getMode() === "daemon") {
-      logger44.debug("scheduled events fired \u2014 sending tmux tick", {
+    if ((timeResult.heartbeat_emitted || timeResult.scheduled_emitted > 0) && this.executorMode.getMode() === "daemon") {
+      logger44.debug("heartbeat or scheduled events fired \u2014 sending tmux tick", {
+        heartbeat_emitted: timeResult.heartbeat_emitted,
         scheduled_emitted: timeResult.scheduled_emitted
       });
       this.sendTick();
