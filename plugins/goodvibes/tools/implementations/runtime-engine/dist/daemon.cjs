@@ -11915,6 +11915,12 @@ var HttpListener = class {
         sendJson(res, 400, { error: "Invalid JSON body" });
         return;
       }
+      if (source === "slack" && typeof parsedPayload === "object" && parsedPayload !== null && parsedPayload["type"] === "url_verification" && typeof parsedPayload["challenge"] === "string") {
+        const challenge = parsedPayload["challenge"];
+        logger42.info("Slack URL verification challenge received, responding");
+        sendJson(res, 200, { challenge });
+        return;
+      }
       const forwardedHeaders = {};
       for (const [key, value] of Object.entries(req.headers)) {
         if (typeof value === "string") {
