@@ -212,6 +212,22 @@ export class HttpListener {
         return;
       }
 
+      // ─── Slack URL Verification Challenge ───────────────────────────────
+      // Slack sends { type: 'url_verification', challenge: '...' } and expects
+      // the challenge echoed back in the response body immediately.
+      if (
+        source === 'slack' &&
+        typeof parsedPayload === 'object' &&
+        parsedPayload !== null &&
+        (parsedPayload as Record<string, unknown>)['type'] === 'url_verification' &&
+        typeof (parsedPayload as Record<string, unknown>)['challenge'] === 'string'
+      ) {
+        const challenge = (parsedPayload as Record<string, unknown>)['challenge'] as string;
+        logger.info('Slack URL verification challenge received, responding');
+        sendJson(res, 200, { challenge });
+        return;
+      }
+
       // Extract headers relevant to normalization (lowercase keys)
       const forwardedHeaders: Record<string, string> = {};
       for (const [key, value] of Object.entries(req.headers)) {
