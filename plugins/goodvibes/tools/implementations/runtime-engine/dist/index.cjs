@@ -4686,13 +4686,13 @@ var require_core = __commonJS({
     }, warn() {
     }, error() {
     } };
-    function getLogger(logger75) {
-      if (logger75 === false)
+    function getLogger(logger74) {
+      if (logger74 === false)
         return noLogs;
-      if (logger75 === void 0)
+      if (logger74 === void 0)
         return console;
-      if (logger75.log && logger75.warn && logger75.error)
-        return logger75;
+      if (logger74.log && logger74.warn && logger74.error)
+        return logger74;
       throw new Error("logger must implement log, warn and error methods");
     }
     __name(getLogger, "getLogger");
@@ -7578,13 +7578,13 @@ __export(devserver_exports, {
   DEFAULT_DEVSERVER_CONFIG: () => DEFAULT_DEVSERVER_CONFIG,
   DevServerMonitor: () => DevServerMonitor
 });
-var logger60, DEFAULT_DEVSERVER_CONFIG, DevServerMonitor;
+var logger59, DEFAULT_DEVSERVER_CONFIG, DevServerMonitor;
 var init_devserver = __esm({
   "src/plugins/devserver/index.ts"() {
     "use strict";
     init_logger();
     init_factories();
-    logger60 = createLogger("devserver-monitor");
+    logger59 = createLogger("devserver-monitor");
     DEFAULT_DEVSERVER_CONFIG = {
       enabled: false,
       command: "npm run dev",
@@ -7603,18 +7603,18 @@ var init_devserver = __esm({
       lastHealthy = true;
       start() {
         if (!this.config.enabled) {
-          logger60.debug("Dev server monitor disabled");
+          logger59.debug("Dev server monitor disabled");
           return;
         }
         const interval = this.config.check_interval_ms ?? 15e3;
         this.timer = setInterval(() => void this.checkHealth(), interval);
-        logger60.info("Dev server monitor started", { port: this.config.port, interval });
+        logger59.info("Dev server monitor started", { port: this.config.port, interval });
       }
       stop() {
         if (this.timer) {
           clearInterval(this.timer);
           this.timer = null;
-          logger60.info("Dev server monitor stopped");
+          logger59.info("Dev server monitor stopped");
         }
       }
       async checkHealth() {
@@ -7626,7 +7626,7 @@ var init_devserver = __esm({
           clearTimeout(timeout);
           if (response.ok) {
             if (!this.lastHealthy) {
-              logger60.info("Dev server recovered", { port: this.config.port });
+              logger59.info("Dev server recovered", { port: this.config.port });
               this.lastHealthy = true;
             }
           } else {
@@ -7638,7 +7638,7 @@ var init_devserver = __esm({
       }
       emitError(error2) {
         if (this.lastHealthy) {
-          logger60.warn("Dev server unreachable", { port: this.config.port, error: error2 });
+          logger59.warn("Dev server unreachable", { port: this.config.port, error: error2 });
           this.lastHealthy = false;
           const event = createExternalEvent({
             external_source: "devserver",
@@ -23062,7 +23062,6 @@ var DEFAULT_CONFIG = {
   executor: {
     mode: "engaged",
     daemon: {
-      clear_context_after_batch: true,
       tmux_session_name: "claude-daemon",
       tick_command: "tick",
       tick_interval_ms: 3e4,
@@ -31585,13 +31584,6 @@ var ExecutorModeManager = class {
     return this.currentMode === "daemon" || this.currentMode === "hybrid";
   }
   /**
-   * Check if context should be cleared after a batch.
-   * Only daemon mode with clear_context_after_batch clears context.
-   */
-  shouldClearContext() {
-    return this.currentMode === "daemon" && this.config.daemon.clear_context_after_batch;
-  }
-  /**
    * Update the config reference for hot-reload support.
    * Called by RuntimeEngine.updateConfig() when runtime_config changes.
    */
@@ -35674,77 +35666,7 @@ var ExecutorBudgetManager = class {
 // src/extensions/executor/daemon-tick-handler.ts
 init_logger();
 init_utils();
-
-// src/extensions/executor/context-clearer.ts
-var import_node_child_process2 = require("node:child_process");
-init_logger();
-var logger47 = createLogger("context-clearer");
-var TMUX_TIMEOUT_MS2 = 5e3;
-var ContextClearer = class {
-  static {
-    __name(this, "ContextClearer");
-  }
-  config;
-  constructor(config2) {
-    this.config = config2;
-  }
-  /**
-   * Clear context using the best available method.
-   *
-   * 1. Primary: tmux send-keys to inject /clear into the session
-   * 2. Fallback: queue injection (handled on next tick)
-   *
-   * @returns Method used and success status.
-   */
-  async clearContext() {
-    if (this.isTmuxAvailable()) {
-      try {
-        const success2 = await this.clearViaTmux();
-        if (success2) {
-          logger47.info("Context cleared via tmux", { session: this.config.tmux_session_name });
-          return { method: "tmux", success: true };
-        }
-        logger47.warn("tmux clear failed, falling back to queue injection");
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        logger47.warn("tmux clear threw an error, falling back to queue injection", { error: msg });
-      }
-    } else {
-      logger47.debug("tmux not available, using queue injection fallback");
-    }
-    logger47.info("Context clear queued via injection fallback");
-    return { method: "queue_injection", success: true };
-  }
-  /**
-   * Check if tmux is available.
-   * Returns true if the TMUX environment variable is set (indicating we are
-   * running inside a tmux session).
-   */
-  isTmuxAvailable() {
-    return typeof process.env["TMUX"] === "string" && process.env["TMUX"].length > 0;
-  }
-  /**
-   * Execute tmux send-keys to type /clear into the configured session.
-   * Uses execSync with a 5-second timeout.
-   *
-   * @returns true if the command succeeded, false if it failed.
-   */
-  async clearViaTmux() {
-    const sessionName = this.config.tmux_session_name;
-    try {
-      (0, import_node_child_process2.execFileSync)("tmux", ["send-keys", "-t", sessionName, "/clear"], { timeout: TMUX_TIMEOUT_MS2, stdio: "pipe" });
-      (0, import_node_child_process2.execFileSync)("tmux", ["send-keys", "-t", sessionName, "Enter"], { timeout: TMUX_TIMEOUT_MS2, stdio: "pipe" });
-      return true;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      logger47.error("tmux send-keys failed", { session: sessionName, error: msg });
-      return false;
-    }
-  }
-};
-
-// src/extensions/executor/daemon-tick-handler.ts
-var logger48 = createLogger("daemon-tick-handler");
+var logger47 = createLogger("daemon-tick-handler");
 var DaemonTickHandler = class {
   static {
     __name(this, "DaemonTickHandler");
@@ -35754,7 +35676,6 @@ var DaemonTickHandler = class {
   budgetManager;
   eventBus;
   config;
-  contextClearer;
   /** Returns the current core event queue depth. Wired after plugin init via setQueueDepthGetter(). */
   getQueueDepth = () => 0;
   constructor(deps) {
@@ -35762,7 +35683,6 @@ var DaemonTickHandler = class {
     this.budgetManager = deps.budgetManager;
     this.eventBus = deps.eventBus;
     this.config = deps.config;
-    this.contextClearer = new ContextClearer(deps.config.daemon);
   }
   /**
    * Wire the live queue depth getter after the core event queue has been
@@ -35780,20 +35700,18 @@ var DaemonTickHandler = class {
    * 3. Emit executor:tick_received
    * 4. Build additionalContext with active workflows, pending events, memory state
    * 5. Emit executor:tick_completed
-   * 6. If daemon mode: initiate context clearing
    */
   async handleTick() {
     const startMs = Date.now();
     this.tickCount++;
     const tickNumber = this.tickCount;
-    logger48.info("Daemon tick received", { tick_number: tickNumber });
+    logger47.info("Daemon tick received", { tick_number: tickNumber });
     if (!this.budgetManager.canProcess()) {
-      logger48.warn("Tick aborted: budget exceeded", { tick_number: tickNumber });
+      logger47.warn("Tick aborted: budget exceeded", { tick_number: tickNumber });
       return {
         tick_number: tickNumber,
         events_processed: 0,
         duration_ms: Date.now() - startMs,
-        context_cleared: false,
         budget_status: "exceeded"
       };
     }
@@ -35832,41 +35750,16 @@ var DaemonTickHandler = class {
         }
       }
     });
-    let contextCleared = false;
-    if (this.executorMode.shouldClearContext()) {
-      try {
-        const result = await this.contextClearer.clearContext();
-        contextCleared = result.success;
-        this.eventBus.emit({
-          id: generateEventId(),
-          timestamp: timestamp(),
-          type: "executor:context_clearing",
-          source: { kind: "system" },
-          payload: {
-            type: "executor:context_clearing",
-            data: {
-              method: result.method,
-              success: result.success
-            }
-          }
-        });
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        logger48.error("Context clearing failed", { tick_number: tickNumber, error: msg });
-      }
-    }
-    logger48.info("Daemon tick completed", {
+    logger47.info("Daemon tick completed", {
       tick_number: tickNumber,
       events_processed: eventsProcessed,
       duration_ms: Date.now() - startMs,
-      context_cleared: contextCleared,
       budget_status: budgetStatus
     });
     return {
       tick_number: tickNumber,
       events_processed: eventsProcessed,
       duration_ms: Date.now() - startMs,
-      context_cleared: contextCleared,
       budget_status: budgetStatus
     };
   }
@@ -35904,7 +35797,7 @@ Active workflows: ${activeWorkflows}`;
 
 // src/extensions/executor/action-executor.ts
 init_logger();
-var logger49 = createLogger("action-executor");
+var logger48 = createLogger("action-executor");
 var ActionExecutor = class {
   constructor(directiveQueue, agentWorkflowMap) {
     this.directiveQueue = directiveQueue;
@@ -35921,7 +35814,7 @@ var ActionExecutor = class {
         const target = typeof params.target === "string" ? params.target : "subagent_stop";
         const priority = typeof params.priority === "number" ? params.priority : 20;
         if (typeof content !== "string" || content.length === 0) {
-          logger49.error("ActionExecutor: send_message action missing content", {
+          logger48.error("ActionExecutor: send_message action missing content", {
             action_type: action.type,
             params_keys: Object.keys(action.params || {}),
             context
@@ -35939,7 +35832,7 @@ var ActionExecutor = class {
         };
         try {
           this.directiveQueue.enqueue(target, directive);
-          logger49.info("ActionExecutor: directive enqueued successfully", {
+          logger48.info("ActionExecutor: directive enqueued successfully", {
             target,
             priority,
             workflow_id: workflowId,
@@ -35951,13 +35844,13 @@ var ActionExecutor = class {
             if (!agentType.startsWith("goodvibes:")) {
               this.agentWorkflowMap.addPendingBind(`goodvibes:${agentType}`, workflowId, sessionId);
             }
-            logger49.info("ActionExecutor: pending binds registered for spawn", {
+            logger48.info("ActionExecutor: pending binds registered for spawn", {
               agent_type: agentType,
               workflow_id: workflowId
             });
           }
         } catch (err) {
-          logger49.error("ActionExecutor: failed to enqueue directive", {
+          logger48.error("ActionExecutor: failed to enqueue directive", {
             target,
             priority,
             workflow_id: workflowId,
@@ -35967,7 +35860,7 @@ var ActionExecutor = class {
         break;
       }
       default: {
-        logger49.warn("ActionExecutor: unhandled action type", {
+        logger48.warn("ActionExecutor: unhandled action type", {
           type: action.type,
           context
         });
@@ -35980,7 +35873,7 @@ var ActionExecutor = class {
 // src/extensions/executor/subsystem.ts
 init_logger();
 init_utils();
-var logger50 = createLogger("executor-subsystem");
+var logger49 = createLogger("executor-subsystem");
 function createExecutorSubsystem(config2, eventBus) {
   try {
     const executorMode = new ExecutorModeManager(config2.executor, eventBus);
@@ -36006,13 +35899,13 @@ function createExecutorSubsystem(config2, eventBus) {
         }
       }
     });
-    logger50.info("Executor subsystem created", {
+    logger49.info("Executor subsystem created", {
       mode,
       detection_method: executorMode.getDetectionMethod()
     });
     return { executorMode, executorBudget, daemonTickHandler };
   } catch (err) {
-    logger50.warn("Executor subsystem creation failed \u2014 continuing without executor", {
+    logger49.warn("Executor subsystem creation failed \u2014 continuing without executor", {
       err: toErrorMessage(err)
     });
     return null;
@@ -36022,7 +35915,7 @@ __name(createExecutorSubsystem, "createExecutorSubsystem");
 
 // src/extensions/adapters/registry.ts
 init_logger();
-var logger51 = createLogger("adapter-registry");
+var logger50 = createLogger("adapter-registry");
 
 // src/extensions/adapters/time-adapter.ts
 var TimeAdapter = class {
@@ -36108,7 +36001,7 @@ var import_node_path13 = require("node:path");
 
 // src/shared/ipc/protocol.ts
 init_logger();
-var logger52 = createLogger("ipc-protocol");
+var logger51 = createLogger("ipc-protocol");
 var VALID_IPC_MESSAGE_TYPES = /* @__PURE__ */ new Set([
   "hook_event",
   "query",
@@ -36133,7 +36026,7 @@ function validateIPCMessage(obj) {
     case "heartbeat":
       return true;
     default:
-      logger52.warn("Unrecognised IPC message type", {
+      logger51.warn("Unrecognised IPC message type", {
         type: typeof msg["type"] === "string" ? msg["type"] : typeof msg["type"]
       });
       return false;
@@ -36145,7 +36038,7 @@ __name(validateIPCMessage, "validateIPCMessage");
 init_logger();
 init_utils();
 init_errors();
-var logger53 = createLogger("ipc-server");
+var logger52 = createLogger("ipc-server");
 var CONNECTION_TIMEOUT_MS = 5e3;
 var MAX_MESSAGE_SIZE = 1048576;
 var RATE_LIMIT_MAX = 100;
@@ -36224,9 +36117,9 @@ var IPCServer = class {
     if ((0, import_node_fs13.existsSync)(this.socketPath)) {
       try {
         (0, import_node_fs13.unlinkSync)(this.socketPath);
-        logger53.debug("Removed stale socket file", { path: this.socketPath });
+        logger52.debug("Removed stale socket file", { path: this.socketPath });
       } catch (err) {
-        logger53.warn("Could not remove stale socket file", {
+        logger52.warn("Could not remove stale socket file", {
           path: this.socketPath,
           err: toErrorMessage(err)
         });
@@ -36234,7 +36127,7 @@ var IPCServer = class {
     }
     this.server = net.createServer((socket) => this.handleConnection(socket));
     this.server.on("error", (err) => {
-      logger53.error("IPC server error", { err: err.message });
+      logger52.error("IPC server error", { err: err.message });
     });
     return new Promise((resolve2, reject) => {
       const srv = this.server;
@@ -36245,7 +36138,7 @@ var IPCServer = class {
       srv.once("error", reject);
       srv.listen(this.socketPath, () => {
         (0, import_node_fs13.chmodSync)(this.socketPath, 384);
-        logger53.info("IPC server listening", { path: this.socketPath });
+        logger52.info("IPC server listening", { path: this.socketPath });
         srv.removeListener("error", reject);
         resolve2();
       });
@@ -36258,7 +36151,7 @@ var IPCServer = class {
    * to finish closing before resolving.
    */
   async close() {
-    logger53.info("Closing IPC server", {
+    logger52.info("Closing IPC server", {
       path: this.socketPath,
       connections: this.connections.size
     });
@@ -36282,7 +36175,7 @@ var IPCServer = class {
       this.server = null;
       srv.close(() => {
         this.removeSocketFile();
-        logger53.info("IPC server closed");
+        logger52.info("IPC server closed");
         resolve2();
       });
     });
@@ -36311,7 +36204,7 @@ var IPCServer = class {
   handleConnection(socket) {
     this.connections.add(socket);
     if (this.isRateLimited()) {
-      logger53.warn("IPC rate limit exceeded \u2014 rejecting connection", {
+      logger52.warn("IPC rate limit exceeded \u2014 rejecting connection", {
         limit: RATE_LIMIT_MAX,
         window_ms: RATE_LIMIT_WINDOW_MS2
       });
@@ -36329,16 +36222,16 @@ var IPCServer = class {
       return;
     }
     this.recordMessage();
-    logger53.debug("IPC client connected", { connections: this.connections.size });
+    logger52.debug("IPC client connected", { connections: this.connections.size });
     let idleTimer;
     socket.once("close", () => {
       clearTimeout(idleTimer);
       this.connections.delete(socket);
-      logger53.debug("IPC client disconnected", { connections: this.connections.size });
+      logger52.debug("IPC client disconnected", { connections: this.connections.size });
     });
     socket.on("error", (err) => {
       clearTimeout(idleTimer);
-      logger53.warn("IPC socket error", { err: err.message });
+      logger52.warn("IPC socket error", { err: err.message });
       const holdId = this.inFlightHolds.get(socket);
       if (holdId && this.writeResultCallback) {
         this.inFlightHolds.delete(socket);
@@ -36348,7 +36241,7 @@ var IPCServer = class {
       socket.destroy();
     });
     idleTimer = setTimeout(() => {
-      logger53.warn("IPC connection timed out \u2014 closing", { timeout_ms: CONNECTION_TIMEOUT_MS });
+      logger52.warn("IPC connection timed out \u2014 closing", { timeout_ms: CONNECTION_TIMEOUT_MS });
       socket.destroy();
     }, CONNECTION_TIMEOUT_MS);
     const chunks = [];
@@ -36356,7 +36249,7 @@ var IPCServer = class {
     socket.on("data", (chunk) => {
       rawBytes += chunk.length;
       if (rawBytes > MAX_MESSAGE_SIZE) {
-        logger53.warn("IPC message size limit exceeded \u2014 closing connection", {
+        logger52.warn("IPC message size limit exceeded \u2014 closing connection", {
           size_bytes: rawBytes,
           max_bytes: MAX_MESSAGE_SIZE
         });
@@ -36386,7 +36279,7 @@ var IPCServer = class {
     try {
       const parsed = safeJsonParse(line, null);
       if (!validateIPCMessage(parsed)) {
-        logger53.warn("IPC message failed schema validation \u2014 dropping", {
+        logger52.warn("IPC message failed schema validation \u2014 dropping", {
           type: typeof parsed === "object" && parsed !== null ? parsed["type"] : typeof parsed
         });
         const validationErrorResponse = {
@@ -36402,7 +36295,7 @@ var IPCServer = class {
       return;
     }
     if (!this.handler) {
-      logger53.warn("No IPC message handler registered", { msg_type: message.type });
+      logger52.warn("No IPC message handler registered", { msg_type: message.type });
       const noHandlerResponse = {
         id: message.id,
         status: "error",
@@ -36411,7 +36304,7 @@ var IPCServer = class {
       this.writeResponse(socket, noHandlerResponse);
       return;
     }
-    logger53.debug("Dispatching IPC message", { id: message.id, type: message.type });
+    logger52.debug("Dispatching IPC message", { id: message.id, type: message.type });
     this.handler(message).then((result) => {
       if (isResponseEnvelope(result)) {
         this.writeResponse(socket, result.response, result.holdId);
@@ -36419,7 +36312,7 @@ var IPCServer = class {
         this.writeResponse(socket, result);
       }
     }).catch((err) => {
-      logger53.error("IPC handler threw an error", {
+      logger52.error("IPC handler threw an error", {
         id: message.id,
         err: toErrorMessage(err)
       });
@@ -36451,7 +36344,7 @@ var IPCServer = class {
         }
       });
     } catch (err) {
-      logger53.warn("Failed to write IPC response", {
+      logger52.warn("Failed to write IPC response", {
         id: response.id,
         err: toErrorMessage(err)
       });
@@ -36487,10 +36380,10 @@ var IPCServer = class {
     try {
       if ((0, import_node_fs13.existsSync)(this.socketPath)) {
         (0, import_node_fs13.unlinkSync)(this.socketPath);
-        logger53.debug("Socket file removed", { path: this.socketPath });
+        logger52.debug("Socket file removed", { path: this.socketPath });
       }
     } catch (err) {
-      logger53.warn("Could not remove socket file", {
+      logger52.warn("Could not remove socket file", {
         path: this.socketPath,
         err: toErrorMessage(err)
       });
@@ -36503,7 +36396,7 @@ init_logger();
 init_utils();
 var import_node_fs14 = require("node:fs");
 var import_node_path14 = require("node:path");
-var logger54 = createLogger("ipc-router");
+var logger53 = createLogger("ipc-router");
 var IPCRouter = class {
   static {
     __name(this, "IPCRouter");
@@ -36582,10 +36475,10 @@ var IPCRouter = class {
       const pointerFile = (0, import_node_path14.join)(this.stateDir, `runtime-${sessionId}.socket`);
       try {
         (0, import_node_fs14.unlinkSync)(pointerFile);
-        logger54.debug("Session pointer file removed", { sessionId });
+        logger53.debug("Session pointer file removed", { sessionId });
       } catch (err) {
         if (err.code !== "ENOENT") {
-          logger54.warn("Could not remove session pointer file", {
+          logger53.warn("Could not remove session pointer file", {
             sessionId,
             err: toErrorMessage(err)
           });
@@ -36671,7 +36564,7 @@ var IPCRouter = class {
       try {
         await this.processHookEvent(emittedEvent);
       } catch (err) {
-        logger54.warn("processHookEvent callback failed", { error: toErrorMessage(err) });
+        logger53.warn("processHookEvent callback failed", { error: toErrorMessage(err) });
       }
     }
     if (msg.hook_name === "session:started" && this.triggerRegistry) {
@@ -36685,7 +36578,7 @@ var IPCRouter = class {
           this.stateStore.delete(key);
         }
         if (sessionKeys.length > 0) {
-          logger54.info("Session cleanup: cleared stale WRFC state for session", {
+          logger53.info("Session cleanup: cleared stale WRFC state for session", {
             session_id: sessionId,
             keys_deleted: sessionKeys.length
           });
@@ -36695,7 +36588,7 @@ var IPCRouter = class {
           this.stateStore.delete(key);
         }
         if (defaultKeys.length > 0) {
-          logger54.info("Session cleanup: cleared stale WRFC state from default namespace", {
+          logger53.info("Session cleanup: cleared stale WRFC state from default namespace", {
             keys_deleted: defaultKeys.length
           });
         }
@@ -36709,9 +36602,9 @@ var IPCRouter = class {
           const pointerFile = (0, import_node_path14.join)(this.stateDir, `runtime-${sessionId}.socket`);
           (0, import_node_fs14.writeFileSync)(pointerFile, this.socketPath, "utf-8");
           this.registeredSessions.add(sessionId);
-          logger54.info("Session pointer file written", { sessionId, pointer: pointerFile });
+          logger53.info("Session pointer file written", { sessionId, pointer: pointerFile });
         } catch (err) {
-          logger54.warn("Failed to write session pointer file", {
+          logger53.warn("Failed to write session pointer file", {
             sessionId,
             err: toErrorMessage(err)
           });
@@ -36724,7 +36617,7 @@ var IPCRouter = class {
         const validated = validateWRFCConfig(wrfcConfig);
         if (Object.keys(validated).length > 0) {
           this.wrfcConfigStore?.set(validated);
-          logger54.debug("WRFC config stored from config:loaded event", { validated });
+          logger53.debug("WRFC config stored from config:loaded event", { validated });
         }
       }
     }
@@ -36733,7 +36626,7 @@ var IPCRouter = class {
         const hookInput = typeof msg.hook_input === "object" && msg.hook_input !== null ? msg.hook_input : {};
         await this.hookProcessor.process(msg.hook_name, hookInput);
       } catch (err) {
-        logger54.warn("IPC hook_event: HookProcessor error", {
+        logger53.warn("IPC hook_event: HookProcessor error", {
           hookName: msg.hook_name,
           error: toErrorMessage(err)
         });
@@ -36836,7 +36729,7 @@ var IPCRouter = class {
         data: { kind: "tick_result", result }
       };
     }
-    logger54.warn("Unhandled query kind", { kind: q.kind });
+    logger53.warn("Unhandled query kind", { kind: q.kind });
     return { id: msg.id, status: "ok", data: { kind: "ack" } };
   }
   /**
@@ -36846,7 +36739,7 @@ var IPCRouter = class {
    * rather than silently acknowledging the message and discarding the updates.
    */
   handleStateUpdate(msg) {
-    logger54.debug("IPC state_update received (not implemented)", { id: msg.id });
+    logger53.debug("IPC state_update received (not implemented)", { id: msg.id });
     return { id: msg.id, status: "error", error: "state_update not yet implemented" };
   }
   /**
@@ -36863,7 +36756,7 @@ var IPCRouter = class {
    * @returns A promise resolving to the IPCResponse to send back.
    */
   async route(msg) {
-    logger54.debug("IPC message received", { id: msg.id, type: msg.type });
+    logger53.debug("IPC message received", { id: msg.id, type: msg.type });
     this.directiveQueue?.sweepStaleHolds(HOLD_TTL_MS);
     switch (msg.type) {
       case "hook_event":
@@ -36884,7 +36777,7 @@ var IPCRouter = class {
 
 // src/extensions/ipc/tool-gating.ts
 init_logger();
-var logger55 = createLogger("tool-gating");
+var logger54 = createLogger("tool-gating");
 var ToolGateEvaluator = class {
   static {
     __name(this, "ToolGateEvaluator");
@@ -36915,7 +36808,7 @@ var ToolGateEvaluator = class {
         }
         const fires = this.evaluateCondition(rule);
         if (fires) {
-          logger55.debug("Tool blocked by rule", {
+          logger54.debug("Tool blocked by rule", {
             tool: toolName,
             pattern: rule.tool_pattern,
             condition: rule.condition
@@ -36925,7 +36818,7 @@ var ToolGateEvaluator = class {
       }
       return { allow: true };
     } catch (err) {
-      logger55.warn("Tool gate evaluation error \u2014 failing open", {
+      logger54.warn("Tool gate evaluation error \u2014 failing open", {
         tool: toolName,
         error: err instanceof Error ? err.message : String(err)
       });
@@ -36970,7 +36863,7 @@ var ToolGateEvaluator = class {
         );
       }
       case "custom":
-        logger55.warn("Custom tool block condition is not yet implemented", {
+        logger54.warn("Custom tool block condition is not yet implemented", {
           pattern: rule.tool_pattern
         });
         return false;
@@ -36982,7 +36875,7 @@ var ToolGateEvaluator = class {
 
 // src/extensions/ipc/context-injector.ts
 init_logger();
-var logger56 = createLogger("context-injector");
+var logger55 = createLogger("context-injector");
 var ContextInjector = class _ContextInjector {
   static {
     __name(this, "ContextInjector");
@@ -37016,7 +36909,7 @@ var ContextInjector = class _ContextInjector {
           sections.push(section);
         }
       } catch (err) {
-        logger56.warn("Context source failed \u2014 skipping", {
+        logger55.warn("Context source failed \u2014 skipping", {
           source,
           error: err instanceof Error ? err.message : String(err)
         });
@@ -37087,7 +36980,7 @@ var ContextInjector = class _ContextInjector {
 };
 
 // src/extensions/ipc/setup.ts
-var logger57 = createLogger("ipc-setup");
+var logger56 = createLogger("ipc-setup");
 function isPidAlive(pid) {
   try {
     process.kill(pid, 0);
@@ -37214,16 +37107,16 @@ async function createIPCSubsystem(opts) {
         return awm.lookup(agentId) ?? null;
       });
     }
-    cleanStalePointerFiles(stateDir, logger57);
+    cleanStalePointerFiles(stateDir, logger56);
     (0, import_node_fs15.mkdirSync)(socketDir, { recursive: true, mode: 448 });
     await ipcServer.listen();
     ensureDirSync(stateDir);
     const pointerFile = (0, import_node_path15.join)(stateDir, `runtime-${process.pid}.socket`);
     (0, import_node_fs15.writeFileSync)(pointerFile, socketPath, "utf-8");
-    logger57.info("IPC subsystem created", { socket: socketPath });
+    logger56.info("IPC subsystem created", { socket: socketPath });
     return { subsystem: { ipcServer, ipcRouter, socketPath }, socketPath };
   } catch (err) {
-    logger57.error("Failed to create IPC subsystem", {
+    logger56.error("Failed to create IPC subsystem", {
       socket: socketPath,
       err: toErrorMessage(err)
     });
@@ -37237,7 +37130,7 @@ var import_node_fs16 = require("node:fs");
 var import_node_path16 = require("node:path");
 init_logger();
 init_utils();
-var logger58 = createLogger("ipc-teardown");
+var logger57 = createLogger("ipc-teardown");
 function removeSocketPointerFile(projectRoot, config2) {
   const pointerFile = (0, import_node_path16.join)(
     projectRoot,
@@ -37246,10 +37139,10 @@ function removeSocketPointerFile(projectRoot, config2) {
   );
   try {
     (0, import_node_fs16.unlinkSync)(pointerFile);
-    logger58.debug("Socket pointer file removed", { path: pointerFile });
+    logger57.debug("Socket pointer file removed", { path: pointerFile });
   } catch (err) {
     if (err.code !== "ENOENT") {
-      logger58.warn("Could not remove socket pointer file", {
+      logger57.warn("Could not remove socket pointer file", {
         path: pointerFile,
         err: toErrorMessage(err)
       });
@@ -37262,9 +37155,9 @@ async function teardownIPC(subsystem, projectRoot, config2) {
     await subsystem.ipcServer.close();
     removeSocketPointerFile(projectRoot, config2);
     subsystem.ipcRouter.removeSessionPointers();
-    logger58.debug("IPC teardown complete");
+    logger57.debug("IPC teardown complete");
   } catch (err) {
-    logger58.warn("IPC teardown failed", {
+    logger57.warn("IPC teardown failed", {
       err: toErrorMessage(err)
     });
   }
@@ -37272,7 +37165,7 @@ async function teardownIPC(subsystem, projectRoot, config2) {
 __name(teardownIPC, "teardownIPC");
 
 // src/extensions/executor/handlers/devserver-handler.ts
-var import_node_child_process3 = require("node:child_process");
+var import_node_child_process2 = require("node:child_process");
 init_logger();
 init_utils();
 var log10 = createLogger("handler:devserver");
@@ -37306,9 +37199,9 @@ async function killProcessOnPort(port) {
   return new Promise((resolve2) => {
     let proc;
     if (os === "darwin") {
-      proc = (0, import_node_child_process3.spawn)("sh", ["-c", `lsof -ti :${port} | xargs kill -9 2>/dev/null`], { stdio: "ignore" });
+      proc = (0, import_node_child_process2.spawn)("sh", ["-c", `lsof -ti :${port} | xargs kill -9 2>/dev/null`], { stdio: "ignore" });
     } else {
-      proc = (0, import_node_child_process3.spawn)("fuser", ["-k", `${port}/tcp`], { stdio: "ignore" });
+      proc = (0, import_node_child_process2.spawn)("fuser", ["-k", `${port}/tcp`], { stdio: "ignore" });
     }
     proc.on("close", () => resolve2());
     proc.on("error", () => resolve2());
@@ -37325,7 +37218,7 @@ function restartDevServer(projectRoot) {
       await killProcessOnPort(port);
       await new Promise((r) => setTimeout(r, 500));
       const [cmd, ...cmdArgs] = command.split(" ");
-      const child = (0, import_node_child_process3.spawn)(cmd ?? command, cmdArgs, {
+      const child = (0, import_node_child_process2.spawn)(cmd ?? command, cmdArgs, {
         cwd: projectRoot,
         detached: true,
         stdio: "ignore"
@@ -37491,12 +37384,12 @@ function updateMemory(projectRoot) {
 __name(updateMemory, "updateMemory");
 
 // src/extensions/executor/handlers/build-handler.ts
-var import_node_child_process4 = require("node:child_process");
+var import_node_child_process3 = require("node:child_process");
 var import_node_util = require("node:util");
 init_logger();
 init_utils();
 var log14 = createLogger("handler:build");
-var execAsync = (0, import_node_util.promisify)(import_node_child_process4.exec);
+var execAsync = (0, import_node_util.promisify)(import_node_child_process3.exec);
 var MAX_OUTPUT_CHARS = 2e3;
 function runBuild(projectRoot) {
   return async (context, config2) => {
@@ -37526,12 +37419,12 @@ ${stderr}`.trim().slice(0, MAX_OUTPUT_CHARS);
 __name(runBuild, "runBuild");
 
 // src/extensions/executor/handlers/test-handler.ts
-var import_node_child_process5 = require("node:child_process");
+var import_node_child_process4 = require("node:child_process");
 var import_node_util2 = require("node:util");
 init_logger();
 init_utils();
 var log15 = createLogger("handler:test");
-var execAsync2 = (0, import_node_util2.promisify)(import_node_child_process5.exec);
+var execAsync2 = (0, import_node_util2.promisify)(import_node_child_process4.exec);
 var MAX_OUTPUT_CHARS2 = 2e3;
 function runTests(projectRoot) {
   return async (context, config2) => {
@@ -37636,7 +37529,7 @@ __name(bridgeCIFailure, "bridgeCIFailure");
 // src/plugins/hooks/handlers/build-test-detector.ts
 init_logger();
 init_events();
-var logger59 = createLogger("build-test-detector");
+var logger58 = createLogger("build-test-detector");
 var DEFAULT_DETECTOR_CONFIG = {
   build_commands: ["npm run build", "npx tsc", "node build", "vite build", "next build"],
   test_commands: ["npm test", "npm run test", "vitest", "jest", "playwright test", "npx vitest"]
@@ -37653,7 +37546,7 @@ var BuildTestDetector = class {
     this.eventBus.on("hook:post_tool_use", (event) => {
       this.analyzeToolResult(event);
     });
-    logger59.info("BuildTestDetector started, listening for hook:post_tool_use");
+    logger58.info("BuildTestDetector started, listening for hook:post_tool_use");
   }
   analyzeToolResult(event) {
     const payloadData = event.payload?.data;
@@ -37690,7 +37583,7 @@ var BuildTestDetector = class {
       metadata: { session_id: "", sequence: 0 }
     });
     this.eventBus.emit(emittedEvent);
-    logger59.info("Detected command result", { category, succeeded, command, eventType });
+    logger58.info("Detected command result", { category, succeeded, command, eventType });
   }
   isExecTool(toolName) {
     const execTools = ["Bash", "precision_exec", "mcp__plugin_goodvibes_precision-engine__precision_exec"];
@@ -37703,7 +37596,7 @@ var BuildTestDetector = class {
 };
 
 // src/bootstrap.ts
-var logger61 = createLogger("bootstrap");
+var logger60 = createLogger("bootstrap");
 function eventMatcherToCondition(eventMatch) {
   const eventType = eventMatch.type;
   const pattern = typeof eventType === "string" ? eventType : "*";
@@ -37778,12 +37671,12 @@ var RuntimeEngine = class {
   }
   // ─── Lifecycle ─────────────────────────────────────────────────────────────
   async startup() {
-    logger61.info("Starting up");
+    logger60.info("Starting up");
     try {
       this.config = loadConfig(this.projectRoot);
-      logger61.debug("Configuration loaded", { version: ENGINE_VERSION });
+      logger60.debug("Configuration loaded", { version: ENGINE_VERSION });
     } catch (err) {
-      logger61.warn("Could not load config from disk \u2014 using defaults", { err: toErrorMessage(err) });
+      logger60.warn("Could not load config from disk \u2014 using defaults", { err: toErrorMessage(err) });
     }
     this.events = await createEventSubsystem(this.config, this.projectRoot);
     await checkCrashRecovery(this.projectRoot);
@@ -37835,11 +37728,11 @@ var RuntimeEngine = class {
             raw
           );
         } catch (err) {
-          logger61.debug("Failed to restore workflow instance", { error: String(err) });
+          logger60.debug("Failed to restore workflow instance", { error: String(err) });
         }
       }
       if (savedInstances.length > 0) {
-        logger61.debug("Restored workflow instances from persistence", { count: savedInstances.length });
+        logger60.debug("Restored workflow instances from persistence", { count: savedInstances.length });
       }
       workflowPersistence.cleanup().catch(() => {
       });
@@ -37847,7 +37740,7 @@ var RuntimeEngine = class {
         const data = event.payload?.data;
         if (data?.instance?.id) {
           workflowPersistence.persist(data.instance).catch((err) => {
-            logger61.warn("Failed to persist workflow state", { error: toErrorMessage(err) });
+            logger60.warn("Failed to persist workflow state", { error: toErrorMessage(err) });
           });
         }
       });
@@ -37860,7 +37753,7 @@ var RuntimeEngine = class {
         if (this.triggers)
           await this.triggers.triggerRegistry.evaluate(event);
       } catch (err) {
-        logger61.warn("Trigger evaluation error", { error: toErrorMessage(err) });
+        logger60.warn("Trigger evaluation error", { error: toErrorMessage(err) });
       }
     });
     if (this.config.features.agents_enabled) {
@@ -37915,7 +37808,7 @@ var RuntimeEngine = class {
         if (Array.isArray(wrfcOverrides.require_review_types)) {
           wrfcConfig.require_review_types = wrfcOverrides.require_review_types;
         }
-        logger61.info("WRFC config overrides applied from goodvibes.json", {
+        logger60.info("WRFC config overrides applied from goodvibes.json", {
           score_threshold: wrfcConfig.score_threshold,
           max_fix_attempts: wrfcConfig.max_fix_attempts
         });
@@ -37959,7 +37852,7 @@ var RuntimeEngine = class {
       listStateKeys: (prefix) => coreStore.keys(prefix),
       registerTrigger: (id, definition, handler) => {
         if (!coreTriggerRegistry) {
-          logger61.warn("registerTrigger: trigger subsystem not available", { id });
+          logger60.warn("registerTrigger: trigger subsystem not available", { id });
           return;
         }
         const trigger = createWRFCTrigger({
@@ -37988,7 +37881,7 @@ var RuntimeEngine = class {
     this.wrfcPlugin = new WRFCPlugin(wrfcConfig);
     this.wrfcPlugin.register(runtimeServices);
     this.wrfcPlugin.start();
-    logger61.debug("WRFC plugin registered via RuntimePlugin interface", {
+    logger60.debug("WRFC plugin registered via RuntimePlugin interface", {
       name: this.wrfcPlugin.name,
       version: this.wrfcPlugin.version,
       state: this.wrfcPlugin.state
@@ -37996,7 +37889,7 @@ var RuntimeEngine = class {
     const agentTrackerPlugin = new AgentTrackerPlugin();
     agentTrackerPlugin.register(runtimeServices);
     agentTrackerPlugin.start();
-    logger61.debug("AgentTracker plugin registered", {
+    logger60.debug("AgentTracker plugin registered", {
       name: agentTrackerPlugin.name,
       version: agentTrackerPlugin.version,
       state: agentTrackerPlugin.state
@@ -38008,7 +37901,7 @@ var RuntimeEngine = class {
       triggerReg.registerHandler("notifyUser", notifyUser(this.projectRoot));
       triggerReg.registerHandler("logEvent", logEvent(this.projectRoot));
       triggerReg.registerHandler("updateMemory", updateMemory(this.projectRoot));
-      logger61.debug("Trigger action handlers registered");
+      logger60.debug("Trigger action handlers registered");
     }
     const wfEngine = this.workflow?.workflowEngine;
     if (wfEngine && this.coreRuntime) {
@@ -38017,11 +37910,11 @@ var RuntimeEngine = class {
       wfEngine.registerAction("notify_complete", notifyComplete);
       wfEngine.registerGuard("has_test_suite", hasTestSuite(this.projectRoot));
       wfEngine.registerGuard("build_passing", buildPassing(this.coreRuntime.stateStore));
-      logger61.debug("Workflow action handlers and guards registered");
+      logger60.debug("Workflow action handlers and guards registered");
     }
     const buildTestDetector = new BuildTestDetector(this.events.eventBus);
     buildTestDetector.start();
-    logger61.debug("BuildTestDetector wired to EventBus");
+    logger60.debug("BuildTestDetector wired to EventBus");
     this.coreRuntime.eventProcessor.start();
     const hookSubsystem = createHookSubsystem({
       eventBus: this.events.eventBus,
@@ -38031,7 +37924,7 @@ var RuntimeEngine = class {
       executorMode: this.executorSubsystem?.executorMode ?? null
     });
     this.hookProcessor = hookSubsystem.hookProcessor;
-    logger61.debug("Hook subsystem created", { handlerCount: hookSubsystem.hookRegistry.count() });
+    logger60.debug("Hook subsystem created", { handlerCount: hookSubsystem.hookRegistry.count() });
     const timePlugin = this.timePlugin = new TimePlugin({
       queue: this.coreRuntime.eventQueue,
       store: this.coreRuntime.stateStore,
@@ -38043,17 +37936,17 @@ var RuntimeEngine = class {
     try {
       await this.externalPlugin.initialize();
     } catch (err) {
-      logger61.warn("External plugin initialisation failed", { err: toErrorMessage(err) });
+      logger60.warn("External plugin initialisation failed", { err: toErrorMessage(err) });
     }
     if (httpEnabled) {
       try {
         await this.externalPlugin.startHttpListener();
-        logger61.info("HTTP webhook listener started", {
+        logger60.info("HTTP webhook listener started", {
           port: this.config.external.http_listener.port,
           host: this.config.external.http_listener.address
         });
       } catch (err) {
-        logger61.warn("Failed to start HTTP webhook listener", { err: toErrorMessage(err) });
+        logger60.warn("Failed to start HTTP webhook listener", { err: toErrorMessage(err) });
       }
     }
     this.reconfigurables = /* @__PURE__ */ new Map();
@@ -38067,10 +37960,10 @@ var RuntimeEngine = class {
       this.devServerMonitor = new DevServerMonitor2(this.config.devserver, this.events.eventBus);
       this.devServerMonitor.start();
       this.reconfigurables.set("devserver", this.devServerMonitor);
-      logger61.debug("DevServerMonitor started");
+      logger60.debug("DevServerMonitor started");
     }
     if (!this.executorSubsystem?.executorMode) {
-      logger61.warn("Skipping tick driver \u2014 executorMode not available");
+      logger60.warn("Skipping tick driver \u2014 executorMode not available");
     } else {
       this.tickDriver = new TickDriver({
         config: this.config.executor,
@@ -38111,7 +38004,7 @@ var RuntimeEngine = class {
             try {
               await processor.processImmediate(event);
             } catch (err) {
-              logger61.warn("Failed to process hook event immediately", { error: toErrorMessage(err) });
+              logger60.warn("Failed to process hook event immediately", { error: toErrorMessage(err) });
             }
           }
         }
@@ -38121,7 +38014,7 @@ var RuntimeEngine = class {
         ipcSocketPath = ipcResult.socketPath;
       }
     } else {
-      logger61.debug("IPC server disabled by feature flag");
+      logger60.debug("IPC server disabled by feature flag");
     }
     this.tickDriver?.start();
     this.events.eventBus.emit({
@@ -38141,12 +38034,12 @@ var RuntimeEngine = class {
     });
     setupSignalHandlers(() => this.shutdown());
     this.running = true;
-    logger61.info("Startup complete", { pid: process.pid, uptime_ms: this.getUptime() });
+    logger60.info("Startup complete", { pid: process.pid, uptime_ms: this.getUptime() });
   }
   async shutdown(timeout_ms = 1e4) {
-    logger61.info("Shutting down", { timeout_ms });
+    logger60.info("Shutting down", { timeout_ms });
     const shutdownTimer = setTimeout(() => {
-      logger61.error("Shutdown timed out \u2014 forcing exit", { timeout_ms });
+      logger60.error("Shutdown timed out \u2014 forcing exit", { timeout_ms });
       process.exit(1);
     }, timeout_ms);
     shutdownTimer.unref();
@@ -38168,7 +38061,7 @@ var RuntimeEngine = class {
             payload: { type: "system:shutdown", data: { uptime_ms: this.getUptime() } }
           });
         } catch (err) {
-          logger61.warn("Failed to emit shutdown event", { err: toErrorMessage(err) });
+          logger60.warn("Failed to emit shutdown event", { err: toErrorMessage(err) });
         }
       }
       if (this.ipcSubsystem) {
@@ -38179,7 +38072,7 @@ var RuntimeEngine = class {
         try {
           this.executorSubsystem.executorBudget.persist(coreStateStoreForShutdown);
         } catch (err) {
-          logger61.warn("Executor budget persistence failed", { err: toErrorMessage(err) });
+          logger60.warn("Executor budget persistence failed", { err: toErrorMessage(err) });
         }
       }
       if (this.persistence)
@@ -38188,7 +38081,7 @@ var RuntimeEngine = class {
         await this.events.shutdown();
       removePidFile(this.projectRoot);
       this.running = false;
-      logger61.info("Shutdown complete");
+      logger60.info("Shutdown complete");
     } finally {
       clearTimeout(shutdownTimer);
     }
@@ -38227,13 +38120,13 @@ var RuntimeEngine = class {
         try {
           subsystem.reconfigure(sectionConfig);
         } catch (err) {
-          logger61.warn(`Failed to reconfigure ${name}`, { error: toErrorMessage(err) });
+          logger60.warn(`Failed to reconfigure ${name}`, { error: toErrorMessage(err) });
         }
       }
     }
     if (this.externalPlugin) {
       this.reconfigureExternalPlugins(oldConfig, config2).catch((err) => {
-        logger61.error("Failed to reconfigure external plugins", { error: toErrorMessage(err) });
+        logger60.error("Failed to reconfigure external plugins", { error: toErrorMessage(err) });
         this.events?.eventBus.emit({
           id: generateEventId(),
           timestamp: timestamp(),
@@ -38267,21 +38160,21 @@ var RuntimeEngine = class {
       try {
         await this.externalPlugin.stopHttpListener();
         this.externalPlugin.updateConfig({ file_watcher: newConfig.external.file_watcher });
-        logger61.info("HTTP webhook listener stopped (disabled by config change)");
+        logger60.info("HTTP webhook listener stopped (disabled by config change)");
       } catch (err) {
-        logger61.warn("Failed to stop HTTP webhook listener", { error: toErrorMessage(err) });
+        logger60.warn("Failed to stop HTTP webhook listener", { error: toErrorMessage(err) });
       }
     } else if (!wasEnabled && nowEnabled) {
       try {
         const newExternalConfig = this.buildExternalConfig(newConfig);
         this.externalPlugin.updateConfig(newExternalConfig);
         await this.externalPlugin.startHttpListener();
-        logger61.info("HTTP webhook listener started (enabled by config change)", {
+        logger60.info("HTTP webhook listener started (enabled by config change)", {
           port: newHttp.port,
           host: newHttp.address
         });
       } catch (err) {
-        logger61.error("Failed to start HTTP webhook listener after config change", {
+        logger60.error("Failed to start HTTP webhook listener after config change", {
           error: toErrorMessage(err),
           port: newHttp.port,
           address: newHttp.address
@@ -38295,12 +38188,12 @@ var RuntimeEngine = class {
         await this.externalPlugin.stopHttpListener();
         this.externalPlugin.updateConfig(newExternalConfig);
         await this.externalPlugin.startHttpListener();
-        logger61.info("HTTP webhook listener restarted (port change)", {
+        logger60.info("HTTP webhook listener restarted (port change)", {
           oldPort: oldHttp.port,
           newPort: newHttp.port
         });
       } catch (err) {
-        logger61.error("Failed to restart HTTP webhook listener on port change \u2014 attempting rollback", {
+        logger60.error("Failed to restart HTTP webhook listener on port change \u2014 attempting rollback", {
           error: toErrorMessage(err),
           oldPort: oldHttp.port,
           newPort: newHttp.port
@@ -38308,9 +38201,9 @@ var RuntimeEngine = class {
         try {
           this.externalPlugin.updateConfig(oldExternalConfig);
           await this.externalPlugin.startHttpListener();
-          logger61.warn("HTTP webhook listener rolled back to previous port", { port: oldHttp.port });
+          logger60.warn("HTTP webhook listener rolled back to previous port", { port: oldHttp.port });
         } catch (rollbackErr) {
-          logger61.error("Rollback failed \u2014 HTTP webhook listener is permanently down", {
+          logger60.error("Rollback failed \u2014 HTTP webhook listener is permanently down", {
             error: toErrorMessage(rollbackErr)
           });
           this.events?.eventBus.emit({
@@ -38404,11 +38297,11 @@ var RuntimeEngine = class {
 // src/transport/daemon-lifecycle.ts
 var import_node_fs19 = require("node:fs");
 var import_node_path22 = require("node:path");
-var import_node_child_process6 = require("node:child_process");
+var import_node_child_process5 = require("node:child_process");
 var import_node_net2 = require("node:net");
 init_logger();
 init_utils();
-var logger62 = createLogger("daemon-lifecycle");
+var logger61 = createLogger("daemon-lifecycle");
 var STARTUP_TIMEOUT_MS = 1e4;
 var HEALTH_CHECK_INTERVAL_MS = 500;
 var DEFAULT_HEALTH_CHECK_INTERVAL_MS = 3e4;
@@ -38465,11 +38358,11 @@ var DaemonLifecycle = class {
   }
   async doStart() {
     if (await this.isRunning()) {
-      logger62.info("Daemon already running");
+      logger61.info("Daemon already running");
       return;
     }
     if (!this.acquireLock()) {
-      logger62.info("Daemon start in progress by another process, waiting...");
+      logger61.info("Daemon start in progress by another process, waiting...");
       await this.waitForLockRelease(STARTUP_TIMEOUT_MS);
       if (await this.isRunning())
         return;
@@ -38494,8 +38387,8 @@ var DaemonLifecycle = class {
         `Daemon entry point not found: ${daemonScript}. Run the build first.`
       );
     }
-    logger62.info("Starting daemon process", { script: daemonScript });
-    const child = (0, import_node_child_process6.spawn)(process.execPath, [daemonScript], {
+    logger61.info("Starting daemon process", { script: daemonScript });
+    const child = (0, import_node_child_process5.spawn)(process.execPath, [daemonScript], {
       detached: true,
       stdio: "ignore",
       env: {
@@ -38509,7 +38402,7 @@ var DaemonLifecycle = class {
     }
     const daemonPid = child.pid;
     await this.waitForSocket(STARTUP_TIMEOUT_MS);
-    logger62.info("Daemon started", { pid: daemonPid });
+    logger61.info("Daemon started", { pid: daemonPid });
     this.startHealthCheck();
   }
   /**
@@ -38532,7 +38425,7 @@ var DaemonLifecycle = class {
     } catch (err) {
       const code = err.code;
       if (code !== "EEXIST") {
-        logger62.warn("Unexpected error acquiring daemon lock", { err: toErrorMessage(err) });
+        logger61.warn("Unexpected error acquiring daemon lock", { err: toErrorMessage(err) });
         return false;
       }
       try {
@@ -38542,7 +38435,7 @@ var DaemonLifecycle = class {
           return false;
         }
       } catch (readErr) {
-        logger62.debug("Failed to read lock file during stale detection, assuming stale", { err: toErrorMessage(readErr) });
+        logger61.debug("Failed to read lock file during stale detection, assuming stale", { err: toErrorMessage(readErr) });
       }
       if (allowStaleRetry) {
         try {
@@ -38563,7 +38456,7 @@ var DaemonLifecycle = class {
     } catch (err) {
       const code = err.code;
       if (code !== "ENOENT") {
-        logger62.warn("Failed to release daemon lock", { err: toErrorMessage(err) });
+        logger61.warn("Failed to release daemon lock", { err: toErrorMessage(err) });
       }
     }
   }
@@ -38578,7 +38471,7 @@ var DaemonLifecycle = class {
         return;
       await new Promise((r) => setTimeout(r, 200));
     }
-    logger62.debug("waitForLockRelease timed out, proceeding", { timeoutMs });
+    logger61.debug("waitForLockRelease timed out, proceeding", { timeoutMs });
   }
   /**
    * Stop the daemon process by sending SIGTERM.
@@ -38587,19 +38480,19 @@ var DaemonLifecycle = class {
     this.stopHealthCheck();
     const pid = this.readPid();
     if (pid === null) {
-      logger62.info("No daemon PID file found");
+      logger61.info("No daemon PID file found");
       return;
     }
     if (!this.isProcessAlive(pid)) {
-      logger62.info("Daemon process already dead, cleaning up");
+      logger61.info("Daemon process already dead, cleaning up");
       this.cleanupStaleFiles();
       return;
     }
-    logger62.info("Sending SIGTERM to daemon", { pid });
+    logger61.info("Sending SIGTERM to daemon", { pid });
     try {
       process.kill(pid, "SIGTERM");
     } catch (err) {
-      logger62.warn("Failed to send SIGTERM", { err: toErrorMessage(err) });
+      logger61.warn("Failed to send SIGTERM", { err: toErrorMessage(err) });
     }
     const deadline = Date.now() + 5e3;
     while (Date.now() < deadline) {
@@ -38608,7 +38501,7 @@ var DaemonLifecycle = class {
       await new Promise((r) => setTimeout(r, 200));
     }
     if (this.isProcessAlive(pid)) {
-      logger62.warn("Daemon did not exit gracefully, sending SIGKILL", { pid });
+      logger61.warn("Daemon did not exit gracefully, sending SIGKILL", { pid });
       try {
         process.kill(pid, "SIGKILL");
       } catch {
@@ -38729,7 +38622,7 @@ var DaemonLifecycle = class {
       const pid = parseInt(content, 10);
       return Number.isFinite(pid) ? pid : null;
     } catch (err) {
-      logger62.debug("Failed to read PID file", { path: this.pidFilePath, err: toErrorMessage(err) });
+      logger61.debug("Failed to read PID file", { path: this.pidFilePath, err: toErrorMessage(err) });
       return null;
     }
   }
@@ -38740,7 +38633,7 @@ var DaemonLifecycle = class {
       const content = (0, import_node_fs19.readFileSync)(this.socketPointerPath, "utf-8").trim();
       return content || null;
     } catch (err) {
-      logger62.debug("Failed to read socket pointer file", { path: this.socketPointerPath, err: toErrorMessage(err) });
+      logger61.debug("Failed to read socket pointer file", { path: this.socketPointerPath, err: toErrorMessage(err) });
       return null;
     }
   }
@@ -38842,7 +38735,7 @@ __name(toError, "toError");
 // src/plugins/mcp/handlers/status.ts
 init_logger();
 init_utils();
-var logger63 = createLogger("tool-handlers:status");
+var logger62 = createLogger("tool-handlers:status");
 var handleRuntimeStatus = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
   if (args !== null && args !== void 0 && typeof args !== "object") {
@@ -38868,11 +38761,11 @@ var handleRuntimeStatus = /* @__PURE__ */ __name(async (args, ctx) => {
       statusData = ctx.getHealth();
       version2 = ctx.version;
     }
-    logger63.debug("runtime_status computed", { status: statusData.status });
+    logger62.debug("runtime_status computed", { status: statusData.status });
     return toSuccess(statusData, version2, uptimeMs, Date.now() - start);
   } catch (err) {
     const message = toErrorMessage(err);
-    logger63.error("runtime_status failed", { error: message });
+    logger62.error("runtime_status failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeStatus");
@@ -38881,7 +38774,7 @@ var handleRuntimeStatus = /* @__PURE__ */ __name(async (args, ctx) => {
 init_logger();
 init_utils();
 init_errors();
-var logger64 = createLogger("tool-handlers:config");
+var logger63 = createLogger("tool-handlers:config");
 var VALID_CONFIG_KEYS = /* @__PURE__ */ new Set([
   "ipc.socket_dir",
   "ipc.connect_timeout_ms",
@@ -38919,7 +38812,6 @@ var VALID_CONFIG_KEYS = /* @__PURE__ */ new Set([
   "agents.default_budget",
   "agents.max_review_iterations",
   "executor.mode",
-  "executor.daemon.clear_context_after_batch",
   "executor.daemon.tmux_session_name",
   "executor.daemon.tick_command",
   "executor.daemon.tick_interval_ms",
@@ -38985,7 +38877,6 @@ var CONFIG_KEY_TYPES = /* @__PURE__ */ new Map([
   ["agents.default_budget", "number"],
   ["agents.max_review_iterations", "number"],
   ["executor.mode", "string"],
-  ["executor.daemon.clear_context_after_batch", "boolean"],
   ["executor.daemon.tmux_session_name", "string"],
   ["executor.daemon.tick_command", "string"],
   ["executor.daemon.tick_interval_ms", "number"],
@@ -39137,7 +39028,7 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
         saveConfig(ctx.projectRoot, updated);
         ctx.updateConfig(updated);
       }
-      logger64.info("Config key set", { key, value });
+      logger63.info("Config key set", { key, value });
       const result = { key, value, persisted: true };
       if (key === "executor.mode") {
         result.warning = "executor.mode change takes effect on next session restart. Most other config keys are hot-reloaded immediately.";
@@ -39156,7 +39047,7 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
         saveConfig(ctx.projectRoot, DEFAULT_CONFIG);
         ctx.updateConfig(DEFAULT_CONFIG);
       }
-      logger64.info("Config reset to defaults");
+      logger63.info("Config reset to defaults");
       return toSuccess(
         { config: DEFAULT_CONFIG, reset: true },
         ctx.version,
@@ -39172,7 +39063,7 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = toErrorMessage(err);
-    logger64.error("runtime_config failed", { error: message });
+    logger63.error("runtime_config failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeConfig");
@@ -39180,7 +39071,7 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
 // src/plugins/mcp/handlers/events.ts
 init_logger();
 init_utils();
-var logger65 = createLogger("tool-handlers:events");
+var logger64 = createLogger("tool-handlers:events");
 function matchesTypePattern(eventType, pattern) {
   if (pattern === "*")
     return true;
@@ -39361,7 +39252,7 @@ var handleRuntimeEvents = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = toErrorMessage(err);
-    logger65.error("runtime_events failed", { error: message });
+    logger64.error("runtime_events failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeEvents");
@@ -39369,7 +39260,7 @@ var handleRuntimeEvents = /* @__PURE__ */ __name(async (args, ctx) => {
 // src/plugins/mcp/handlers/emit.ts
 init_logger();
 init_utils();
-var logger66 = createLogger("tool-handlers:emit");
+var logger65 = createLogger("tool-handlers:emit");
 var handleRuntimeEmit = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
   const uptimeMs = ctx.getUptime();
@@ -39401,7 +39292,7 @@ var handleRuntimeEmit = /* @__PURE__ */ __name(async (args, ctx) => {
     const knownPrefixes = ["session:", "hook:", "workflow:", "wrfc:", "fix:", "agent:", "trigger:", "file:", "build:", "test:", "devserver:", "engine:"];
     const isKnownPrefix = knownPrefixes.some((p) => eventType.startsWith(p));
     if (!isKnownPrefix) {
-      logger66.warn("runtime_emit: unknown event type prefix", { event_type: safeEventType });
+      logger65.warn("runtime_emit: unknown event type prefix", { event_type: safeEventType });
     }
     const eventId = generateEventId();
     const fullEvent = {
@@ -39427,11 +39318,11 @@ var handleRuntimeEmit = /* @__PURE__ */ __name(async (args, ctx) => {
       emittedId = emitted2.id;
     }
     const emitted = { ...fullEvent, id: emittedId };
-    logger66.info("runtime_emit: event emitted", { type: eventType, id: emitted.id });
+    logger65.info("runtime_emit: event emitted", { type: eventType, id: emitted.id });
     return toSuccess({ emitted }, ctx.version, uptimeMs, Date.now() - start);
   } catch (err) {
     const message = toErrorMessage(err);
-    logger66.error("runtime_emit failed", { error: message });
+    logger65.error("runtime_emit failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeEmit");
@@ -39439,7 +39330,7 @@ var handleRuntimeEmit = /* @__PURE__ */ __name(async (args, ctx) => {
 // src/plugins/mcp/handlers/workflow.ts
 init_logger();
 init_utils();
-var logger67 = createLogger("tool-handlers:workflow");
+var logger66 = createLogger("tool-handlers:workflow");
 var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
   const uptimeMs = ctx.getUptime();
@@ -39466,7 +39357,7 @@ var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
       const context = params.context ?? {};
       if (ctx.transport) {
         const result = await ctx.transport.startWorkflow(definitionId, context);
-        logger67.info("runtime_workflow: created", { id: result.workflow_id, definition: definitionId });
+        logger66.info("runtime_workflow: created", { id: result.workflow_id, definition: definitionId });
         return toSuccess({ instance: { id: result.workflow_id, definition_id: definitionId, context } }, ctx.version, uptimeMs, Date.now() - start);
       }
       const engine = ctx.getWorkflowEngine();
@@ -39474,7 +39365,7 @@ var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
         return toError("Workflow engine is disabled (set features.workflows_enabled = true to enable)", ctx.version, uptimeMs, Date.now() - start);
       }
       const instance = engine.create(definitionId, context);
-      logger67.info("runtime_workflow: created", { id: instance.id, definition: definitionId });
+      logger66.info("runtime_workflow: created", { id: instance.id, definition: definitionId });
       return toSuccess({ instance }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "get") {
@@ -39591,7 +39482,7 @@ var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = toErrorMessage(err);
-    logger67.error("runtime_workflow failed", { error: message });
+    logger66.error("runtime_workflow failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeWorkflow");
@@ -39599,7 +39490,7 @@ var handleRuntimeWorkflow = /* @__PURE__ */ __name(async (args, ctx) => {
 // src/plugins/mcp/handlers/triggers.ts
 init_logger();
 init_utils();
-var logger68 = createLogger("tool-handlers:triggers");
+var logger67 = createLogger("tool-handlers:triggers");
 var VALID_TRIGGER_ACTION_TYPES = /* @__PURE__ */ new Set([
   "emit_event",
   "spawn_agent",
@@ -39692,7 +39583,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
       }
       if (ctx.transport) {
         await ctx.transport.registerTrigger(triggerDef);
-        logger68.info("runtime_triggers: registered", { id: triggerDef.id });
+        logger67.info("runtime_triggers: registered", { id: triggerDef.id });
         return toSuccess({ registered: true, id: triggerDef.id }, ctx.version, uptimeMs, Date.now() - start);
       }
       const registry2 = ctx.getTriggerRegistry();
@@ -39700,7 +39591,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
         return toError("Trigger registry is unavailable", ctx.version, uptimeMs, Date.now() - start);
       }
       registry2.register(triggerDef);
-      logger68.info("runtime_triggers: registered", { id: triggerDef.id });
+      logger67.info("runtime_triggers: registered", { id: triggerDef.id });
       return toSuccess({ registered: true, id: triggerDef.id }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "update") {
@@ -39717,7 +39608,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
         return toError("Trigger registry is unavailable", ctx.version, uptimeMs, Date.now() - start);
       }
       updateRegistry.replace(updateDef);
-      logger68.info("runtime_triggers: updated", { id: updateDef.id });
+      logger67.info("runtime_triggers: updated", { id: updateDef.id });
       return toSuccess({ updated: true, id: updateDef.id }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "delete") {
@@ -39727,7 +39618,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
       }
       if (ctx.transport) {
         await ctx.transport.unregisterTrigger(deleteTriggerId);
-        logger68.info("runtime_triggers: unregistered", { id: deleteTriggerId });
+        logger67.info("runtime_triggers: unregistered", { id: deleteTriggerId });
         return toSuccess({ deleted: true, id: deleteTriggerId }, ctx.version, uptimeMs, Date.now() - start);
       }
       const deleteRegistry = ctx.getTriggerRegistry();
@@ -39735,7 +39626,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
         return toError("Trigger registry is unavailable", ctx.version, uptimeMs, Date.now() - start);
       }
       deleteRegistry.unregister(deleteTriggerId);
-      logger68.info("runtime_triggers: unregistered", { id: deleteTriggerId });
+      logger67.info("runtime_triggers: unregistered", { id: deleteTriggerId });
       return toSuccess({ deleted: true, id: deleteTriggerId }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "enable" || action === "disable") {
@@ -39749,7 +39640,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
         return toError("Trigger registry is unavailable", ctx.version, uptimeMs, Date.now() - start);
       }
       enableRegistry.setEnabled(enableTriggerId, enabled);
-      logger68.info(`runtime_triggers: ${action}d`, { id: enableTriggerId });
+      logger67.info(`runtime_triggers: ${action}d`, { id: enableTriggerId });
       return toSuccess({ [action + "d"]: true, id: enableTriggerId }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "test") {
@@ -39790,7 +39681,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = toErrorMessage(err);
-    logger68.error("runtime_triggers failed", { error: message });
+    logger67.error("runtime_triggers failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeTriggers");
@@ -39798,7 +39689,7 @@ var handleRuntimeTriggers = /* @__PURE__ */ __name(async (args, ctx) => {
 // src/plugins/mcp/handlers/agents.ts
 init_logger();
 init_utils();
-var logger69 = createLogger("tool-handlers:agents");
+var logger68 = createLogger("tool-handlers:agents");
 var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
   const uptimeMs = ctx.getUptime();
@@ -39905,7 +39796,7 @@ var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
       };
       const agentId = spawnCoordinator.spawn(options);
       const agent = spawnCoordinator.getAgent(agentId);
-      logger69.info("runtime_agents: spawned", { agentId, type: options.type });
+      logger68.info("runtime_agents: spawned", { agentId, type: options.type });
       return toSuccess({ agent_id: agentId, agent: agent ?? null }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "cancel") {
@@ -39955,7 +39846,7 @@ var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = toErrorMessage(err);
-    logger69.error("runtime_agents failed", { error: message });
+    logger68.error("runtime_agents failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeAgents");
@@ -39963,7 +39854,7 @@ var handleRuntimeAgents = /* @__PURE__ */ __name(async (args, ctx) => {
 // src/plugins/mcp/handlers/state.ts
 init_logger();
 init_utils();
-var logger70 = createLogger("tool-handlers:state");
+var logger69 = createLogger("tool-handlers:state");
 var handleRuntimeState = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
   const uptimeMs = ctx.getUptime();
@@ -40086,7 +39977,7 @@ var handleRuntimeState = /* @__PURE__ */ __name(async (args, ctx) => {
     );
   } catch (err) {
     const message = toErrorMessage(err);
-    logger70.error("runtime_state failed", { error: message });
+    logger69.error("runtime_state failed", { error: message });
     return toError(message, ctx.version, ctx.getUptime(), Date.now() - start);
   }
 }, "handleRuntimeState");
@@ -40094,7 +39985,7 @@ var handleRuntimeState = /* @__PURE__ */ __name(async (args, ctx) => {
 // src/plugins/mcp/handlers/daemon-handler.ts
 init_utils();
 init_logger();
-var logger71 = createLogger("daemon-handler");
+var logger70 = createLogger("daemon-handler");
 async function handleDaemon(args, ctx) {
   const startTime = Date.now();
   const version2 = ctx.version;
@@ -40114,7 +40005,7 @@ async function handleDaemon(args, ctx) {
   switch (action) {
     case "start": {
       try {
-        logger71.info("Starting daemon");
+        logger70.info("Starting daemon");
         await lifecycle.start();
         const status = await lifecycle.getStatus();
         return toSuccess(
@@ -40134,7 +40025,7 @@ async function handleDaemon(args, ctx) {
     }
     case "stop": {
       try {
-        logger71.info("Stopping daemon");
+        logger70.info("Stopping daemon");
         await lifecycle.stop();
         return toSuccess(
           { message: "Daemon stopped" },
@@ -40153,7 +40044,7 @@ async function handleDaemon(args, ctx) {
     }
     case "restart": {
       try {
-        logger71.info("Restarting daemon");
+        logger70.info("Restarting daemon");
         await lifecycle.stop();
         await new Promise((r) => setTimeout(r, 500));
         await lifecycle.start();
@@ -40262,7 +40153,7 @@ function resolveInterval(presetOrMs) {
 __name(resolveInterval, "resolveInterval");
 
 // src/plugins/mcp/handlers/schedule.ts
-var logger72 = createLogger("tool-handlers:schedule");
+var logger71 = createLogger("tool-handlers:schedule");
 var VALID_ACTIONS = ["list", "create", "cancel", "get", "pause", "resume", "heartbeat"];
 var handleRuntimeSchedule = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
@@ -40396,7 +40287,7 @@ var handleRuntimeSchedule = /* @__PURE__ */ __name(async (args, ctx) => {
             ttl,
             payload: payloadRaw
           });
-          logger72.info("runtime_schedule: created via transport", { id: scheduleId, type: scheduleType });
+          logger71.info("runtime_schedule: created via transport", { id: scheduleId, type: scheduleType });
           return toSuccess({ created }, version2, uptime, Date.now() - start);
         }
         let item;
@@ -40459,7 +40350,7 @@ var handleRuntimeSchedule = /* @__PURE__ */ __name(async (args, ctx) => {
             ...payloadRaw !== void 0 && { payload: payloadRaw }
           });
         }
-        logger72.info("runtime_schedule: created", { id: scheduleId, type: scheduleType });
+        logger71.info("runtime_schedule: created", { id: scheduleId, type: scheduleType });
         return toSuccess({ created: item }, version2, uptime, Date.now() - start);
       }
       case "cancel": {
@@ -40577,7 +40468,7 @@ var handleRuntimeSchedule = /* @__PURE__ */ __name(async (args, ctx) => {
           } else {
             heartbeat.setInterval(intervalMs);
           }
-          logger72.info("runtime_schedule: heartbeat interval updated", { interval_ms: intervalMs });
+          logger71.info("runtime_schedule: heartbeat interval updated", { interval_ms: intervalMs });
           return toSuccess(
             { action: "heartbeat", sub_action: "set_interval", interval_ms: intervalMs },
             version2,
@@ -40605,7 +40496,7 @@ var handleRuntimeSchedule = /* @__PURE__ */ __name(async (args, ctx) => {
     }
   } catch (err) {
     const message = toErrorMessage(err);
-    logger72.error("runtime_schedule failed", { action, error: message });
+    logger71.error("runtime_schedule failed", { action, error: message });
     return toError(message, version2, uptime, Date.now() - start);
   }
 }, "handleRuntimeSchedule");
@@ -40613,7 +40504,7 @@ var handleRuntimeSchedule = /* @__PURE__ */ __name(async (args, ctx) => {
 // src/plugins/mcp/handlers/external.ts
 init_logger();
 init_utils();
-var logger73 = createLogger("tool-handlers:external");
+var logger72 = createLogger("tool-handlers:external");
 var VALID_ACTIONS2 = ["status", "normalizers", "test_normalize", "stats", "queue"];
 var handleRuntimeExternal = /* @__PURE__ */ __name(async (args, ctx) => {
   const start = Date.now();
@@ -40775,7 +40666,7 @@ var handleRuntimeExternal = /* @__PURE__ */ __name(async (args, ctx) => {
     }
   } catch (err) {
     const message = toErrorMessage(err);
-    logger73.error("runtime_external failed", { action, error: message });
+    logger72.error("runtime_external failed", { action, error: message });
     return toError(message, version2, uptime, Date.now() - start);
   }
 }, "handleRuntimeExternal");
@@ -41200,7 +41091,7 @@ __name(listHandlers, "listHandlers");
 
 // src/plugins/mcp/mcp-server.ts
 var SERVER_NAME = "goodvibes-runtime-engine";
-var logger74 = createLogger("mcp-server");
+var logger73 = createLogger("mcp-server");
 var RuntimeEngineServer = class {
   static {
     __name(this, "RuntimeEngineServer");
@@ -41222,12 +41113,12 @@ var RuntimeEngineServer = class {
    */
   setupHandlers() {
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
-      logger74.debug("ListTools request");
+      logger73.debug("ListTools request");
       return { tools: allSchemas };
     });
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
-      logger74.debug("CallTool request", { name });
+      logger73.debug("CallTool request", { name });
       const handler = getHandler(name);
       if (!handler) {
         throw new McpError(
@@ -41244,7 +41135,7 @@ var RuntimeEngineServer = class {
           if (this.processManager) {
             this.processManager.updateConfig(config2);
           } else {
-            logger74.warn(
+            logger73.warn(
               "updateConfig called but no local RuntimeEngine (daemon/hybrid mode) \u2014 config change will not take effect until restart",
               { transportMode: this.runtimeTransport?.mode ?? "unknown" }
             );
@@ -41275,7 +41166,7 @@ var RuntimeEngineServer = class {
         if (error2 instanceof McpError)
           throw error2;
         const message = toErrorMessage(error2);
-        logger74.error(`Tool ${name} failed`, { error: message });
+        logger73.error(`Tool ${name} failed`, { error: message });
         throw new McpError(
           ErrorCode.InternalError,
           `Tool ${name} failed: ${message}`
@@ -41287,7 +41178,7 @@ var RuntimeEngineServer = class {
    * Attach the MCP server error handler and register OS signal handlers.
    */
   setupErrorHandling() {
-    this.server.onerror = (error2) => logger74.error("MCP Server error", { error: String(error2) });
+    this.server.onerror = (error2) => logger73.error("MCP Server error", { error: String(error2) });
   }
   // ─── Lifecycle ──────────────────────────────────────────────────────────────
   /**
@@ -41301,13 +41192,13 @@ var RuntimeEngineServer = class {
    */
   async start() {
     const projectRoot = process.env.CLAUDE_PROJECT_DIR || process.cwd();
-    logger74.info("Starting runtime engine server", {
+    logger73.info("Starting runtime engine server", {
       projectRoot,
       source: process.env.CLAUDE_PROJECT_DIR ? "CLAUDE_PROJECT_DIR" : "cwd"
     });
     ensureRuntimeSections(projectRoot);
     const config2 = loadConfig(projectRoot);
-    logger74.info("Config loaded", {
+    logger73.info("Config loaded", {
       mode: config2.executor.mode,
       http_listener_enabled: config2.external?.http_listener?.enabled ?? false,
       http_listener_port: config2.external?.http_listener?.port
@@ -41348,7 +41239,7 @@ var RuntimeEngineServer = class {
           projectRoot: this.processManager.getProjectRoot()
         });
       } catch (err) {
-        logger74.warn("Transport creation failed, falling back to local transport", {
+        logger73.warn("Transport creation failed, falling back to local transport", {
           mode: config2.executor.mode,
           err: toErrorMessage(err)
         });
@@ -41363,7 +41254,7 @@ var RuntimeEngineServer = class {
     });
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    logger74.info(`${SERVER_NAME} v${ENGINE_VERSION} ready`, {
+    logger73.info(`${SERVER_NAME} v${ENGINE_VERSION} ready`, {
       tools: listHandlers(),
       pid: process.pid,
       transportMode: this.runtimeTransport?.mode ?? "unknown"
@@ -41389,7 +41280,7 @@ var RuntimeEngineServer = class {
    * server has been closed.
    */
   async stop() {
-    logger74.info("Stopping runtime engine");
+    logger73.info("Stopping runtime engine");
     if (this.runtimeTransport) {
       try {
         await this.runtimeTransport.disconnect();
@@ -41401,7 +41292,7 @@ var RuntimeEngineServer = class {
       try {
         await this.processManager.shutdown();
       } catch (err) {
-        logger74.warn("RuntimeEngine shutdown error", {
+        logger73.warn("RuntimeEngine shutdown error", {
           err: toErrorMessage(err)
         });
       }
@@ -41409,11 +41300,11 @@ var RuntimeEngineServer = class {
     try {
       await this.server.close();
     } catch (err) {
-      logger74.warn("MCP server close error", {
+      logger73.warn("MCP server close error", {
         err: toErrorMessage(err)
       });
     }
-    logger74.info("Runtime engine stopped");
+    logger73.info("Runtime engine stopped");
   }
 };
 

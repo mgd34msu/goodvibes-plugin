@@ -1416,13 +1416,6 @@ async function handleBashTool(input) {
     respond(allowTool("PreToolUse"));
     return;
   }
-  const singleQuoteCount = (command.match(/'/g) || []).length;
-  if (singleQuoteCount > 0) {
-    const modifiedInput = { ...input.tool_input };
-    modifiedInput.command = `echo "${singleQuoteCount} single quotes detected"`;
-    respond(allowTool("PreToolUse", void 0, modifiedInput));
-    return;
-  }
   const pathResult = rewritePlatformPaths(command);
   if (pathResult.rewritten) {
     command = pathResult.command;

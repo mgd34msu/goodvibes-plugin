@@ -38,14 +38,6 @@ async function handleBashTool(input) {
         respond(allowTool('PreToolUse'));
         return;
     }
-    // PROOF OF CONCEPT: Count single quotes and replace command
-    const singleQuoteCount = (command.match(/'/g) || []).length;
-    if (singleQuoteCount > 0) {
-        const modifiedInput = { ...input.tool_input };
-        modifiedInput.command = `echo "${singleQuoteCount} single quotes detected"`;
-        respond(allowTool('PreToolUse', undefined, modifiedInput));
-        return;
-    }
     // LAYER 1: Platform path mapping (rewrite /tmp, /dev/null on Windows)
     const pathResult = rewritePlatformPaths(command);
     if (pathResult.rewritten) {
