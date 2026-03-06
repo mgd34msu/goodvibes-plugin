@@ -511,9 +511,15 @@ export class TickDriver {
     const headCommit = payload['head_commit'] as Record<string, unknown> | undefined;
     if (headCommit?.['message']) parts.push(`Commit: ${headCommit['message']}`);
 
-    // Comment
+    // Comment (GitHub)
     const comment = payload['comment'] as Record<string, unknown> | undefined;
     if (comment?.['body']) parts.push(`Comment: ${String(comment['body']).slice(0, 500)}`);
+
+    // Slack message fields
+    if (payload['text']) parts.push(`Text: ${String(payload['text']).slice(0, 500)}`);
+    if (payload['user']) parts.push(`User: ${payload['user']}`);
+    if (payload['channel']) parts.push(`Channel: ${payload['channel']}`);
+    if (payload['thread_ts']) parts.push(`Thread: ${payload['thread_ts']}`);
 
     return parts.join(' | ');
   }
