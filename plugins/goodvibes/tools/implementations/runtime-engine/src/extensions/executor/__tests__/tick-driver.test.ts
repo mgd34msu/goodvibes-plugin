@@ -356,28 +356,28 @@ describe('TickDriver', () => {
       expect(driver.getEvalFailureCount()).toBe(1);
     });
 
-    it('sends tmux tick when scheduled_emitted > 0 in daemon mode', () => {
+    it('sends tmux tick when scheduled_emitted > 0 in daemon mode with pending directives', () => {
       const timePlugin = makeTimePlugin();
       vi.mocked(timePlugin.onTick).mockReturnValueOnce({
         heartbeat_emitted: false,
         scheduled_emitted: 2,
       });
       const executorMode = makeExecutorMode('daemon');
-      const deps = makeDeps({ mode: 'daemon', timePlugin, executorMode });
+      const deps = makeDeps({ mode: 'daemon', timePlugin, executorMode, hasPendingDirectives: () => true });
       const driver = new TickDriver(deps);
       // Manually trigger evaluate without starting the timer (avoids tmux guard)
       (driver as any).evaluate();
       expect(mockExecFile).toHaveBeenCalled();
     });
 
-    it('sends tmux tick when heartbeat_emitted is true in daemon mode', () => {
+    it('sends tmux tick when heartbeat_emitted is true in daemon mode with pending directives', () => {
       const timePlugin = makeTimePlugin();
       vi.mocked(timePlugin.onTick).mockReturnValueOnce({
         heartbeat_emitted: true,
         scheduled_emitted: 0,
       });
       const executorMode = makeExecutorMode('daemon');
-      const deps = makeDeps({ mode: 'daemon', timePlugin, executorMode });
+      const deps = makeDeps({ mode: 'daemon', timePlugin, executorMode, hasPendingDirectives: () => true });
       const driver = new TickDriver(deps);
       (driver as any).evaluate();
       expect(mockExecFile).toHaveBeenCalled();

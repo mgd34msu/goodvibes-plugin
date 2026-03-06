@@ -43,6 +43,11 @@ export interface TickDriverDeps {
   eventProcessor?: EventProcessor;
   staleWorkflowChecker?: () => void;
   /**
+   * Returns true when there are pending directives that need a UPS tick to deliver.
+   * When absent or returns false, sendTick() is suppressed to avoid flooding the tmux session.
+   */
+  hasPendingDirectives?: () => boolean;
+  /**
    * Event log for querying webhook events to deliver to the tmux session.
    * Uses a minimal interface to avoid coupling to the full EventLog class.
    */
@@ -66,6 +71,7 @@ export class TickDriver {
   private readonly externalPlugin?: ExternalSourceAdapter;
   private readonly eventProcessor?: EventProcessor;
   private readonly staleWorkflowChecker?: () => void;
+  private readonly hasPendingDirectives?: () => boolean;
   private readonly eventLog?: TickDriverDeps['eventLog'];
   private evalFailureCount = 0;
   /** Epoch ms timestamp of the last webhook event delivered to tmux. */
@@ -78,6 +84,7 @@ export class TickDriver {
     this.externalPlugin = deps.externalPlugin;
     this.eventProcessor = deps.eventProcessor;
     this.staleWorkflowChecker = deps.staleWorkflowChecker;
+    this.hasPendingDirectives = deps.hasPendingDirectives;
     this.eventLog = deps.eventLog;
 
     this.timer = new Timer({
@@ -326,13 +333,16 @@ export class TickDriver {
       }
     }
 
-    // Step 5: In daemon mode, send tmux tick when heartbeat or scheduled events fire
+    // Step 5: In daemon mode, send tmux tick ONLY when there are pending directives
     if ((timeResult.heartbeat_emitted || timeResult.scheduled_emitted > 0) && this.executorMode.getMode() === 'daemon') {
-      logger.debug('heartbeat or scheduled events fired — sending tmux tick', {
-        heartbeat_emitted: timeResult.heartbeat_emitted,
-        scheduled_emitted: timeResult.scheduled_emitted,
-      });
-      this.sendTick();
+      const hasPending = this.hasPendingDirectives?.() ?? false;
+      if (hasPending) {
+        logger.debug('pending directives found — sending tmux tick', {
+          heartbeat_emitted: timeResult.heartbeat_emitted,
+          scheduled_emitted: timeResult.scheduled_emitted,
+        });
+        this.sendTick();
+      }
     }
 
     // Step 6: In daemon mode, deliver undelivered webhook events to tmux session

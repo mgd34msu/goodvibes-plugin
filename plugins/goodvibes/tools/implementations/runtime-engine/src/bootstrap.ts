@@ -571,6 +571,7 @@ export class RuntimeEngine {
         externalPlugin: createExternalAdapter(this.externalPlugin),
         eventProcessor: this.coreRuntime.eventProcessor,
         staleWorkflowChecker: () => this.watchdog?.checkStaleWorkflows(),
+        hasPendingDirectives: () => (this.directives?.directiveQueue?.peek('subagent_stop')?.length ?? 0) > 0,
         eventLog: this.events?.eventLog ?? undefined,
       });
     }
