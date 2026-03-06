@@ -565,6 +565,7 @@ export class RuntimeEngine {
         externalPlugin: createExternalAdapter(this.externalPlugin),
         eventProcessor: this.coreRuntime.eventProcessor,
         staleWorkflowChecker: () => this.watchdog?.checkStaleWorkflows(),
+        eventLog: this.events?.eventLog ?? undefined,
       });
     }
 

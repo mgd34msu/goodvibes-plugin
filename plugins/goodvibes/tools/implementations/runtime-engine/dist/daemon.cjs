@@ -12592,7 +12592,10 @@ var TickDriver = class _TickDriver {
   externalPlugin;
   eventProcessor;
   staleWorkflowChecker;
+  eventLog;
   evalFailureCount = 0;
+  /** Epoch ms timestamp of the last webhook event delivered to tmux. */
+  lastWebhookDeliveredAt = 0;
   constructor(deps) {
     this.config = deps.config;
     this.executorMode = deps.executorMode;
@@ -12600,6 +12603,7 @@ var TickDriver = class _TickDriver {
     this.externalPlugin = deps.externalPlugin;
     this.eventProcessor = deps.eventProcessor;
     this.staleWorkflowChecker = deps.staleWorkflowChecker;
+    this.eventLog = deps.eventLog;
     this.timer = new Timer({
       callback: () => this.evaluate(),
       intervalMs: deps.config.daemon.eval_interval_ms,
@@ -12814,6 +12818,12 @@ var TickDriver = class _TickDriver {
       });
       this.sendTick();
     }
+    if (this.executorMode.getMode() === "daemon" && this.eventLog) {
+      this.deliverWebhookEvents().catch((err) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        logger44.warn("deliverWebhookEvents() error", { error: msg });
+      });
+    }
   }
   /**
    * Send the tick command to the tmux session asynchronously.
@@ -12834,6 +12844,110 @@ var TickDriver = class _TickDriver {
         }
       }
     );
+  }
+  /**
+   * Query the event log for undelivered webhook events and send each to the
+   * tmux session as user input. Fire-and-forget from evaluate().
+   */
+  async deliverWebhookEvents() {
+    if (!this.eventLog)
+      return;
+    const allEvents = await this.eventLog.query({
+      since: this.lastWebhookDeliveredAt > 0 ? this.lastWebhookDeliveredAt : void 0,
+      limit: 50
+    });
+    const events = allEvents.filter((e) => e.type.startsWith("webhook:"));
+    if (events.length === 0)
+      return;
+    const sessionName = this.config.daemon.tmux_session_name;
+    let deliveredCount = 0;
+    for (const event of events) {
+      if (event.timestamp <= this.lastWebhookDeliveredAt)
+        continue;
+      const content = this.formatWebhookEvent(event);
+      this.sendToTmux(sessionName, content);
+      deliveredCount++;
+      if (event.timestamp > this.lastWebhookDeliveredAt) {
+        this.lastWebhookDeliveredAt = event.timestamp;
+      }
+    }
+    logger44.info("webhook events delivered to tmux", {
+      count: deliveredCount,
+      session: sessionName
+    });
+  }
+  /**
+   * Send content to the tmux session using three separate execFile calls:
+   * 1. The message text (no Enter)
+   * 2. Enter (first press)
+   * 3. Enter (second press — required for Claude Code to submit)
+   */
+  sendToTmux(sessionName, content) {
+    (0, import_node_child_process.execFile)(
+      "tmux",
+      ["send-keys", "-l", "-t", sessionName, content],
+      { timeout: TMUX_TIMEOUT_MS },
+      (err) => {
+        if (err) {
+          logger44.warn("failed to send webhook content via tmux", { error: err.message });
+          return;
+        }
+        (0, import_node_child_process.execFile)(
+          "tmux",
+          ["send-keys", "-t", sessionName, "Enter"],
+          { timeout: TMUX_TIMEOUT_MS },
+          (err2) => {
+            if (err2) {
+              logger44.warn("failed to send first Enter via tmux", { error: err2.message });
+              return;
+            }
+            (0, import_node_child_process.execFile)(
+              "tmux",
+              ["send-keys", "-t", sessionName, "Enter"],
+              { timeout: TMUX_TIMEOUT_MS },
+              (err3) => {
+                if (err3) {
+                  logger44.warn("failed to send second Enter via tmux", { error: err3.message });
+                }
+              }
+            );
+          }
+        );
+      }
+    );
+  }
+  /**
+   * Format a webhook event payload into a concise human-readable message
+   * suitable for delivery to the Claude Code tmux session.
+   */
+  formatWebhookEvent(event) {
+    const payload = event.payload;
+    const action = payload["action"];
+    const parts = [`[Webhook: ${event.type}]`];
+    if (action)
+      parts.push(`Action: ${action}`);
+    const repo = payload["repository"];
+    if (repo?.["full_name"])
+      parts.push(`Repo: ${repo["full_name"]}`);
+    const issue = payload["issue"];
+    if (issue) {
+      parts.push(`Issue #${issue["number"]}: ${issue["title"]}`);
+      if (issue["body"])
+        parts.push(`Body: ${String(issue["body"]).slice(0, 500)}`);
+    }
+    const pr = payload["pull_request"];
+    if (pr) {
+      parts.push(`PR #${pr["number"]}: ${pr["title"]}`);
+    }
+    if (payload["ref"])
+      parts.push(`Ref: ${payload["ref"]}`);
+    const headCommit = payload["head_commit"];
+    if (headCommit?.["message"])
+      parts.push(`Commit: ${headCommit["message"]}`);
+    const comment = payload["comment"];
+    if (comment?.["body"])
+      parts.push(`Comment: ${String(comment["body"]).slice(0, 500)}`);
+    return parts.join(" | ");
   }
   /**
    * Check whether tmux is available and has at least one active session.
@@ -15475,7 +15589,8 @@ var RuntimeEngine = class {
         timePlugin: createTimeAdapter(timePlugin),
         externalPlugin: createExternalAdapter(this.externalPlugin),
         eventProcessor: this.coreRuntime.eventProcessor,
-        staleWorkflowChecker: () => this.watchdog?.checkStaleWorkflows()
+        staleWorkflowChecker: () => this.watchdog?.checkStaleWorkflows(),
+        eventLog: this.events?.eventLog ?? void 0
       });
     }
     if (this.executorSubsystem?.executorBudget && this.coreRuntime.stateStore) {
