@@ -15,7 +15,7 @@ import * as path from 'path';
 import * as ts from 'typescript';
 import { startTimer } from '../logging.js';
 import type { OutputMode } from '../types.js';
-import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler, parseJsonField } from '../utils/index.js';
+import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler, parseJsonField, ensureArray } from '../utils/index.js';
 import { formatMissingParamError, formatInvalidValueError, createErrorResult } from '../utils/errors.js';
 import { DEFAULT_EXCLUDES } from '../config.js';
 import { TreeSitterCore, SymbolInfo as TSSymbolInfo } from '../core/tree-sitter.js';
@@ -724,7 +724,7 @@ async function processFile(
 export const handlePrecisionSymbols: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
   const rawInput = args as PrecisionSymbolsInput;
-  const input = { ...rawInput, files: parseJsonField(rawInput.files), kinds: parseJsonField(rawInput.kinds) } as PrecisionSymbolsInput;
+  const input = { ...rawInput, files: ensureArray(rawInput.files) ?? parseJsonField(rawInput.files), kinds: ensureArray(rawInput.kinds) ?? parseJsonField(rawInput.kinds) } as PrecisionSymbolsInput;
   const outputMode = parseOutputMode(args, "precision_symbols");
   const workDir = process.cwd();
 
@@ -735,7 +735,7 @@ export const handlePrecisionSymbols: ToolHandler = async (args: unknown) => {
     }
 
     // Apply defaults for optional output parameter
-    const output = input.output ?? {};
+    const output = parseJsonField(input.output) ?? {};
 
     if (input.mode === 'document' && (!input.files || input.files.length === 0)) {
       return toCallToolResult(createErrorResult(formatMissingParamError('precision_symbols', 'files', 'array of file paths (required for document mode)'), { output_mode: outputMode, execution_ms: getElapsed() }));

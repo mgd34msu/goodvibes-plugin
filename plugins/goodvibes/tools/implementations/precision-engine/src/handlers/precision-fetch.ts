@@ -13,7 +13,7 @@
 
 import { startTimer, estimateTokens } from '../logging.js';
 import type { OutputMode } from '../types.js';
-import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode, parseJsonField } from '../utils/index.js';
+import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode, parseJsonField, ensureArray } from '../utils/index.js';
 import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
 import {
   htmlToMarkdown,
@@ -551,7 +551,7 @@ function normalizeUrlRequest(input: string | FetchSpec): FetchSpec {
 export const handlePrecisionFetch: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
   const rawInput = args as PrecisionFetchInput;
-  const input = { ...rawInput, urls: parseJsonField(rawInput.urls) } as PrecisionFetchInput;
+  const input = { ...rawInput, urls: ensureArray(rawInput.urls) ?? parseJsonField(rawInput.urls) } as PrecisionFetchInput;
   const outputMode = parseOutputMode(args, "precision_fetch");
 
   // Parse options with defaults
@@ -560,7 +560,8 @@ export const handlePrecisionFetch: ToolHandler = async (args: unknown) => {
   const globalExtract = input.extract ?? 'text';
   const globalSelectors = input.selectors;
   const summaryPrompt = input.summary_prompt;
-  const maxContentLength = input.output?.max_content_length;
+  const parsedFetchOutput = parseJsonField(input.output);
+  const maxContentLength = parsedFetchOutput?.max_content_length;
 
   try {
     if (!input.urls || !Array.isArray(input.urls) || input.urls.length === 0) {

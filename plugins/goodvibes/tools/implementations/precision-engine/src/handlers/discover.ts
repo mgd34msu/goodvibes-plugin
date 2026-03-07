@@ -4,7 +4,7 @@
 
 import { startTimer } from '../logging.js';
 import type { OutputMode, PrecisionResult } from '../types.js';
-import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode, resolveStringField, parseJsonField } from '../utils/index.js';
+import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode, resolveStringField, parseJsonField, ensureArray } from '../utils/index.js';
 import { TOOL_SPECIFIC_DEFAULTS } from '../utils/index.js';
 import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
 import { handlePrecisionGrep } from './precision-grep.js';
@@ -530,7 +530,7 @@ async function executeQuery(
 export const handleDiscover: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
   const rawInput = args as DiscoverInput;
-  const input = { ...rawInput, queries: parseJsonField(rawInput.queries) } as DiscoverInput;
+  const input = { ...rawInput, queries: ensureArray(rawInput.queries) ?? parseJsonField(rawInput.queries) } as DiscoverInput;
   const outputMode: DiscoverOutputMode = (input.output_mode as DiscoverOutputMode) || (TOOL_SPECIFIC_DEFAULTS.discover?.output_mode as DiscoverOutputMode) || 'files_only';
   const projectRoot = process.cwd();
 

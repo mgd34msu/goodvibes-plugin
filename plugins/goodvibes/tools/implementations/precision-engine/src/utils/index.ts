@@ -432,6 +432,36 @@ export function parseJsonField<T>(value: T | string): T {
   return value;
 }
 
+/**
+ * Ensure a value is an array. Handles MCP serialization edge cases:
+ * - If string, JSON.parse it
+ * - If object with numeric keys (MCP array-as-object), convert to array
+ * - If already an array, return as-is
+ * - Otherwise return null
+ * @template T - The expected element type
+ * @param value - The value to normalize to an array
+ * @returns The value as an array, or null if it cannot be converted
+ */
+export function ensureArray<T>(value: unknown): T[] | null {
+  if (value === undefined || value === null) return null;
+  if (Array.isArray(value)) return value as T[];
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed as T[];
+      // Parsed but not array — fall through to object check
+      value = parsed;
+    } catch { return null; }
+  }
+  if (typeof value === 'object') {
+    const keys = Object.keys(value as Record<string, unknown>);
+    if (keys.length > 0 && keys.every(k => /^\d+$/.test(k))) {
+      return keys.sort((a, b) => Number(a) - Number(b)).map(k => (value as Record<string, unknown>)[k]) as T[];
+    }
+  }
+  return null;
+}
+
 // Export fuzzy matching utilities
 export { levenshteinDistance, calculateSimilarity, rankBySimilarity } from './fuzzy.js';
 

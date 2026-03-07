@@ -39,7 +39,7 @@ import { parse, Lang } from '@ast-grep/napi';
 import { detectLanguage } from '../core/languages.js';
 import { toLangEnum } from '../core/ast-grep.js';
 import type { OutputMode } from '../types.js';
-import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler, resolveStringField } from '../utils/index.js';
+import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler, resolveStringField, parseJsonField, ensureArray } from '../utils/index.js';
 import { formatMissingParamError, formatInvalidValueError, createErrorResult } from '../utils/errors.js';
 import { validateFilePath } from '../utils/path-validation.js';
 import { levenshteinDistance, calculateSimilarity } from '../utils/fuzzy.js';
@@ -1017,25 +1017,7 @@ export const handlePrecisionEdit: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
   const rawInput = args as PrecisionEditInput;
 
-  // Handle case where edits might come as string from Claude Code
-
-  let edits = rawInput.edits;
-
-  if (typeof edits === "string") {
-
-    try {
-
-      edits = JSON.parse(edits);
-
-    } catch (e) {
-
-      // Leave as-is if parse fails
-
-    }
-
-  }
-
-  const input = { ...rawInput, edits } as PrecisionEditInput;
+  const input = { ...rawInput, edits: ensureArray(rawInput.edits) ?? parseJsonField(rawInput.edits) } as PrecisionEditInput;
 
   const outputMode = parseOutputMode(args, "precision_edit");
 
@@ -1098,10 +1080,11 @@ export const handlePrecisionEdit: ToolHandler = async (args: unknown) => {
     };
 
     // Apply output defaults
+    const parsedOutput = parseJsonField(input.output);
     const output: EditOutput = {
-      mode: input.output?.mode ?? 'with_diff',
-      diff_context: input.output?.diff_context ?? 3,
-      max_tokens: input.output?.max_tokens,
+      mode: parsedOutput?.mode ?? 'with_diff',
+      diff_context: parsedOutput?.diff_context ?? 3,
+      max_tokens: parsedOutput?.max_tokens,
     };
 
     const dryRun = input.dry_run ?? false;

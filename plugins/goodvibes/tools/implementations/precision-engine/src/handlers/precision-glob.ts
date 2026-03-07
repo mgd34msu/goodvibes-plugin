@@ -16,7 +16,7 @@ import { Stats } from 'fs';
 import * as path from 'path';
 import { startTimer } from '../logging.js';
 import type { OutputMode } from '../types.js';
-import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler, parseJsonField } from '../utils/index.js';
+import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler, parseJsonField, ensureArray } from '../utils/index.js';
 import { formatMissingParamError, formatInvalidValueError, createErrorResult } from '../utils/errors.js';
 import { DEFAULT_EXCLUDES } from '../config.js';
 import { warnDeprecatedParam } from '../utils/deprecation.js';
@@ -141,7 +141,7 @@ const GLOB_PRESETS: Record<GlobPreset, string[]> = {
 export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
   const rawInput = args as PrecisionGlobInput;
-  const input = { ...rawInput, patterns: parseJsonField(rawInput.patterns) } as PrecisionGlobInput;
+  const input = { ...rawInput, patterns: ensureArray(rawInput.patterns) ?? parseJsonField(rawInput.patterns) } as PrecisionGlobInput;
   const outputMode = parseOutputMode(args, "precision_glob");
 
   // Use base_path if provided, fall back to cwd (deprecated), or default to process.cwd()
@@ -186,19 +186,20 @@ export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
     }
 
     // Apply defaults per schema (handlers must apply defaults, not just define them in schema)
+    const parsedGlobOutput = parseJsonField(input.output);
     const output: GlobOutput = {
-      ...input.output,  // spread FIRST so computed defaults always win
-      mode: (input.output?.mode ?? (input.output as any)?.format ?? 'paths_only') as GlobOutputMode,
+      ...parsedGlobOutput,  // spread FIRST so computed defaults always win
+      mode: (parsedGlobOutput?.mode ?? (parsedGlobOutput as any)?.format ?? 'paths_only') as GlobOutputMode,
       // Support both new and old parameter names
-      max_results: input.output?.max_results ?? input.output?.max_files ?? 100,
-      max_files: input.output?.max_files ?? 100,
-      sort_by: input.output?.sort_by,
-      sort_order: input.output?.sort_order ?? 'asc',
-      preview_lines: input.output?.preview_lines ?? 3,
-      max_tokens: input.output?.max_tokens
+      max_results: parsedGlobOutput?.max_results ?? parsedGlobOutput?.max_files ?? 100,
+      max_files: parsedGlobOutput?.max_files ?? 100,
+      sort_by: parsedGlobOutput?.sort_by,
+      sort_order: parsedGlobOutput?.sort_order ?? 'asc',
+      preview_lines: parsedGlobOutput?.preview_lines ?? 3,
+      max_tokens: parsedGlobOutput?.max_tokens
     };
     // Warn about deprecated parameters
-    if (output.max_files !== undefined && output.max_results === undefined) {
+    if (parsedGlobOutput?.max_files !== undefined && parsedGlobOutput?.max_results === undefined) {
       warnDeprecatedParam('output.max_files', 'output.max_results', 'precision_glob');
     }
 

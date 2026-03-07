@@ -17,7 +17,7 @@ import { startTimer } from '../logging.js';
 import type { OutputMode, SymbolKind as GoodVibesSymbolKind } from '../types.js';
 import { successResult, errorResult, parseOutputMode, toCallToolResult, toMixedCallToolResult, ToolHandler } from '../utils/index.js';
 import type { ImageContent, TextContent } from '@modelcontextprotocol/sdk/types.js';
-import { parseJsonField } from '../utils/index.js';
+import { parseJsonField, ensureArray } from '../utils/index.js';
 import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
 import Parser from 'web-tree-sitter';
 import { TreeSitterCore, OutlineNode as TSOutlineNode, SymbolInfo as TSSymbolInfo } from '../core/tree-sitter.js';
@@ -1428,7 +1428,7 @@ async function readSingleFile(
 export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
   const rawInput = args as PrecisionReadInput;
-  const input = { ...rawInput, files: parseJsonField(rawInput.files) } as PrecisionReadInput;
+  const input = { ...rawInput, files: ensureArray(rawInput.files) ?? parseJsonField(rawInput.files) } as PrecisionReadInput;
   const outputMode = parseOutputMode(args, "precision_read");
   const workDir = process.cwd();
 
@@ -1440,11 +1440,12 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
 
     // Apply defaults per schema (handlers must apply defaults, not just define them in schema)
     const extract: ExtractMode = input.extract ?? 'content';
+    const parsedOutput = parseJsonField(input.output);
     const output: ReadOutput = {
-      ...input.output,
-      mode: input.output?.format ?? input.output?.mode ?? 'standard',
-      include_line_numbers: input.output?.include_line_numbers ?? true,
-      include_metadata: input.output?.include_metadata ?? false,
+      ...parsedOutput,
+      mode: parsedOutput?.format ?? parsedOutput?.mode ?? 'standard',
+      include_line_numbers: parsedOutput?.include_line_numbers ?? true,
+      include_metadata: parsedOutput?.include_metadata ?? false,
     };
 
     // Normalize file specs

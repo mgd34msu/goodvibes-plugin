@@ -21,7 +21,7 @@ import * as path from 'path';
 import fg from 'fast-glob';
 import { startTimer, estimateTokens } from '../logging.js';
 import type { OutputMode } from '../types.js';
-import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode, parseJsonField, handleOverflow, cleanupOverflowFiles, interpretExitCode, detectIssue, createProgressCollector } from '../utils/index.js';
+import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode, parseJsonField, ensureArray, handleOverflow, cleanupOverflowFiles, interpretExitCode, detectIssue, createProgressCollector } from '../utils/index.js';
 import type { OverflowResult, ExitInterpretation, DetectedIssue, ProgressMilestone } from '../utils/index.js';
 import { parseRetryConfig, shouldRetry, computeDelay } from '../utils/retry-engine.js';
 import type { RetryConfig, RetryResult } from '../utils/retry-engine.js';
@@ -1482,7 +1482,7 @@ async function handleFileOps(fileOps: FileOpSpec[]): Promise<FileOpResult[]> {
 export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
   const rawInput = args as PrecisionExecInput;
-  const input = { ...rawInput, commands: parseJsonField(rawInput.commands) } as PrecisionExecInput;
+  const input = { ...rawInput, commands: ensureArray(rawInput.commands) ?? parseJsonField(rawInput.commands) } as PrecisionExecInput;
   const outputMode = parseOutputMode(args, "precision_exec");
 
   // Initialize command history max entries from config
@@ -1623,9 +1623,10 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
   const globalTimeout = input.timeout_ms;
 
   // Output configuration
-  const captureStdout = input.output?.capture_stdout ?? true;
-  const captureStderr = input.output?.capture_stderr ?? true;
-  const maxOutputLines = input.output?.max_output_lines;
+  const parsedExecOutput = parseJsonField(input.output);
+  const captureStdout = parsedExecOutput?.capture_stdout ?? true;
+  const captureStderr = parsedExecOutput?.capture_stderr ?? true;
+  const maxOutputLines = parsedExecOutput?.max_output_lines;
 
   // Execute file_ops FIRST (before commands)
   let fileOpResults: FileOpResult[] = [];

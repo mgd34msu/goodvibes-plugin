@@ -15,7 +15,7 @@ import * as path from 'path';
 import { spawn } from 'child_process';
 import { startTimer, estimateTokens } from '../logging.js';
 import type { OutputMode, ValidationStep, ValidationResult } from '../types.js';
-import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode, parseJsonField } from '../utils/index.js';
+import { toCallToolResult, ToolHandler, successResult, errorResult, parseOutputMode, parseJsonField, ensureArray } from '../utils/index.js';
 import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
 import { randomUUID } from 'crypto';
 import { validateFilePath } from '../utils/path-validation.js';
@@ -418,7 +418,7 @@ async function performRollback(rollbackId: string): Promise<void> {
 export const handlePrecisionWrite: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
   const rawInput = args as PrecisionWriteInput;
-  const input = { ...rawInput, files: parseJsonField(rawInput.files) } as PrecisionWriteInput;
+  const input = { ...rawInput, files: ensureArray(rawInput.files) ?? parseJsonField(rawInput.files) } as PrecisionWriteInput;
   const outputMode = parseOutputMode(args, "precision_write");
   const workDir = process.cwd();
   const dryRun = input.dry_run ?? false;

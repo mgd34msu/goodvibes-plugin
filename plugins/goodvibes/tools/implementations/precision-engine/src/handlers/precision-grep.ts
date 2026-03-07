@@ -14,7 +14,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { startTimer } from '../logging.js';
 import type { OutputMode } from '../types.js';
-import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler, resolveStringField, parseJsonField } from '../utils/index.js';
+import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler, resolveStringField, parseJsonField, ensureArray } from '../utils/index.js';
 import { createErrorResult, formatMissingParamError } from '../utils/errors.js';
 import { DEFAULT_EXCLUDES } from '../config.js';
 import { RipgrepCore, RipgrepSearchResult } from '../core/ripgrep.js';
@@ -509,7 +509,7 @@ async function executeQuery(
 export const handlePrecisionGrep: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
   const rawInput = args as PrecisionGrepInput;
-  const input = { ...rawInput, queries: parseJsonField(rawInput.queries) } as PrecisionGrepInput;
+  const input = { ...rawInput, queries: ensureArray(rawInput.queries) ?? parseJsonField(rawInput.queries) } as PrecisionGrepInput;
   const outputMode = parseOutputMode(args, "precision_grep");
   const workDir = process.cwd();
 
@@ -520,7 +520,7 @@ export const handlePrecisionGrep: ToolHandler = async (args: unknown) => {
     }
 
     // Apply defaults per schema (handlers must apply defaults, not just define them in schema)
-    const rawOutput = (input.output ?? {}) as GrepOutput;
+    const rawOutput = (parseJsonField(input.output) ?? {}) as GrepOutput;
     const resolvedMode = rawOutput.format ?? rawOutput.mode ?? 'files_only';
     const output: GrepOutput = {
       ...rawOutput,
