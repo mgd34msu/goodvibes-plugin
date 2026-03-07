@@ -20,7 +20,24 @@
  * - import { $$$IMPORTS } from '$MODULE' - Matches import statements
  */
 
-import { parse, NapiConfig, Lang } from '@ast-grep/napi';
+// Lazy-loaded to avoid crashing on platforms without ast-grep native binaries (e.g. armv8l)
+import type { Lang } from '@ast-grep/napi';
+
+let _napi: typeof import('@ast-grep/napi') | null = null;
+
+export async function loadAstGrepNapi(): Promise<typeof import('@ast-grep/napi')> {
+  if (!_napi) {
+    try {
+      _napi = await import('@ast-grep/napi');
+    } catch (error) {
+      throw new Error(
+        `ast-grep native module not available on this platform (${process.arch}). ` +
+        `AST pattern matching is disabled. Error: ${(error as Error).message}`
+      );
+    }
+  }
+  return _napi;
+}
 import fg from 'fast-glob';
 import * as fs from 'fs/promises';
 import { createTwoFilesPatch } from 'diff';
@@ -148,7 +165,8 @@ function detectLanguage(filePath: string): string {
  * @param language - Language identifier string
  * @returns ast-grep Lang enum value
  */
-export function toLangEnum(language: string): Lang {
+export async function toLangEnum(language: string): Promise<Lang> {
+  const { Lang } = await loadAstGrepNapi();
   const langMap: Record<string, Lang> = {
     'javascript': Lang.JavaScript,
     'typescript': Lang.TypeScript,
@@ -215,7 +233,8 @@ export class AstGrepCore {
       try {
         const content = await fs.readFile(filePath, 'utf-8');
         const lang = language || detectLanguage(filePath);
-        const langEnum = toLangEnum(lang);
+        const langEnum = await toLangEnum(lang);
+        const { parse } = await loadAstGrepNapi();
 
         // Parse the file
         const root = parse(langEnum, content);
@@ -337,7 +356,8 @@ export class AstGrepCore {
       try {
         const originalContent = await fs.readFile(filePath, 'utf-8');
         const lang = language || detectLanguage(filePath);
-        const langEnum = toLangEnum(lang);
+        const langEnum = await toLangEnum(lang);
+        const { parse } = await loadAstGrepNapi();
 
         // Parse the file
         const root = parse(langEnum, originalContent);

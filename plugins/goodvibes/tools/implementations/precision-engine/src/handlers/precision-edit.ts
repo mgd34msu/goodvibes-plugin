@@ -35,9 +35,8 @@ import { diffLines } from 'diff';
 import * as ts from 'typescript';
 import { startTimer } from '../logging.js';
 import { getMaxDiffChars } from '../runtime-config.js';
-import { parse, Lang } from '@ast-grep/napi';
 import { detectLanguage } from '../core/languages.js';
-import { toLangEnum } from '../core/ast-grep.js';
+import { toLangEnum, loadAstGrepNapi } from '../core/ast-grep.js';
 import type { OutputMode } from '../types.js';
 import { successResult, errorResult, parseOutputMode, toCallToolResult, ToolHandler, resolveStringField, parseJsonField, ensureArray } from '../utils/index.js';
 import { formatMissingParamError, formatInvalidValueError, createErrorResult } from '../utils/errors.js';
@@ -560,16 +559,17 @@ interface MatchResult {
  * @param language - Optional language override
  * @returns Array of matches with index, length, and captures
  */
-function astGrepMatch(
+async function astGrepMatch(
   content: string,
   pattern: string,
   filePath: string,
   language?: string
-): { index: number; length: number; captures?: Record<string, string> }[] {
+): Promise<{ index: number; length: number; captures?: Record<string, string> }[]> {
   try {
     // Detect language from file path or use override
     const lang = language || detectLanguage(filePath);
-    const langEnum = toLangEnum(lang);
+    const langEnum = await toLangEnum(lang);
+    const { parse } = await loadAstGrepNapi();
 
     // Parse the content using @ast-grep/napi
     const root = parse(langEnum, content);
@@ -632,13 +632,13 @@ function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function findInContext(
+async function findInContext(
   filePath: string,
   content: string,
   find: string,
   hints: EditHints,
   matchConfig: MatchConfig
-): MatchResult[] {
+): Promise<MatchResult[]> {
   // Normalize line endings for consistent matching
   const normalizedContent = normalizeLineEndings(content);
   const normalizedFind = normalizeLineEndings(find);
@@ -692,7 +692,7 @@ function findInContext(
   } else if (matchConfig.mode === 'ast_pattern') {
     // Use ast-grep pattern matching
     const language = matchConfig.ast_pattern?.language;
-    allMatches = astGrepMatch(normalizedContent, normalizedFind, filePath, language);
+    allMatches = await astGrepMatch(normalizedContent, normalizedFind, filePath, language);
     
     if (allMatches.length === 0) {
       console.warn(`ast-grep pattern matching found no matches for "${find}" in ${filePath}`);
@@ -926,7 +926,7 @@ async function applyEdit(
   });
 
   // Find matches using hints and match mode
-  const matches = findInContext(filePath, content, findValue, edit.hints ?? {}, matchConfig);
+  const matches = await findInContext(filePath, content, findValue, edit.hints ?? {}, matchConfig);
 
   // U2: When near_line is the only hint and occurrence is not "all", disambiguate
   const occurrence = edit.occurrence ?? 'first';
