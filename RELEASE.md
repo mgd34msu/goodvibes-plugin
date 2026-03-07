@@ -1,268 +1,248 @@
-# Release Notes: v1.3.0
+# Release Notes: v1.9.0
 
-**Release Date:** 2026-02-21
+**Release Date:** 2026-03-06
 
-This is a major release featuring an entirely new Analytics Engine (7 MCP tools, SQLite global DB, full TUI), Project Engine v2 consolidating 26 tools under the project_* convention (replacing analysis-engine), Precision Engine v2 with new subsystems (file_ops, PrecisionRuntime, hooks, telemetry, precision_agent), Frontend Engine v2 with 3 new tools and consistent frontend_* naming, a complete Skills Architecture overhaul (25 skills at 10/10), and deep infrastructure improvements (GPA Loop, subagent protocol, native tool blocking, sandbox protection). 283 commits, 1,448 files changed, 326,620 insertions, 652,731 deletions.
+This release introduces the Runtime Engine — a complete background orchestration system built from scratch (280 source files, 133K lines) — along with Slack integration, a directive-driven WRFC pipeline, daemon mode with webhook delivery, and significant improvements to the project engine, frontend engine, registry engine, and skills system. 361 commits, 930 files changed, 226K insertions, 58K deletions.
 
 ---
 
 ## Highlights
 
-### 1. Analytics Engine (Entirely New)
+### 1. Runtime Engine (Entirely New)
 
-Built from scratch with 7 MCP tools: analytics_dashboard, analytics_query, analytics_budget, analytics_tag, analytics_export, analytics_config, analytics_sync. Features a global SQLite database (sql.js replacing better-sqlite3 for portability), JSONL session parser, daemon system (watcher + aggregator + archiver), mini dashboard (tmux-based with progress bars and configurable width), full TUI (Ink/React with 4 pages: overview, sessions, trends, config), sync engine for JSONL history backfill, tag system, budget system, and a /goodvibes:analytics slash command.
+A full background orchestration system that did not exist at v1.3.0. 4-layer architecture (L0 Shared → L1 Core → L2 Extensions → L3 Plugins) with dual-mode operation: MCP mode (stdio, in-process) and daemon mode (background process, Unix socket IPC).
 
-### 2. Project Engine v2 (Consolidated from Analysis Engine)
+**11 MCP Tools:**
+- `runtime_status` — engine health, uptime, subsystem status
+- `runtime_config` — hot-reload configuration (get/set/reload)
+- `runtime_events` — event history tail, stats, query with filters
+- `runtime_emit` — emit custom events into the EventBus
+- `runtime_workflow` — create/advance/cancel/history workflow state machines
+- `runtime_triggers` — list/register/test/remove event-driven triggers
+- `runtime_agents` — agent roster, budget status, coordination
+- `runtime_state` — state store snapshot/query by namespace
+- `runtime_daemon` — start/stop/restart/status of background daemon
+- `runtime_schedule` — scheduled tasks + heartbeat management
+- `runtime_external` — webhook status, normalizers, stats, queue depth
 
-Replaced the old analysis-engine entirely with 26 tools using the project_* naming convention. Categories: Code analysis (project_code_dead, project_code_safe_delete, project_code_preview_edits, project_code_breaking, project_code_semantic_diff, project_code_surface), Security (project_security_secrets, project_security_permissions, project_security_env), Database (project_db_schema, project_db_query, project_db_prisma), API (project_api_routes, project_api_spec, project_api_validate, project_api_sync), Dependencies (project_deps_analyze, project_deps_circular, project_deps_upgrade), Testing (project_test_coverage, project_test_find), Runtime (project_runtime_memory, project_runtime_profile, project_runtime_logs), plus scaffold and bundle_analyze. Includes TypeScript Language Service integration, multi-DB support (PostgreSQL, MySQL, SQLite), and shell injection eliminated.
+**Core Subsystems:**
+- EventBus + EventProcessor — typed event system with priority queue, JSONL event log, compaction, and stats
+- Workflow Engine — finite state machine with multiple definitions (wrfc_loop, fix_loop, review_only, test_then_fix, custom_loader), transition guards, queue depth limits
+- Trigger Registry — event-pattern matching with cooldowns, fire count limits per session, handler timeout enforcement, reconfigurable at runtime
+- Trigger Action Handlers — build, test, notify, log, memory, devserver, CI bridge, guard handlers
+- State Store — namespaced key-value store with `onStateChange()` callback, EventBus integration for `state:changed` events
+- Persistence — checkpoint manager, snapshot manager, replay engine, startup recovery, workflow persistence
 
-### 3. Precision Engine v2
+### 2. WRFC Autonomous Quality Pipeline
 
-Major subsystem additions: file_ops (copy, move, delete with import rewriting) added to precision_exec. ProjectIndex singleton upgraded to v3 with size and token estimates. PrecisionRuntime singleton unifying all engine subsystems. Hooks system for precision tool lifecycle. Telemetry with precision_id tracking. Session state KV store. ModeManager for verbosity/mode management. precision_agent with dossier format and memory injection for headless Claude sessions. Batch engine removed (functionality absorbed into precision_exec file_ops). Project indexer parallelized with stat() calls.
+Full Work→Review→Fix→Check loop with configurable `score_threshold` (default 9.5) and `max_fix_attempts` (default 3). Score evaluator, directive builder (spawn/complete/escalate), `<gv>` tag parser for structured agent output, directive queue with `session_id` scoping, and WRFC config store with `goodvibes.json` overrides.
 
-### 4. Frontend Engine v2
+The directive delivery pipeline evolved through 7 iterations to production stability:
+1. PreToolUse directive delivery hook
+2. PostToolUse Task hook migration
+3. UserPromptSubmit directives (current)
+4. Pre-tool-use drain safety net
+5. Queue auditor for lost notification recovery
+6. Watchdog drain-stuck escalation with file-based fallback
+7. Session ID scoping to prevent cross-session directive theft
 
-3 new tools: frontend_client_boundary (Next.js client/server boundary analysis), frontend_hook_dependencies (React hook dependency chain analysis), frontend_error_boundaries (React error boundary coverage analysis). All 14 tools renamed from verb-based naming (get_*, analyze_*, trace_*, diagnose_*, audit_*) to a consistent frontend_* prefix convention. Improved detection using DRY shared utilities.
+### 3. Daemon Mode
 
-### 5. Skills Architecture Overhaul
+Background daemon process running in a tmux session with Unix domain socket IPC. Features:
+- Tick driver with configurable `eval_interval_ms`, `tick_interval_ms`, `auto_tick`
+- Heartbeat plugin (configurable interval, pause/resume)
+- HTTP webhook listener (configurable port, bind_mode, address, auth_token, max_payload_bytes)
+- File watcher for JSON event drop-box pattern (incoming/processed/error dirs)
+- Lifecycle management with lockfile mutex (prevents duplicate spawns)
+- Health check polling with auto-reconnect
+- Signal handler wiring (SIGTERM/SIGINT graceful shutdown)
+- DaemonHookServer for hook script compatibility
 
-All 25 skills rewritten to achieve 10/10 review scores. 5 protocol skills (always-active): precision-mastery, gather-plan-apply, review-scoring, goodvibes-memory, error-recovery. Tiered architecture with proactive execution triggers. 80% token reduction through skill compression. Progressive disclosure alignment with Anthropic spec. Skill delivery architecture for subagents. Skill catalog and awareness in context injection.
+### 4. Slack Integration
 
-### 6. Infrastructure & Workflow
+- Slack URL verification challenge handling (HTTP listener intercepts and echoes challenge)
+- Slack event normalizer (extracts text, user, channel, thread_ts from event payloads)
+- Slack message field formatting in webhook event delivery to tmux
+- Slack Web API service registration (precision_fetch bearer auth)
+- Bidirectional communication: receive Slack events via webhook, send responses via `chat.postMessage`
 
-GPA Loop (Gather-Plan-Apply) introduced, renamed from DPB (Discover-Plan-Batch), and relaxed from strict 3-call cycle to practical batching. Setup hook for session initialization. Subagent protocol split into chain-loaded files. Progressive disclosure model for context injection. Native tool blocking (WebFetch, Update redirected to precision equivalents). Sandbox mode protection (agents prohibited from enabling). Deep-dive documentation for all 6 engines.
+### 5. Webhook & External Events
+
+- HTTP listener with direct EventBus webhook delivery (bypasses file drop for low-latency delivery)
+- Normalizer registry with built-in normalizers: Slack, GitHub, CI (generic), Generic
+- Webhook event formatter with source-specific field extraction
+- CI failure bridge: `webhook:ci:*` → trigger → `bridgeCIFailure` → `build:failed` event
+- Synchronous tmux delivery — three flat `execFileSync` calls with `Atomics.wait`-based `sleepSync` delays
 
 ---
 
 ## Features
 
-### Analytics Engine
+### Runtime Engine — Core
 
-- feat(analytics-engine): Phase 0 -- global DB foundation (sql.js SQLite)
-- feat(analytics-engine): Phase 1 -- project setup, types, data layer, schemas
-- feat(analytics-engine): Phase 2 Batch 1 -- daemon core + tmux integration
-- feat(analytics-engine): Phase 2 Batch 2 -- aggregator, archiver, barrel exports
-- feat(analytics-engine): Phase 3 -- mini dashboard + full TUI (Ink/React, 4 pages)
-- feat(analytics-engine): Phase 4 -- MCP handlers, entry point, build config
-- feat(analytics-engine): Phase 5 -- dashboard & TUI updates with cross-project view
-- feat(analytics-engine): Phase 6 -- sync engine for JSONL history backfill
-- feat(analytics-engine): Phase 7 -- slash command rewrite for new nomenclature
-- feat(analytics-engine): add analytics_sync tool and update descriptions
-- feat(analytics-engine): add ESM/CJS build outputs and improve build pipeline
-- feat(analytics-engine): add MCP server entry point and plugin registration
-- feat(analytics-engine): add progress bars to mini dashboard
-- feat(analytics-engine): make mini dashboard section width and min width configurable
-- feat(analytics-engine): overhaul mini dashboard layout and data sources
-- feat(analytics-engine): harden mini renderer with tests and error handling
-- feat(analytics-engine): auto-close dashboard panes on session exit, 1s refresh
-- feat(analytics-engine): use configured max_parallel_agent_chains in mini dashboard
-- feat(analytics-engine): rename Commands->Tools metric
-- feat(goodvibes): add /goodvibes:analytics slash command
-- feat: overhaul analytics-engine spec and streamline tools registry
+- feat: add runtime-engine MCP server (Phase 1 foundation)
+- feat: add event system with bus, queue, and JSONL log (Phase 2)
+- feat: add IPC channel, workflow engine, and trigger system (Phase 3+4)
+- feat: add agent coordinator with budget tracking (Phase 5)
+- feat: add hook slimming with runtime IPC integration (Phase 6)
+- feat: implement Phase 7 WRFC autonomous chain handlers with configurable thresholds
+- feat: implement Phase 8 daemon operational design
+- feat: runtime engine v3 full review cycle — 10/10 score, 1721 tests passing
+- feat: add runtime engine v3 Layer 1 core event loop
+- feat: add runtime engine v3 Layer 2 type extensions
+- feat: add runtime engine v3 Layer 3 plugins (WRFC, time events, external events, hook processing)
+- feat: add runtime engine v3 integration wiring
+- feat: implement executor modes (engaged/daemon/hybrid)
+- feat: add internal daemon tick scheduler using EventScheduler system
+
+### Runtime Engine — Daemon
+
+- feat: add transport abstraction layer for daemon mode support
+- feat: add DaemonTransportConfig to runtime engine config
+- feat: migrate MCP handlers to use RuntimeTransport
+- feat: add DaemonHookServer for hook script compatibility in daemon mode
+- feat: add reconnection/retry logic to RemoteTransport
+- feat: add health check polling to DaemonLifecycle
+- feat: add daemon integration tests and config validation
+- feat: config hot reload + daemon lockfile mutex + test fixes
+- feat: add restart action to runtime_daemon tool for in-session daemon cycling
+- feat: add MCP daemon health check and auto-reconnect
+
+### Runtime Engine — IPC & Transport
+
+- feat: add IPC router and improve hook tracing
+- feat: add IPC proxy for events/schedule/external MCP handlers
+- feat: complete IPC proxy for all schedule, external, and trigger actions
+- feat: wire signal handlers, human events, and trigger reconfigurable
+
+### Runtime Engine — WRFC Pipeline
+
+- feat: implement structured `<gv>` directive format and agent output tags
+- feat: add `<gv>` tag parser for structured agent output extraction
+- feat: implement Decision 5 — directive-driven WRFC orchestrator prompt
+- feat: implement agent-workflow binding, auto-complete whitelist, and universal gv output
+- feat: wire WRFC event triggers and fix hook data flow
+- feat: WRFC config propagation — user review score and fix attempts from goodvibes.json
+- feat: runtime engine v2 Tier 1+2 — chain types and durability
+- feat: add pending bind queue for WRFC workflow resolution
+- feat: add watchdog drain-stuck escalation with file-based directive fallback
+- feat: add directive delivery resilience — UPS retry, watchdog drain-stuck recovery
+- feat: add queue auditor for lost task-notification recovery
+
+### Runtime Engine — Observability
+
+- feat: add `runtime_state` MCP tool and state query API
+- feat: add agent-tracker plugin and consolidate e2e test app
+- feat: migrate agent tracker to `createAgentEvent` + emit `agent:progress`
+
+### Webhook & Slack
+
+- feat: add Slack URL verification challenge handling in HTTP listener
+- feat: direct EventBus webhook delivery, bypass file drop
+- feat: add Slack message fields to webhook event formatter
+- feat: add GitHub normalizer
+- feat: add bridgeCIFailure handler for CI webhook → build:failed bridging
+
+### Hook Scripts
+
+- feat: migrate post-tool-use hook to user-prompt-submit directives
+- feat: add pre-tool-use directive drain hook and process watchdog
+- feat: use hookSpecificOutput for UPS directive delivery
+- feat: add trigger fire count reset and simplify UPS hook
 
 ### Project Engine
 
-- feat(project-engine): bootstrap v2.0.0 skeleton for engine consolidation
-- feat(project-engine): migrate security, deps, testing domains (phases 3, 6, 7)
-- feat(project-engine): wire 26 tool schemas and handler registry (phase 10)
-- feat(project-engine): delete analysis-engine, clean old files, update refs (phase 11)
-- feat(project-engine): replace tool definition YAMLs with project_* naming (26 tools)
-- TypeScript Language Service integration for code analysis
-- Multi-DB support: PostgreSQL, MySQL, SQLite
-- Shell injection eliminated across all tool handlers
+- Restructured to plugin-based architecture
+- Schema extraction into dedicated modules
+- Comprehensive quality fixes across all domains: API, code-intel, database, runtime, standalone, security, deps, testing
+- Registered in plugin tool registry
 
-### Precision Engine v2
+### Frontend Engine
 
-- feat: add file_ops (copy, move, delete with import rewriting) to precision_exec (v2, phase 1A)
-- feat: upgrade ProjectIndex to v3 with size and token estimates (v2, phase 1B)
-- feat: remove batch engine entirely -- functionality absorbed into precision_exec file_ops (v2, phase 1C)
-- feat: add telemetry/precision_id and session state KV store (v2, phase 2D+2E)
-- feat: add PrecisionRuntime singleton unifying engine subsystems (v2, phase 3F)
-- feat: add precision engine hooks system for tool lifecycle (v2, phase 4G)
-- feat: add precision_agent with dossier format and memory injection (v2, phase 5H)
-- feat: integrate ProjectIndex into discover handler (Phase 2A)
-- feat: wire ProjectIndex into write and edit handlers (Phase 2B)
-- feat: add ProjectIndex singleton for in-memory project file index
-- feat: add project file indexer for session-start hook
-- feat(project-index): convert to v2 tree format for token efficiency
-- perf: parallelize stat() calls in project indexer
+- Complete 4-layer decomposition (Phases 3-4)
+- Responsive breakpoint analysis tool (`frontend_responsive_breakpoints`)
+- Concurrency hardening + event source adapters
+- Unified event types + trigger system
+- Dead code removal + cleanup
 
-### Frontend Engine v2
+### Registry Engine
 
-- feat(frontend-engine): implement v2 -- new tools, improved detection, cleanup
-- feat(frontend-engine): add frontend_hook_dependencies tool (React hook dependency chain analysis)
-- feat(frontend-engine): add frontend_client_boundary tool (Next.js client/server boundary)
-- feat(frontend-engine): add frontend_error_boundaries tool (React error boundary coverage)
-- Improved detection with DRY shared utility functions
+- Registered in plugin tool registry alongside project-engine
+- Schema extraction into dedicated modules
+- Fuse.js query scoring fix for `recommend_skills`
 
-### Skills & Agents
+### Skills
 
-- feat: Phase 1 protocol skills -- all 5 at 10/10 with Anthropic spec compliance
-- feat: complete skill overhaul -- 25 skills at 10/10, regenerate registry
-- feat: add debugging quality skill
-- feat: add performance-audit quality skill
-- feat: add api-design outcome skill
-- feat: add proactive execution triggers to all 25 SKILL.md descriptions
-- feat: complete skill delivery architecture for subagents
-- feat: add skill catalog and awareness to subagent context injection
-- feat: enrich fallback protocol skill content in session-start hook
-- 80% token reduction through skill compression
-
-### Infrastructure
-
-- feat: add setup hook and session initialization
-- feat: enforce GPA (Gather-Plan-Apply) workflow with practical batching
-- feat: block native Update tool, redirect to precision_edit
-- feat(hooks): block native WebFetch tool, redirect to precision_fetch
-- feat: prevent agents from activating sandbox mode
-- feat: add wrfc_binding config to output styles
-- feat: add implicit permissions to output styles
-- feat: split subagent protocol into chain-loaded files for progressive disclosure
-- feat: update plugin registries and rebuild subagent hooks
+- Orchestration skills overhauled for directive-driven WRFC model
+- `task-orchestration` and `fullstack-feature` skill updates
+- Review scoring updated with subjective score withholding guidance
 
 ---
 
 ## Bug Fixes
 
-### Analytics Engine
+141 bug fix commits addressing:
 
-- fix(analytics-engine): fix full dashboard crash from stale .commands references
-- fix(analytics-engine): fix session ID mismatch in pane cleanup
-- fix(analytics-engine): fix commands scoping error and telemetry WASM URL in CJS
-- fix(analytics-engine): getState() re-aggregates on every call for live metrics
-- fix(analytics-engine): compute uptime live from Date.now()
-- fix(analytics-engine): adaptive commands label shortens to Cmds at 1000+
-- fix(analytics-engine): commands section shows pass/fail with colored icons
-- fix(analytics-engine): update mini dashboard labels and layout per user feedback
-- fix(analytics-engine): distinguish precision vs API labels
-- fix(analytics-engine): separate precision engine and API cache metrics
-- fix(analytics-engine): fix dashboard currency format, project names, cache hit rate
-- fix(analytics-engine): comprehensive dashboard data + UI overhaul (8.5 -> 10)
-- fix(analytics-engine): add __dirname/__filename shims to ESM dashboard bundles
-- fix(analytics-engine): use config-driven min width in error fallback path
-- fix(analytics-engine): redesign mini dashboard lines 2-3
-- fix(analytics-engine): address trends review nitpicks
-- fix(analytics-engine): fix dashboard health trends with real baselines
-- fix(analytics-engine): distinguish unrecognized JSONL types from malformed lines
-- fix(analytics-engine): Phase 1, 2, 3 quality fixes
-- fix(analytics-engine): auto-detect terminal width in mini dashboard renderer
-- fix(analytics-engine): add error logging to draw catch
-- fix(registries): add missing YAML defs and fix analysis->analytics-engine ref
-
-### Frontend Engine
-
-- fix(frontend-engine): resolve critical issues across 4 submodules to 10/10
-
-### Project Engine
-
-- fix(project-engine): eliminate shell injection and fix return types (phases 2, 8)
-
-### Precision Engine v2
-
-- fix: replace better-sqlite3 with sql.js and fix env variable leaks
-- fix: wire mergeDefaults into ModeManager.applyDefaults to eliminate dead code
-- fix: KVState review polish -- readCounter helper, fire-and-forget docs
-- fix: ModeManager review polish -- ModeConfigResult type, @public mergeDefaults
-- fix: address review issues across 5 WRFC streams
-- fix: final precision_agent review fixes (phase 5I, 10/10)
-- fix: close precision_exec loophole for file search commands
-- fix(discover): achieve 10/10 review score
-- fix: resolve all 7 issues in ProjectIndex singleton
-- fix: resolve 3 major + 4 minor issues in session-start project indexer
-
-### Skills
-
-- fix: bring fullstack-feature and component-architecture to 10/10
-- fix(debugging-skill): fix all review issues to achieve 10/10
-- fix: payment-integration skill -- all major and minor issues (6.6 -> 9.5)
-- fix: resolve all major and minor issues in security-audit quality skill
-- fix(code-review): fix all major and minor issues from 8.4/10
-- fix(deployment-skill): fix all review issues for 9.5+
-- fix: resolve 18 review issues in task-orchestration skill
-- fix(api-design): resolve 11 review issues, score 8.4 -> 10.0
-- fix(review-scoring): resolve all review issues for 10/10
-- fix: complete ASCII compliance across all skill files
-- fix: integration test remediation -- ASCII compliance and script hardening
-
-### Infrastructure
-
-- fix: align subagent context-injection with progressive disclosure model
-- fix: update fallback prompt files with precision_exec prohibition
-- fix: update fallback prompt files for fresh auto-population
-- fix: address CHECK review feedback for context-injection
-- fix(output-styles): use absolute paths for @ imports
-
----
-
-## Refactoring
-
-- refactor(frontend-engine): rename all 14 tools to frontend_* convention
-- refactor(analytics-engine): extract esmBundleBanner constant to eliminate duplication
-- refactor: relax GPA loop from strict 3-call cycle to practical batching
-- refactor: rename DPB (Discover-Plan-Batch) to GPA (Gather-Plan-Apply)
-- refactor: remove precision_agent blocking mode, background-only
-- refactor: compress protocol skills for 80% token reduction
-- refactor: align skills and agents with Anthropic progressive disclosure model
-- refactor: split SUBAGENT-PROTOCOL.md into chain-loaded files
-- refactor: load prompt files from external templates instead of hardcoding
-- refactor: rename parallel_agents to max_parallel_agent_chains
-- refactor: inline prompt fragments into output styles, remove stale docs
-- refactor: improve project indexer and precision engine internals
-
----
-
-## Documentation
-
-- docs: add deep-dive docs for all 5 engines and update README
-- docs(frontend-engine): add v2 analysis document and update tracking
-- docs: update README to reflect current project state
-- docs: add project_engine analysis, clean up old test artifacts
-- docs: add project_engine deep analysis with overlap assessment
-- docs: add find-circular-deps to analysis engine table
-- docs: update tool counts and add precision_notebook/precision_agent to all docs
-- docs: remove batch_engine references from all plugin docs
+- Runtime engine IPC reliability and architecture cleanup
+- sendToTmux rewritten from nested async callbacks to synchronous sequential calls
+- WRFC directive delivery timing (processImmediate for enqueue before drain)
+- Directive queue cross-session theft prevention
+- Agent tracker skips internal Claude Code agents (empty agent_type)
+- Daemon lockfile mutex preventing duplicate spawns
+- Transport reconnection with exponential backoff
+- Hook data flow corrections across PreToolUse, PostToolUse, and UserPromptSubmit
+- Project engine quality fixes across all domains
+- Frontend engine critical issues across 4 submodules
+- Registry engine query scoring
 
 ---
 
 ## New Components Added
 
-### Analytics Engine (built from scratch)
+### Runtime Engine (built from scratch)
 
-- Global SQLite DB layer (sql.js) with JSONL session parser
-- Daemon system: watcher, aggregator, archiver
-- Mini dashboard: tmux-based renderer with progress bars, configurable width, auto-detect terminal width
-- Full TUI: Ink/React app with 4 pages (overview, sessions, trends, config)
-- Sync engine for JSONL history backfill
-- Tag system and budget system
-- 7 MCP tool handlers: analytics_dashboard, analytics_query, analytics_budget, analytics_tag, analytics_export, analytics_config, analytics_sync
-- ESM/CJS dual build pipeline
-- /goodvibes:analytics slash command
+- 4-layer plugin architecture with 11 MCP tools
+- EventBus + EventProcessor with priority queue and JSONL log
+- Workflow Engine with 5 built-in definitions
+- Trigger Registry with action handlers
+- State Store with change events
+- Persistence layer (checkpoint, snapshot, replay, recovery)
+- WRFC autonomous quality loop
+- Daemon mode with Unix socket IPC
+- HTTP webhook listener with normalizer registry
+- Transport abstraction (Local + Remote) with factory
+- Agent tracker, coordinator, and budget tracker
+- Executor system with tick driver
+- IPC router with 15+ proxy methods
+- Event factories (runtime, agent, human)
+- Config hot reload with Reconfigurable interface
 
-### Project Engine v2 (consolidated from analysis-engine)
+### Hook Scripts (3 standalone ESM modules)
 
-- 26 tool handlers under project_* naming convention
-- TypeScript Language Service integration
-- Multi-DB adapter: PostgreSQL, MySQL, SQLite
-- Shell-safe command execution throughout
+- `user-prompt-submit-directives.mjs` — directive delivery on agent completion
+- `pre-tool-use-directive-drain.mjs` — safety net drain before tool execution
+- `queue-auditor.mjs` — lost task-notification recovery from session JSONL
 
-### Precision Engine v2 Subsystems
+---
 
-- PrecisionRuntime singleton (engine unification)
-- ProjectIndex v3 (in-memory project tree with size + token estimates)
-- Hooks system (tool lifecycle callbacks)
-- ModeManager (verbosity/mode configuration)
-- Session state KV store
-- Telemetry with precision_id tracking
-- precision_agent handler with dossier format + memory injection
-- File ops: copy, move, delete with import rewriting
-- Session-start project indexer with parallelized stat() calls
+## Documentation
 
-### Skills (25 total, all new or rewritten)
+- Engine decomposition docs
+- Daemon mode user-facing documentation
+- Daemon transport design, review, and gap analysis
+- WRFC v1 design doc completed (all open questions closed)
+- RTE v2 scope with v1 recap
+- Archived outdated docs
 
-- Protocol (5): precision-mastery, gather-plan-apply, review-scoring, goodvibes-memory, error-recovery
-- Orchestration (2): task-orchestration, fullstack-feature
-- Outcome (11): ai-integration, api-design, authentication, component-architecture, database-layer, deployment, payment-integration, service-integration, state-management, styling-system, testing-strategy
-- Quality (7): accessibility-audit, code-review, debugging, performance-audit, project-onboarding, refactoring, security-audit
+---
+
+## Test Infrastructure
+
+- End-to-end test harness
+- Runtime engine unit tests (1721+ passing at peak)
+- 93 transport/IPC unit tests
+- Agent tracker tests (26 tests)
+- CI handler tests (30 tests)
 
 ---
 
@@ -270,31 +250,30 @@ GPA Loop (Gather-Plan-Apply) introduced, renamed from DPB (Discover-Plan-Batch),
 
 | Metric | Value |
 |--------|-------|
-| Commits | 283 |
-| Files changed | 1,448 |
-| Insertions | 326,620 |
-| Deletions | 652,731 |
-| Features | 77 |
-| Bug fixes | 76 |
-| Refactors | 13 |
-| New engines | 1 (Analytics) |
-| Rebuilt engines | 2 (Project, Frontend) |
-| Total MCP tools | 73 (across 6 engines) |
-| Skills at 10/10 | 25 |
-| Patch versions | v1.2.5 through v1.2.62 |
+| Commits | 361 |
+| Files changed | 930 |
+| Insertions | +226,055 |
+| Deletions | -58,189 |
+| Features | 118 |
+| Bug fixes | 141 |
+| Refactors | 30 |
+| New engines | 1 (Runtime) |
+| Improved engines | 3 (Project, Frontend, Registry) |
+| New MCP tools | 11 (runtime-engine) |
+| Total MCP tools | 84 (across 6 engines) |
+| New hook scripts | 3 |
+| Patch versions | v1.3.1 through v1.3.125 |
 
 ---
 
-## Changes Since v1.2.0
+## Changes Since v1.3.0
 
-- v1.2.5-v1.2.8: Infrastructure -- implicit permissions, WRFC binding, sandbox protection, native tool blocking
-- v1.2.9-v1.2.14: Skills overhaul -- protocol skills, all 25 skills to 10/10, skill delivery architecture
-- v1.2.15-v1.2.20: DPB workflow, ProjectIndex singleton, skill catalog, context injection improvements
-- v1.2.21-v1.2.30: Precision Engine v2 phases -- file_ops, ProjectIndex v3, PrecisionRuntime, hooks, telemetry, precision_agent
-- v1.2.31-v1.2.40: Project Engine v2 -- consolidation from analysis-engine, 26 tools with project_* naming
-- v1.2.41-v1.2.55: Analytics Engine -- all 7 phases from scratch (DB, daemon, dashboard, TUI, MCP handlers, sync)
-- v1.2.56-v1.2.60: Analytics refinement -- dashboard fixes, mini dashboard overhaul, sync engine polish
-- v1.2.61-v1.2.62: Frontend Engine v2 -- 3 new tools, rename to frontend_* convention
+- v1.3.1–v1.3.35: Runtime engine phases 1–7, WRFC handlers, directive system, executor modes
+- v1.3.35–v1.3.77: Runtime engine v3 layered architecture, end-to-end test harness
+- v1.3.77–v1.3.100: Daemon mode (transport, lifecycle, health check, hook server, IPC proxy)
+- v1.3.100–v1.3.113: Webhook normalizers (GitHub, Slack, CI), external events plugin
+- v1.3.113–v1.3.120: Daemon health check, MCP auto-reconnect, IPC proxy completion
+- v1.3.120–v1.3.125: Slack integration (URL verification, direct EventBus delivery, bidirectional messaging)
 
 ---
 
@@ -304,14 +283,10 @@ GPA Loop (Gather-Plan-Apply) introduced, renamed from DPB (Discover-Plan-Batch),
 /goodvibes:plugin update
 ```
 
-Then restart your Claude Code session. Note: frontend engine tool names have changed -- update any custom configurations referencing old tool names.
+Then restart your Claude Code session. The runtime engine daemon will start automatically on first use of any `runtime_*` tool.
 
 ---
 
 ## Breaking Changes
 
-- **Analysis Engine removed**: Replaced by Project Engine v2. All tools now use the `project_*` naming convention. Update any references to analysis-engine tools.
-- **Batch Engine removed**: Functionality absorbed into `precision_exec` file_ops (copy, move, delete). Remove any direct batch_engine usage.
-- **Frontend engine tools renamed**: All 14 tools renamed from verb-based prefixes (get_*, analyze_*, trace_*, diagnose_*, audit_*) to the `frontend_*` prefix convention. Old names no longer work -- update any custom configurations or scripts.
-- **DPB workflow renamed to GPA**: Discover-Plan-Batch is now Gather-Plan-Apply. Documentation, skills, and prompt files have been updated. The workflow itself is also relaxed from a strict 3-call cycle to practical batching.
-- **precision_agent blocking mode removed**: precision_agent is now background-only. Remove any usage of blocking mode parameters.
+None. All v1.3.0 APIs remain compatible. The runtime engine is entirely additive.
