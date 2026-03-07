@@ -1,12 +1,37 @@
 # GoodVibes Plugin
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](https://github.com/mgd34msu/goodvibes-plugin)
+[![Version](https://img.shields.io/badge/version-1.9.0-blue.svg)](https://github.com/mgd34msu/goodvibes-plugin)
 [![Claude Code Plugin](https://img.shields.io/badge/Claude%20Code-Plugin-purple.svg)](https://claude.com/claude-code)
 
 > Plug in. Receive good vibes.
 
 A Claude Code plugin that replaces native tools with token-efficient precision equivalents, adds 73 MCP tools across 6 engines, and orchestrates 11 specialized agents with persistent cross-session memory.
+
+## Installation
+
+```bash
+claude plugin marketplace add mgd34msu/goodvibes-plugin
+claude plugin install goodvibes@goodvibes-market
+```
+
+After installation, run the Setup hook to pre-write CLAUDE.md chain files:
+```bash
+claude --init-only
+```
+
+This ensures all GoodVibes instruction files are in place before your first session. On each session start, the SessionStart hook:
+- Detects your project stack (frameworks, languages, tools)
+- Analyzes git status (branch, uncommitted changes)
+- Checks project health (missing dependencies, build issues)
+- Verifies CLAUDE.md chain files (writes/appends any that are missing)
+- Injects project context into Claude's system message
+
+Set your output style:
+```bash
+/output-style goodvibes:vibecoding   # Interactive mode
+/output-style goodvibes:justvibes    # Autonomous mode
+```
 
 ## At a Glance
 
