@@ -10,6 +10,10 @@ A Claude Code plugin that replaces native tools with token-efficient precision e
 
 ## Installation
 
+**Prerequisites:** [Node.js](https://nodejs.org/) (v18+) and [tmux](https://github.com/tmux/tmux) must be installed.
+
+**Supported platforms:** Linux (x64, ARM64), macOS (x64, Apple Silicon), Windows (x64, ARM64, ia32). Native AST binaries are included for all platforms.
+
 ```bash
 claude plugin marketplace add mgd34msu/goodvibes-plugin
 claude plugin install goodvibes@goodvibes-market
