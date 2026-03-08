@@ -11,6 +11,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createLogger } from '../../shared/logger.js';
 import { toErrorMessage } from '../../shared/utils.js';
+import { isPidAlive } from '../../extensions/ipc/process-utils.js';
 
 const logger = createLogger('pid-file');
 
@@ -30,18 +31,14 @@ export function getPidFilePath(projectRoot: string): string {
 /**
  * Returns true if a process with the given PID is currently running.
  *
- * Uses signal 0 (existence check) which does not kill the process.
+ * @deprecated Use `isPidAlive` from `extensions/ipc/process-utils` instead.
+ *   This wrapper exists for backwards compatibility.
  *
  * @param pid - The process ID to check.
- * @returns True if the process is alive, false otherwise.
+ * @returns True if the process exists, false otherwise.
  */
 export function isProcessRunning(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
-  }
+  return isPidAlive(pid);
 }
 
 /**

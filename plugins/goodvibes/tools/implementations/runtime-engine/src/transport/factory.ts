@@ -6,6 +6,7 @@
 import { existsSync, readFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { DAEMON_SOCKET_POINTER, DAEMON_PID_FILE } from './daemon-constants.js';
+import { isPidAlive } from '../extensions/ipc/process-utils.js';
 import type { RuntimeTransport } from './types.js';
 import type { RuntimeEngine } from '../bootstrap.js';
 import { LocalTransport } from './local-transport.js';
@@ -72,9 +73,7 @@ export function discoverDaemonSocket(projectRoot: string): string | undefined {
       const pidStr = readFileSync(pidPath, 'utf-8').trim();
       const pid = parseInt(pidStr, 10);
       if (Number.isFinite(pid)) {
-        try {
-          process.kill(pid, 0);
-        } catch {
+        if (!isPidAlive(pid)) {
           // PID is dead — clean up orphaned files
           try { unlinkSync(pointerPath); } catch { /* ignore */ }
           try { unlinkSync(pidPath); } catch { /* ignore */ }

@@ -10,6 +10,7 @@ import { spawn, execFileSync } from 'node:child_process';
 import { createConnection } from 'node:net';
 import { createLogger } from '../shared/logger.js';
 import { toErrorMessage } from '../shared/utils.js';
+import { isPidAlive } from '../extensions/ipc/process-utils.js';
 import { DAEMON_PID_FILE, DAEMON_SOCKET_POINTER, DAEMON_ENTRY, DAEMON_LOCK_FILE } from './daemon-constants.js';
 
 const logger = createLogger('daemon-lifecycle');
@@ -439,12 +440,7 @@ export class DaemonLifecycle {
   }
 
   private isProcessAlive(pid: number): boolean {
-    try {
-      process.kill(pid, 0);
-      return true;
-    } catch { /* expected — ESRCH when process is dead */
-      return false;
-    }
+    return isPidAlive(pid);
   }
 
   private probeSocket(socketPath: string): Promise<boolean> {
@@ -509,23 +505,16 @@ export class DaemonLifecycle {
       // Wait up to 2s for graceful exit, then SIGKILL
       const deadline = Date.now() + 2000;
       while (Date.now() < deadline) {
-        try {
-          process.kill(pid, 0);
-        } catch {
-          break; // Process is dead
-        }
+        if (!isPidAlive(pid)) break; // Process is dead
         // Synchronous sleep via a tight loop is intentional here — this runs
         // only during startup/stop paths, not in the hot eval loop.
         Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100);
       }
 
       // Force kill if still alive
-      try {
-        process.kill(pid, 0); // Check if still alive
+      if (isPidAlive(pid)) {
         process.kill(pid, 'SIGKILL');
         logger.warn('orphan daemon did not exit gracefully, SIGKILL sent', { pid });
-      } catch {
-        // Already dead — good
       }
     }
   }
