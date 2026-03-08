@@ -13,6 +13,7 @@ import { toErrorMessage } from '../../shared/utils.js';
 import type { IPCServer } from '../../shared/ipc/ipc-server.js';
 import type { RuntimeConfig } from '../../shared/config.js';
 import type { IPCRouter } from './ipc-router.js';
+import type { SocketWatcher } from './socket-watcher.js';
 
 const logger = createLogger('ipc-teardown');
 
@@ -21,6 +22,10 @@ export interface IPCSubsystem {
   ipcServer: IPCServer;
   ipcRouter: IPCRouter;
   socketPath: string;
+  /** Optional watcher that monitors the socket file for unexpected deletion. */
+  socketWatcher?: SocketWatcher;
+  /** Optional symlink path in tmpdir pointing to the real socket location. */
+  symlinkPath?: string;
 }
 
 /**
@@ -53,6 +58,24 @@ export async function teardownIPC(
   projectRoot: string,
   config: RuntimeConfig,
 ): Promise<void> {
+  // Stop socket watcher first so it doesn't fire onSocketLost during teardown
+  subsystem.socketWatcher?.stop();
+
+  // Remove tmpdir symlink (best-effort; non-fatal)
+  if (subsystem.symlinkPath) {
+    try {
+      unlinkSync(subsystem.symlinkPath);
+      logger.debug('Symlink removed', { path: subsystem.symlinkPath });
+    } catch (err: unknown) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+        logger.warn('Could not remove socket symlink', {
+          path: subsystem.symlinkPath,
+          err: toErrorMessage(err),
+        });
+      }
+    }
+  }
+
   try {
     await subsystem.ipcServer.close();
     removeSocketPointerFile(projectRoot, config);

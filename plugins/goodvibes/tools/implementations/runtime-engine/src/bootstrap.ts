@@ -170,6 +170,7 @@ export class RuntimeEngine {
   private watchdog: WatchdogCoordinator | null = null;
   private wrfcPlugin: WRFCPlugin | null = null;
   private externalPlugin: import('./plugins/index.js').ExternalPlugin | null = null;
+  private recreatingIPCPromise: Promise<void> | null = null;
   private timePlugin: import('./plugins/time/time-plugin.js').TimePlugin | null = null;
   private devServerMonitor: import('./plugins/devserver/index.js').DevServerMonitor | null = null;
   /** Generic registry of reconfigurable subsystems, populated during startup(). */
@@ -621,6 +622,7 @@ export class RuntimeEngine {
             }
           }
         },
+        onSocketLost: () => this.recreateIPC(),
       });
       if (ipcResult) {
         this.ipcSubsystem = ipcResult.subsystem;
@@ -780,6 +782,85 @@ export class RuntimeEngine {
           },
         });
       });
+    }
+  }
+
+  /**
+   * Recreate the IPC subsystem after a socket loss event.
+   *
+   * Uses a Promise-based single-flight guard (`recreatingIPCPromise`) to prevent
+   * concurrent recreation attempts if both the SocketWatcher and the
+   * session:started verification fire in close succession. Callers that arrive
+   * while recreation is in progress join the existing Promise rather than
+   * starting a second one.
+   */
+  private recreateIPC(): Promise<void> {
+    if (this.recreatingIPCPromise) return this.recreatingIPCPromise;
+    this.recreatingIPCPromise = this.doRecreateIPC();
+    this.recreatingIPCPromise.finally(() => {
+      this.recreatingIPCPromise = null;
+    });
+    return this.recreatingIPCPromise;
+  }
+
+  private async doRecreateIPC(): Promise<void> {
+    const log = createLogger('bootstrap');
+
+    try {
+      log.info('Recreating IPC subsystem (socket lost)');
+
+      // Tear down old subsystem (best-effort; watcher already stopped itself)
+      if (this.ipcSubsystem) {
+        try {
+          await teardownIPC(this.ipcSubsystem, this.projectRoot, this.config);
+        } catch (err) {
+          log.warn('IPC teardown during recreation failed', { error: toErrorMessage(err) });
+        }
+        this.ipcSubsystem = null;
+      }
+
+      if (!this.config.features.ipc_enabled) {
+        log.warn('IPC feature is disabled — skipping recreation');
+        return;
+      }
+
+      // Recreate with the same deps as startup() step 22
+      const ipcResult = await createIPCSubsystem({
+        config: this.config,
+        projectRoot: this.projectRoot,
+        eventBus: this.events!.eventBus,
+        triggerRegistry: this.triggers?.triggerRegistry ?? null,
+        workflowEngine: this.workflow?.workflowEngine ?? null,
+        agentCoordinator: this.agents?.agentCoordinator ?? null,
+        directiveQueue: this.directives?.directiveQueue ?? null,
+        wrfcConfigStore: this.wrfcConfigStore,
+        agentWorkflowMap: this.directives?.agentWorkflowMap ?? null,
+        stateStore: this.coreRuntime?.stateStore ?? null,
+        hookProcessor: this.hookProcessor,
+        executorMode: this.executorSubsystem?.executorMode ?? null,
+        executorBudget: this.executorSubsystem?.executorBudget ?? null,
+        daemonTickHandler: this.executorSubsystem?.daemonTickHandler ?? null,
+        processHookEvent: async (event) => {
+          const processor = this.coreRuntime?.eventProcessor;
+          if (processor) {
+            try {
+              await processor.processImmediate(event);
+            } catch (err) {
+              log.warn('Failed to process hook event immediately', { error: toErrorMessage(err) });
+            }
+          }
+        },
+        onSocketLost: () => this.recreateIPC(),
+      });
+
+      if (ipcResult) {
+        this.ipcSubsystem = ipcResult.subsystem;
+        log.info('IPC subsystem recreated', { socket: ipcResult.socketPath });
+      } else {
+        log.error('IPC subsystem recreation failed — runtime will be unreachable');
+      }
+    } catch (err) {
+      log.error('IPC recreation threw unexpectedly', { error: toErrorMessage(err) });
     }
   }
 

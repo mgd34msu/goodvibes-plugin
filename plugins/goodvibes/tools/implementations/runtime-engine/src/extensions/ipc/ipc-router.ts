@@ -27,7 +27,7 @@ import type { ToolGateEvaluator } from './tool-gating.js';
 import type { ContextInjector } from './context-injector.js';
 import { createLogger } from '../../shared/logger.js';
 import { toErrorMessage } from '../../shared/utils.js';
-import { writeFileSync, unlinkSync, readdirSync, statSync, readFileSync } from 'node:fs';
+import { existsSync, writeFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 
 export type { IHookProcessor as IHookProcessorInterface } from './types.js';
@@ -97,6 +97,12 @@ export interface IPCRouterDeps {
    * are available when the subsequent get_directives query arrives.
    */
   processHookEvent?: (event: RuntimeEvent) => Promise<void>;
+  /**
+   * Optional callback invoked when the socket file is found missing at session start.
+   * When provided, the IPCRouter will verify socket existence in the session:started
+   * handler and trigger recreation if the socket has been deleted.
+   */
+  onSocketLost?: () => void | Promise<void>;
 }
 
 /** Return type for {@link IPCRouter.drainDirectiveMessages}. */
@@ -135,6 +141,8 @@ export class IPCRouter {
   private readonly wrfcConfigStore: WRFCConfigStore | null;
   /** Optional callback for synchronous in-band hook event processing. */
   private readonly processHookEvent: ((event: RuntimeEvent) => Promise<void>) | null;
+  /** Optional callback invoked when the socket file is missing at session:started. */
+  private onSocketLostCallback: (() => void | Promise<void>) | null;
 
   /** Session IDs that have been registered via session:started events. */
   private readonly registeredSessions: Set<string> = new Set();
@@ -163,6 +171,7 @@ export class IPCRouter {
     this.contextInjector = deps.contextInjector ?? null;
     this.wrfcConfigStore = deps.wrfcConfigStore ?? null;
     this.processHookEvent = deps.processHookEvent ?? null;
+    this.onSocketLostCallback = deps.onSocketLost ?? null;
   }
 
   /**
@@ -176,6 +185,14 @@ export class IPCRouter {
    */
   setAgentWorkflowResolver(resolver: (agentId: string) => string | null): void {
     this.agentWorkflowResolver = resolver;
+  }
+
+  /**
+   * Inject (or replace) the onSocketLost callback after construction.
+   * Called from setup.ts after the SocketWatcher is started.
+   */
+  setOnSocketLost(callback: () => void | Promise<void>): void {
+    this.onSocketLostCallback = callback;
   }
 
   /**
@@ -362,79 +379,47 @@ export class IPCRouter {
           });
         }
       }
-      // Clean up stale session files and socket pointers on each new session
+      // Time-based state cleanup: scans sockets/active (bounded by PID-namespaced filenames,
+      // so the scan set is small). Runs once per session:started, not continuously.
       if (this.stateDir) {
         try {
-          // Keep the 10 most recent session files — enough history for debugging without unbounded growth.
-          const KEEP_SESSION_COUNT = 10;
-          const entries = readdirSync(this.stateDir);
-
-          // --- Clean session_*.json files: keep the 10 most recent ---
-          const sessionFiles = entries
-            .filter((f) => f.startsWith('session_') && f.endsWith('.json'))
-            .map((f) => {
-              const fullPath = join(this.stateDir!, f);
-              try {
-                const stat = statSync(fullPath);
-                return { path: fullPath, mtime: stat.mtimeMs };
-              } catch {
-                return { path: fullPath, mtime: 0 };
-              }
-            })
-            .sort((a, b) => b.mtime - a.mtime); // newest first
-
-          const staleSessionFiles = sessionFiles.slice(KEEP_SESSION_COUNT);
-          for (const { path } of staleSessionFiles) {
-            try { unlinkSync(path); } catch { /* ignore */ }
-          }
-          if (staleSessionFiles.length > 0) {
-            logger.info('Session cleanup: removed stale session_*.json files', {
-              count: staleSessionFiles.length,
-              total: sessionFiles.length,
+          const { performStateCleanup } = await import('./state-cleanup.js');
+          const result = performStateCleanup({
+            stateDir: this.stateDir,
+            archiveAfterHours: 24,
+            deleteAfterHours: 168,
+            livePids: new Set([process.pid]),
+            liveSessions: new Set(this.registeredSessions),
+            activeSocketDir: join(this.stateDir, 'sockets', 'active'),
+          });
+          if (result.archived > 0 || result.deleted > 0 || result.socketsRemoved > 0) {
+            logger.info('State cleanup', {
+              archived: result.archived,
+              deleted: result.deleted,
+              socketsRemoved: result.socketsRemoved,
             });
           }
-
-          // --- Clean runtime-*.socket pointer files ---
-          const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-          const PID_RE = /^\d+$/;
-
-          const socketPointers = entries.filter((f) => f.startsWith('runtime-') && f.endsWith('.socket'));
-          for (const file of socketPointers) {
-            // Extract the key: the part between "runtime-" and ".socket"
-            const key = file.slice('runtime-'.length, -'.socket'.length);
-            const pointerFilePath = join(this.stateDir!, file);
-            let shouldDelete = false;
-
-            if (UUID_RE.test(key)) {
-              // Session-keyed: delete if session is not actively-registered
-              shouldDelete = !this.registeredSessions.has(key);
-            } else if (PID_RE.test(key)) {
-              // PID-keyed: delete if the process is no longer alive
-              try {
-                process.kill(Number(key), 0);
-                // process is alive
-              } catch {
-                shouldDelete = true;
-              }
-            }
-
-            if (shouldDelete) {
-              try {
-                // Read the pointer to get the actual socket path
-                const socketTarget = readFileSync(pointerFilePath, 'utf-8').trim();
-                if (socketTarget) {
-                  try { unlinkSync(socketTarget); } catch { /* already gone */ }
-                }
-              } catch { /* cannot read pointer */ }
-              try { unlinkSync(pointerFilePath); } catch { /* ignore */ }
-              logger.info('Session cleanup: removed stale socket pointer', { file, key });
-            }
+          if (result.errors.length > 0) {
+            logger.debug('State cleanup non-fatal errors', { errors: result.errors });
           }
         } catch (err) {
-          logger.warn('Session cleanup failed', { error: toErrorMessage(err) });
+          logger.warn('State cleanup failed', { error: toErrorMessage(err) });
         }
       }
     }
+    // Phase 4: Verify own socket still exists on each new session start.
+    // This catches sockets deleted while the runtime was idle between sessions.
+    if (msg.hook_name === 'session:started' && this.socketPath && this.onSocketLostCallback) {
+      if (!existsSync(this.socketPath)) {
+        logger.warn('Socket file missing at session start, triggering recreation', {
+          socket: this.socketPath,
+        });
+        // Call on next tick to avoid blocking the hook ack
+        const cb = this.onSocketLostCallback;
+        setImmediate(() => cb());
+      }
+    }
+
     // Store WRFC config when config:loaded event arrives
     if (msg.hook_name === 'config:loaded' && this.directiveQueue) {
       const wrfcConfig = (msg.hook_input as Record<string, unknown>)?.wrfc;

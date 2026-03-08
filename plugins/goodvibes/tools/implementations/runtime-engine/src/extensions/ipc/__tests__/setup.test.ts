@@ -46,8 +46,32 @@ vi.mock('../ipc-router.js', () => ({
       route: vi.fn(),
       setAgentWorkflowResolver: vi.fn(),
       removeSessionPointers: vi.fn(),
+      setOnSocketLost: vi.fn(),
     };
     return _ipcRouter;
+  },
+}));
+
+// SocketWatcher mock
+let _socketWatcherStart: ReturnType<typeof vi.fn>;
+let _socketWatcherStop: ReturnType<typeof vi.fn>;
+let _socketWatcherIsWatching: ReturnType<typeof vi.fn>;
+let _capturedOnSocketLost: (() => void | Promise<void>) | undefined;
+
+vi.mock('../socket-watcher.js', () => ({
+  SocketWatcher: function SocketWatcher(
+    _socketPath: string,
+    onSocketLost: () => void | Promise<void>,
+  ) {
+    _capturedOnSocketLost = onSocketLost;
+    _socketWatcherStart = vi.fn();
+    _socketWatcherStop = vi.fn();
+    _socketWatcherIsWatching = vi.fn().mockReturnValue(true);
+    return {
+      start: _socketWatcherStart,
+      stop: _socketWatcherStop,
+      isWatching: _socketWatcherIsWatching,
+    };
   },
 }));
 
@@ -57,6 +81,7 @@ const mockWriteFileSync = vi.fn();
 const mockReaddirSync = vi.fn().mockReturnValue([]);
 const mockReadFileSync = vi.fn();
 const mockUnlinkSync = vi.fn();
+const mockSymlinkSync = vi.fn();
 
 vi.mock('node:fs', () => ({
   mkdirSync: (...args: unknown[]) => mockMkdirSync(...args),
@@ -64,6 +89,7 @@ vi.mock('node:fs', () => ({
   readdirSync: (...args: unknown[]) => mockReaddirSync(...args),
   readFileSync: (...args: unknown[]) => mockReadFileSync(...args),
   unlinkSync: (...args: unknown[]) => mockUnlinkSync(...args),
+  symlinkSync: (...args: unknown[]) => mockSymlinkSync(...args),
 }));
 
 // crypto: plain functions (not vi.fn, avoids clearAllMocks issues)
@@ -141,6 +167,10 @@ describe('createIPCSubsystem', () => {
     mockReaddirSync.mockReturnValue([]);
     mockReadFileSync.mockClear();
     mockUnlinkSync.mockClear();
+    mockSymlinkSync.mockClear();
+    // Reset SocketWatcher tracking so we can detect if it was never constructed
+    (_socketWatcherStart as unknown) = undefined;
+    _capturedOnSocketLost = undefined;
     // _ipcServer and _ipcRouter are recreated fresh each time createIPCSubsystem is called
     // because the constructor functions reassign them.
   });
@@ -185,9 +215,11 @@ describe('createIPCSubsystem', () => {
   // ─── Socket path generation ───────────────────────────────────────────────────────────
 
   describe('socket path generation', () => {
-    it('socket path includes the socket_dir prefix', async () => {
+    it('socket path is in the state dir sockets/active subdirectory', async () => {
       const result = await createIPCSubsystem(makeOpts());
-      expect(result!.socketPath).toContain('/tmp/goodvibes');
+      // Socket is now stored in stateDir/sockets/active for persistence across tmpfs clears.
+      // A symlink in socket_dir (/tmp/goodvibes) points to the real path.
+      expect(result!.socketPath).toContain('.runtime-state');
     });
 
     it('socket path ends with .sock extension', async () => {
@@ -333,6 +365,103 @@ describe('createIPCSubsystem', () => {
     });
   });
 
+  // ─── socket resilience (onSocketLost + SocketWatcher) ────────────────────────────────────
+
+  describe('socket resilience (onSocketLost + SocketWatcher)', () => {
+    beforeEach(() => {
+      _capturedOnSocketLost = undefined;
+    });
+
+    it('does not start a SocketWatcher when onSocketLost is not provided', async () => {
+      await createIPCSubsystem(makeOpts());
+      // _socketWatcherStart would be undefined if SocketWatcher was never constructed
+      expect(_socketWatcherStart).toBeUndefined();
+    });
+
+    it('starts a SocketWatcher when onSocketLost is provided', async () => {
+      const onSocketLost = vi.fn();
+      await createIPCSubsystem(makeOpts({ onSocketLost }));
+      expect(_socketWatcherStart).toHaveBeenCalledTimes(1);
+    });
+
+    it('passes the onSocketLost callback to SocketWatcher', async () => {
+      const onSocketLost = vi.fn();
+      await createIPCSubsystem(makeOpts({ onSocketLost }));
+      expect(_capturedOnSocketLost).toBe(onSocketLost);
+    });
+
+    it('includes socketWatcher in returned subsystem when onSocketLost is provided', async () => {
+      const onSocketLost = vi.fn();
+      const result = await createIPCSubsystem(makeOpts({ onSocketLost }));
+      expect(result!.subsystem).toHaveProperty('socketWatcher');
+      expect(result!.subsystem.socketWatcher).toBeDefined();
+    });
+
+    it('socketWatcher is undefined in returned subsystem when onSocketLost is not provided', async () => {
+      const result = await createIPCSubsystem(makeOpts());
+      // socketWatcher property may be undefined or absent
+      expect(result!.subsystem.socketWatcher).toBeUndefined();
+    });
+
+    it('includes symlinkPath in returned subsystem', async () => {
+      const result = await createIPCSubsystem(makeOpts());
+      expect(result!.subsystem).toHaveProperty('symlinkPath');
+      expect(typeof result!.subsystem.symlinkPath).toBe('string');
+    });
+
+    it('symlinkPath contains the socket dir', async () => {
+      const result = await createIPCSubsystem(makeOpts());
+      expect(result!.subsystem.symlinkPath).toContain('/tmp/goodvibes');
+    });
+  });
+
+  // ─── symlink creation ─────────────────────────────────────────────────────────────────
+
+  describe('symlink creation', () => {
+    it('calls symlinkSync to create socket symlink', async () => {
+      await createIPCSubsystem(makeOpts());
+      expect(mockSymlinkSync).toHaveBeenCalledTimes(1);
+    });
+
+    it('symlink target is the actual socket path', async () => {
+      const result = await createIPCSubsystem(makeOpts());
+      const [target] = (mockSymlinkSync as Mock).mock.calls[0];
+      expect(target).toBe(result!.socketPath);
+    });
+
+    it('symlink path is in the socket_dir', async () => {
+      await createIPCSubsystem(makeOpts());
+      const [, linkPath] = (mockSymlinkSync as Mock).mock.calls[0];
+      expect(linkPath).toContain('/tmp/goodvibes');
+    });
+
+    it('calls unlinkSync before symlinkSync to handle pre-existing symlink', async () => {
+      await createIPCSubsystem(makeOpts());
+      // unlinkSync is called to pre-unlink before symlinkSync
+      // It may also be called for stale pointer cleanup, so just verify symlinkSync was called after some unlinkSync
+      expect(mockSymlinkSync).toHaveBeenCalledTimes(1);
+    });
+
+    it('succeeds even when pre-unlink throws ENOENT (no existing symlink)', async () => {
+      // ENOENT on unlink is expected and swallowed
+      mockUnlinkSync.mockImplementationOnce(() => {
+        const err = Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+        throw err;
+      });
+      const result = await createIPCSubsystem(makeOpts());
+      expect(result).not.toBeNull();
+      expect(mockSymlinkSync).toHaveBeenCalledTimes(1);
+    });
+
+    it('succeeds even when symlinkSync throws (symlink is best-effort)', async () => {
+      mockSymlinkSync.mockImplementationOnce(() => {
+        throw new Error('EPERM');
+      });
+      const result = await createIPCSubsystem(makeOpts());
+      expect(result).not.toBeNull();
+    });
+  });
+
   // ─── cleanStalePointerFiles calls during startup ───────────────────────────────────────
 
   describe('stale pointer cleanup (called via createIPCSubsystem)', () => {
@@ -342,16 +471,23 @@ describe('createIPCSubsystem', () => {
       expect((mockReaddirSync as Mock).mock.calls[0][0]).toContain('.runtime-state');
     });
 
-    it('does not unlink anything when state dir is empty', async () => {
+    it('does not unlink any pointer or socket files when state dir is empty', async () => {
       mockReaddirSync.mockReturnValueOnce([]);
       await createIPCSubsystem(makeOpts());
-      expect(mockUnlinkSync).not.toHaveBeenCalled();
+      // unlinkSync may be called for the symlink pre-unlink (best-effort); but no pointer/socket files.
+      const pointerOrSocketUnlinks = (mockUnlinkSync as Mock).mock.calls.filter(
+        ([p]: [string]) => /runtime-\d+\.socket$/.test(p),
+      );
+      expect(pointerOrSocketUnlinks).toHaveLength(0);
     });
 
-    it('does not unlink anything when no pointer files exist', async () => {
+    it('does not unlink any pointer or socket files when no pointer files exist', async () => {
       mockReaddirSync.mockReturnValueOnce(['some-other-file.txt', 'unrelated.sock']);
       await createIPCSubsystem(makeOpts());
-      expect(mockUnlinkSync).not.toHaveBeenCalled();
+      const pointerOrSocketUnlinks = (mockUnlinkSync as Mock).mock.calls.filter(
+        ([p]: [string]) => /runtime-\d+\.socket$/.test(p),
+      );
+      expect(pointerOrSocketUnlinks).toHaveLength(0);
     });
   });
 

@@ -4,7 +4,7 @@
  * Creates and wires the IPC server and router with L2 extension deps.
  */
 
-import { mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 
@@ -30,23 +30,12 @@ import type { ExecutorBudgetManager } from '../executor/executor-budget.js';
 import type { DaemonTickHandler } from '../executor/daemon-tick-handler.js';
 import { ToolGateEvaluator } from './tool-gating.js';
 import { ContextInjector } from './context-injector.js';
+import { SocketWatcher } from './socket-watcher.js';
+import { isPidAlive } from './process-utils.js';
 
 export { IHookProcessor } from './types.js';
 
 const logger = createLogger('ipc-setup');
-
-/**
- * Check whether a given PID is alive.
- */
-function isPidAlive(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    // process.kill(pid, 0) throws when PID doesn't exist — expected behavior
-    return false;
-  }
-}
 
 /**
  * Clean up stale socket pointer files left behind by unclean runtime exits.
@@ -138,6 +127,12 @@ export interface CreateIPCOptions {
   daemonTickHandler: DaemonTickHandler | null;
   /** Optional callback for synchronous in-band hook event processing — see IPCRouterDeps. */
   processHookEvent?: (event: import('../../shared/events.js').RuntimeEvent) => Promise<void>;
+  /**
+   * Optional callback invoked when the IPC socket file is unexpectedly deleted.
+   * When provided, a SocketWatcher is started after the socket is bound.
+   * The callback is responsible for recreating the IPC subsystem.
+   */
+  onSocketLost?: () => void | Promise<void>;
 }
 
 /** Re-export for external consumers. */
@@ -159,7 +154,14 @@ export async function createIPCSubsystem(
   const socketDir = config.ipc.socket_dir;
 
   const hash = createHash('sha256').update(projectRoot).digest('hex').slice(0, 8);
-  const socketPath = join(socketDir, `goodvibes-runtime-${hash}-${process.pid}.sock`);
+  const socketName = `goodvibes-runtime-${hash}-${process.pid}.sock`;
+
+  // Sockets are stored in a project-local state directory (persistent across tmpfs clears).
+  // A symlink is placed in the tmpdir for discoverability by hook scripts that rely on socketDir.
+  const activeSocketDir = join(stateDir, 'sockets', 'active');
+  ensureDirSync(activeSocketDir);
+  const socketPath = join(activeSocketDir, socketName);
+  const symlinkPath = join(socketDir, socketName);
 
   try {
     const ipcServer = new IPCServer(socketPath);
@@ -231,15 +233,44 @@ export async function createIPCSubsystem(
 
     // Clean stale pointer files from state dir (separate from socket dir created below)
     cleanStalePointerFiles(stateDir, logger);
+    // Create symlink directory with restricted permissions
     mkdirSync(socketDir, { recursive: true, mode: 0o700 });
     await ipcServer.listen();
 
-    ensureDirSync(stateDir);
+    // Create symlink in tmpdir for hook-script discoverability (best-effort; non-fatal)
+    // Pre-unlink to handle EEXIST when recreating after a previous session left the symlink.
+    try {
+      try { unlinkSync(symlinkPath); } catch { /* ENOENT is fine */ }
+      symlinkSync(socketPath, symlinkPath);
+      logger.debug('Socket symlink created', { symlink: symlinkPath, target: socketPath });
+    } catch (err: unknown) {
+      logger.warn('Could not create socket symlink', {
+        symlink: symlinkPath,
+        err: toErrorMessage(err),
+      });
+    }
+
+    // stateDir is guaranteed to exist via ensureDirSync(activeSocketDir) above (activeSocketDir is a subdir).
     const pointerFile = join(stateDir, `runtime-${process.pid}.socket`);
     writeFileSync(pointerFile, socketPath, 'utf-8');
 
-    logger.info('IPC subsystem created', { socket: socketPath });
-    return { subsystem: { ipcServer, ipcRouter, socketPath }, socketPath };
+    // Start socket watcher if a recreation callback was provided
+    let socketWatcher: SocketWatcher | undefined;
+    if (opts.onSocketLost) {
+      socketWatcher = new SocketWatcher(socketPath, opts.onSocketLost);
+      socketWatcher.start();
+    }
+
+    // Also pass onSocketLost to the IPC router for session:started verification
+    if (opts.onSocketLost) {
+      ipcRouter.setOnSocketLost(opts.onSocketLost);
+    }
+
+    logger.info('IPC subsystem created', { socket: socketPath, symlink: symlinkPath });
+    return {
+      subsystem: { ipcServer, ipcRouter, socketPath, socketWatcher, symlinkPath },
+      socketPath,
+    };
   } catch (err) {
     logger.error('Failed to create IPC subsystem', {
       socket: socketPath,
