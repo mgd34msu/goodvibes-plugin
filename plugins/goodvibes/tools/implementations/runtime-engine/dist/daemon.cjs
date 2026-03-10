@@ -198,6 +198,38 @@ var init_logger = __esm({
   }
 });
 
+// src/extensions/ipc/process-utils.ts
+function isPidAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    if (err instanceof Error && "code" in err && err.code === "EPERM") {
+      return true;
+    }
+    return false;
+  }
+}
+var init_process_utils = __esm({
+  "src/extensions/ipc/process-utils.ts"() {
+    "use strict";
+    __name(isPidAlive, "isPidAlive");
+  }
+});
+
+// src/core/utils/fs-utils.ts
+function ensureDirSync(dirPath) {
+  (0, import_node_fs4.mkdirSync)(dirPath, { recursive: true });
+}
+var import_node_fs4;
+var init_fs_utils = __esm({
+  "src/core/utils/fs-utils.ts"() {
+    "use strict";
+    import_node_fs4 = require("node:fs");
+    __name(ensureDirSync, "ensureDirSync");
+  }
+});
+
 // src/shared/events.ts
 function createEvent(overrides) {
   return {
@@ -355,6 +387,213 @@ var init_factories = __esm({
   }
 });
 
+// src/extensions/ipc/state-cleanup.ts
+var state_cleanup_exports = {};
+__export(state_cleanup_exports, {
+  performStateCleanup: () => performStateCleanup
+});
+function dateSuffix() {
+  const date = /* @__PURE__ */ new Date();
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}${m}${d}`;
+}
+function archiveFile(srcPath, archiveDir, errors) {
+  try {
+    ensureDirSync(archiveDir);
+    const name = (0, import_node_path13.basename)(srcPath);
+    const suffix = dateSuffix();
+    const destPath = (0, import_node_path13.join)(archiveDir, `${name}.${suffix}.${Date.now()}`);
+    (0, import_node_fs13.renameSync)(srcPath, destPath);
+    log10.debug("Archived stale file", { src: srcPath, dest: destPath });
+    return true;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    log10.warn("Failed to archive file", { src: srcPath, error: msg });
+    errors.push(`archive:${srcPath}: ${msg}`);
+    return false;
+  }
+}
+function performStateCleanup(opts) {
+  const {
+    stateDir,
+    archiveAfterHours,
+    deleteAfterHours,
+    livePids,
+    liveSessions,
+    activeSocketDir
+  } = opts;
+  const result = { archived: 0, deleted: 0, skipped: 0, socketsRemoved: 0, errors: [] };
+  if (!(0, import_node_fs13.existsSync)(stateDir)) {
+    log10.debug("State directory does not exist, skipping cleanup", { stateDir });
+    return result;
+  }
+  const nowMs = Date.now();
+  const archiveThresholdMs = archiveAfterHours * 60 * 60 * 1e3;
+  const deleteThresholdMs = deleteAfterHours * 60 * 60 * 1e3;
+  const archivePointersDir = (0, import_node_path13.join)(stateDir, "archive", "pointers");
+  const archiveSessionsDir = (0, import_node_path13.join)(stateDir, "archive", "sessions");
+  const PROTECTED_FILES = /* @__PURE__ */ new Set([
+    "retries.json",
+    "queue-auditor.json",
+    "events.jsonl",
+    "hooks-state.json",
+    "agent-tracking.json"
+  ]);
+  let entries = [];
+  try {
+    entries = (0, import_node_fs13.readdirSync)(stateDir);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    result.errors.push(`readdirSync(${stateDir}): ${msg}`);
+    return result;
+  }
+  for (const file of entries) {
+    if (PROTECTED_FILES.has(file) || file === "archive" || file === "sockets") {
+      continue;
+    }
+    const filePath = (0, import_node_path13.join)(stateDir, file);
+    if (file.startsWith("runtime-") && file.endsWith(".socket")) {
+      const key = file.slice("runtime-".length, -".socket".length);
+      if (UUID_RE.test(key)) {
+        if (liveSessions.has(key)) {
+          result.skipped++;
+          continue;
+        }
+      } else if (PID_RE.test(key)) {
+        const pid = Number(key);
+        if (livePids.has(pid) || isPidAlive(pid)) {
+          result.skipped++;
+          continue;
+        }
+      } else {
+        result.skipped++;
+        continue;
+      }
+      let mtimeMs = 0;
+      try {
+        mtimeMs = (0, import_node_fs13.statSync)(filePath).mtimeMs;
+      } catch (err) {
+        const code = err.code;
+        if (code !== "ENOENT") {
+          const msg = err instanceof Error ? err.message : String(err);
+          result.errors.push(`stat:${filePath}: ${msg}`);
+        }
+        result.skipped++;
+        continue;
+      }
+      if (nowMs - mtimeMs > archiveThresholdMs) {
+        if (archiveFile(filePath, archivePointersDir, result.errors)) {
+          result.archived++;
+        }
+      }
+      continue;
+    }
+    if (file.startsWith("session_") && file.endsWith(".json")) {
+      const sessionId = file.slice("session_".length, -".json".length);
+      if (liveSessions.has(sessionId)) {
+        result.skipped++;
+        continue;
+      }
+      let mtimeMs = 0;
+      try {
+        mtimeMs = (0, import_node_fs13.statSync)(filePath).mtimeMs;
+      } catch (err) {
+        const code = err.code;
+        if (code !== "ENOENT") {
+          const msg = err instanceof Error ? err.message : String(err);
+          result.errors.push(`stat:${filePath}: ${msg}`);
+        }
+        result.skipped++;
+        continue;
+      }
+      if (nowMs - mtimeMs > archiveThresholdMs) {
+        if (archiveFile(filePath, archiveSessionsDir, result.errors)) {
+          result.archived++;
+        }
+      }
+      continue;
+    }
+  }
+  const archiveDirs = [
+    { dir: archivePointersDir, label: "pointers" },
+    { dir: archiveSessionsDir, label: "sessions" }
+  ];
+  for (const { dir, label } of archiveDirs) {
+    if (!(0, import_node_fs13.existsSync)(dir))
+      continue;
+    let archiveEntries = [];
+    try {
+      archiveEntries = (0, import_node_fs13.readdirSync)(dir);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      result.errors.push(`readdirSync(${dir}): ${msg}`);
+      continue;
+    }
+    for (const file of archiveEntries) {
+      const filePath = (0, import_node_path13.join)(dir, file);
+      let mtimeMs = 0;
+      try {
+        mtimeMs = (0, import_node_fs13.statSync)(filePath).mtimeMs;
+      } catch {
+        continue;
+      }
+      if (nowMs - mtimeMs > deleteThresholdMs) {
+        try {
+          (0, import_node_fs13.unlinkSync)(filePath);
+          log10.debug("Deleted archived file", { path: filePath, label });
+          result.deleted++;
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          log10.warn("Failed to delete archived file", { path: filePath, error: msg });
+          result.errors.push(`unlink:${filePath}: ${msg}`);
+        }
+      }
+    }
+  }
+  if (activeSocketDir && (0, import_node_fs13.existsSync)(activeSocketDir)) {
+    let sockFiles = [];
+    try {
+      sockFiles = (0, import_node_fs13.readdirSync)(activeSocketDir).filter((f) => f.endsWith(".sock"));
+    } catch {
+    }
+    for (const sockFile of sockFiles) {
+      const match = SOCK_PID_RE.exec(sockFile);
+      if (!match)
+        continue;
+      const pid = Number(match[1]);
+      if (!isPidAlive(pid)) {
+        try {
+          (0, import_node_fs13.unlinkSync)((0, import_node_path13.join)(activeSocketDir, sockFile));
+          log10.info("Removed dead socket file", { sockFile, pid });
+          result.socketsRemoved++;
+        } catch {
+        }
+      }
+    }
+  }
+  return result;
+}
+var import_node_fs13, import_node_path13, log10, UUID_RE, PID_RE, SOCK_PID_RE;
+var init_state_cleanup = __esm({
+  "src/extensions/ipc/state-cleanup.ts"() {
+    "use strict";
+    import_node_fs13 = require("node:fs");
+    import_node_path13 = require("node:path");
+    init_fs_utils();
+    init_logger();
+    init_process_utils();
+    log10 = createLogger("state-cleanup");
+    UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    PID_RE = /^\d+$/;
+    SOCK_PID_RE = /-(\d+)\.sock$/;
+    __name(dateSuffix, "dateSuffix");
+    __name(archiveFile, "archiveFile");
+    __name(performStateCleanup, "performStateCleanup");
+  }
+});
+
 // src/plugins/devserver/index.ts
 var devserver_exports = {};
 __export(devserver_exports, {
@@ -464,12 +703,12 @@ var init_devserver = __esm({
 });
 
 // src/transport/daemon.ts
-var import_node_fs19 = require("node:fs");
-var import_node_path22 = require("node:path");
+var import_node_fs21 = require("node:fs");
+var import_node_path24 = require("node:path");
 
 // src/bootstrap.ts
-var import_node_path20 = require("node:path");
-var import_node_fs17 = require("node:fs");
+var import_node_path22 = require("node:path");
+var import_node_fs19 = require("node:fs");
 
 // src/shared/config.ts
 var import_node_fs2 = require("node:fs");
@@ -788,6 +1027,7 @@ var import_node_path3 = require("node:path");
 var import_node_os2 = require("node:os");
 init_logger();
 init_utils();
+init_process_utils();
 var logger = createLogger("pid-file");
 function getPidFilePath(projectRoot) {
   const hash = (0, import_node_crypto2.createHash)("sha256").update(projectRoot).digest("hex").slice(0, 8);
@@ -795,12 +1035,7 @@ function getPidFilePath(projectRoot) {
 }
 __name(getPidFilePath, "getPidFilePath");
 function isProcessRunning(pid) {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
-  }
+  return isPidAlive(pid);
 }
 __name(isProcessRunning, "isProcessRunning");
 function writePidFile(projectRoot) {
@@ -1104,13 +1339,7 @@ var HealthChecker = class {
 // src/extensions/events/subsystem.ts
 var import_node_path5 = require("node:path");
 init_logger();
-
-// src/core/utils/fs-utils.ts
-var import_node_fs4 = require("node:fs");
-function ensureDirSync(dirPath) {
-  (0, import_node_fs4.mkdirSync)(dirPath, { recursive: true });
-}
-__name(ensureDirSync, "ensureDirSync");
+init_fs_utils();
 
 // src/extensions/events/event-bus.ts
 init_utils();
@@ -1262,8 +1491,8 @@ var EventBus = class {
    *
    * @param log - An object with an `append` method.
    */
-  setEventLog(log18) {
-    this.eventLog = log18;
+  setEventLog(log20) {
+    this.eventLog = log20;
   }
   /**
    * Emits a runtime event.
@@ -1482,6 +1711,7 @@ var readline = __toESM(require("node:readline"), 1);
 var import_node_path4 = require("node:path");
 init_logger();
 init_utils();
+init_fs_utils();
 var logger3 = createLogger("event-log");
 var FLUSH_INTERVAL_MS = 100;
 var FLUSH_THRESHOLD_BYTES = 64 * 1024;
@@ -6215,6 +6445,7 @@ init_utils();
 init_logger();
 init_utils();
 init_errors();
+init_fs_utils();
 var logger10 = createLogger("state-store");
 var JsonStateStore = class {
   static {
@@ -7426,10 +7657,11 @@ init_logger();
 var logger17 = createLogger("wrfc-config-store");
 function validateWRFCConfig(raw) {
   const validated = {};
-  if (typeof raw.min_review_score === "number" && raw.min_review_score >= 0 && raw.min_review_score <= 10) {
-    validated.min_review_score = raw.min_review_score;
-  } else if (raw.min_review_score !== void 0) {
-    logger17.warn("Invalid min_review_score rejected", { value: raw.min_review_score, expected: "number 0-10" });
+  const scoreValue = raw.min_review_score ?? raw.score_threshold;
+  if (typeof scoreValue === "number" && scoreValue >= 0 && scoreValue <= 10) {
+    validated.min_review_score = scoreValue;
+  } else if (scoreValue !== void 0) {
+    logger17.warn("Invalid min_review_score/score_threshold rejected", { value: scoreValue, expected: "number 0-10" });
   }
   if (typeof raw.max_fix_attempts === "number" && Number.isInteger(raw.max_fix_attempts) && raw.max_fix_attempts > 0) {
     validated.max_fix_attempts = raw.max_fix_attempts;
@@ -7527,6 +7759,7 @@ var import_node_fs9 = require("node:fs");
 var import_node_path9 = require("node:path");
 init_logger();
 init_utils();
+init_fs_utils();
 
 // src/extensions/workflow/wrfc-fields.ts
 function getWRFCFields(ctx) {
@@ -9429,6 +9662,7 @@ __name(readStreamBody, "readStreamBody");
 // src/core/state/file-fallback.ts
 init_logger();
 init_utils();
+init_fs_utils();
 
 // src/core/utils/poll.ts
 init_logger();
@@ -9641,6 +9875,9 @@ var EventMetrics = class {
     logger29.debug("Metrics reset");
   }
 };
+
+// src/core/utils/index.ts
+init_fs_utils();
 
 // src/core/runtime.ts
 function createCoreRuntime(actionExecutor, triggerRegistry) {
@@ -13692,9 +13929,9 @@ function createExternalAdapter(plugin) {
 __name(createExternalAdapter, "createExternalAdapter");
 
 // src/extensions/ipc/setup.ts
-var import_node_fs14 = require("node:fs");
+var import_node_fs16 = require("node:fs");
 var import_node_crypto4 = require("node:crypto");
-var import_node_path14 = require("node:path");
+var import_node_path16 = require("node:path");
 init_logger();
 init_utils();
 
@@ -14098,8 +14335,8 @@ var IPCServer = class {
 // src/extensions/ipc/ipc-router.ts
 init_logger();
 init_utils();
-var import_node_fs13 = require("node:fs");
-var import_node_path13 = require("node:path");
+var import_node_fs14 = require("node:fs");
+var import_node_path14 = require("node:path");
 var logger52 = createLogger("ipc-router");
 var IPCRouter = class {
   static {
@@ -14130,6 +14367,8 @@ var IPCRouter = class {
   wrfcConfigStore;
   /** Optional callback for synchronous in-band hook event processing. */
   processHookEvent;
+  /** Optional callback invoked when the socket file is missing at session:started. */
+  onSocketLostCallback;
   /** Session IDs that have been registered via session:started events. */
   registeredSessions = /* @__PURE__ */ new Set();
   /**
@@ -14155,6 +14394,7 @@ var IPCRouter = class {
     this.contextInjector = deps.contextInjector ?? null;
     this.wrfcConfigStore = deps.wrfcConfigStore ?? null;
     this.processHookEvent = deps.processHookEvent ?? null;
+    this.onSocketLostCallback = deps.onSocketLost ?? null;
   }
   /**
    * Inject a resolver that maps agent_id → workflow_id.
@@ -14169,6 +14409,13 @@ var IPCRouter = class {
     this.agentWorkflowResolver = resolver;
   }
   /**
+   * Inject (or replace) the onSocketLost callback after construction.
+   * Called from setup.ts after the SocketWatcher is started.
+   */
+  setOnSocketLost(callback) {
+    this.onSocketLostCallback = callback;
+  }
+  /**
    * Remove all session-keyed pointer files written by this router.
    * Called during shutdown to prevent stale session pointers.
    */
@@ -14176,9 +14423,9 @@ var IPCRouter = class {
     if (!this.stateDir)
       return;
     for (const sessionId of this.registeredSessions) {
-      const pointerFile = (0, import_node_path13.join)(this.stateDir, `runtime-${sessionId}.socket`);
+      const pointerFile = (0, import_node_path14.join)(this.stateDir, `runtime-${sessionId}.socket`);
       try {
-        (0, import_node_fs13.unlinkSync)(pointerFile);
+        (0, import_node_fs14.unlinkSync)(pointerFile);
         logger52.debug("Session pointer file removed", { sessionId });
       } catch (err) {
         if (err.code !== "ENOENT") {
@@ -14310,8 +14557,8 @@ var IPCRouter = class {
       this.directiveQueue?.clear();
       if (this.socketPath && this.stateDir && typeof sessionId === "string" && sessionId.length > 0) {
         try {
-          const pointerFile = (0, import_node_path13.join)(this.stateDir, `runtime-${sessionId}.socket`);
-          (0, import_node_fs13.writeFileSync)(pointerFile, this.socketPath, "utf-8");
+          const pointerFile = (0, import_node_path14.join)(this.stateDir, `runtime-${sessionId}.socket`);
+          (0, import_node_fs14.writeFileSync)(pointerFile, this.socketPath, "utf-8");
           this.registeredSessions.add(sessionId);
           logger52.info("Session pointer file written", { sessionId, pointer: pointerFile });
         } catch (err) {
@@ -14323,75 +14570,61 @@ var IPCRouter = class {
       }
       if (this.stateDir) {
         try {
-          const KEEP_SESSION_COUNT = 10;
-          const entries = (0, import_node_fs13.readdirSync)(this.stateDir);
-          const sessionFiles = entries.filter((f) => f.startsWith("session_") && f.endsWith(".json")).map((f) => {
-            const fullPath = (0, import_node_path13.join)(this.stateDir, f);
-            try {
-              const stat = (0, import_node_fs13.statSync)(fullPath);
-              return { path: fullPath, mtime: stat.mtimeMs };
-            } catch {
-              return { path: fullPath, mtime: 0 };
-            }
-          }).sort((a, b) => b.mtime - a.mtime);
-          const staleSessionFiles = sessionFiles.slice(KEEP_SESSION_COUNT);
-          for (const { path: path4 } of staleSessionFiles) {
-            try {
-              (0, import_node_fs13.unlinkSync)(path4);
-            } catch {
-            }
-          }
-          if (staleSessionFiles.length > 0) {
-            logger52.info("Session cleanup: removed stale session_*.json files", {
-              count: staleSessionFiles.length,
-              total: sessionFiles.length
+          const { performStateCleanup: performStateCleanup2 } = await Promise.resolve().then(() => (init_state_cleanup(), state_cleanup_exports));
+          const result = performStateCleanup2({
+            stateDir: this.stateDir,
+            archiveAfterHours: 24,
+            deleteAfterHours: 168,
+            livePids: /* @__PURE__ */ new Set([process.pid]),
+            liveSessions: new Set(this.registeredSessions),
+            activeSocketDir: (0, import_node_path14.join)(this.stateDir, "sockets", "active")
+          });
+          if (result.archived > 0 || result.deleted > 0 || result.socketsRemoved > 0) {
+            logger52.info("State cleanup", {
+              archived: result.archived,
+              deleted: result.deleted,
+              socketsRemoved: result.socketsRemoved
             });
           }
-          const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-          const PID_RE = /^\d+$/;
-          const socketPointers = entries.filter((f) => f.startsWith("runtime-") && f.endsWith(".socket"));
-          for (const file of socketPointers) {
-            const key = file.slice("runtime-".length, -".socket".length);
-            const pointerFilePath = (0, import_node_path13.join)(this.stateDir, file);
-            let shouldDelete = false;
-            if (UUID_RE.test(key)) {
-              shouldDelete = !this.registeredSessions.has(key);
-            } else if (PID_RE.test(key)) {
-              try {
-                process.kill(Number(key), 0);
-              } catch {
-                shouldDelete = true;
-              }
-            }
-            if (shouldDelete) {
-              try {
-                const socketTarget = (0, import_node_fs13.readFileSync)(pointerFilePath, "utf-8").trim();
-                if (socketTarget) {
-                  try {
-                    (0, import_node_fs13.unlinkSync)(socketTarget);
-                  } catch {
-                  }
-                }
-              } catch {
-              }
-              try {
-                (0, import_node_fs13.unlinkSync)(pointerFilePath);
-              } catch {
-              }
-              logger52.info("Session cleanup: removed stale socket pointer", { file, key });
-            }
+          if (result.errors.length > 0) {
+            logger52.debug("State cleanup non-fatal errors", { errors: result.errors });
           }
         } catch (err) {
-          logger52.warn("Session cleanup failed", { error: toErrorMessage(err) });
+          logger52.warn("State cleanup failed", { error: toErrorMessage(err) });
         }
       }
     }
+    if (msg.hook_name === "session:started" && this.socketPath && this.onSocketLostCallback) {
+      if (!(0, import_node_fs14.existsSync)(this.socketPath)) {
+        logger52.warn("Socket file missing at session start, triggering recreation", {
+          socket: this.socketPath
+        });
+        const cb = this.onSocketLostCallback;
+        setImmediate(() => cb());
+      }
+    }
     if (msg.hook_name === "config:loaded" && this.directiveQueue) {
-      const wrfcConfig = msg.hook_input?.wrfc;
+      const input = msg.hook_input;
+      const runtimeObj = input?.runtime;
+      const wrfcConfig = runtimeObj?.wrfc ?? input?.wrfc;
       if (wrfcConfig && typeof wrfcConfig === "object" && !Array.isArray(wrfcConfig)) {
         const validated = validateWRFCConfig(wrfcConfig);
         if (Object.keys(validated).length > 0) {
           this.wrfcConfigStore?.set(validated);
+          if (this.stateStore) {
+            if (typeof validated.min_review_score === "number") {
+              this.stateStore.set("wrfc.config.min_review_score", validated.min_review_score);
+            }
+            if (typeof validated.max_fix_attempts === "number") {
+              this.stateStore.set("wrfc.config.max_fix_attempts", validated.max_fix_attempts);
+            }
+            if (typeof validated.auto_commit === "boolean") {
+              this.stateStore.set("wrfc.config.auto_commit", validated.auto_commit);
+            }
+            if (Array.isArray(validated.require_review_types)) {
+              this.stateStore.set("wrfc.config.require_review_types", validated.require_review_types);
+            }
+          }
           logger52.debug("WRFC config stored from config:loaded event", { validated });
         }
       }
@@ -14550,6 +14783,9 @@ var IPCRouter = class {
     }
   }
 };
+
+// src/extensions/ipc/setup.ts
+init_fs_utils();
 
 // src/extensions/ipc/tool-gating.ts
 init_logger();
@@ -14755,22 +14991,146 @@ var ContextInjector = class _ContextInjector {
   }
 };
 
-// src/extensions/ipc/setup.ts
-var logger55 = createLogger("ipc-setup");
-function isPidAlive(pid) {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
+// src/extensions/ipc/socket-watcher.ts
+var import_node_fs15 = require("node:fs");
+var import_node_path15 = require("node:path");
+init_logger();
+var log11 = createLogger("socket-watcher");
+var SocketWatcher = class {
+  static {
+    __name(this, "SocketWatcher");
   }
-}
-__name(isPidAlive, "isPidAlive");
-function cleanStalePointerFiles(stateDir, log18) {
+  socketPath;
+  socketDir;
+  socketName;
+  onSocketLost;
+  pollIntervalMs;
+  debounceMs;
+  dirWatcher = null;
+  pollTimer = null;
+  debounceTimer = null;
+  watching = false;
+  fired = false;
+  pollInProgress = false;
+  constructor(socketPath, onSocketLost, options) {
+    this.socketPath = socketPath;
+    this.socketDir = (0, import_node_path15.dirname)(socketPath);
+    this.socketName = (0, import_node_path15.basename)(socketPath);
+    this.onSocketLost = onSocketLost;
+    this.pollIntervalMs = options?.pollIntervalMs ?? 3e4;
+    this.debounceMs = options?.debounceMs ?? 500;
+  }
+  /** Begin watching. Idempotent — calling twice is a no-op. */
+  start() {
+    if (this.watching)
+      return;
+    this.watching = true;
+    this.fired = false;
+    try {
+      const watcher = (0, import_node_fs15.watch)(this.socketDir, (eventType, filename) => {
+        if (filename !== this.socketName)
+          return;
+        if (eventType === "rename") {
+          this.scheduleVerification();
+        }
+      });
+      watcher.unref();
+      this.dirWatcher = watcher;
+    } catch (err) {
+      log11.warn(`SocketWatcher: fs.watch failed, operating in poll-only mode (detection latency up to ${this.pollIntervalMs}ms)`, {
+        error: String(err)
+      });
+    }
+    const poll = setInterval(() => {
+      if (this.pollInProgress)
+        return;
+      this.pollInProgress = true;
+      try {
+        if (!(0, import_node_fs15.existsSync)(this.socketPath)) {
+          log11.warn("SocketWatcher: periodic poll detected missing socket", { path: this.socketPath });
+          this.declareLost();
+        }
+      } finally {
+        this.pollInProgress = false;
+      }
+    }, this.pollIntervalMs);
+    poll.unref();
+    this.pollTimer = poll;
+    log11.debug("SocketWatcher: started", { path: this.socketPath });
+  }
+  /** Stop watching and cancel all pending timers. */
+  stop() {
+    if (!this.watching)
+      return;
+    this.watching = false;
+    this.dirWatcher?.close();
+    this.dirWatcher = null;
+    if (this.pollTimer !== null) {
+      clearInterval(this.pollTimer);
+      this.pollTimer = null;
+    }
+    if (this.debounceTimer !== null) {
+      clearTimeout(this.debounceTimer);
+      this.debounceTimer = null;
+    }
+    log11.debug("SocketWatcher: stopped", { path: this.socketPath });
+  }
+  /** Returns true if the watcher is currently active. */
+  isWatching() {
+    return this.watching;
+  }
+  // ─── Private helpers ────────────────────────────────────────────────────────
+  /**
+   * Arm (or reset) the debounce timer. After `debounceMs` of silence, stat the
+   * socket and declare it lost if it is still absent.
+   */
+  scheduleVerification() {
+    if (this.debounceTimer !== null) {
+      clearTimeout(this.debounceTimer);
+    }
+    const t = setTimeout(() => {
+      this.debounceTimer = null;
+      if (!(0, import_node_fs15.existsSync)(this.socketPath)) {
+        log11.warn("SocketWatcher: directory rename event confirmed socket missing", {
+          path: this.socketPath
+        });
+        this.declareLost();
+      }
+    }, this.debounceMs);
+    t.unref();
+    this.debounceTimer = t;
+  }
+  /**
+   * Invoke the `onSocketLost` callback exactly once, then stop watching.
+   * The caller is expected to recreate the socket and start a new watcher.
+   */
+  declareLost() {
+    if (this.fired)
+      return;
+    this.fired = true;
+    this.stop();
+    log11.info("SocketWatcher: invoking onSocketLost callback", { path: this.socketPath });
+    try {
+      const result = this.onSocketLost();
+      if (result && typeof result.catch === "function") {
+        result.catch((err) => {
+          log11.warn("SocketWatcher: onSocketLost callback rejected", { error: String(err) });
+        });
+      }
+    } catch (err) {
+      log11.warn("SocketWatcher: onSocketLost callback threw", { error: String(err) });
+    }
+  }
+};
+
+// src/extensions/ipc/setup.ts
+init_process_utils();
+var logger55 = createLogger("ipc-setup");
+function cleanStalePointerFiles(stateDir, log20) {
   try {
     let entries;
     try {
-      entries = (0, import_node_fs14.readdirSync)(stateDir);
+      entries = (0, import_node_fs16.readdirSync)(stateDir);
     } catch (err) {
       if (err.code === "ENOENT")
         return;
@@ -14784,20 +15144,20 @@ function cleanStalePointerFiles(stateDir, log18) {
       const pid = parseInt(match[1], 10);
       if (isPidAlive(pid))
         continue;
-      const pointerPath = (0, import_node_path14.join)(stateDir, filename);
+      const pointerPath = (0, import_node_path16.join)(stateDir, filename);
       let socketFilePath;
       try {
-        socketFilePath = (0, import_node_fs14.readFileSync)(pointerPath, "utf-8").trim();
+        socketFilePath = (0, import_node_fs16.readFileSync)(pointerPath, "utf-8").trim();
       } catch {
       }
       let socketCleaned = false;
       if (socketFilePath) {
         try {
-          (0, import_node_fs14.unlinkSync)(socketFilePath);
+          (0, import_node_fs16.unlinkSync)(socketFilePath);
           socketCleaned = true;
         } catch (err) {
           if (err.code !== "ENOENT") {
-            log18.warn("Could not remove stale socket file", {
+            log20.warn("Could not remove stale socket file", {
               path: socketFilePath,
               err: toErrorMessage(err)
             });
@@ -14805,28 +15165,32 @@ function cleanStalePointerFiles(stateDir, log18) {
         }
       }
       try {
-        (0, import_node_fs14.unlinkSync)(pointerPath);
+        (0, import_node_fs16.unlinkSync)(pointerPath);
       } catch (err) {
         if (err.code !== "ENOENT") {
-          log18.warn("Could not remove stale socket pointer file", {
+          log20.warn("Could not remove stale socket pointer file", {
             path: pointerPath,
             err: toErrorMessage(err)
           });
         }
       }
-      log18.info("Cleaned stale socket pointer", { pid, pointer: pointerPath, socketCleaned });
+      log20.info("Cleaned stale socket pointer", { pid, pointer: pointerPath, socketCleaned });
     }
   } catch (err) {
-    log18.warn("Stale pointer cleanup failed", { err: toErrorMessage(err) });
+    log20.warn("Stale pointer cleanup failed", { err: toErrorMessage(err) });
   }
 }
 __name(cleanStalePointerFiles, "cleanStalePointerFiles");
 async function createIPCSubsystem(opts) {
   const { config, projectRoot, directiveQueue, agentWorkflowMap } = opts;
-  const stateDir = (0, import_node_path14.join)(projectRoot, config.persistence.state_dir);
+  const stateDir = (0, import_node_path16.join)(projectRoot, config.persistence.state_dir);
   const socketDir = config.ipc.socket_dir;
   const hash = (0, import_node_crypto4.createHash)("sha256").update(projectRoot).digest("hex").slice(0, 8);
-  const socketPath = (0, import_node_path14.join)(socketDir, `goodvibes-runtime-${hash}-${process.pid}.sock`);
+  const socketName = `goodvibes-runtime-${hash}-${process.pid}.sock`;
+  const activeSocketDir = (0, import_node_path16.join)(stateDir, "sockets", "active");
+  ensureDirSync(activeSocketDir);
+  const socketPath = (0, import_node_path16.join)(activeSocketDir, socketName);
+  const symlinkPath = (0, import_node_path16.join)(socketDir, socketName);
   try {
     const ipcServer = new IPCServer(socketPath);
     const toolGatingConfig = opts.config.tool_gating ?? {
@@ -14884,13 +15248,36 @@ async function createIPCSubsystem(opts) {
       });
     }
     cleanStalePointerFiles(stateDir, logger55);
-    (0, import_node_fs14.mkdirSync)(socketDir, { recursive: true, mode: 448 });
+    (0, import_node_fs16.mkdirSync)(socketDir, { recursive: true, mode: 448 });
     await ipcServer.listen();
-    ensureDirSync(stateDir);
-    const pointerFile = (0, import_node_path14.join)(stateDir, `runtime-${process.pid}.socket`);
-    (0, import_node_fs14.writeFileSync)(pointerFile, socketPath, "utf-8");
-    logger55.info("IPC subsystem created", { socket: socketPath });
-    return { subsystem: { ipcServer, ipcRouter, socketPath }, socketPath };
+    try {
+      try {
+        (0, import_node_fs16.unlinkSync)(symlinkPath);
+      } catch {
+      }
+      (0, import_node_fs16.symlinkSync)(socketPath, symlinkPath);
+      logger55.debug("Socket symlink created", { symlink: symlinkPath, target: socketPath });
+    } catch (err) {
+      logger55.warn("Could not create socket symlink", {
+        symlink: symlinkPath,
+        err: toErrorMessage(err)
+      });
+    }
+    const pointerFile = (0, import_node_path16.join)(stateDir, `runtime-${process.pid}.socket`);
+    (0, import_node_fs16.writeFileSync)(pointerFile, socketPath, "utf-8");
+    let socketWatcher;
+    if (opts.onSocketLost) {
+      socketWatcher = new SocketWatcher(socketPath, opts.onSocketLost);
+      socketWatcher.start();
+    }
+    if (opts.onSocketLost) {
+      ipcRouter.setOnSocketLost(opts.onSocketLost);
+    }
+    logger55.info("IPC subsystem created", { socket: socketPath, symlink: symlinkPath });
+    return {
+      subsystem: { ipcServer, ipcRouter, socketPath, socketWatcher, symlinkPath },
+      socketPath
+    };
   } catch (err) {
     logger55.error("Failed to create IPC subsystem", {
       socket: socketPath,
@@ -14902,19 +15289,19 @@ async function createIPCSubsystem(opts) {
 __name(createIPCSubsystem, "createIPCSubsystem");
 
 // src/extensions/ipc/teardown.ts
-var import_node_fs15 = require("node:fs");
-var import_node_path15 = require("node:path");
+var import_node_fs17 = require("node:fs");
+var import_node_path17 = require("node:path");
 init_logger();
 init_utils();
 var logger56 = createLogger("ipc-teardown");
 function removeSocketPointerFile(projectRoot, config) {
-  const pointerFile = (0, import_node_path15.join)(
+  const pointerFile = (0, import_node_path17.join)(
     projectRoot,
     config.persistence.state_dir,
     `runtime-${process.pid}.socket`
   );
   try {
-    (0, import_node_fs15.unlinkSync)(pointerFile);
+    (0, import_node_fs17.unlinkSync)(pointerFile);
     logger56.debug("Socket pointer file removed", { path: pointerFile });
   } catch (err) {
     if (err.code !== "ENOENT") {
@@ -14927,6 +15314,20 @@ function removeSocketPointerFile(projectRoot, config) {
 }
 __name(removeSocketPointerFile, "removeSocketPointerFile");
 async function teardownIPC(subsystem, projectRoot, config) {
+  subsystem.socketWatcher?.stop();
+  if (subsystem.symlinkPath) {
+    try {
+      (0, import_node_fs17.unlinkSync)(subsystem.symlinkPath);
+      logger56.debug("Symlink removed", { path: subsystem.symlinkPath });
+    } catch (err) {
+      if (err.code !== "ENOENT") {
+        logger56.warn("Could not remove socket symlink", {
+          path: subsystem.symlinkPath,
+          err: toErrorMessage(err)
+        });
+      }
+    }
+  }
   try {
     await subsystem.ipcServer.close();
     removeSocketPointerFile(projectRoot, config);
@@ -14940,11 +15341,14 @@ async function teardownIPC(subsystem, projectRoot, config) {
 }
 __name(teardownIPC, "teardownIPC");
 
+// src/extensions/ipc/index.ts
+init_state_cleanup();
+
 // src/extensions/executor/handlers/devserver-handler.ts
 var import_node_child_process2 = require("node:child_process");
 init_logger();
 init_utils();
-var log10 = createLogger("handler:devserver");
+var log12 = createLogger("handler:devserver");
 var PORT_POLL_TIMEOUT_MS = 3e4;
 var PORT_POLL_INTERVAL_MS = 500;
 async function waitForPort(port, timeoutMs) {
@@ -14988,9 +15392,9 @@ function restartDevServer(projectRoot) {
   return async (args, _event) => {
     const command = typeof args["command"] === "string" ? args["command"] : "npm run dev";
     const port = typeof args["port"] === "number" ? args["port"] : 3e3;
-    log10.info("Restarting dev server", { command, port, projectRoot });
+    log12.info("Restarting dev server", { command, port, projectRoot });
     try {
-      log10.debug("Killing process on port", { port });
+      log12.debug("Killing process on port", { port });
       await killProcessOnPort(port);
       await new Promise((r) => setTimeout(r, 500));
       const [cmd, ...cmdArgs] = command.split(" ");
@@ -15000,15 +15404,15 @@ function restartDevServer(projectRoot) {
         stdio: "ignore"
       });
       child.unref();
-      log10.info("Dev server process spawned", { pid: child.pid, command });
+      log12.info("Dev server process spawned", { pid: child.pid, command });
       const available = await waitForPort(port, PORT_POLL_TIMEOUT_MS);
       if (available) {
-        log10.info("Dev server restarted successfully", { port });
+        log12.info("Dev server restarted successfully", { port });
       } else {
-        log10.warn("Dev server restart timed out waiting for port", { port, timeoutMs: PORT_POLL_TIMEOUT_MS });
+        log12.warn("Dev server restart timed out waiting for port", { port, timeoutMs: PORT_POLL_TIMEOUT_MS });
       }
     } catch (err) {
-      log10.error("Failed to restart dev server", { error: toErrorMessage(err), command, port });
+      log12.error("Failed to restart dev server", { error: toErrorMessage(err), command, port });
     }
   };
 }
@@ -15016,21 +15420,21 @@ __name(restartDevServer, "restartDevServer");
 
 // src/extensions/executor/handlers/notify-handler.ts
 var import_promises = require("node:fs/promises");
-var import_node_path16 = require("node:path");
+var import_node_path18 = require("node:path");
 init_logger();
 init_utils();
-var log11 = createLogger("handler:notify");
+var log13 = createLogger("handler:notify");
 function notifyUser(projectRoot) {
   return async (args, _event) => {
     const message = typeof args["message"] === "string" ? args["message"] : "Notification";
     const source = typeof args["source"] === "string" ? args["source"] : "runtime-engine";
     const rawSeverity = args["severity"];
     const severity = rawSeverity === "warn" || rawSeverity === "error" ? rawSeverity : "info";
-    const notificationsDir = (0, import_node_path16.join)(projectRoot, ".goodvibes", "notifications");
+    const notificationsDir = (0, import_node_path18.join)(projectRoot, ".goodvibes", "notifications");
     const id = generateId();
     const ts = timestamp();
     const filename = `${ts}-${id}.json`;
-    const filePath = (0, import_node_path16.join)(notificationsDir, filename);
+    const filePath = (0, import_node_path18.join)(notificationsDir, filename);
     const record = {
       timestamp: (/* @__PURE__ */ new Date()).toISOString(),
       message,
@@ -15040,9 +15444,9 @@ function notifyUser(projectRoot) {
     try {
       await (0, import_promises.mkdir)(notificationsDir, { recursive: true });
       await (0, import_promises.writeFile)(filePath, JSON.stringify(record, null, 2), "utf-8");
-      log11.info("Notification written", { filePath, severity, source });
+      log13.info("Notification written", { filePath, severity, source });
     } catch (err) {
-      log11.error("Failed to write notification", { error: toErrorMessage(err), filePath });
+      log13.error("Failed to write notification", { error: toErrorMessage(err), filePath });
     }
   };
 }
@@ -15051,16 +15455,16 @@ async function notifyComplete(context, config) {
   const source = typeof config["source"] === "string" ? config["source"] : "workflow-engine";
   const workflowId = typeof context["workflow_id"] === "string" ? context["workflow_id"] : "unknown";
   const task = typeof context["task"] === "string" ? context["task"] : "unnamed task";
-  log11.info("Workflow completed", { workflowId, task, source });
+  log13.info("Workflow completed", { workflowId, task, source });
 }
 __name(notifyComplete, "notifyComplete");
 
 // src/extensions/executor/handlers/log-handler.ts
 var import_promises2 = require("node:fs/promises");
-var import_node_path17 = require("node:path");
+var import_node_path19 = require("node:path");
 init_logger();
 init_utils();
-var log12 = createLogger("handler:log");
+var log14 = createLogger("handler:log");
 function formatLogEntry(event, args) {
   const ts = (/* @__PURE__ */ new Date()).toISOString();
   const lines = [
@@ -15087,14 +15491,14 @@ function formatLogEntry(event, args) {
 __name(formatLogEntry, "formatLogEntry");
 function logEvent(projectRoot) {
   return async (args, event) => {
-    const logPath = (0, import_node_path17.join)(projectRoot, ".goodvibes", "logs", "activity.md");
+    const logPath = (0, import_node_path19.join)(projectRoot, ".goodvibes", "logs", "activity.md");
     try {
-      await (0, import_promises2.mkdir)((0, import_node_path17.dirname)(logPath), { recursive: true });
+      await (0, import_promises2.mkdir)((0, import_node_path19.dirname)(logPath), { recursive: true });
       const entry = formatLogEntry(event, args);
       await (0, import_promises2.appendFile)(logPath, entry, "utf-8");
-      log12.debug("Activity logged", { eventType: event.type, logPath });
+      log14.debug("Activity logged", { eventType: event.type, logPath });
     } catch (err) {
-      log12.error("Failed to append activity log", { error: toErrorMessage(err), logPath });
+      log14.error("Failed to append activity log", { error: toErrorMessage(err), logPath });
     }
   };
 }
@@ -15102,10 +15506,10 @@ __name(logEvent, "logEvent");
 
 // src/extensions/executor/handlers/memory-handler.ts
 var import_promises3 = require("node:fs/promises");
-var import_node_path18 = require("node:path");
+var import_node_path20 = require("node:path");
 init_logger();
 init_utils();
-var log13 = createLogger("handler:memory");
+var log15 = createLogger("handler:memory");
 var ALLOWED_MEMORY_FILES = /* @__PURE__ */ new Set([
   "decisions",
   "failures",
@@ -15132,28 +15536,28 @@ function updateMemory(projectRoot) {
     const key = typeof args["key"] === "string" ? args["key"] : "";
     const value = args["value"];
     if (!file) {
-      log13.warn("updateMemory called without args.file");
+      log15.warn("updateMemory called without args.file");
       return;
     }
     if (!key) {
-      log13.warn("updateMemory called without args.key", { file });
+      log15.warn("updateMemory called without args.key", { file });
       return;
     }
     const safeName = file.replace(/[^a-z0-9-]/gi, "");
     if (!ALLOWED_MEMORY_FILES.has(safeName)) {
-      log13.warn("updateMemory blocked unknown memory file", { file, safeName });
+      log15.warn("updateMemory blocked unknown memory file", { file, safeName });
       return;
     }
-    const memoryDir = (0, import_node_path18.join)(projectRoot, ".goodvibes", "memory");
-    const filePath = (0, import_node_path18.join)(memoryDir, `${safeName}.json`);
+    const memoryDir = (0, import_node_path20.join)(projectRoot, ".goodvibes", "memory");
+    const filePath = (0, import_node_path20.join)(memoryDir, `${safeName}.json`);
     try {
-      await (0, import_promises3.mkdir)((0, import_node_path18.dirname)(filePath), { recursive: true });
+      await (0, import_promises3.mkdir)((0, import_node_path20.dirname)(filePath), { recursive: true });
       const existing = await readJsonFile(filePath);
       existing[key] = value;
       await (0, import_promises3.writeFile)(filePath, JSON.stringify(existing, null, 2), "utf-8");
-      log13.info("Memory updated", { file: safeName, key, filePath });
+      log15.info("Memory updated", { file: safeName, key, filePath });
     } catch (err) {
-      log13.error("Failed to update memory file", { error: toErrorMessage(err), filePath, key });
+      log15.error("Failed to update memory file", { error: toErrorMessage(err), filePath, key });
     }
   };
 }
@@ -15164,21 +15568,21 @@ var import_node_child_process3 = require("node:child_process");
 var import_node_util = require("node:util");
 init_logger();
 init_utils();
-var log14 = createLogger("handler:build");
+var log16 = createLogger("handler:build");
 var execAsync = (0, import_node_util.promisify)(import_node_child_process3.exec);
 var MAX_OUTPUT_CHARS = 2e3;
 function runBuild(projectRoot) {
   return async (context, config) => {
     const command = typeof config["command"] === "string" ? config["command"] : "npm run build";
     const cwd = typeof config["cwd"] === "string" ? config["cwd"] : projectRoot;
-    log14.info("Running build", { command, cwd });
+    log16.info("Running build", { command, cwd });
     try {
       const { stdout, stderr } = await execAsync(command, { cwd });
       const combined = `${stdout}
 ${stderr}`.trim().slice(0, MAX_OUTPUT_CHARS);
       context["build_result"] = "success";
       context["build_output"] = combined;
-      log14.info("Build succeeded", { command });
+      log16.info("Build succeeded", { command });
     } catch (err) {
       const execErr = err;
       const combined = [
@@ -15188,7 +15592,7 @@ ${stderr}`.trim().slice(0, MAX_OUTPUT_CHARS);
       ].join("\n").trim().slice(0, MAX_OUTPUT_CHARS);
       context["build_result"] = "failed";
       context["build_output"] = combined;
-      log14.warn("Build failed", { command, error: execErr.message ?? toErrorMessage(err) });
+      log16.warn("Build failed", { command, error: execErr.message ?? toErrorMessage(err) });
     }
   };
 }
@@ -15199,21 +15603,21 @@ var import_node_child_process4 = require("node:child_process");
 var import_node_util2 = require("node:util");
 init_logger();
 init_utils();
-var log15 = createLogger("handler:test");
+var log17 = createLogger("handler:test");
 var execAsync2 = (0, import_node_util2.promisify)(import_node_child_process4.exec);
 var MAX_OUTPUT_CHARS2 = 2e3;
 function runTests(projectRoot) {
   return async (context, config) => {
     const command = typeof config["command"] === "string" ? config["command"] : "npm test";
     const cwd = typeof config["cwd"] === "string" ? config["cwd"] : projectRoot;
-    log15.info("Running tests", { command, cwd });
+    log17.info("Running tests", { command, cwd });
     try {
       const { stdout, stderr } = await execAsync2(command, { cwd });
       const combined = `${stdout}
 ${stderr}`.trim().slice(0, MAX_OUTPUT_CHARS2);
       context["test_result"] = "success";
       context["test_output"] = combined;
-      log15.info("Tests passed", { command });
+      log17.info("Tests passed", { command });
     } catch (err) {
       const execErr = err;
       const combined = [
@@ -15223,24 +15627,24 @@ ${stderr}`.trim().slice(0, MAX_OUTPUT_CHARS2);
       ].join("\n").trim().slice(0, MAX_OUTPUT_CHARS2);
       context["test_result"] = "failed";
       context["test_output"] = combined;
-      log15.warn("Tests failed", { command, error: execErr.message ?? toErrorMessage(err) });
+      log17.warn("Tests failed", { command, error: execErr.message ?? toErrorMessage(err) });
     }
   };
 }
 __name(runTests, "runTests");
 
 // src/extensions/executor/handlers/guards.ts
-var import_node_fs16 = require("node:fs");
-var import_node_path19 = require("node:path");
+var import_node_fs18 = require("node:fs");
+var import_node_path21 = require("node:path");
 init_logger();
 init_utils();
-var log16 = createLogger("handler:guards");
+var log18 = createLogger("handler:guards");
 var DEFAULT_NPM_TEST_SCRIPT = 'echo "Error: no test specified"';
 function hasTestSuite(projectRoot) {
   return (_context, _event) => {
-    const pkgPath = (0, import_node_path19.join)(projectRoot, "package.json");
+    const pkgPath = (0, import_node_path21.join)(projectRoot, "package.json");
     try {
-      const raw = (0, import_node_fs16.readFileSync)(pkgPath, "utf-8");
+      const raw = (0, import_node_fs18.readFileSync)(pkgPath, "utf-8");
       const pkg = JSON.parse(raw);
       if (typeof pkg !== "object" || pkg === null)
         return false;
@@ -15252,7 +15656,7 @@ function hasTestSuite(projectRoot) {
         return false;
       return testScript.trim() !== "" && !testScript.includes(DEFAULT_NPM_TEST_SCRIPT);
     } catch (err) {
-      log16.debug("hasTestSuite: could not read package.json", { error: toErrorMessage(err), projectRoot });
+      log18.debug("hasTestSuite: could not read package.json", { error: toErrorMessage(err), projectRoot });
       return false;
     }
   };
@@ -15269,19 +15673,19 @@ __name(buildPassing, "buildPassing");
 // src/extensions/executor/handlers/ci-handler.ts
 init_logger();
 init_events();
-var log17 = createLogger("handler:ci");
+var log19 = createLogger("handler:ci");
 var FAILURE_STATUSES = /* @__PURE__ */ new Set(["failure", "failed", "error"]);
 function bridgeCIFailure(_projectRoot, emitter) {
   return async (args, _event) => {
     const status = typeof args["status"] === "string" ? args["status"].toLowerCase() : "";
     if (!FAILURE_STATUSES.has(status)) {
-      log17.debug("CI event is not a failure \u2014 skipping", { status });
+      log19.debug("CI event is not a failure \u2014 skipping", { status });
       return;
     }
     const provider = typeof args["provider"] === "string" ? args["provider"] : "ci";
     const branch = typeof args["branch"] === "string" ? args["branch"] : "unknown";
     const commit = typeof args["commit"] === "string" ? args["commit"] : "unknown";
-    log17.info("CI failure detected \u2014 emitting build:failed", { provider, branch, commit, status });
+    log19.info("CI failure detected \u2014 emitting build:failed", { provider, branch, commit, status });
     emitter.emit(createEvent({
       type: "build:failed",
       source: { kind: "system" },
@@ -15401,12 +15805,12 @@ function toTriggerDefinitionBase(trigger) {
   };
 }
 __name(toTriggerDefinitionBase, "toTriggerDefinitionBase");
-function loggerToPluginLogger(log18) {
+function loggerToPluginLogger(log20) {
   return {
-    debug: (...args) => log18.debug(String(args[0]), args[1]),
-    info: (...args) => log18.info(String(args[0]), args[1]),
-    warn: (...args) => log18.warn(String(args[0]), args[1]),
-    error: (...args) => log18.error(String(args[0]), args[1])
+    debug: (...args) => log20.debug(String(args[0]), args[1]),
+    info: (...args) => log20.info(String(args[0]), args[1]),
+    warn: (...args) => log20.warn(String(args[0]), args[1]),
+    error: (...args) => log20.error(String(args[0]), args[1])
   };
 }
 __name(loggerToPluginLogger, "loggerToPluginLogger");
@@ -15435,6 +15839,7 @@ var RuntimeEngine = class {
   watchdog = null;
   wrfcPlugin = null;
   externalPlugin = null;
+  recreatingIPCPromise = null;
   timePlugin = null;
   devServerMonitor = null;
   /** Generic registry of reconfigurable subsystems, populated during startup(). */
@@ -15492,7 +15897,7 @@ var RuntimeEngine = class {
         this.workflow.workflowEngine.setAgentWorkflowMap(this.directives.agentWorkflowMap);
       }
       const workflowPersistence = new WorkflowPersistence({
-        stateDir: (0, import_node_path20.join)(this.projectRoot, ".goodvibes", "state", "workflows"),
+        stateDir: (0, import_node_path22.join)(this.projectRoot, ".goodvibes", "state", "workflows"),
         ttlMs: 24 * 60 * 60 * 1e3,
         // 24 hours
         enabled: true
@@ -15540,7 +15945,7 @@ var RuntimeEngine = class {
         workflowEngine: this.workflow.workflowEngine,
         directiveQueue: this.directives.directiveQueue,
         agentWorkflowMap: this.directives.agentWorkflowMap,
-        stateDir: (0, import_node_path20.join)(this.projectRoot, this.config.persistence.state_dir)
+        stateDir: (0, import_node_path22.join)(this.projectRoot, this.config.persistence.state_dir)
       });
     }
     this.persistence = await createPersistenceSubsystem({
@@ -15568,7 +15973,7 @@ var RuntimeEngine = class {
     }
     const wrfcConfig = getDefaultWRFCConfig();
     try {
-      const raw = (0, import_node_fs17.readFileSync)((0, import_node_path20.join)(this.projectRoot, ".goodvibes", "goodvibes.json"), "utf-8");
+      const raw = (0, import_node_fs19.readFileSync)((0, import_node_path22.join)(this.projectRoot, ".goodvibes", "goodvibes.json"), "utf-8");
       const parsed = JSON.parse(raw);
       const wrfcOverrides = parsed?.runtime?.wrfc;
       if (wrfcOverrides && typeof wrfcOverrides === "object") {
@@ -15798,7 +16203,8 @@ var RuntimeEngine = class {
               logger59.warn("Failed to process hook event immediately", { error: toErrorMessage(err) });
             }
           }
-        }
+        },
+        onSocketLost: () => this.recreateIPC()
       });
       if (ipcResult) {
         this.ipcSubsystem = ipcResult.subsystem;
@@ -15933,6 +16339,77 @@ var RuntimeEngine = class {
           }
         });
       });
+    }
+  }
+  /**
+   * Recreate the IPC subsystem after a socket loss event.
+   *
+   * Uses a Promise-based single-flight guard (`recreatingIPCPromise`) to prevent
+   * concurrent recreation attempts if both the SocketWatcher and the
+   * session:started verification fire in close succession. Callers that arrive
+   * while recreation is in progress join the existing Promise rather than
+   * starting a second one.
+   */
+  recreateIPC() {
+    if (this.recreatingIPCPromise)
+      return this.recreatingIPCPromise;
+    this.recreatingIPCPromise = this.doRecreateIPC();
+    this.recreatingIPCPromise.finally(() => {
+      this.recreatingIPCPromise = null;
+    });
+    return this.recreatingIPCPromise;
+  }
+  async doRecreateIPC() {
+    const log20 = createLogger("bootstrap");
+    try {
+      log20.info("Recreating IPC subsystem (socket lost)");
+      if (this.ipcSubsystem) {
+        try {
+          await teardownIPC(this.ipcSubsystem, this.projectRoot, this.config);
+        } catch (err) {
+          log20.warn("IPC teardown during recreation failed", { error: toErrorMessage(err) });
+        }
+        this.ipcSubsystem = null;
+      }
+      if (!this.config.features.ipc_enabled) {
+        log20.warn("IPC feature is disabled \u2014 skipping recreation");
+        return;
+      }
+      const ipcResult = await createIPCSubsystem({
+        config: this.config,
+        projectRoot: this.projectRoot,
+        eventBus: this.events.eventBus,
+        triggerRegistry: this.triggers?.triggerRegistry ?? null,
+        workflowEngine: this.workflow?.workflowEngine ?? null,
+        agentCoordinator: this.agents?.agentCoordinator ?? null,
+        directiveQueue: this.directives?.directiveQueue ?? null,
+        wrfcConfigStore: this.wrfcConfigStore,
+        agentWorkflowMap: this.directives?.agentWorkflowMap ?? null,
+        stateStore: this.coreRuntime?.stateStore ?? null,
+        hookProcessor: this.hookProcessor,
+        executorMode: this.executorSubsystem?.executorMode ?? null,
+        executorBudget: this.executorSubsystem?.executorBudget ?? null,
+        daemonTickHandler: this.executorSubsystem?.daemonTickHandler ?? null,
+        processHookEvent: async (event) => {
+          const processor = this.coreRuntime?.eventProcessor;
+          if (processor) {
+            try {
+              await processor.processImmediate(event);
+            } catch (err) {
+              log20.warn("Failed to process hook event immediately", { error: toErrorMessage(err) });
+            }
+          }
+        },
+        onSocketLost: () => this.recreateIPC()
+      });
+      if (ipcResult) {
+        this.ipcSubsystem = ipcResult.subsystem;
+        log20.info("IPC subsystem recreated", { socket: ipcResult.socketPath });
+      } else {
+        log20.error("IPC subsystem recreation failed \u2014 runtime will be unreachable");
+      }
+    } catch (err) {
+      log20.error("IPC recreation threw unexpectedly", { error: toErrorMessage(err) });
     }
   }
   /**
@@ -16471,8 +16948,8 @@ var DaemonServer = class {
     }
     this.sessions.clear();
     try {
-      const { unlinkSync: unlinkSync10 } = await import("node:fs");
-      unlinkSync10(this.socketPath);
+      const { unlinkSync: unlinkSync11 } = await import("node:fs");
+      unlinkSync11(this.socketPath);
     } catch {
     }
     if (!this.server)
@@ -16940,11 +17417,12 @@ var DaemonServer = class {
 };
 
 // src/transport/daemon-hook-server.ts
-var import_node_fs18 = require("node:fs");
-var import_node_path21 = require("node:path");
+var import_node_fs20 = require("node:fs");
+var import_node_path23 = require("node:path");
 var import_node_crypto5 = require("node:crypto");
 init_logger();
 init_utils();
+init_fs_utils();
 var logger61 = createLogger("daemon-hook-server");
 var DaemonHookServer = class {
   static {
@@ -16964,8 +17442,8 @@ var DaemonHookServer = class {
    * Start the hook IPC server and write the PID-keyed pointer file.
    */
   async start() {
-    const socketDir = (0, import_node_path21.dirname)(this.socketPath);
-    (0, import_node_fs18.mkdirSync)(socketDir, { recursive: true, mode: 448 });
+    const socketDir = (0, import_node_path23.dirname)(this.socketPath);
+    (0, import_node_fs20.mkdirSync)(socketDir, { recursive: true, mode: 448 });
     cleanStalePointerFiles(this.stateDir, logger61);
     const engine = this.engine;
     const directiveQueue = engine.getDirectiveQueue();
@@ -17014,9 +17492,9 @@ var DaemonHookServer = class {
     await ipcServer.listen();
     this.ipcServer = ipcServer;
     this.ipcRouter = ipcRouter;
-    const pointerFile = (0, import_node_path21.join)(this.stateDir, `runtime-${process.pid}.socket`);
+    const pointerFile = (0, import_node_path23.join)(this.stateDir, `runtime-${process.pid}.socket`);
     try {
-      (0, import_node_fs18.writeFileSync)(pointerFile, this.socketPath, "utf-8");
+      (0, import_node_fs20.writeFileSync)(pointerFile, this.socketPath, "utf-8");
       logger61.info("Daemon hook server started", {
         socket: this.socketPath,
         pointer: pointerFile
@@ -17030,9 +17508,9 @@ var DaemonHookServer = class {
    */
   async stop() {
     this.ipcRouter?.removeSessionPointers();
-    const pointerFile = (0, import_node_path21.join)(this.stateDir, `runtime-${process.pid}.socket`);
+    const pointerFile = (0, import_node_path23.join)(this.stateDir, `runtime-${process.pid}.socket`);
     try {
-      (0, import_node_fs18.unlinkSync)(pointerFile);
+      (0, import_node_fs20.unlinkSync)(pointerFile);
     } catch {
     }
     if (this.ipcServer) {
@@ -17058,7 +17536,7 @@ var DaemonHookServer = class {
    */
   static socketPath(socketDir, projectRoot) {
     const hash = (0, import_node_crypto5.createHash)("sha256").update(projectRoot).digest("hex").slice(0, 8);
-    return (0, import_node_path21.join)(socketDir, `goodvibes-hook-${hash}-${process.pid}.sock`);
+    return (0, import_node_path23.join)(socketDir, `goodvibes-hook-${hash}-${process.pid}.sock`);
   }
 };
 
@@ -17073,21 +17551,21 @@ init_logger();
 var logger62 = createLogger("daemon");
 async function main() {
   const projectRoot = process.env["GV_PROJECT_ROOT"] ?? process.cwd();
-  const goodvibesDir = (0, import_node_path22.resolve)(projectRoot, ".goodvibes");
-  const socketPath = process.env["GV_DAEMON_SOCKET"] ? (0, import_node_path22.resolve)(process.env["GV_DAEMON_SOCKET"]) : (0, import_node_path22.resolve)(goodvibesDir, DAEMON_SOCKET_NAME);
-  const hookSocketPath = process.env["GV_DAEMON_HOOK_SOCKET"] ? (0, import_node_path22.resolve)(process.env["GV_DAEMON_HOOK_SOCKET"]) : (0, import_node_path22.resolve)(goodvibesDir, DAEMON_HOOK_SOCKET_NAME);
-  const stateDir = (0, import_node_path22.resolve)(goodvibesDir, "state");
-  const pidFilePath = (0, import_node_path22.resolve)(goodvibesDir, DAEMON_PID_FILE);
-  const socketPointerPath = (0, import_node_path22.resolve)(goodvibesDir, DAEMON_SOCKET_POINTER);
-  if ((0, import_node_fs19.existsSync)(socketPath)) {
+  const goodvibesDir = (0, import_node_path24.resolve)(projectRoot, ".goodvibes");
+  const socketPath = process.env["GV_DAEMON_SOCKET"] ? (0, import_node_path24.resolve)(process.env["GV_DAEMON_SOCKET"]) : (0, import_node_path24.resolve)(goodvibesDir, DAEMON_SOCKET_NAME);
+  const hookSocketPath = process.env["GV_DAEMON_HOOK_SOCKET"] ? (0, import_node_path24.resolve)(process.env["GV_DAEMON_HOOK_SOCKET"]) : (0, import_node_path24.resolve)(goodvibesDir, DAEMON_HOOK_SOCKET_NAME);
+  const stateDir = (0, import_node_path24.resolve)(goodvibesDir, "state");
+  const pidFilePath = (0, import_node_path24.resolve)(goodvibesDir, DAEMON_PID_FILE);
+  const socketPointerPath = (0, import_node_path24.resolve)(goodvibesDir, DAEMON_SOCKET_POINTER);
+  if ((0, import_node_fs21.existsSync)(socketPath)) {
     try {
-      (0, import_node_fs19.unlinkSync)(socketPath);
+      (0, import_node_fs21.unlinkSync)(socketPath);
     } catch {
     }
   }
-  if ((0, import_node_fs19.existsSync)(hookSocketPath)) {
+  if ((0, import_node_fs21.existsSync)(hookSocketPath)) {
     try {
-      (0, import_node_fs19.unlinkSync)(hookSocketPath);
+      (0, import_node_fs21.unlinkSync)(hookSocketPath);
     } catch {
     }
   }
@@ -17102,8 +17580,8 @@ async function main() {
   const hookServer = new DaemonHookServer({ socketPath: hookSocketPath, engine, stateDir });
   await hookServer.start();
   try {
-    (0, import_node_fs19.writeFileSync)(pidFilePath, String(process.pid), "utf-8");
-    (0, import_node_fs19.writeFileSync)(socketPointerPath, socketPath, "utf-8");
+    (0, import_node_fs21.writeFileSync)(pidFilePath, String(process.pid), "utf-8");
+    (0, import_node_fs21.writeFileSync)(socketPointerPath, socketPath, "utf-8");
   } catch (err) {
     logger62.warn("Failed to write PID/socket files", { err: String(err) });
   }
@@ -17118,11 +17596,11 @@ async function main() {
       logger62.error("Shutdown error", { err: String(err) });
     } finally {
       try {
-        (0, import_node_fs19.unlinkSync)(pidFilePath);
+        (0, import_node_fs21.unlinkSync)(pidFilePath);
       } catch {
       }
       try {
-        (0, import_node_fs19.unlinkSync)(socketPointerPath);
+        (0, import_node_fs21.unlinkSync)(socketPointerPath);
       } catch {
       }
       process.exit(0);

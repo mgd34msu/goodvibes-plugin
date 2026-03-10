@@ -21,10 +21,12 @@ const logger = createLogger('wrfc-config-store');
 export function validateWRFCConfig(raw: Record<string, unknown>): Record<string, unknown> {
   const validated: Record<string, unknown> = {};
 
-  if (typeof raw.min_review_score === 'number' && raw.min_review_score >= 0 && raw.min_review_score <= 10) {
-    validated.min_review_score = raw.min_review_score;
-  } else if (raw.min_review_score !== undefined) {
-    logger.warn('Invalid min_review_score rejected', { value: raw.min_review_score, expected: 'number 0-10' });
+  // Accept both 'min_review_score' and 'score_threshold' (goodvibes.json uses score_threshold)
+  const scoreValue = raw.min_review_score ?? raw.score_threshold;
+  if (typeof scoreValue === 'number' && scoreValue >= 0 && scoreValue <= 10) {
+    validated.min_review_score = scoreValue;
+  } else if (scoreValue !== undefined) {
+    logger.warn('Invalid min_review_score/score_threshold rejected', { value: scoreValue, expected: 'number 0-10' });
   }
   if (typeof raw.max_fix_attempts === 'number' && Number.isInteger(raw.max_fix_attempts) && raw.max_fix_attempts > 0) {
     validated.max_fix_attempts = raw.max_fix_attempts;

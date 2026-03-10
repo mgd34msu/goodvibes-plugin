@@ -421,12 +421,30 @@ export class IPCRouter {
     }
 
     // Store WRFC config when config:loaded event arrives
+    // goodvibes.json nests wrfc at runtime.wrfc, so navigate the full path
     if (msg.hook_name === 'config:loaded' && this.directiveQueue) {
-      const wrfcConfig = (msg.hook_input as Record<string, unknown>)?.wrfc;
+      const input = msg.hook_input as Record<string, unknown>;
+      const runtimeObj = input?.runtime as Record<string, unknown> | undefined;
+      const wrfcConfig = runtimeObj?.wrfc ?? input?.wrfc; // support both nested and top-level
       if (wrfcConfig && typeof wrfcConfig === 'object' && !Array.isArray(wrfcConfig)) {
         const validated = validateWRFCConfig(wrfcConfig as Record<string, unknown>);
         if (Object.keys(validated).length > 0) {
           this.wrfcConfigStore?.set(validated);
+          // Also propagate to CoreStateStore so WRFC handlers pick up the values
+          if (this.stateStore) {
+            if (typeof validated.min_review_score === 'number') {
+              this.stateStore.set('wrfc.config.min_review_score', validated.min_review_score);
+            }
+            if (typeof validated.max_fix_attempts === 'number') {
+              this.stateStore.set('wrfc.config.max_fix_attempts', validated.max_fix_attempts);
+            }
+            if (typeof validated.auto_commit === 'boolean') {
+              this.stateStore.set('wrfc.config.auto_commit', validated.auto_commit);
+            }
+            if (Array.isArray(validated.require_review_types)) {
+              this.stateStore.set('wrfc.config.require_review_types', validated.require_review_types);
+            }
+          }
           logger.debug('WRFC config stored from config:loaded event', { validated });
         }
       }

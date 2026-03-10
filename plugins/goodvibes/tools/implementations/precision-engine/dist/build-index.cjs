@@ -120,7 +120,8 @@ var ProjectIndex = class _ProjectIndex {
       const slashIdx = entry.p.lastIndexOf("/");
       const dir = slashIdx === -1 ? "" : entry.p.substring(0, slashIdx);
       const name = slashIdx === -1 ? entry.p : entry.p.substring(slashIdx + 1);
-      if (!tree[dir]) tree[dir] = {};
+      if (!tree[dir])
+        tree[dir] = {};
       tree[dir][name] = entry.tokens;
     }
     for (const key of Object.keys(tree)) {
@@ -136,7 +137,8 @@ var ProjectIndex = class _ProjectIndex {
    * Load index from disk if not already loaded.
    */
   async load() {
-    if (this.loaded) return;
+    if (this.loaded)
+      return;
     try {
       if ((0, import_fs.existsSync)(this.indexPath)) {
         const content = await (0, import_promises.readFile)(this.indexPath, "utf-8");
@@ -243,7 +245,8 @@ var ProjectIndex = class _ProjectIndex {
    * Get summary statistics from the index.
    */
   getStats() {
-    if (!this.index) return null;
+    if (!this.index)
+      return null;
     return this.index.stats;
   }
   /**
@@ -252,7 +255,8 @@ var ProjectIndex = class _ProjectIndex {
    * @param tokens - Estimated token count (optional; 0 if unknown)
    */
   upsertFile(relativePath, tokens = 0) {
-    if (!this.index) return;
+    if (!this.index)
+      return;
     const newEntry = { p: relativePath, tokens };
     const existingIndex = this.findEntryIndex(relativePath);
     if (existingIndex >= 0) {
@@ -277,7 +281,8 @@ var ProjectIndex = class _ProjectIndex {
    * Note: stats.total_dirs may be stale until the next flush (500ms debounce).
    */
   removeFile(relativePath) {
-    if (!this.index) return;
+    if (!this.index)
+      return;
     const idx = this.findEntryIndex(relativePath);
     if (idx >= 0) {
       this.files.splice(idx, 1);
@@ -380,7 +385,8 @@ var ProjectIndex = class _ProjectIndex {
    * Flush the index to disk atomically.
    */
   async flush() {
-    if (!this.dirty || !this.index) return;
+    if (!this.dirty || !this.index)
+      return;
     try {
       await (0, import_promises.mkdir)(path.dirname(this.indexPath), { recursive: true });
       const tree = _ProjectIndex.entriesToTree(this.files);
@@ -551,15 +557,21 @@ function parseGitignore(content) {
   for (const line of content.split("\n")) {
     let raw = line;
     raw = raw.replace(/(?<!\\) +$/, "");
-    if (!raw || raw.startsWith("#")) continue;
+    if (!raw || raw.startsWith("#"))
+      continue;
     const negated = raw.startsWith("!");
-    if (negated) raw = raw.slice(1);
-    if (raw.startsWith("\\#")) raw = raw.slice(1);
+    if (negated)
+      raw = raw.slice(1);
+    if (raw.startsWith("\\#"))
+      raw = raw.slice(1);
     const anchored = raw.startsWith("/");
-    if (anchored) raw = raw.slice(1);
+    if (anchored)
+      raw = raw.slice(1);
     const dirOnly = raw.endsWith("/");
-    if (dirOnly) raw = raw.slice(0, -1);
-    if (!raw) continue;
+    if (dirOnly)
+      raw = raw.slice(0, -1);
+    if (!raw)
+      continue;
     patterns.push({ negated, anchored, dirOnly, raw });
   }
   return patterns;
@@ -604,9 +616,11 @@ function isGitignored(patterns, relativePath, isDir) {
         } else {
           parentMatch = matchGlob(p.raw, parentName);
         }
-        if (parentMatch) break;
+        if (parentMatch)
+          break;
       }
-      if (!parentMatch) continue;
+      if (!parentMatch)
+        continue;
       ignored = !p.negated;
       continue;
     }
@@ -686,7 +700,8 @@ async function batchStat(paths, chunkSize = 64, startMs) {
   for (let i = 0; i < paths.length; i += chunkSize) {
     if (Date.now() - startMs > 3e4) {
       timedOut = true;
-      for (let j = i; j < paths.length; j++) sizes.push(0);
+      for (let j = i; j < paths.length; j++)
+        sizes.push(0);
       break;
     }
     const chunk = paths.slice(i, i + chunkSize);
@@ -743,7 +758,8 @@ async function buildProjectIndex(projectDir2, logger2 = defaultLogger) {
     }
     const fullPaths = fileEntries.map((e) => e.fullPath);
     const { sizes, timedOut } = await batchStat(fullPaths, 64, startMs);
-    if (timedOut) isPartial = true;
+    if (timedOut)
+      isPartial = true;
     for (let i = 0; i < fileEntries.length; i++) {
       const { treeKey, filename } = fileEntries[i];
       const fileSize = sizes[i] ?? 0;
@@ -797,10 +813,10 @@ __name(buildProjectIndex, "buildProjectIndex");
 // src/build-index-cli.ts
 var projectDir = process.argv[2] ?? process.cwd();
 var logger = {
-  debug: /* @__PURE__ */ __name((msg) => process.stderr.write(`[build-index] ${msg}
-`), "debug"),
-  error: /* @__PURE__ */ __name((msg) => process.stderr.write(`[build-index] ERROR: ${msg}
-`), "error")
+  debug: (msg) => process.stderr.write(`[build-index] ${msg}
+`),
+  error: (msg) => process.stderr.write(`[build-index] ERROR: ${msg}
+`)
 };
 buildProjectIndex(projectDir, logger).then(() => {
   process.stderr.write(`[build-index] Done.

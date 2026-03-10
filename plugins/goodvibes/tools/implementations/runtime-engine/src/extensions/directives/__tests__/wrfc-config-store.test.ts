@@ -66,6 +66,16 @@ describe('validateWRFCConfig', () => {
     expect(validateWRFCConfig({ min_review_score: 11 })).toEqual({});
   });
 
+  // ─── score_threshold alias ────────────────────────────────────────────────
+
+  it('accepts score_threshold as alias for min_review_score', () => {
+    expect(validateWRFCConfig({ score_threshold: 9.9 })).toEqual({ min_review_score: 9.9 });
+  });
+
+  it('prefers min_review_score over score_threshold when both present', () => {
+    expect(validateWRFCConfig({ min_review_score: 8.0, score_threshold: 9.9 })).toEqual({ min_review_score: 8.0 });
+  });
+
   // ─── max_fix_attempts ───────────────────────────────────────────────────────
 
   it('accepts valid max_fix_attempts (1)', () => {

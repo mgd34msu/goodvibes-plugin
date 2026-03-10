@@ -119,6 +119,7 @@ function makeDeps(overrides: Partial<IPCRouterDeps> = {}): IPCRouterDeps {
     stateStore: {
       keys: vi.fn().mockReturnValue([]),
       delete: vi.fn(),
+      set: vi.fn(),
     } as unknown as IPCRouterDeps['stateStore'],
     hookProcessor: {
       process: vi.fn().mockResolvedValue(undefined),
@@ -629,12 +630,55 @@ describe('IPCRouter', () => {
         ).toHaveBeenCalledWith(wrfcConfig);
       });
 
+      it('extracts wrfc from runtime.wrfc (nested goodvibes.json structure)', async () => {
+        const wrfcConfig = { score_threshold: 9.9, max_fix_attempts: 5 };
+        const validated = { min_review_score: 9.9, max_fix_attempts: 5 };
+        mockValidateWRFCConfig.mockReturnValueOnce(validated);
+        await router.route(
+          makeHookEventMsg({
+            hook_name: 'config:loaded',
+            hook_input: { runtime: { wrfc: wrfcConfig } },
+          })
+        );
+        expect(mockValidateWRFCConfig).toHaveBeenCalledWith(wrfcConfig);
+        expect(
+          (deps.wrfcConfigStore as unknown as { set: ReturnType<typeof vi.fn> }).set
+        ).toHaveBeenCalledWith(validated);
+      });
+
+      it('propagates validated WRFC config to CoreStateStore', async () => {
+        const validated = { min_review_score: 9.5, max_fix_attempts: 4 };
+        mockValidateWRFCConfig.mockReturnValueOnce(validated);
+        await router.route(
+          makeHookEventMsg({
+            hook_name: 'config:loaded',
+            hook_input: { runtime: { wrfc: { score_threshold: 9.5 } } },
+          })
+        );
+        const stateSet = (deps.stateStore as unknown as { set: ReturnType<typeof vi.fn> }).set;
+        expect(stateSet).toHaveBeenCalledWith('wrfc.config.min_review_score', 9.5);
+        expect(stateSet).toHaveBeenCalledWith('wrfc.config.max_fix_attempts', 4);
+      });
+
+      it('prefers runtime.wrfc over top-level wrfc', async () => {
+        const nestedConfig = { score_threshold: 9.9 };
+        const topConfig = { score_threshold: 5.0 };
+        mockValidateWRFCConfig.mockReturnValueOnce({ min_review_score: 9.9 });
+        await router.route(
+          makeHookEventMsg({
+            hook_name: 'config:loaded',
+            hook_input: { runtime: { wrfc: nestedConfig }, wrfc: topConfig },
+          })
+        );
+        expect(mockValidateWRFCConfig).toHaveBeenCalledWith(nestedConfig);
+      });
+
       it('does not call wrfcConfigStore.set when validated config is empty object', async () => {
         mockValidateWRFCConfig.mockReturnValueOnce({});
         await router.route(
           makeHookEventMsg({
             hook_name: 'config:loaded',
-            hook_input: { wrfc: { maxRounds: 3 } },
+            hook_input: { runtime: { wrfc: { maxRounds: 3 } } },
           })
         );
         expect(

@@ -532,7 +532,7 @@ export function loadConfig(projectRoot?: string): RuntimeConfig {
     if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed) && 'runtime' in parsed) {
       const runtimeSection = parsed.runtime;
       if (typeof runtimeSection === 'object' && runtimeSection !== null && !Array.isArray(runtimeSection)) {
-        // Filter to only RuntimeConfig keys to avoid unknown keys (e.g. 'wrfc') polluting the config
+        // Filter to only RuntimeConfig keys — wrfc has its own config path via WRFCPlugin
         const knownKeys = Object.keys(DEFAULT_CONFIG) as (keyof RuntimeConfig)[];
         const filtered: Partial<RuntimeConfig> = {};
         for (const key of knownKeys) {
@@ -666,6 +666,18 @@ export function ensureRuntimeSections(projectRoot?: string): void {
       runtime[key] = defaults[key];
       changed = true;
     }
+  }
+
+  // Ensure runtime.wrfc section exists with defaults.
+  // wrfc is intentionally not part of RuntimeConfig (it has its own plugin config type),
+  // but it lives under runtime in goodvibes.json and must be seeded like other runtime keys.
+  if (!('wrfc' in runtime) || typeof runtime.wrfc !== 'object' || runtime.wrfc === null) {
+    runtime.wrfc = {
+      score_threshold: 9.5,
+      max_fix_attempts: 3,
+      auto_commit: true,
+    };
+    changed = true;
   }
 
   if (changed) {
