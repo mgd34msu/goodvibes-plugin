@@ -7733,6 +7733,29 @@ function performStateCleanup(opts) {
       continue;
     }
   }
+  const maxFiles = opts.maxSessionFiles ?? 10;
+  const sessionFiles = entries.filter((f) => f.startsWith("session_") && f.endsWith(".json")).map((f) => {
+    const filePath = (0, import_node_path14.join)(stateDir, f);
+    let mtimeMs = 0;
+    try {
+      mtimeMs = (0, import_node_fs14.statSync)(filePath).mtimeMs;
+    } catch {
+    }
+    return { file: f, path: filePath, mtimeMs };
+  }).sort((a, b) => b.mtimeMs - a.mtimeMs);
+  if (sessionFiles.length > maxFiles) {
+    const toDelete = sessionFiles.slice(maxFiles);
+    for (const entry of toDelete) {
+      try {
+        (0, import_node_fs14.unlinkSync)(entry.path);
+        log10.debug("Pruned excess session file", { file: entry.file });
+        result.deleted++;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        result.errors.push(`prune:${entry.path}: ${msg}`);
+      }
+    }
+  }
   const archiveDirs = [
     { dir: archivePointersDir, label: "pointers" },
     { dir: archiveSessionsDir, label: "sessions" }
@@ -22791,7 +22814,7 @@ var RemoteTransport = class {
         socket.on("close", () => this.onClose());
         socket.on("error", (err) => this.onSocketError(err));
         const joinId = generateId();
-        const join24 = JSON.stringify({
+        const join25 = JSON.stringify({
           type: "session_join",
           id: joinId,
           session_id: this.sessionId
@@ -22811,7 +22834,7 @@ var RemoteTransport = class {
             reject(err);
           }
         });
-        socket.write(join24, (err) => {
+        socket.write(join25, (err) => {
           if (err) {
             this.pending.delete(joinId);
             clearTimeout(timer);
@@ -39604,8 +39627,10 @@ var handleRuntimeStatus = /* @__PURE__ */ __name(async (args, ctx) => {
 }, "handleRuntimeStatus");
 
 // src/plugins/mcp/handlers/config.ts
-init_logger();
+var import_node_fs22 = require("node:fs");
+var import_node_path25 = require("node:path");
 init_utils();
+init_logger();
 init_errors();
 var logger63 = createLogger("tool-handlers:config");
 var VALID_CONFIG_KEYS = /* @__PURE__ */ new Set([
@@ -39671,7 +39696,11 @@ var VALID_CONFIG_KEYS = /* @__PURE__ */ new Set([
   "external.http_listener.bind_mode",
   "external.http_listener.address",
   "external.http_listener.auth_token",
-  "external.http_listener.max_payload_bytes"
+  "external.http_listener.max_payload_bytes",
+  // WRFC plugin config (persisted under runtime.wrfc in goodvibes.json)
+  "wrfc.score_threshold",
+  "wrfc.max_fix_attempts",
+  "wrfc.auto_commit"
 ]);
 var CONFIG_KEY_TYPES = /* @__PURE__ */ new Map([
   ["ipc.socket_dir", "string"],
@@ -39736,7 +39765,11 @@ var CONFIG_KEY_TYPES = /* @__PURE__ */ new Map([
   ["external.http_listener.bind_mode", "string"],
   ["external.http_listener.address", "string"],
   ["external.http_listener.auth_token", "string"],
-  ["external.http_listener.max_payload_bytes", "number"]
+  ["external.http_listener.max_payload_bytes", "number"],
+  // WRFC plugin config
+  ["wrfc.score_threshold", "number"],
+  ["wrfc.max_fix_attempts", "number"],
+  ["wrfc.auto_commit", "boolean"]
 ]);
 function getNestedValue(obj, path4) {
   const segments = path4.split(".");
@@ -39795,10 +39828,28 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
       const key = assertOptionalString(params.key, "key");
       const config2 = ctx.transport ? await ctx.transport.getConfig() : ctx.getConfig();
       if (key) {
+        if (key.startsWith("wrfc.")) {
+          const wrfcField = key.slice(5);
+          const stateStoreKeyMap = {
+            score_threshold: "wrfc.config.min_review_score",
+            max_fix_attempts: "wrfc.config.max_fix_attempts",
+            auto_commit: "wrfc.config.auto_commit"
+          };
+          const stateKey = stateStoreKeyMap[wrfcField];
+          const stateStore2 = ctx.getCoreStateStore?.();
+          const value2 = stateStore2 && stateKey ? stateStore2.get(stateKey) : void 0;
+          return toSuccess({ key, value: value2, source: "state_store" }, ctx.version, uptimeMs, Date.now() - start);
+        }
         const value = getNestedValue(config2, key);
         return toSuccess({ key, value }, ctx.version, uptimeMs, Date.now() - start);
       }
-      return toSuccess({ config: config2 }, ctx.version, uptimeMs, Date.now() - start);
+      const stateStore = ctx.getCoreStateStore?.();
+      const wrfc = stateStore ? {
+        score_threshold: stateStore.get("wrfc.config.min_review_score"),
+        max_fix_attempts: stateStore.get("wrfc.config.max_fix_attempts"),
+        auto_commit: stateStore.get("wrfc.config.auto_commit")
+      } : void 0;
+      return toSuccess({ config: config2, wrfc }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "set") {
       const key = assertOptionalString(params.key, "key");
@@ -39838,6 +39889,58 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
             Date.now() - start
           );
         }
+      }
+      if (key.startsWith("wrfc.")) {
+        const wrfcField = key.slice(5);
+        const stateStoreKeyMap = {
+          score_threshold: "wrfc.config.min_review_score",
+          max_fix_attempts: "wrfc.config.max_fix_attempts",
+          auto_commit: "wrfc.config.auto_commit"
+        };
+        const stateKey = stateStoreKeyMap[wrfcField];
+        if (!stateKey) {
+          return toError(
+            `Unknown wrfc config field: '${wrfcField}'.`,
+            ctx.version,
+            uptimeMs,
+            Date.now() - start
+          );
+        }
+        const goodvibesPath = (0, import_node_path25.join)(ctx.projectRoot, ".goodvibes", "goodvibes.json");
+        try {
+          let existing = {};
+          try {
+            existing = safeJsonParse((0, import_node_fs22.readFileSync)(goodvibesPath, "utf-8"), {}) ?? {};
+          } catch {
+          }
+          if (typeof existing.runtime !== "object" || existing.runtime === null) {
+            existing.runtime = {};
+          }
+          const runtime = existing.runtime;
+          if (typeof runtime.wrfc !== "object" || runtime.wrfc === null) {
+            runtime.wrfc = {};
+          }
+          runtime.wrfc[wrfcField] = value;
+          writeJsonSync(goodvibesPath, existing);
+        } catch (err) {
+          return toError(
+            `Failed to persist wrfc config: ${toErrorMessage(err)}`,
+            ctx.version,
+            uptimeMs,
+            Date.now() - start
+          );
+        }
+        const stateStore = ctx.getCoreStateStore?.();
+        if (stateStore) {
+          stateStore.set(stateKey, value);
+        }
+        logger63.info("WRFC config key set", { key, value, stateKey });
+        return toSuccess(
+          { key, value, persisted: true, state_store_key: stateKey },
+          ctx.version,
+          uptimeMs,
+          Date.now() - start
+        );
       }
       if (key === "executor.mode") {
         if (!VALID_EXECUTOR_MODES.includes(value)) {

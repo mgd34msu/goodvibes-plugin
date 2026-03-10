@@ -452,6 +452,8 @@ describe('ensureRuntimeSections', () => {
     const allSections = Object.fromEntries(
       Object.keys(DEFAULT_CONFIG).map(k => [k, (DEFAULT_CONFIG as unknown as Record<string, unknown>)[k]])
     );
+    // wrfc is not part of DEFAULT_CONFIG but ensureRuntimeSections checks for it separately
+    (allSections as Record<string, unknown>).wrfc = { score_threshold: 9.5, max_fix_attempts: 3, auto_commit: true };
     mockReadFileSync.mockReturnValue(JSON.stringify({ runtime: allSections }));
     ensureRuntimeSections('/proj');
     expect(mockWriteJsonSync).not.toHaveBeenCalled();

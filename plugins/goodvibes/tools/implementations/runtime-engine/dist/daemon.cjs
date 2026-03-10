@@ -516,6 +516,29 @@ function performStateCleanup(opts) {
       continue;
     }
   }
+  const maxFiles = opts.maxSessionFiles ?? 10;
+  const sessionFiles = entries.filter((f) => f.startsWith("session_") && f.endsWith(".json")).map((f) => {
+    const filePath = (0, import_node_path13.join)(stateDir, f);
+    let mtimeMs = 0;
+    try {
+      mtimeMs = (0, import_node_fs13.statSync)(filePath).mtimeMs;
+    } catch {
+    }
+    return { file: f, path: filePath, mtimeMs };
+  }).sort((a, b) => b.mtimeMs - a.mtimeMs);
+  if (sessionFiles.length > maxFiles) {
+    const toDelete = sessionFiles.slice(maxFiles);
+    for (const entry of toDelete) {
+      try {
+        (0, import_node_fs13.unlinkSync)(entry.path);
+        log10.debug("Pruned excess session file", { file: entry.file });
+        result.deleted++;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        result.errors.push(`prune:${entry.path}: ${msg}`);
+      }
+    }
+  }
   const archiveDirs = [
     { dir: archivePointersDir, label: "pointers" },
     { dir: archiveSessionsDir, label: "sessions" }

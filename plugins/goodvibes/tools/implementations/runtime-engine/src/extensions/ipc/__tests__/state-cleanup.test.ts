@@ -325,4 +325,70 @@ describe('performStateCleanup', () => {
       expect(result.socketsRemoved).toBe(0);
     });
   });
+
+  // ─── Phase 1.5: Count-based session file pruning ──────────────────────────
+
+  describe('session file count pruning', () => {
+    it('prunes session_*.json files when count exceeds maxSessionFiles (keeps newest)', () => {
+      // 12 files: default max is 10, so 2 oldest should be deleted
+      const files = Array.from({ length: 12 }, (_, i) => `session_${String(i).padStart(3, '0')}.json`);
+      mockReaddirSync.mockReturnValue(files);
+      mockStatSync.mockImplementation((path: string) => {
+        const match = path.match(/(\d+)\.json$/);
+        const idx = match ? parseInt(match[1], 10) : 0;
+        return { mtimeMs: idx * 1000 };
+      });
+
+      const result = performStateCleanup(makeOpts());
+
+      // Files 000 and 001 are oldest; they should be deleted
+      expect(mockUnlinkSync).toHaveBeenCalledWith('/state/session_000.json');
+      expect(mockUnlinkSync).toHaveBeenCalledWith('/state/session_001.json');
+      expect(result.deleted).toBeGreaterThanOrEqual(2);
+    });
+
+    it('does not delete session_*.json files when count is exactly maxSessionFiles', () => {
+      const files = Array.from({ length: 10 }, (_, i) => `session_${String(i).padStart(3, '0')}.json`);
+      mockReaddirSync.mockReturnValue(files);
+      mockStatSync.mockReturnValue({ mtimeMs: 1000 });
+      mockUnlinkSync.mockClear();
+
+      performStateCleanup(makeOpts());
+
+      const sessionFileDeletions = mockUnlinkSync.mock.calls.filter(
+        ([p]: [string]) => p.includes('session_')
+      );
+      expect(sessionFileDeletions).toHaveLength(0);
+    });
+
+    it('does not delete session_*.json files when count is below maxSessionFiles', () => {
+      const files = ['session_001.json', 'session_002.json'];
+      mockReaddirSync.mockReturnValue(files);
+      mockStatSync.mockReturnValue({ mtimeMs: 1000 });
+      mockUnlinkSync.mockClear();
+
+      performStateCleanup(makeOpts());
+
+      const sessionFileDeletions = mockUnlinkSync.mock.calls.filter(
+        ([p]: [string]) => p.includes('session_')
+      );
+      expect(sessionFileDeletions).toHaveLength(0);
+    });
+
+    it('respects custom maxSessionFiles option', () => {
+      const files = Array.from({ length: 5 }, (_, i) => `session_${String(i).padStart(3, '0')}.json`);
+      mockReaddirSync.mockReturnValue(files);
+      mockStatSync.mockImplementation((path: string) => {
+        const match = path.match(/(\d+)\.json$/);
+        const idx = match ? parseInt(match[1], 10) : 0;
+        return { mtimeMs: idx * 1000 };
+      });
+
+      performStateCleanup(makeOpts({ maxSessionFiles: 3 }));
+
+      // 5 files, keep 3: delete indices 0 and 1
+      expect(mockUnlinkSync).toHaveBeenCalledWith('/state/session_000.json');
+      expect(mockUnlinkSync).toHaveBeenCalledWith('/state/session_001.json');
+    });
+  });
 });

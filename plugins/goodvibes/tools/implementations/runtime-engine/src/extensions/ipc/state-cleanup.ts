@@ -32,6 +32,8 @@ export interface CleanupOptions {
   livePids: Set<number>;
   /** Set of session IDs known to be active — their files won't be touched */
   liveSessions: Set<string>;
+  /** Max session files to keep (oldest beyond this count are deleted). Default: 10. */
+  maxSessionFiles?: number;
   /**
    * Optional path to the sockets/active directory.
    * When provided, socket files (.sock) belonging to dead PIDs are removed.
@@ -223,6 +225,34 @@ export function performStateCleanup(opts: CleanupOptions): CleanupResult {
     }
 
     // All other files: leave alone
+  }
+
+  // -----------------------------------------------------------------------
+  // Phase 1.5: Count-based session file pruning — keep only maxSessionFiles
+  // -----------------------------------------------------------------------
+  const maxFiles = opts.maxSessionFiles ?? 10;
+  const sessionFiles = entries
+    .filter(f => f.startsWith('session_') && f.endsWith('.json'))
+    .map(f => {
+      const filePath = join(stateDir, f);
+      let mtimeMs = 0;
+      try { mtimeMs = statSync(filePath).mtimeMs; } catch { /* skip */ }
+      return { file: f, path: filePath, mtimeMs };
+    })
+    .sort((a, b) => b.mtimeMs - a.mtimeMs); // newest first
+
+  if (sessionFiles.length > maxFiles) {
+    const toDelete = sessionFiles.slice(maxFiles);
+    for (const entry of toDelete) {
+      try {
+        unlinkSync(entry.path);
+        log.debug('Pruned excess session file', { file: entry.file });
+        result.deleted++;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        result.errors.push(`prune:${entry.path}: ${msg}`);
+      }
+    }
   }
 
   // -----------------------------------------------------------------------
