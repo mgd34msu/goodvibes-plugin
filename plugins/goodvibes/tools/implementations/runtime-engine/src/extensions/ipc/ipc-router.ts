@@ -27,7 +27,7 @@ import type { ToolGateEvaluator } from './tool-gating.js';
 import type { ContextInjector } from './context-injector.js';
 import { createLogger } from '../../shared/logger.js';
 import { toErrorMessage } from '../../shared/utils.js';
-import { existsSync, writeFileSync, unlinkSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 
 export type { IHookProcessor as IHookProcessorInterface } from './types.js';
@@ -147,6 +147,9 @@ export class IPCRouter {
   /** Session IDs that have been registered via session:started events. */
   private readonly registeredSessions: Set<string> = new Set();
 
+  /** Project-level pointer files written during session:started for cross-dir discovery. */
+  private readonly projectPointers: Set<string> = new Set();
+
   /**
    * Optional resolver that maps an agent_id to its bound workflow_id.
    * Injected after construction via {@link setAgentWorkflowResolver}.
@@ -216,6 +219,21 @@ export class IPCRouter {
       }
     }
     this.registeredSessions.clear();
+    // Also clean up project-level pointer files written during session:started
+    for (const pointerFile of this.projectPointers) {
+      try {
+        unlinkSync(pointerFile);
+        logger.debug('Project pointer file removed', { pointer: pointerFile });
+      } catch (err: unknown) {
+        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+          logger.warn('Could not remove project pointer file', {
+            pointer: pointerFile,
+            err: toErrorMessage(err),
+          });
+        }
+      }
+    }
+    this.projectPointers.clear();
   }
 
   /**
@@ -377,6 +395,39 @@ export class IPCRouter {
             sessionId,
             err: toErrorMessage(err),
           });
+        }
+        // Write project-level pointer files so hook scripts can discover the socket
+        // via ${projectDir}/.goodvibes/state/ even when the MCP server's cwd is HOME.
+        // The cwd field in hook_input is always the correct project directory.
+        const cwd = (msg.hook_input as Record<string, unknown>)?.cwd as string | undefined;
+        if (cwd && typeof cwd === 'string' && cwd.length > 0) {
+          const projectStateDir = join(cwd, '.goodvibes', 'state');
+          // Only write project-level pointers when they differ from the runtime stateDir
+          if (projectStateDir !== this.stateDir) {
+            try {
+              mkdirSync(projectStateDir, { recursive: true });
+              // PID-keyed pointer (survives session rotations, cleaned up on shutdown)
+              const pidPointer = join(projectStateDir, `runtime-${process.pid}.socket`);
+              writeFileSync(pidPointer, this.socketPath, 'utf-8');
+              this.projectPointers.add(pidPointer);
+              // Session-keyed pointer (mirrors the runtime stateDir pointer)
+              const sessionPointer = join(projectStateDir, `runtime-${sessionId}.socket`);
+              writeFileSync(sessionPointer, this.socketPath, 'utf-8');
+              this.projectPointers.add(sessionPointer);
+              logger.info('Project-level pointer files written', {
+                projectStateDir,
+                pidPointer,
+                sessionPointer,
+                socketPath: this.socketPath,
+              });
+            } catch (err) {
+              // Non-fatal — runtime stateDir pointer already written above
+              logger.warn('Failed to write project-level pointer files', {
+                projectStateDir,
+                err: toErrorMessage(err),
+              });
+            }
+          }
         }
       }
       // Time-based state cleanup: scans sockets/active (bounded by PID-namespaced filenames,

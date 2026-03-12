@@ -36921,6 +36921,8 @@ var IPCRouter = class {
   onSocketLostCallback;
   /** Session IDs that have been registered via session:started events. */
   registeredSessions = /* @__PURE__ */ new Set();
+  /** Project-level pointer files written during session:started for cross-dir discovery. */
+  projectPointers = /* @__PURE__ */ new Set();
   /**
    * Optional resolver that maps an agent_id to its bound workflow_id.
    * Injected after construction via {@link setAgentWorkflowResolver}.
@@ -36987,6 +36989,20 @@ var IPCRouter = class {
       }
     }
     this.registeredSessions.clear();
+    for (const pointerFile of this.projectPointers) {
+      try {
+        (0, import_node_fs15.unlinkSync)(pointerFile);
+        logger53.debug("Project pointer file removed", { pointer: pointerFile });
+      } catch (err) {
+        if (err.code !== "ENOENT") {
+          logger53.warn("Could not remove project pointer file", {
+            pointer: pointerFile,
+            err: toErrorMessage(err)
+          });
+        }
+      }
+    }
+    this.projectPointers.clear();
   }
   /**
    * Drains directives from the queue and composes a system message string.
@@ -37116,6 +37132,32 @@ var IPCRouter = class {
             sessionId,
             err: toErrorMessage(err)
           });
+        }
+        const cwd = msg.hook_input?.cwd;
+        if (cwd && typeof cwd === "string" && cwd.length > 0) {
+          const projectStateDir = (0, import_node_path15.join)(cwd, ".goodvibes", "state");
+          if (projectStateDir !== this.stateDir) {
+            try {
+              (0, import_node_fs15.mkdirSync)(projectStateDir, { recursive: true });
+              const pidPointer = (0, import_node_path15.join)(projectStateDir, `runtime-${process.pid}.socket`);
+              (0, import_node_fs15.writeFileSync)(pidPointer, this.socketPath, "utf-8");
+              this.projectPointers.add(pidPointer);
+              const sessionPointer = (0, import_node_path15.join)(projectStateDir, `runtime-${sessionId}.socket`);
+              (0, import_node_fs15.writeFileSync)(sessionPointer, this.socketPath, "utf-8");
+              this.projectPointers.add(sessionPointer);
+              logger53.info("Project-level pointer files written", {
+                projectStateDir,
+                pidPointer,
+                sessionPointer,
+                socketPath: this.socketPath
+              });
+            } catch (err) {
+              logger53.warn("Failed to write project-level pointer files", {
+                projectStateDir,
+                err: toErrorMessage(err)
+              });
+            }
+          }
         }
       }
       if (this.stateDir) {
