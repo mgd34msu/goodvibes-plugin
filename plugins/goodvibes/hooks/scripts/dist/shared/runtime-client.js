@@ -181,7 +181,9 @@ export class RuntimeClient {
      * @returns Response data from the engine, or null on timeout/error.
      */
     async sendHookEvent(hookName, hookInput) {
-        if (!this.isAvailable())
+        // Use async availability check with self-heal rediscovery.
+        // If the socket was stale or not found at construction, this retries.
+        if (!this.isAvailable() && !(await this.isAvailableAsync()))
             return null;
         const message = {
             type: 'hook_event',
@@ -190,7 +192,13 @@ export class RuntimeClient {
             hook_input: hookInput,
             timestamp: new Date().toISOString(),
         };
-        const response = await this.sendMessage(message, HOOK_EVENT_TIMEOUT_MS);
+        let response = await this.sendMessage(message, HOOK_EVENT_TIMEOUT_MS);
+        if (!response) {
+            // Retry once after rediscovery — socket may have been replaced since construction
+            if (await this.isAvailableAsync()) {
+                response = await this.sendMessage(message, HOOK_EVENT_TIMEOUT_MS);
+            }
+        }
         if (!response || response.status === 'error')
             return null;
         return response.data ?? null;
@@ -205,14 +213,21 @@ export class RuntimeClient {
      * @returns Response data from the engine, or null on timeout/error.
      */
     async query(query) {
-        if (!this.isAvailable())
+        // Use async availability check with self-heal rediscovery.
+        if (!this.isAvailable() && !(await this.isAvailableAsync()))
             return null;
         const message = {
             type: 'query',
             id: generateId(),
             query,
         };
-        const response = await this.sendMessage(message, QUERY_TIMEOUT_MS);
+        let response = await this.sendMessage(message, QUERY_TIMEOUT_MS);
+        if (!response) {
+            // Retry once after rediscovery
+            if (await this.isAvailableAsync()) {
+                response = await this.sendMessage(message, QUERY_TIMEOUT_MS);
+            }
+        }
         if (!response || response.status === 'error')
             return null;
         return response.data ?? null;

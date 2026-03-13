@@ -36921,8 +36921,10 @@ var IPCRouter = class {
   onSocketLostCallback;
   /** Session IDs that have been registered via session:started events. */
   registeredSessions = /* @__PURE__ */ new Set();
-  /** Project-level pointer files written during session:started for cross-dir discovery. */
+  /** Project-level pointer files written for cross-dir discovery. */
   projectPointers = /* @__PURE__ */ new Set();
+  /** Project dirs where pointers have already been written (avoid redundant writes). */
+  projectPointersWritten = /* @__PURE__ */ new Set();
   /**
    * Optional resolver that maps an agent_id to its bound workflow_id.
    * Injected after construction via {@link setAgentWorkflowResolver}.
@@ -37091,6 +37093,39 @@ var IPCRouter = class {
         logger53.warn("processHookEvent callback failed", { error: toErrorMessage(err) });
       }
     }
+    if (this.socketPath) {
+      const hookCwd = msg.hook_input?.cwd;
+      if (hookCwd && typeof hookCwd === "string" && hookCwd.length > 0 && !this.projectPointersWritten.has(hookCwd)) {
+        const projectStateDir = (0, import_node_path15.join)(hookCwd, ".goodvibes", "state");
+        if (projectStateDir !== this.stateDir) {
+          try {
+            (0, import_node_fs15.mkdirSync)(projectStateDir, { recursive: true });
+            const pidPointer = (0, import_node_path15.join)(projectStateDir, `runtime-${process.pid}.socket`);
+            (0, import_node_fs15.writeFileSync)(pidPointer, this.socketPath, "utf-8");
+            this.projectPointers.add(pidPointer);
+            const hookSessionId = msg.hook_input?.session_id;
+            if (hookSessionId && typeof hookSessionId === "string" && hookSessionId.length > 0) {
+              const sessionPointer = (0, import_node_path15.join)(projectStateDir, `runtime-${hookSessionId}.socket`);
+              (0, import_node_fs15.writeFileSync)(sessionPointer, this.socketPath, "utf-8");
+              this.projectPointers.add(sessionPointer);
+            }
+            this.projectPointersWritten.add(hookCwd);
+            logger53.info("Project-level socket pointers written", {
+              projectStateDir,
+              socketPath: this.socketPath,
+              trigger: msg.hook_name
+            });
+          } catch (err) {
+            logger53.warn("Failed to write project-level pointer files", {
+              projectStateDir,
+              err: toErrorMessage(err)
+            });
+          }
+        } else {
+          this.projectPointersWritten.add(hookCwd);
+        }
+      }
+    }
     if (msg.hook_name === "session:started" && this.triggerRegistry) {
       this.triggerRegistry.resetAllFireCounts();
     }
@@ -37132,32 +37167,6 @@ var IPCRouter = class {
             sessionId,
             err: toErrorMessage(err)
           });
-        }
-        const cwd = msg.hook_input?.cwd;
-        if (cwd && typeof cwd === "string" && cwd.length > 0) {
-          const projectStateDir = (0, import_node_path15.join)(cwd, ".goodvibes", "state");
-          if (projectStateDir !== this.stateDir) {
-            try {
-              (0, import_node_fs15.mkdirSync)(projectStateDir, { recursive: true });
-              const pidPointer = (0, import_node_path15.join)(projectStateDir, `runtime-${process.pid}.socket`);
-              (0, import_node_fs15.writeFileSync)(pidPointer, this.socketPath, "utf-8");
-              this.projectPointers.add(pidPointer);
-              const sessionPointer = (0, import_node_path15.join)(projectStateDir, `runtime-${sessionId}.socket`);
-              (0, import_node_fs15.writeFileSync)(sessionPointer, this.socketPath, "utf-8");
-              this.projectPointers.add(sessionPointer);
-              logger53.info("Project-level pointer files written", {
-                projectStateDir,
-                pidPointer,
-                sessionPointer,
-                socketPath: this.socketPath
-              });
-            } catch (err) {
-              logger53.warn("Failed to write project-level pointer files", {
-                projectStateDir,
-                err: toErrorMessage(err)
-              });
-            }
-          }
         }
       }
       if (this.stateDir) {

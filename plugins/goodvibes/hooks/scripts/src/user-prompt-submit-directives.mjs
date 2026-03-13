@@ -312,11 +312,21 @@ try {
   const projectDir = hookInput?.cwd || null;
   const sessionId = hookInput?.session_id || null;
 
-  const socketPath = discoverSocket(projectDir, sessionId);
+  let socketPath = discoverSocket(projectDir, sessionId);
+
+  // Retry socket discovery — project-level pointers may not exist yet if this
+  // is the first hook event after plugin install/restart. The IPC router writes
+  // them on the first hook_event it receives, so a brief retry covers the race.
+  if (!socketPath || !existsSync(socketPath)) {
+    for (const delay of [50, 150]) {
+      await sleep(delay);
+      socketPath = discoverSocket(projectDir, sessionId);
+      if (socketPath && existsSync(socketPath)) break;
+    }
+  }
 
   if (!socketPath || !existsSync(socketPath)) {
-    console.error('[UPS-Directives] runtime engine not available (socket not found), skipping directive drain');
-    console.error('[UPS-Directives] hint: start the runtime engine or check GOODVIBES_RUNTIME_SOCKET env var');
+    console.error('[UPS-Directives] runtime engine not available (socket not found after retries), skipping directive drain');
     respond(continueResponse()); // process.exit(0) — no code executes after this
     return;
   }

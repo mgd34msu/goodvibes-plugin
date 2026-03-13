@@ -147,8 +147,11 @@ export class IPCRouter {
   /** Session IDs that have been registered via session:started events. */
   private readonly registeredSessions: Set<string> = new Set();
 
-  /** Project-level pointer files written during session:started for cross-dir discovery. */
+  /** Project-level pointer files written for cross-dir discovery. */
   private readonly projectPointers: Set<string> = new Set();
+
+  /** Project dirs where pointers have already been written (avoid redundant writes). */
+  private readonly projectPointersWritten: Set<string> = new Set();
 
   /**
    * Optional resolver that maps an agent_id to its bound workflow_id.
@@ -340,6 +343,45 @@ export class IPCRouter {
         logger.warn('processHookEvent callback failed', { error: toErrorMessage(err) });
       }
     }
+    // Write project-level pointer files on first hook event from each project dir.
+    // This runs on ANY hook event (not just session:started) so that resumed sessions,
+    // mid-session plugin reinstalls, etc. all establish discoverability immediately.
+    if (this.socketPath) {
+      const hookCwd = (msg.hook_input as Record<string, unknown>)?.cwd as string | undefined;
+      if (hookCwd && typeof hookCwd === 'string' && hookCwd.length > 0 && !this.projectPointersWritten.has(hookCwd)) {
+        const projectStateDir = join(hookCwd, '.goodvibes', 'state');
+        if (projectStateDir !== this.stateDir) {
+          try {
+            mkdirSync(projectStateDir, { recursive: true });
+            const pidPointer = join(projectStateDir, `runtime-${process.pid}.socket`);
+            writeFileSync(pidPointer, this.socketPath, 'utf-8');
+            this.projectPointers.add(pidPointer);
+            // Session-keyed pointer if session_id is available
+            const hookSessionId = (msg.hook_input as Record<string, unknown>)?.session_id as string | undefined;
+            if (hookSessionId && typeof hookSessionId === 'string' && hookSessionId.length > 0) {
+              const sessionPointer = join(projectStateDir, `runtime-${hookSessionId}.socket`);
+              writeFileSync(sessionPointer, this.socketPath, 'utf-8');
+              this.projectPointers.add(sessionPointer);
+            }
+            this.projectPointersWritten.add(hookCwd);
+            logger.info('Project-level socket pointers written', {
+              projectStateDir,
+              socketPath: this.socketPath,
+              trigger: msg.hook_name,
+            });
+          } catch (err) {
+            logger.warn('Failed to write project-level pointer files', {
+              projectStateDir,
+              err: toErrorMessage(err),
+            });
+          }
+        } else {
+          // stateDir matches project — no cross-dir pointer needed
+          this.projectPointersWritten.add(hookCwd);
+        }
+      }
+    }
+
     // NOTE: We intentionally do NOT call triggerRegistry.evaluate() directly here.
     // WRFC triggers have actions: [] so direct evaluation does nothing useful.
     // The actual handler execution path is: EventBus → EventProcessor → TriggerRegistry.
@@ -396,39 +438,7 @@ export class IPCRouter {
             err: toErrorMessage(err),
           });
         }
-        // Write project-level pointer files so hook scripts can discover the socket
-        // via ${projectDir}/.goodvibes/state/ even when the MCP server's cwd is HOME.
-        // The cwd field in hook_input is always the correct project directory.
-        const cwd = (msg.hook_input as Record<string, unknown>)?.cwd as string | undefined;
-        if (cwd && typeof cwd === 'string' && cwd.length > 0) {
-          const projectStateDir = join(cwd, '.goodvibes', 'state');
-          // Only write project-level pointers when they differ from the runtime stateDir
-          if (projectStateDir !== this.stateDir) {
-            try {
-              mkdirSync(projectStateDir, { recursive: true });
-              // PID-keyed pointer (survives session rotations, cleaned up on shutdown)
-              const pidPointer = join(projectStateDir, `runtime-${process.pid}.socket`);
-              writeFileSync(pidPointer, this.socketPath, 'utf-8');
-              this.projectPointers.add(pidPointer);
-              // Session-keyed pointer (mirrors the runtime stateDir pointer)
-              const sessionPointer = join(projectStateDir, `runtime-${sessionId}.socket`);
-              writeFileSync(sessionPointer, this.socketPath, 'utf-8');
-              this.projectPointers.add(sessionPointer);
-              logger.info('Project-level pointer files written', {
-                projectStateDir,
-                pidPointer,
-                sessionPointer,
-                socketPath: this.socketPath,
-              });
-            } catch (err) {
-              // Non-fatal — runtime stateDir pointer already written above
-              logger.warn('Failed to write project-level pointer files', {
-                projectStateDir,
-                err: toErrorMessage(err),
-              });
-            }
-          }
-        }
+
       }
       // Time-based state cleanup: scans sockets/active (bounded by PID-namespaced filenames,
       // so the scan set is small). Runs once per session:started, not continuously.

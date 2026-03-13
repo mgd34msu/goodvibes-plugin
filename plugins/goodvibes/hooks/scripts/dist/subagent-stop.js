@@ -680,7 +680,7 @@ var RuntimeClient = class _RuntimeClient {
    * @returns Response data from the engine, or null on timeout/error.
    */
   async sendHookEvent(hookName, hookInput) {
-    if (!this.isAvailable()) return null;
+    if (!this.isAvailable() && !await this.isAvailableAsync()) return null;
     const message = {
       type: "hook_event",
       id: generateId(),
@@ -688,7 +688,12 @@ var RuntimeClient = class _RuntimeClient {
       hook_input: hookInput,
       timestamp: (/* @__PURE__ */ new Date()).toISOString()
     };
-    const response = await this.sendMessage(message, HOOK_EVENT_TIMEOUT_MS);
+    let response = await this.sendMessage(message, HOOK_EVENT_TIMEOUT_MS);
+    if (!response) {
+      if (await this.isAvailableAsync()) {
+        response = await this.sendMessage(message, HOOK_EVENT_TIMEOUT_MS);
+      }
+    }
     if (!response || response.status === "error") return null;
     return response.data ?? null;
   }
@@ -702,13 +707,18 @@ var RuntimeClient = class _RuntimeClient {
    * @returns Response data from the engine, or null on timeout/error.
    */
   async query(query) {
-    if (!this.isAvailable()) return null;
+    if (!this.isAvailable() && !await this.isAvailableAsync()) return null;
     const message = {
       type: "query",
       id: generateId(),
       query
     };
-    const response = await this.sendMessage(message, QUERY_TIMEOUT_MS);
+    let response = await this.sendMessage(message, QUERY_TIMEOUT_MS);
+    if (!response) {
+      if (await this.isAvailableAsync()) {
+        response = await this.sendMessage(message, QUERY_TIMEOUT_MS);
+      }
+    }
     if (!response || response.status === "error") return null;
     return response.data ?? null;
   }
