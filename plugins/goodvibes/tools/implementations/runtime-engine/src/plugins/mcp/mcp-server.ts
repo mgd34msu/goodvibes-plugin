@@ -180,14 +180,22 @@ export class RuntimeEngineServer {
       this.runtimeTransport = await createTransport(this.buildDaemonTransportOptions(projectRoot, config));
       this.startHealthCheck(projectRoot, config);
     } else if (mode === 'hybrid') {
-      // Hybrid: try daemon first, create local engine only if daemon unavailable
-      try {
-        await this.ensureDaemonRunning(projectRoot, config);
-        this.runtimeTransport = await createTransport(this.buildDaemonTransportOptions(projectRoot, config));
-        this.startHealthCheck(projectRoot, config);
-        // Daemon available — no local engine needed
-      } catch {
-        // Daemon unavailable — fall back to local engine
+      // Hybrid: try daemon first, create local engine only if daemon unavailable.
+      // Always create a local engine with IPC socket — hooks need it regardless
+      // of whether the daemon transport is used for MCP tool routing.
+      let usedDaemon = false;
+      if (config.executor.transport?.auto_start) {
+        try {
+          await this.ensureDaemonRunning(projectRoot, config);
+          this.runtimeTransport = await createTransport(this.buildDaemonTransportOptions(projectRoot, config));
+          this.startHealthCheck(projectRoot, config);
+          usedDaemon = true;
+        } catch {
+          // Daemon unavailable — fall through to local engine
+        }
+      }
+      if (!usedDaemon) {
+        // Local engine: creates IPC socket for hook communication
         this.processManager = new RuntimeEngine(config, projectRoot);
         await this.processManager.startup();
         this.runtimeTransport = await createTransport({

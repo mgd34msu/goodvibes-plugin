@@ -37787,11 +37787,11 @@ async function createIPCSubsystem(opts) {
   const stateDir = (0, import_node_path17.join)(projectRoot, config2.persistence.state_dir);
   const socketDir = config2.ipc.socket_dir;
   const hash2 = (0, import_node_crypto4.createHash)("sha256").update(projectRoot).digest("hex").slice(0, 8);
-  const socketName = `goodvibes-runtime-${hash2}-${process.pid}.sock`;
+  const socketName = `gv-${hash2}-${process.pid}.sock`;
+  ensureDirSync(socketDir);
+  const socketPath = (0, import_node_path17.join)(socketDir, socketName);
   const activeSocketDir = (0, import_node_path17.join)(stateDir, "sockets", "active");
   ensureDirSync(activeSocketDir);
-  const socketPath = (0, import_node_path17.join)(activeSocketDir, socketName);
-  const symlinkPath = (0, import_node_path17.join)(socketDir, socketName);
   try {
     const ipcServer = new IPCServer(socketPath);
     const toolGatingConfig = opts.config.tool_gating ?? {
@@ -37849,21 +37849,7 @@ async function createIPCSubsystem(opts) {
       });
     }
     cleanStalePointerFiles(stateDir, logger56);
-    (0, import_node_fs17.mkdirSync)(socketDir, { recursive: true, mode: 448 });
     await ipcServer.listen();
-    try {
-      try {
-        (0, import_node_fs17.unlinkSync)(symlinkPath);
-      } catch {
-      }
-      (0, import_node_fs17.symlinkSync)(socketPath, symlinkPath);
-      logger56.debug("Socket symlink created", { symlink: symlinkPath, target: socketPath });
-    } catch (err) {
-      logger56.warn("Could not create socket symlink", {
-        symlink: symlinkPath,
-        err: toErrorMessage(err)
-      });
-    }
     const pointerFile = (0, import_node_path17.join)(stateDir, `runtime-${process.pid}.socket`);
     (0, import_node_fs17.writeFileSync)(pointerFile, socketPath, "utf-8");
     let socketWatcher;
@@ -37874,9 +37860,9 @@ async function createIPCSubsystem(opts) {
     if (opts.onSocketLost) {
       ipcRouter.setOnSocketLost(opts.onSocketLost);
     }
-    logger56.info("IPC subsystem created", { socket: socketPath, symlink: symlinkPath });
+    logger56.info("IPC subsystem created", { socket: socketPath, pointer: pointerFile });
     return {
-      subsystem: { ipcServer, ipcRouter, socketPath, socketWatcher, symlinkPath },
+      subsystem: { ipcServer, ipcRouter, socketPath, socketWatcher, symlinkPath: void 0 },
       socketPath
     };
   } catch (err) {
@@ -42198,11 +42184,17 @@ var RuntimeEngineServer = class {
       this.runtimeTransport = await createTransport(this.buildDaemonTransportOptions(projectRoot, config2));
       this.startHealthCheck(projectRoot, config2);
     } else if (mode === "hybrid") {
-      try {
-        await this.ensureDaemonRunning(projectRoot, config2);
-        this.runtimeTransport = await createTransport(this.buildDaemonTransportOptions(projectRoot, config2));
-        this.startHealthCheck(projectRoot, config2);
-      } catch {
+      let usedDaemon = false;
+      if (config2.executor.transport?.auto_start) {
+        try {
+          await this.ensureDaemonRunning(projectRoot, config2);
+          this.runtimeTransport = await createTransport(this.buildDaemonTransportOptions(projectRoot, config2));
+          this.startHealthCheck(projectRoot, config2);
+          usedDaemon = true;
+        } catch {
+        }
+      }
+      if (!usedDaemon) {
         this.processManager = new RuntimeEngine(config2, projectRoot);
         await this.processManager.startup();
         this.runtimeTransport = await createTransport({

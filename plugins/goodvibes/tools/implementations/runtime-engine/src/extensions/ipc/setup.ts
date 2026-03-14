@@ -4,7 +4,7 @@
  * Creates and wires the IPC server and router with L2 extension deps.
  */
 
-import { mkdirSync, readdirSync, readFileSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 
@@ -154,14 +154,19 @@ export async function createIPCSubsystem(
   const socketDir = config.ipc.socket_dir;
 
   const hash = createHash('sha256').update(projectRoot).digest('hex').slice(0, 8);
-  const socketName = `goodvibes-runtime-${hash}-${process.pid}.sock`;
+  const socketName = `gv-${hash}-${process.pid}.sock`;
 
-  // Sockets are stored in a project-local state directory (persistent across tmpfs clears).
-  // A symlink is placed in the tmpdir for discoverability by hook scripts that rely on socketDir.
+  // Unix domain sockets have a hard path length limit of 107 chars (108 with null
+  // terminator in sun_path). Project-local paths like
+  // ${projectRoot}/.goodvibes/state/sockets/active/goodvibes-runtime-{hash}-{pid}.sock
+  // easily exceed this limit. So the socket is created in socketDir (a short tmpfs
+  // path like /run/user/{uid}/goodvibes/) and pointer files in the project's
+  // .goodvibes/state/ dir point hooks to the actual socket location.
+  ensureDirSync(socketDir);
+  const socketPath = join(socketDir, socketName);
+  // Keep the active socket dir for bookkeeping (stale socket cleanup, etc.)
   const activeSocketDir = join(stateDir, 'sockets', 'active');
   ensureDirSync(activeSocketDir);
-  const socketPath = join(activeSocketDir, socketName);
-  const symlinkPath = join(socketDir, socketName);
 
   try {
     const ipcServer = new IPCServer(socketPath);
@@ -231,26 +236,13 @@ export async function createIPCSubsystem(
       });
     }
 
-    // Clean stale pointer files from state dir (separate from socket dir created below)
+    // Clean stale pointer files from state dir
     cleanStalePointerFiles(stateDir, logger);
-    // Create symlink directory with restricted permissions
-    mkdirSync(socketDir, { recursive: true, mode: 0o700 });
     await ipcServer.listen();
 
-    // Create symlink in tmpdir for hook-script discoverability (best-effort; non-fatal)
-    // Pre-unlink to handle EEXIST when recreating after a previous session left the symlink.
-    try {
-      try { unlinkSync(symlinkPath); } catch { /* ENOENT is fine */ }
-      symlinkSync(socketPath, symlinkPath);
-      logger.debug('Socket symlink created', { symlink: symlinkPath, target: socketPath });
-    } catch (err: unknown) {
-      logger.warn('Could not create socket symlink', {
-        symlink: symlinkPath,
-        err: toErrorMessage(err),
-      });
-    }
-
-    // stateDir is guaranteed to exist via ensureDirSync(activeSocketDir) above (activeSocketDir is a subdir).
+    // Write pointer file in project state dir so hooks can discover the socket.
+    // The socket lives in socketDir (short tmpfs path); the pointer bridges
+    // project-local hook discovery to the actual socket location.
     const pointerFile = join(stateDir, `runtime-${process.pid}.socket`);
     writeFileSync(pointerFile, socketPath, 'utf-8');
 
@@ -266,9 +258,9 @@ export async function createIPCSubsystem(
       ipcRouter.setOnSocketLost(opts.onSocketLost);
     }
 
-    logger.info('IPC subsystem created', { socket: socketPath, symlink: symlinkPath });
+    logger.info('IPC subsystem created', { socket: socketPath, pointer: pointerFile });
     return {
-      subsystem: { ipcServer, ipcRouter, socketPath, socketWatcher, symlinkPath },
+      subsystem: { ipcServer, ipcRouter, socketPath, socketWatcher, symlinkPath: undefined },
       socketPath,
     };
   } catch (err) {
