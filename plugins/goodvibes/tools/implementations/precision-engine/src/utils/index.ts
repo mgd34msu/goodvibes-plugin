@@ -436,6 +436,8 @@ export function parseJsonField<T>(value: T | string): T {
  * Ensure a value is an array. Handles MCP serialization edge cases:
  * - If string, JSON.parse it
  * - If object with numeric keys (MCP array-as-object), convert to array
+ * - If single object with at least one known spec key, wrap in array
+ *   (handles common LLM mistake: files: {path, content} instead of files: [{path, content}])
  * - If already an array, return as-is
  * - Otherwise return null
  * @template T - The expected element type
@@ -457,6 +459,12 @@ export function ensureArray<T>(value: unknown): T[] | null {
     const keys = Object.keys(value as Record<string, unknown>);
     if (keys.length > 0 && keys.every(k => /^\d+$/.test(k))) {
       return keys.sort((a, b) => Number(a) - Number(b)).map(k => (value as Record<string, unknown>)[k]) as T[];
+    }
+    // Single object passed instead of array — wrap it if it looks like a valid spec item
+    // Handles common LLM mistake: files: {path, content} instead of files: [{path, content}]
+    const KNOWN_SPEC_KEYS = new Set(['path', 'file', 'cmd', 'url', 'id', 'pattern', 'query', 'op', 'source']);
+    if (keys.some(k => KNOWN_SPEC_KEYS.has(k))) {
+      return [value] as T[];
     }
   }
   return null;

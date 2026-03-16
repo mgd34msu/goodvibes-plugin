@@ -137,7 +137,15 @@ describe('ensureArray', () => {
     expect(ensureArray(obj)).toEqual(['a', 'b', 'c']);
   });
 
-  it('returns null for object with non-numeric keys', () => {
+  it('wraps single object with known spec key in array (LLM single-object fix)', () => {
+    expect(ensureArray({ path: 'a.ts', content: 'hello' })).toEqual([{ path: 'a.ts', content: 'hello' }]);
+  });
+
+  it('wraps single object with cmd key in array', () => {
+    expect(ensureArray({ cmd: 'npm test' })).toEqual([{ cmd: 'npm test' }]);
+  });
+
+  it('returns null for object with no known spec keys', () => {
     expect(ensureArray({ foo: 'bar' })).toBeNull();
   });
 
