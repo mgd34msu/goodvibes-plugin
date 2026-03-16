@@ -38564,8 +38564,9 @@ var RuntimeEngine = class {
       const parsed = JSON.parse(raw);
       const wrfcOverrides = parsed?.runtime?.wrfc;
       if (wrfcOverrides && typeof wrfcOverrides === "object") {
-        if (typeof wrfcOverrides.score_threshold === "number") {
-          wrfcConfig.score_threshold = Math.max(0, Math.min(10, wrfcOverrides.score_threshold));
+        const scoreOverride = wrfcOverrides.min_review_score ?? wrfcOverrides.score_threshold;
+        if (typeof scoreOverride === "number") {
+          wrfcConfig.score_threshold = Math.max(0, Math.min(10, scoreOverride));
         }
         if (typeof wrfcOverrides.max_fix_attempts === "number") {
           wrfcConfig.max_fix_attempts = Math.max(1, wrfcOverrides.max_fix_attempts);
@@ -38582,6 +38583,17 @@ var RuntimeEngine = class {
         });
       }
     } catch {
+    }
+    if (this.wrfcConfigStore) {
+      const seedConfig = {
+        min_review_score: wrfcConfig.score_threshold,
+        max_fix_attempts: wrfcConfig.max_fix_attempts,
+        auto_commit: wrfcConfig.enable_quality_gates
+      };
+      if (wrfcConfig.require_review_types && wrfcConfig.require_review_types.length > 0) {
+        seedConfig.require_review_types = wrfcConfig.require_review_types;
+      }
+      this.wrfcConfigStore.set(seedConfig);
     }
     const coreStore = this.coreRuntime.stateStore;
     const coreEventProcessor = this.coreRuntime.eventProcessor;
