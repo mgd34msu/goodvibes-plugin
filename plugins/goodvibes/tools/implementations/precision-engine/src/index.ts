@@ -35,6 +35,7 @@ import { PrecisionRuntime, extractMetadata, extractCacheInfo } from './state/pre
 import { HooksManager, HookAbortError } from './state/hooks.js';
 import type { HookContext } from './state/hooks.js';
 import { Telemetry } from './state/telemetry.js';
+import { ensureArray } from './utils/index.js';
 
 /**
  * PrecisionEngineServer - MCP server for token-efficient file operations.
@@ -195,12 +196,12 @@ function extractPathsAffected(toolName: string, args: unknown, result: unknown):
 
   switch (toolName) {
     case 'precision_write': {
-      const files = toolInput.files as Array<{ path: string }> | undefined;
+      const files = ensureArray<{ path: string }>(toolInput.files);
       if (files) paths.push(...files.map((f) => f.path).filter(Boolean));
       break;
     }
     case 'precision_edit': {
-      const edits = toolInput.edits as Array<{ path?: string; file?: string }> | undefined;
+      const edits = ensureArray<{ path?: string; file?: string }>(toolInput.edits);
       if (edits) {
         const unique = new Set(
           edits.map((e) => e.path ?? e.file ?? '').filter(Boolean),
@@ -211,7 +212,7 @@ function extractPathsAffected(toolName: string, args: unknown, result: unknown):
     }
     case 'precision_exec': {
       // Extract paths from file_ops
-      const fileOps = toolInput.file_ops as Array<{ source?: string; destination?: string }> | undefined;
+      const fileOps = ensureArray<{ source?: string; destination?: string }>(toolInput.file_ops);
       if (fileOps) {
         for (const op of fileOps) {
           if (op.source) paths.push(op.source);
@@ -394,7 +395,14 @@ async function executeHandler(
 
     // --- OnPrecisionMutation hooks (for write/edit/exec/notebook) ---
     if (hooks.isMutationTool(shortName)) {
-      const pathsAffected = extractPathsAffected(toolName, args, result);
+      let pathsAffected: string[] = [];
+      try {
+        pathsAffected = extractPathsAffected(toolName, args, result);
+      } catch (extractErr) {
+        logger.warn(`extractPathsAffected failed for ${toolName} (non-fatal)`, {
+          err: extractErr instanceof Error ? extractErr.message : String(extractErr),
+        });
+      }
       const mutContext: HookContext = { ...hookContext, result, paths_affected: pathsAffected };
       try {
         await hooks.runMutationHooks(mutContext);
