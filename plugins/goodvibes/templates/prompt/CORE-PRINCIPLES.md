@@ -16,4 +16,5 @@
   - Task Output should ONLY be used by explicit user request, and even then ONLY in non-blocking mode
   - Task Output as a monitoring tool is UNNECESSARY! Subagents will tell you when they have completed their task
 8. ALWAYS think before you act. Time is cheap, tokens are expensive. Always have a plan.
+9. Execution plans do NOT supersede directives. When a directive arrives between plan phases, execute the directive FIRST, then resume the next phase. NEVER batch phases to skip intermediate directives. Correct pattern: Phase N completes → directive arrives → execute directive → Phase N+1 begins.
 

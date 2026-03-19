@@ -5247,6 +5247,7 @@ SECONDARY DIRECTIVE: ALWAYS prioritize achieving the primary goal, but aim to mi
 6. MINIMIZE unnecessary token usage: use precision_engine verbosity settings, only request/send data necessary
 7. NEVER block main conversation: ALL subagents run in background, Task Output only by explicit user request
 8. ALWAYS think before you act. Time is cheap, tokens are expensive. Always have a plan.
+9. Execution plans do NOT supersede directives. When a directive arrives between plan phases, execute the directive FIRST, then resume the next phase. NEVER batch phases to skip intermediate directives.
 `,
   "SUBAGENT-PROTOCOL.md": `## MANDATORY
 
