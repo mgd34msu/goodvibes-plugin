@@ -38599,6 +38599,9 @@ var RuntimeEngine = class {
     const coreEventProcessor = this.coreRuntime.eventProcessor;
     const coreTriggerRegistry = this.triggers?.triggerRegistry;
     const eventBusRef = this.events.eventBus;
+    coreStore.set("wrfc.config.min_review_score", wrfcConfig.score_threshold);
+    coreStore.set("wrfc.config.max_fix_attempts", wrfcConfig.max_fix_attempts);
+    coreStore.set("wrfc.config.auto_commit", wrfcConfig.enable_quality_gates);
     coreStore.onStateChange((change) => {
       eventBusRef.emit({
         id: generateEventId(),
@@ -40007,10 +40010,10 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
         key,
         value
       );
+      saveConfig(ctx.projectRoot, updated);
       if (ctx.transport) {
         await ctx.transport.updateConfig(updated);
       } else {
-        saveConfig(ctx.projectRoot, updated);
         ctx.updateConfig(updated);
       }
       logger63.info("Config key set", { key, value });
@@ -40026,10 +40029,10 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
       );
     }
     if (action === "reset") {
+      saveConfig(ctx.projectRoot, DEFAULT_CONFIG);
       if (ctx.transport) {
         await ctx.transport.updateConfig(DEFAULT_CONFIG);
       } else {
-        saveConfig(ctx.projectRoot, DEFAULT_CONFIG);
         ctx.updateConfig(DEFAULT_CONFIG);
       }
       logger63.info("Config reset to defaults");
@@ -42166,6 +42169,22 @@ var RuntimeEngineServer = class {
    */
   setupErrorHandling() {
     this.server.onerror = (error2) => logger73.error("MCP Server error", { error: String(error2) });
+    process.on("uncaughtException", (error2) => {
+      logger73.error("Uncaught exception (process kept alive)", {
+        message: error2.message,
+        stack: error2.stack,
+        name: error2.name
+      });
+    });
+    process.on("unhandledRejection", (reason) => {
+      const message = reason instanceof Error ? reason.message : String(reason);
+      const stack = reason instanceof Error ? reason.stack : void 0;
+      logger73.error("Unhandled rejection (process kept alive)", { message, stack });
+    });
+    process.stdin.on("close", () => {
+      logger73.info("stdin closed \u2014 client disconnected, shutting down");
+      this.stop().finally(() => process.exit(0));
+    });
   }
   // ─── Lifecycle ──────────────────────────────────────────────────────────────
   /**

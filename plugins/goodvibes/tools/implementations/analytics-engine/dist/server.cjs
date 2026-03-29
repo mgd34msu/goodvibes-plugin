@@ -28708,6 +28708,20 @@ var AnalyticsEngineServer = class {
     }, "shutdown");
     process.on("SIGINT", shutdown);
     process.on("SIGTERM", shutdown);
+    process.on("uncaughtException", (error2) => {
+      process.stderr.write(`[${SERVER_NAME}] Uncaught exception (kept alive): ${error2.message}
+`);
+    });
+    process.on("unhandledRejection", (reason) => {
+      const msg = reason instanceof Error ? reason.message : String(reason);
+      process.stderr.write(`[${SERVER_NAME}] Unhandled rejection (kept alive): ${msg}
+`);
+    });
+    process.stdin.on("close", () => {
+      process.stderr.write(`[${SERVER_NAME}] stdin closed \u2014 shutting down
+`);
+      shutdown();
+    });
   }
   async start() {
     await this.engine.initialize();

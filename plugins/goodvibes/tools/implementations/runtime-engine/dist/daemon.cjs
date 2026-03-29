@@ -16072,6 +16072,9 @@ var RuntimeEngine = class {
     const coreEventProcessor = this.coreRuntime.eventProcessor;
     const coreTriggerRegistry = this.triggers?.triggerRegistry;
     const eventBusRef = this.events.eventBus;
+    coreStore.set("wrfc.config.min_review_score", wrfcConfig.score_threshold);
+    coreStore.set("wrfc.config.max_fix_attempts", wrfcConfig.max_fix_attempts);
+    coreStore.set("wrfc.config.auto_commit", wrfcConfig.enable_quality_gates);
     coreStore.onStateChange((change) => {
       eventBusRef.emit({
         id: generateEventId(),

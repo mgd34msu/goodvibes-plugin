@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-03-29
+
+### Added
+- **IPC socket self-healing** — self-healing socket watcher with automatic reconnection on disconnect, IPC state cleanup pipeline consolidating `isPidAlive` checks for stale socket cleanup
+- **IPC router WRFC directive handling** — directives now route through the IPC channel for daemon-mode operation
+- **WRFC config management** — MCP-accessible config store for WRFC parameters with session file pruning for stale sessions
+- **Crash guards** on all 6 MCP servers to prevent silent disconnections during long sessions
+- **Cross-platform ast-grep binaries** bundled for broader platform support
+
+### Changed
+- IPC socket symlinks replaced with pointer files to fix Unix socket path length limits (108-char `sun_path`)
+- `runtime_config` now persisted to disk and seeded into CoreStateStore with WRFC values on startup
+- `wrfcConfigStore` seeded at bootstrap with support for `min_review_score` alias alongside `score_threshold`
+- Directive priority enforcement added to output style configuration
+- `ast-grep/napi` lazy-loaded at first use instead of eagerly imported
+
+### Fixed
+- Crash guards on all 6 MCP servers preventing silent disconnections
+- IPC socket discoverability improved with retry resilience for daemon startup race conditions
+- `ensureArray` now coerces single-object args to arrays, fixing `.map` crash on string args in `extractPathsAffected`
+- `ensureArray` handles MCP serialization edge case where JSON objects arrive unwrapped
+- ast-grep lazy-loaded to prevent crashes on platforms without pre-built native binaries
+
+## [1.9.0] - 2026-03-06
+
+### Added
+- **Runtime Engine** — entirely new 4-layer architecture (L0 Shared → L1 Core → L2 Extensions → L3 Plugins) with dual-mode operation (MCP stdio + daemon Unix socket IPC), 11 MCP tools, EventBus/EventProcessor, Workflow Engine (5 definitions), Trigger Registry, State Store, Persistence layer
+- **WRFC Autonomous Quality Pipeline** — Work→Review→Fix→Check loop with configurable score_threshold and max_fix_attempts, directive queue with session_id scoping, `<gv>` tag parser, 7 iteration evolution to production stability
+- **Daemon Mode** — background process in tmux with Unix domain socket IPC, tick driver, heartbeat plugin, HTTP webhook listener, file watcher, lockfile mutex, health check polling, signal handlers, DaemonHookServer
+- **Slack Integration** — URL verification challenge handling, event normalizer, message field formatting, Web API service registration, bidirectional communication
+- **Webhook & External Events** — HTTP listener with direct EventBus delivery, normalizer registry (Slack, GitHub, CI, Generic), CI failure bridge, synchronous tmux delivery
+- **Project Engine** restructured to plugin-based architecture with schema extraction
+- **Frontend Engine** 4-layer decomposition with responsive breakpoint analysis tool
+- **Registry Engine** registered in plugin tool registry with schema extraction
+- **Hook Scripts** — 3 standalone ESM modules (UPS directives, PreToolUse drain, queue auditor)
+- **Orchestration skills** overhauled for directive-driven WRFC model
+
+### Changed
+- Runtime engine introduced with 4-layer plugin architecture replacing ad-hoc WRFC orchestration
+- Project engine restructured to plugin-based architecture
+- Frontend engine decomposed into 4 layers with unified event types and trigger system
+- Skills updated for directive-driven WRFC model
+
+### Fixed
+- 141 bug fix commits across IPC reliability, WRFC directive delivery timing, cross-session directive theft, daemon lockfile mutex, transport reconnection, hook data flow, project/frontend/registry engine quality
+
 ## [1.3.0] - 2026-02-21
 
 ### Added
@@ -223,6 +269,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 1.10.0 | 2026-03-29 | IPC self-healing, MCP crash guards, WRFC config management, cross-platform fixes |
+| 1.9.0 | 2026-03-06 | Runtime Engine, Daemon Mode, WRFC Directives, Slack Integration, Webhook System |
 | 1.3.0 | 2026-02-21 | Analytics Engine, Project Engine v2, Precision Engine v2, Frontend Engine v2, Skills overhaul |
 | 1.2.0 | 2026-02-09 | Precision Fetch auth, precision_notebook, precision_config, FileStateCache, ProcessManager |
 | 1.1.0 | 2026-01-31 | Precision Engine (12 tools), Registry Engine, DBE Loop, WRFC Loop |
@@ -233,7 +281,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 0.2.0 | 2026-01-02 | MCP server refactoring, hook system compliance |
 | 0.1.0 | 2026-01-02 | Initial release |
 
-[Unreleased]: https://github.com/mgd34msu/goodvibes-plugin/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/mgd34msu/goodvibes-plugin/compare/v1.10.0...HEAD
+[1.10.0]: https://github.com/mgd34msu/goodvibes-plugin/compare/v1.9.0...v1.10.0
+[1.9.0]: https://github.com/mgd34msu/goodvibes-plugin/compare/v1.3.0...v1.9.0
 [1.3.0]: https://github.com/mgd34msu/goodvibes-plugin/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/mgd34msu/goodvibes-plugin/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/mgd34msu/goodvibes-plugin/compare/v1.0.0...v1.1.0
