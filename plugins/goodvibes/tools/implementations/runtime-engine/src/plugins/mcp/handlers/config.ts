@@ -427,10 +427,12 @@ export const handleRuntimeConfig = async (
         value
       ) as unknown as RuntimeConfig;
 
+      // Always persist to disk so values survive MCP server restarts
+      saveConfig(ctx.projectRoot, updated);
+      // Update in-memory state
       if (ctx.transport) {
         await ctx.transport.updateConfig(updated);
       } else {
-        saveConfig(ctx.projectRoot, updated);
         ctx.updateConfig(updated);
       }
       logger.info('Config key set', { key, value });
@@ -449,10 +451,12 @@ export const handleRuntimeConfig = async (
 
     // ── reset ─────────────────────────────────────────────────────────────────
     if (action === 'reset') {
+      // Always persist to disk so values survive MCP server restarts
+      saveConfig(ctx.projectRoot, DEFAULT_CONFIG);
+      // Update in-memory state
       if (ctx.transport) {
         await ctx.transport.updateConfig(DEFAULT_CONFIG);
       } else {
-        saveConfig(ctx.projectRoot, DEFAULT_CONFIG);
         ctx.updateConfig(DEFAULT_CONFIG);
       }
       logger.info('Config reset to defaults');

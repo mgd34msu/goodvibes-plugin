@@ -400,6 +400,13 @@ export class RuntimeEngine {
     const coreTriggerRegistry = this.triggers?.triggerRegistry;
     const eventBusRef = this.events.eventBus;
 
+    // Seed CoreStateStore with WRFC config so runtime_config get wrfc.* works on startup
+    // (wrfcConfigStore is used by the WRFC plugin internals, but the runtime_config
+    // MCP tool reads from CoreStateStore — both must be seeded)
+    coreStore.set('wrfc.config.min_review_score', wrfcConfig.score_threshold);
+    coreStore.set('wrfc.config.max_fix_attempts', wrfcConfig.max_fix_attempts);
+    coreStore.set('wrfc.config.auto_commit', wrfcConfig.enable_quality_gates);
+
     // Wire state change notifications → event bus
     coreStore.onStateChange((change) => {
       eventBusRef.emit({
