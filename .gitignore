@@ -76,3 +76,7 @@ test-auto-encode/
 new_pe_tests/
 new-version-tests/
 tests/
+
+# Scratch/reference docs
+channels-gv-differences.md
+claude-code-channels-reference.md
