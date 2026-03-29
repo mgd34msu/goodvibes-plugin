@@ -104,6 +104,19 @@ class RegistryEngineServer {
       await this.stop();
       process.exit(0);
     });
+
+    process.on('uncaughtException', (error) => {
+      logger.error('Uncaught exception (process kept alive)', { message: error.message, stack: error.stack });
+    });
+    process.on('unhandledRejection', (reason) => {
+      logger.error('Unhandled rejection (process kept alive)', {
+        message: reason instanceof Error ? reason.message : String(reason),
+      });
+    });
+    process.stdin.on('close', () => {
+      logger.info('stdin closed — client disconnected');
+      this.stop().finally(() => process.exit(0));
+    });
   }
 
   async start(): Promise<void> {

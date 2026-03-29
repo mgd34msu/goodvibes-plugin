@@ -113,6 +113,18 @@ class AnalyticsEngineServer {
 
     process.on('SIGINT', shutdown);
     process.on('SIGTERM', shutdown);
+
+    process.on('uncaughtException', (error) => {
+      process.stderr.write(`[${SERVER_NAME}] Uncaught exception (kept alive): ${error.message}\n`);
+    });
+    process.on('unhandledRejection', (reason) => {
+      const msg = reason instanceof Error ? reason.message : String(reason);
+      process.stderr.write(`[${SERVER_NAME}] Unhandled rejection (kept alive): ${msg}\n`);
+    });
+    process.stdin.on('close', () => {
+      process.stderr.write(`[${SERVER_NAME}] stdin closed — shutting down\n`);
+      shutdown();
+    });
   }
 
   async start(): Promise<void> {

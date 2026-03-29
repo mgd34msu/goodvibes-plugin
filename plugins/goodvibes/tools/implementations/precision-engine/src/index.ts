@@ -93,15 +93,40 @@ class PrecisionEngineServer {
     this.server.onerror = (error) => logger.error('MCP Server error', error);
 
     process.on('SIGINT', async () => {
-      logger.info('Shutting down');
+      logger.info('Shutting down (SIGINT)');
       await this.stop();
       process.exit(0);
     });
 
     process.on('SIGTERM', async () => {
-      logger.info('Shutting down');
+      logger.info('Shutting down (SIGTERM)');
       await this.stop();
       process.exit(0);
+    });
+
+    // Prevent unhandled errors from killing the MCP server process.
+    // These are the #1 cause of "MCP server disconnected" in Claude Code —
+    // an unhandled rejection from a hook, telemetry write, or async handler
+    // silently crashes the process, and the client sees a dead pipe.
+    process.on('uncaughtException', (error) => {
+      logger.error('Uncaught exception (process kept alive)', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+      });
+    });
+
+    process.on('unhandledRejection', (reason) => {
+      const message = reason instanceof Error ? reason.message : String(reason);
+      const stack = reason instanceof Error ? reason.stack : undefined;
+      logger.error('Unhandled rejection (process kept alive)', { message, stack });
+    });
+
+    // Detect when the client closes stdin (Claude Code killed our pipe).
+    // Graceful shutdown prevents zombie processes and flushes state.
+    process.stdin.on('close', () => {
+      logger.info('stdin closed — client disconnected, shutting down');
+      this.stop().finally(() => process.exit(0));
     });
   }
 

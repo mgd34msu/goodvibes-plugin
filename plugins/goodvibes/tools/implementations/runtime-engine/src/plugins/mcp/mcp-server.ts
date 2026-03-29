@@ -146,6 +146,29 @@ export class RuntimeEngineServer {
   private setupErrorHandling(): void {
     this.server.onerror = (error) =>
       logger.error('MCP Server error', { error: String(error) });
+
+    // Prevent unhandled errors from killing the MCP server process.
+    // An unhandled rejection from any async path silently crashes the process,
+    // and Claude Code sees a dead pipe / "MCP server disconnected".
+    process.on('uncaughtException', (error) => {
+      logger.error('Uncaught exception (process kept alive)', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+      });
+    });
+
+    process.on('unhandledRejection', (reason) => {
+      const message = reason instanceof Error ? reason.message : String(reason);
+      const stack = reason instanceof Error ? reason.stack : undefined;
+      logger.error('Unhandled rejection (process kept alive)', { message, stack });
+    });
+
+    // Detect when the client closes stdin — graceful shutdown prevents zombies.
+    process.stdin.on('close', () => {
+      logger.info('stdin closed — client disconnected, shutting down');
+      this.stop().finally(() => process.exit(0));
+    });
   }
 
   // ─── Lifecycle ──────────────────────────────────────────────────────────────
