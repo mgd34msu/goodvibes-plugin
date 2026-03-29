@@ -50,7 +50,7 @@ The fullstack feature workflow consists of 7 phases:
 
 The runtime engine automatically creates a WRFC (Work-Review-Fix-Complete) chain for each work agent. When an agent completes its work and emits a `<gv>` tag, the runtime:
 
-1. Evaluates the output against the configured `min_review_score` (default: 9.5 from `goodvibes.json`)
+1. Evaluates the output against the configured `score_threshold` (default: 9.5 from `goodvibes.json`)
 2. Issues directives to the orchestrator via system messages
 3. Orchestrator executes those directives mechanically
 
@@ -378,7 +378,7 @@ The orchestrator does NOT manually spawn reviewers. Instead:
 2. The runtime engine evaluates the output and issues directives:
    - If review is needed: `{"action":"spawn","type":"reviewer","task":"..."}`
    - If fixes are needed after review: `{"action":"spawn","type":"engineer","task":"Fix: ..."}`
-   - If the score meets `min_review_score` (configured in `goodvibes.json`): `{"action":"complete"}`
+   - If the score meets `score_threshold` (configured in `goodvibes.json`): `{"action":"complete"}`
    - If `max_fix_attempts` is exhausted: `{"action":"escalate","reason":"..."}`
 3. The orchestrator executes each directive immediately and mechanically
 
@@ -510,7 +510,7 @@ See `gather-plan-apply` skill for details.
 
 ### Review-Scoring (WRFC)
 
-The runtime engine uses the review-scoring rubric internally when spawning reviewers. The orchestrator does not score code directly. Review thresholds are configured in `goodvibes.json` (`min_review_score`, `max_fix_attempts`).
+The runtime engine uses the review-scoring rubric internally when spawning reviewers. The orchestrator does not score code directly. Review thresholds are configured in `goodvibes.json` (`score_threshold`, `max_fix_attempts`).
 
 See `review-scoring` skill for details on what the reviewer agent does.
 

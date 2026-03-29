@@ -6,13 +6,13 @@
  * .goodvibes/goodvibes.json (under the "runtime" key) in the project root.
  */
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { writeJsonSync } from './file-io.js';
 import { toErrorMessage, safeJsonParse } from './utils.js';
 import { ConfigError } from './errors.js';
 import { DEFAULT_HTTP_LISTENER_PORT } from './constants.js';
 import { join } from 'node:path';
-import { userInfo, tmpdir } from 'node:os';
+import { userInfo, tmpdir, homedir } from 'node:os';
 
 /** IPC socket and timeout configuration */
 export interface IpcConfig {
@@ -72,6 +72,19 @@ export interface WorkflowsConfig {
    * limit are dropped and logged as a warning. Defaults to 10.
    */
   max_transition_queue_depth: number;
+}
+
+
+/** WRFC (Write-Review-Fix-Confirm) quality loop configuration */
+export interface WRFCConfig {
+  /** Minimum review score (0-10) required to pass the quality gate. Default 9.5. */
+  score_threshold: number;
+  /** Maximum number of fix iterations before escalation. Default 3. */
+  max_fix_attempts: number;
+  /** When false, all agents auto-complete without review. Default true. */
+  auto_commit: boolean;
+  /** Additional agent types that must always be reviewed (merged with hardcoded defaults). */
+  require_review_types?: string[];
 }
 
 /** Event trigger configuration */
@@ -320,6 +333,8 @@ export interface RuntimeConfig {
   tool_gating?: ToolGatingConfig;
   /** Context injection settings — assembles dynamic runtime context for agents. */
   context_injection?: ContextInjectionConfig;
+  /** WRFC quality loop configuration. */
+  wrfc: WRFCConfig;
 }
 
 /** Default configuration values -- safe for all environments */
@@ -451,6 +466,11 @@ export const DEFAULT_CONFIG: RuntimeConfig = {
     enabled: false,
     include: [],
   },
+  wrfc: {
+    score_threshold: 9.5,
+    max_fix_attempts: 3,
+    auto_commit: true,
+  },
 };
 
 /**
@@ -510,6 +530,28 @@ function resolveRoot(projectRoot?: string): string {
   return projectRoot ?? process.cwd();
 }
 
+
+/**
+ * Returns the global goodvibes config path at `~/.goodvibes/goodvibes.json`.
+ */
+function getGlobalGoodvibesPath(): string {
+  return `${homedir()}/.goodvibes/goodvibes.json`;
+}
+
+/**
+ * Read-modify-write a goodvibes.json file with a callback that mutates the parsed object.
+ * Returns true if the file was written, false if not found (ENOENT is silent).
+ */
+function writeToGoodvibesJson(filePath: string, mutate: (obj: Record<string, unknown>) => void): void {
+  let existing: Record<string, unknown> = {};
+  try {
+    const raw = readFileSync(filePath, 'utf-8');
+    existing = safeJsonParse<Record<string, unknown>>(raw, {}) ?? {};
+  } catch { /* file doesn't exist yet or unreadable — start fresh */ }
+  mutate(existing);
+  writeJsonSync(filePath, existing);
+}
+
 /**
  * Loads the runtime configuration for a project.
  *
@@ -524,44 +566,62 @@ function resolveRoot(projectRoot?: string): string {
 export function loadConfig(projectRoot?: string): RuntimeConfig {
   const root = resolveRoot(projectRoot);
 
-  // Try goodvibes.json first (new location, under "runtime" key)
-  const goodvibesPath = join(root, '.goodvibes', 'goodvibes.json');
-  try {
-    const raw = readFileSync(goodvibesPath, 'utf-8');
-    const parsed = safeJsonParse<Record<string, unknown> | null>(raw, null);
-    if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed) && 'runtime' in parsed) {
-      const runtimeSection = parsed.runtime;
-      if (typeof runtimeSection === 'object' && runtimeSection !== null && !Array.isArray(runtimeSection)) {
-        // Filter to only RuntimeConfig keys — wrfc has its own config path via WRFCPlugin
-        const knownKeys = Object.keys(DEFAULT_CONFIG) as (keyof RuntimeConfig)[];
-        const filtered: Partial<RuntimeConfig> = {};
-        for (const key of knownKeys) {
-          if (key in (runtimeSection as Record<string, unknown>)) {
-            (filtered as Record<string, unknown>)[key] = (runtimeSection as Record<string, unknown>)[key];
-          }
-        }
-        const merged = deepMerge(DEFAULT_CONFIG, filtered);
-        validateConfig(merged);
-        process.stderr.write(
-          `[runtime-engine] Config loaded from ${goodvibesPath} (http_listener.enabled=${merged.external.http_listener.enabled})\n`,
-        );
-        return merged;
+  // Helper to extract RuntimeConfig keys from a parsed runtime section
+  function extractRuntimeConfig(runtimeSection: Record<string, unknown>): Partial<RuntimeConfig> {
+    const knownKeys = Object.keys(DEFAULT_CONFIG) as (keyof RuntimeConfig)[];
+    const filtered: Partial<RuntimeConfig> = {};
+    for (const key of knownKeys) {
+      if (key in runtimeSection) {
+        (filtered as Record<string, unknown>)[key] = runtimeSection[key];
       }
-      process.stderr.write(
-        `[runtime-engine] Warning: goodvibes.json has no valid "runtime" object — trying legacy config\n`,
-      );
-    } else {
-      process.stderr.write(
-        `[runtime-engine] Warning: goodvibes.json has no "runtime" key — trying legacy config\n`,
-      );
     }
-  } catch (err) {
-    if (!(err instanceof Error && 'code' in err && (err as NodeJS.ErrnoException).code === 'ENOENT')) {
-      process.stderr.write(
-        `[runtime-engine] Warning: failed to read goodvibes.json at "${goodvibesPath}": ${toErrorMessage(err)} — trying legacy config\n`,
-      );
+    return filtered;
+  }
+
+  // Helper to read runtime section from a goodvibes.json file
+  function readGoodvibesRuntime(filePath: string): Partial<RuntimeConfig> | null {
+    try {
+      const raw = readFileSync(filePath, 'utf-8');
+      const parsed = safeJsonParse<Record<string, unknown> | null>(raw, null);
+      if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed) && 'runtime' in parsed) {
+        const runtimeSection = parsed.runtime;
+        if (typeof runtimeSection === 'object' && runtimeSection !== null && !Array.isArray(runtimeSection)) {
+          return extractRuntimeConfig(runtimeSection as Record<string, unknown>);
+        }
+        process.stderr.write(
+          `[runtime-engine] Warning: ${filePath} has no valid "runtime" object — skipping\n`,
+        );
+      }
+    } catch (err) {
+      if (!(err instanceof Error && 'code' in err && (err as NodeJS.ErrnoException).code === 'ENOENT')) {
+        process.stderr.write(
+          `[runtime-engine] Warning: failed to read ${filePath}: ${toErrorMessage(err)} — skipping\n`,
+        );
+      }
+      // ENOENT is silent — normal first-run
     }
-    // ENOENT is silent — normal first-run, no goodvibes.json yet
+    return null;
+  }
+
+  // 1. Read global ~/.goodvibes/goodvibes.json
+  const globalPath = getGlobalGoodvibesPath();
+  const globalOverrides = readGoodvibesRuntime(globalPath);
+
+  // 2. Read project-local .goodvibes/goodvibes.json
+  const projectGoodvibesPath = join(root, '.goodvibes', 'goodvibes.json');
+  const projectOverrides = readGoodvibesRuntime(projectGoodvibesPath);
+
+  // 3. Deep-merge: DEFAULT <- global <- project
+  if (globalOverrides !== null || projectOverrides !== null) {
+    let merged = DEFAULT_CONFIG;
+    if (globalOverrides !== null) merged = deepMerge(merged, globalOverrides);
+    if (projectOverrides !== null) merged = deepMerge(merged, projectOverrides);
+    validateConfig(merged);
+    const source = projectOverrides !== null ? projectGoodvibesPath : globalPath;
+    process.stderr.write(
+      `[runtime-engine] Config loaded (http_listener.enabled=${merged.external.http_listener.enabled}) from ${source}\n`,
+    );
+    return merged;
   }
 
   // Fall back to legacy runtime-config.json
@@ -612,24 +672,30 @@ export function loadConfig(projectRoot?: string): RuntimeConfig {
  * @param config - The {@link RuntimeConfig} to persist.
  */
 export function saveConfig(projectRoot: string, config: RuntimeConfig): void {
-  const goodvibesPath = join(projectRoot, '.goodvibes', 'goodvibes.json');
-  let existing: Record<string, unknown> = {};
-  try {
-    const raw = readFileSync(goodvibesPath, 'utf-8');
-    existing = safeJsonParse<Record<string, unknown>>(raw, {}) ?? {};
-  } catch { /* file doesn't exist yet or unreadable — start fresh */ }
-
-  // Merge only RuntimeConfig keys into runtime section, preserving non-RuntimeConfig keys like 'wrfc'
-  const existingRuntime = (typeof existing.runtime === 'object' && existing.runtime !== null)
-    ? existing.runtime as Record<string, unknown>
-    : {};
   const configKeys = Object.keys(DEFAULT_CONFIG) as (keyof RuntimeConfig)[];
-  const updatedRuntime: Record<string, unknown> = { ...existingRuntime };
-  for (const key of configKeys) {
-    updatedRuntime[key] = config[key] as unknown;
+
+  // Helper to write RuntimeConfig keys into a goodvibes.json file
+  function writeConfigToFile(filePath: string): void {
+    writeToGoodvibesJson(filePath, (existing) => {
+      const existingRuntime = (typeof existing.runtime === 'object' && existing.runtime !== null)
+        ? existing.runtime as Record<string, unknown>
+        : {};
+      const updatedRuntime: Record<string, unknown> = { ...existingRuntime };
+      for (const key of configKeys) {
+        updatedRuntime[key] = config[key] as unknown;
+      }
+      existing.runtime = updatedRuntime;
+    });
   }
-  existing.runtime = updatedRuntime;
-  writeJsonSync(goodvibesPath, existing);
+
+  // Always write to global ~/.goodvibes/goodvibes.json
+  writeConfigToFile(getGlobalGoodvibesPath());
+
+  // Also write to project-local if it already exists
+  const projectPath = join(projectRoot, '.goodvibes', 'goodvibes.json');
+  if (existsSync(projectPath)) {
+    writeConfigToFile(projectPath);
+  }
 }
 
 /**
@@ -666,18 +732,6 @@ export function ensureRuntimeSections(projectRoot?: string): void {
       runtime[key] = defaults[key];
       changed = true;
     }
-  }
-
-  // Ensure runtime.wrfc section exists with defaults.
-  // wrfc is intentionally not part of RuntimeConfig (it has its own plugin config type),
-  // but it lives under runtime in goodvibes.json and must be seeded like other runtime keys.
-  if (!('wrfc' in runtime) || typeof runtime.wrfc !== 'object' || runtime.wrfc === null) {
-    runtime.wrfc = {
-      score_threshold: 9.5,
-      max_fix_attempts: 3,
-      auto_commit: true,
-    };
-    changed = true;
   }
 
   if (changed) {

@@ -10,8 +10,8 @@
  * - PLANNING: no external actions; transitions when writing starts
  * - WRITING: implementation phase; transitions when review is ready
  * - REVIEWING: score-based branch point:
- *     score >= context.min_review_score → COMPLETE
- *     score < context.min_review_score  → FIXING
+ *     score >= context.score_threshold → COMPLETE
+ *     score < context.score_threshold  → FIXING
  * - FIXING: emits wrfc:fix_started on enter;
  *     fix_attempts < max_fix_attempts → back to REVIEWING
  *     fix_attempts >= max_fix_attempts → ESCALATED
@@ -106,7 +106,7 @@ export const WRFC_LOOP_DEFINITION: WorkflowDefinition = {
           target: 'COMPLETE',
           guard: {
             type: 'expression',
-            expression: 'context.review_score >= context.min_review_score',
+            expression: 'context.review_score >= context.score_threshold',
           },
         },
         {
@@ -115,7 +115,7 @@ export const WRFC_LOOP_DEFINITION: WorkflowDefinition = {
           target: 'FIXING',
           guard: {
             type: 'expression',
-            expression: 'context.review_score < context.min_review_score',
+            expression: 'context.review_score < context.score_threshold',
           },
         },
       ],

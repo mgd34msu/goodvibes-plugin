@@ -22814,7 +22814,7 @@ var RemoteTransport = class {
         socket.on("close", () => this.onClose());
         socket.on("error", (err) => this.onSocketError(err));
         const joinId = generateId();
-        const join25 = JSON.stringify({
+        const join24 = JSON.stringify({
           type: "session_join",
           id: joinId,
           session_id: this.sessionId
@@ -22834,7 +22834,7 @@ var RemoteTransport = class {
             reject(err);
           }
         });
-        socket.write(join25, (err) => {
+        socket.write(join24, (err) => {
           if (err) {
             this.pending.delete(joinId);
             clearTimeout(timer);
@@ -23389,6 +23389,11 @@ var DEFAULT_CONFIG = {
   context_injection: {
     enabled: false,
     include: []
+  },
+  wrfc: {
+    score_threshold: 9.5,
+    max_fix_attempts: 3,
+    auto_commit: true
   }
 };
 function deepMerge(base, override) {
@@ -23426,47 +23431,76 @@ function resolveRoot(projectRoot) {
   return projectRoot ?? process.cwd();
 }
 __name(resolveRoot, "resolveRoot");
+function getGlobalGoodvibesPath() {
+  return `${(0, import_node_os.homedir)()}/.goodvibes/goodvibes.json`;
+}
+__name(getGlobalGoodvibesPath, "getGlobalGoodvibesPath");
+function writeToGoodvibesJson(filePath, mutate) {
+  let existing = {};
+  try {
+    const raw = (0, import_node_fs3.readFileSync)(filePath, "utf-8");
+    existing = safeJsonParse(raw, {}) ?? {};
+  } catch {
+  }
+  mutate(existing);
+  writeJsonSync(filePath, existing);
+}
+__name(writeToGoodvibesJson, "writeToGoodvibesJson");
 function loadConfig(projectRoot) {
   const root = resolveRoot(projectRoot);
-  const goodvibesPath = (0, import_node_path3.join)(root, ".goodvibes", "goodvibes.json");
-  try {
-    const raw = (0, import_node_fs3.readFileSync)(goodvibesPath, "utf-8");
-    const parsed = safeJsonParse(raw, null);
-    if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed) && "runtime" in parsed) {
-      const runtimeSection = parsed.runtime;
-      if (typeof runtimeSection === "object" && runtimeSection !== null && !Array.isArray(runtimeSection)) {
-        const knownKeys = Object.keys(DEFAULT_CONFIG);
-        const filtered = {};
-        for (const key of knownKeys) {
-          if (key in runtimeSection) {
-            filtered[key] = runtimeSection[key];
-          }
+  function extractRuntimeConfig(runtimeSection) {
+    const knownKeys = Object.keys(DEFAULT_CONFIG);
+    const filtered = {};
+    for (const key of knownKeys) {
+      if (key in runtimeSection) {
+        filtered[key] = runtimeSection[key];
+      }
+    }
+    return filtered;
+  }
+  __name(extractRuntimeConfig, "extractRuntimeConfig");
+  function readGoodvibesRuntime(filePath) {
+    try {
+      const raw = (0, import_node_fs3.readFileSync)(filePath, "utf-8");
+      const parsed = safeJsonParse(raw, null);
+      if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed) && "runtime" in parsed) {
+        const runtimeSection = parsed.runtime;
+        if (typeof runtimeSection === "object" && runtimeSection !== null && !Array.isArray(runtimeSection)) {
+          return extractRuntimeConfig(runtimeSection);
         }
-        const merged = deepMerge(DEFAULT_CONFIG, filtered);
-        validateConfig(merged);
         process.stderr.write(
-          `[runtime-engine] Config loaded from ${goodvibesPath} (http_listener.enabled=${merged.external.http_listener.enabled})
+          `[runtime-engine] Warning: ${filePath} has no valid "runtime" object \u2014 skipping
 `
         );
-        return merged;
       }
-      process.stderr.write(
-        `[runtime-engine] Warning: goodvibes.json has no valid "runtime" object \u2014 trying legacy config
+    } catch (err) {
+      if (!(err instanceof Error && "code" in err && err.code === "ENOENT")) {
+        process.stderr.write(
+          `[runtime-engine] Warning: failed to read ${filePath}: ${toErrorMessage(err)} \u2014 skipping
 `
-      );
-    } else {
-      process.stderr.write(
-        `[runtime-engine] Warning: goodvibes.json has no "runtime" key \u2014 trying legacy config
-`
-      );
+        );
+      }
     }
-  } catch (err) {
-    if (!(err instanceof Error && "code" in err && err.code === "ENOENT")) {
-      process.stderr.write(
-        `[runtime-engine] Warning: failed to read goodvibes.json at "${goodvibesPath}": ${toErrorMessage(err)} \u2014 trying legacy config
+    return null;
+  }
+  __name(readGoodvibesRuntime, "readGoodvibesRuntime");
+  const globalPath = getGlobalGoodvibesPath();
+  const globalOverrides = readGoodvibesRuntime(globalPath);
+  const projectGoodvibesPath = (0, import_node_path3.join)(root, ".goodvibes", "goodvibes.json");
+  const projectOverrides = readGoodvibesRuntime(projectGoodvibesPath);
+  if (globalOverrides !== null || projectOverrides !== null) {
+    let merged = DEFAULT_CONFIG;
+    if (globalOverrides !== null)
+      merged = deepMerge(merged, globalOverrides);
+    if (projectOverrides !== null)
+      merged = deepMerge(merged, projectOverrides);
+    validateConfig(merged);
+    const source = projectOverrides !== null ? projectGoodvibesPath : globalPath;
+    process.stderr.write(
+      `[runtime-engine] Config loaded (http_listener.enabled=${merged.external.http_listener.enabled}) from ${source}
 `
-      );
-    }
+    );
+    return merged;
   }
   const configPath = (0, import_node_path3.join)(root, ".goodvibes", "state", "runtime-config.json");
   try {
@@ -23499,21 +23533,23 @@ function loadConfig(projectRoot) {
 }
 __name(loadConfig, "loadConfig");
 function saveConfig(projectRoot, config2) {
-  const goodvibesPath = (0, import_node_path3.join)(projectRoot, ".goodvibes", "goodvibes.json");
-  let existing = {};
-  try {
-    const raw = (0, import_node_fs3.readFileSync)(goodvibesPath, "utf-8");
-    existing = safeJsonParse(raw, {}) ?? {};
-  } catch {
-  }
-  const existingRuntime = typeof existing.runtime === "object" && existing.runtime !== null ? existing.runtime : {};
   const configKeys = Object.keys(DEFAULT_CONFIG);
-  const updatedRuntime = { ...existingRuntime };
-  for (const key of configKeys) {
-    updatedRuntime[key] = config2[key];
+  function writeConfigToFile(filePath) {
+    writeToGoodvibesJson(filePath, (existing) => {
+      const existingRuntime = typeof existing.runtime === "object" && existing.runtime !== null ? existing.runtime : {};
+      const updatedRuntime = { ...existingRuntime };
+      for (const key of configKeys) {
+        updatedRuntime[key] = config2[key];
+      }
+      existing.runtime = updatedRuntime;
+    });
   }
-  existing.runtime = updatedRuntime;
-  writeJsonSync(goodvibesPath, existing);
+  __name(writeConfigToFile, "writeConfigToFile");
+  writeConfigToFile(getGlobalGoodvibesPath());
+  const projectPath = (0, import_node_path3.join)(projectRoot, ".goodvibes", "goodvibes.json");
+  if ((0, import_node_fs3.existsSync)(projectPath)) {
+    writeConfigToFile(projectPath);
+  }
 }
 __name(saveConfig, "saveConfig");
 function ensureRuntimeSections(projectRoot) {
@@ -23538,14 +23574,6 @@ function ensureRuntimeSections(projectRoot) {
       changed = true;
     }
   }
-  if (!("wrfc" in runtime) || typeof runtime.wrfc !== "object" || runtime.wrfc === null) {
-    runtime.wrfc = {
-      score_threshold: 9.5,
-      max_fix_attempts: 3,
-      auto_commit: true
-    };
-    changed = true;
-  }
   if (changed) {
     try {
       writeJsonSync(goodvibesPath, existing);
@@ -23565,7 +23593,6 @@ init_utils();
 
 // src/bootstrap.ts
 var import_node_path23 = require("node:path");
-var import_node_fs20 = require("node:fs");
 init_logger();
 init_utils();
 init_errors();
@@ -25883,7 +25910,7 @@ var WRFC_LOOP_DEFINITION = {
           target: "COMPLETE",
           guard: {
             type: "expression",
-            expression: "context.review_score >= context.min_review_score"
+            expression: "context.review_score >= context.score_threshold"
           }
         },
         {
@@ -25892,7 +25919,7 @@ var WRFC_LOOP_DEFINITION = {
           target: "FIXING",
           guard: {
             type: "expression",
-            expression: "context.review_score < context.min_review_score"
+            expression: "context.review_score < context.score_threshold"
           }
         }
       ]
@@ -26343,7 +26370,7 @@ __name(loadCustomWorkflows, "loadCustomWorkflows");
 
 // src/extensions/workflow/guards.ts
 function checkReviewScoreGuard(context) {
-  const threshold = typeof context.min_review_score === "number" && Number.isFinite(context.min_review_score) ? context.min_review_score : 9.5;
+  const threshold = typeof context.score_threshold === "number" && Number.isFinite(context.score_threshold) ? context.score_threshold : 9.5;
   return typeof context.review_score === "number" && context.review_score >= threshold;
 }
 __name(checkReviewScoreGuard, "checkReviewScoreGuard");
@@ -30207,11 +30234,11 @@ init_logger();
 var logger18 = createLogger("wrfc-config-store");
 function validateWRFCConfig(raw) {
   const validated = {};
-  const scoreValue = raw.min_review_score ?? raw.score_threshold;
+  const scoreValue = raw.score_threshold ?? raw.min_review_score;
   if (typeof scoreValue === "number" && scoreValue >= 0 && scoreValue <= 10) {
-    validated.min_review_score = scoreValue;
+    validated.score_threshold = scoreValue;
   } else if (scoreValue !== void 0) {
-    logger18.warn("Invalid min_review_score/score_threshold rejected", { value: scoreValue, expected: "number 0-10" });
+    logger18.warn("Invalid score_threshold/min_review_score rejected", { value: scoreValue, expected: "number 0-10" });
   }
   if (typeof raw.max_fix_attempts === "number" && Number.isInteger(raw.max_fix_attempts) && raw.max_fix_attempts > 0) {
     validated.max_fix_attempts = raw.max_fix_attempts;
@@ -30316,7 +30343,7 @@ function getWRFCFields(ctx) {
   return {
     review_score: ctx["review_score"],
     review_issues: ctx["review_issues"],
-    min_review_score: ctx["min_review_score"],
+    score_threshold: ctx["score_threshold"],
     fix_attempts: ctx["fix_attempts"],
     max_fix_attempts: ctx["max_fix_attempts"],
     files_modified: ctx["files_modified"]
@@ -32689,14 +32716,14 @@ function handleWorkflowCreated(event, _trigger, store) {
     { key: AM(sid, agentId), value: wid, op: "set" }
   ];
   if (!incomingWid) {
-    const minScore = storeGet(store, "wrfc.config.min_review_score", DEFAULT_MIN_REVIEW_SCORE);
+    const minScore = storeGet(store, "wrfc.config.score_threshold", DEFAULT_MIN_REVIEW_SCORE);
     const maxFix = storeGet(store, "wrfc.config.max_fix_attempts", DEFAULT_MAX_FIX_ATTEMPTS);
     state_updates.push(
       { key: WS(sid, wid, "phase"), value: "WRITING", op: "set" },
       { key: WS(sid, wid, "agent_id"), value: agentId, op: "set" },
       { key: WS(sid, wid, "agent_type"), value: agentType, op: "set" },
       { key: WS(sid, wid, "task"), value: task, op: "set" },
-      { key: WS(sid, wid, "min_review_score"), value: minScore, op: "set" },
+      { key: WS(sid, wid, "score_threshold"), value: minScore, op: "set" },
       { key: WS(sid, wid, "max_fix_attempts"), value: maxFix, op: "set" },
       { key: WS(sid, wid, "fix_attempts"), value: 0, op: "set" },
       { key: WS(sid, wid, "files_modified"), value: [], op: "set" }
@@ -32737,7 +32764,7 @@ function handleAgentCompleted(event, _trigger, store) {
     return {};
   }
   const phase = storeGet(store, WS(sid, wid, "phase"), "WRITING").toUpperCase();
-  const minScore = storeGet(store, WS(sid, wid, "min_review_score"), DEFAULT_MIN_REVIEW_SCORE);
+  const minScore = storeGet(store, WS(sid, wid, "score_threshold"), DEFAULT_MIN_REVIEW_SCORE);
   const maxFix = storeGet(store, WS(sid, wid, "max_fix_attempts"), DEFAULT_MAX_FIX_ATTEMPTS);
   const fixAttempts = storeGet(store, WS(sid, wid, "fix_attempts"), 0);
   const filesModified = storeGet(store, WS(sid, wid, "files_modified"), []);
@@ -32912,7 +32939,7 @@ function handleQualityGate(event, _trigger, store) {
     log7.debug("handleQualityGate: workflow already terminal, skipping", { wid, phase });
     return {};
   }
-  const minScore = storeGet(store, WS(sid, wid, "min_review_score"), DEFAULT_MIN_REVIEW_SCORE);
+  const minScore = storeGet(store, WS(sid, wid, "score_threshold"), DEFAULT_MIN_REVIEW_SCORE);
   const fixAttempts = storeGet(store, WS(sid, wid, "fix_attempts"), 0);
   const maxFix = storeGet(store, WS(sid, wid, "max_fix_attempts"), DEFAULT_MAX_FIX_ATTEMPTS);
   const filesModified = storeGet(store, WS(sid, wid, "files_modified"), []);
@@ -32964,10 +32991,10 @@ var TRIGGER_IDS = {
 
 // src/plugins/wrfc/workflows.ts
 var COND_SCORE_PASSES = [
-  { type: "expression", expression: "context.review_score >= context.min_review_score" }
+  { type: "expression", expression: "context.review_score >= context.score_threshold" }
 ];
 var COND_SCORE_FAILS = [
-  { type: "expression", expression: "context.review_score < context.min_review_score" }
+  { type: "expression", expression: "context.review_score < context.score_threshold" }
 ];
 var COND_TESTS_PASSED = [
   { type: "expression", expression: "context.tests_passed === true" }
@@ -33085,7 +33112,7 @@ function getDefaultWRFCConfig() {
   return {
     score_threshold: 9.5,
     max_fix_attempts: 3,
-    enable_quality_gates: true
+    auto_commit: true
   };
 }
 __name(getDefaultWRFCConfig, "getDefaultWRFCConfig");
@@ -33148,9 +33175,9 @@ var WRFCPlugin = class {
   register(services) {
     this._services = services;
     const store = makeStoreAdapter(services);
-    store.set("wrfc.config.min_review_score", this.config.score_threshold);
+    store.set("wrfc.config.score_threshold", this.config.score_threshold);
     store.set("wrfc.config.max_fix_attempts", this.config.max_fix_attempts);
-    store.set("wrfc.config.enable_quality_gates", this.config.enable_quality_gates);
+    store.set("wrfc.config.auto_commit", this.config.auto_commit);
     if (this.config.require_review_types && this.config.require_review_types.length > 0) {
       store.set("wrfc.config.require_review_types", this.config.require_review_types);
     }
@@ -33259,7 +33286,7 @@ var WRFCPlugin = class {
         throw new Error(`WRFCPlugin.reconfigure: score_threshold must be 0-10, got ${val}`);
       }
       this.config.score_threshold = val;
-      this._services.setState("wrfc.config.min_review_score", val);
+      this._services.setState("wrfc.config.score_threshold", val);
     }
     if (typeof config2["max_fix_attempts"] === "number") {
       const val = config2["max_fix_attempts"];
@@ -33269,9 +33296,9 @@ var WRFCPlugin = class {
       this.config.max_fix_attempts = val;
       this._services.setState("wrfc.config.max_fix_attempts", val);
     }
-    if (typeof config2["enable_quality_gates"] === "boolean") {
-      this.config.enable_quality_gates = config2["enable_quality_gates"];
-      this._services.setState("wrfc.config.enable_quality_gates", config2["enable_quality_gates"]);
+    if (typeof config2["auto_commit"] === "boolean") {
+      this.config.auto_commit = config2["auto_commit"];
+      this._services.setState("wrfc.config.auto_commit", config2["auto_commit"]);
     }
     if (Array.isArray(config2["require_review_types"])) {
       this.config.require_review_types = config2["require_review_types"];
@@ -37213,8 +37240,8 @@ var IPCRouter = class {
         if (Object.keys(validated).length > 0) {
           this.wrfcConfigStore?.set(validated);
           if (this.stateStore) {
-            if (typeof validated.min_review_score === "number") {
-              this.stateStore.set("wrfc.config.min_review_score", validated.min_review_score);
+            if (typeof validated.score_threshold === "number") {
+              this.stateStore.set("wrfc.config.score_threshold", validated.score_threshold);
             }
             if (typeof validated.max_fix_attempts === "number") {
               this.stateStore.set("wrfc.config.max_fix_attempts", validated.max_fix_attempts);
@@ -38431,7 +38458,7 @@ var RuntimeEngine = class {
   devServerMonitor = null;
   /** Generic registry of reconfigurable subsystems, populated during startup(). */
   reconfigurables = /* @__PURE__ */ new Map();
-  constructor(config2, projectRoot = process.cwd()) {
+  constructor(config2, projectRoot = process.env["CLAUDE_PROJECT_DIR"] ?? process.cwd()) {
     this.startTime = Date.now();
     this.config = config2;
     this.projectRoot = projectRoot;
@@ -38463,8 +38490,8 @@ var RuntimeEngine = class {
         return {};
       const config2 = wrfcStore.get();
       const defaults = {};
-      if (typeof config2.min_review_score === "number" && Number.isFinite(config2.min_review_score)) {
-        defaults.min_review_score = config2.min_review_score;
+      if (typeof config2.score_threshold === "number" && Number.isFinite(config2.score_threshold)) {
+        defaults.score_threshold = config2.score_threshold;
       }
       if (typeof config2.max_fix_attempts === "number" && Number.isFinite(config2.max_fix_attempts)) {
         defaults.max_fix_attempts = config2.max_fix_attempts;
@@ -38558,37 +38585,18 @@ var RuntimeEngine = class {
     if (this.events) {
       this.coreRuntime.eventProcessor.setEventBus(this.events.eventBus);
     }
-    const wrfcConfig = getDefaultWRFCConfig();
-    try {
-      const raw = (0, import_node_fs20.readFileSync)((0, import_node_path23.join)(this.projectRoot, ".goodvibes", "goodvibes.json"), "utf-8");
-      const parsed = JSON.parse(raw);
-      const wrfcOverrides = parsed?.runtime?.wrfc;
-      if (wrfcOverrides && typeof wrfcOverrides === "object") {
-        const scoreOverride = wrfcOverrides.min_review_score ?? wrfcOverrides.score_threshold;
-        if (typeof scoreOverride === "number") {
-          wrfcConfig.score_threshold = Math.max(0, Math.min(10, scoreOverride));
-        }
-        if (typeof wrfcOverrides.max_fix_attempts === "number") {
-          wrfcConfig.max_fix_attempts = Math.max(1, wrfcOverrides.max_fix_attempts);
-        }
-        if (typeof wrfcOverrides.enable_quality_gates === "boolean") {
-          wrfcConfig.enable_quality_gates = wrfcOverrides.enable_quality_gates;
-        }
-        if (Array.isArray(wrfcOverrides.require_review_types)) {
-          wrfcConfig.require_review_types = wrfcOverrides.require_review_types;
-        }
-        logger60.info("WRFC config overrides applied from goodvibes.json", {
-          score_threshold: wrfcConfig.score_threshold,
-          max_fix_attempts: wrfcConfig.max_fix_attempts
-        });
-      }
-    } catch {
-    }
+    const wrfcConfig = {
+      ...getDefaultWRFCConfig(),
+      score_threshold: this.config.wrfc.score_threshold,
+      max_fix_attempts: this.config.wrfc.max_fix_attempts,
+      auto_commit: this.config.wrfc.auto_commit,
+      ...this.config.wrfc.require_review_types ? { require_review_types: this.config.wrfc.require_review_types } : {}
+    };
     if (this.wrfcConfigStore) {
       const seedConfig = {
-        min_review_score: wrfcConfig.score_threshold,
+        score_threshold: wrfcConfig.score_threshold,
         max_fix_attempts: wrfcConfig.max_fix_attempts,
-        auto_commit: wrfcConfig.enable_quality_gates
+        auto_commit: wrfcConfig.auto_commit
       };
       if (wrfcConfig.require_review_types && wrfcConfig.require_review_types.length > 0) {
         seedConfig.require_review_types = wrfcConfig.require_review_types;
@@ -38599,9 +38607,9 @@ var RuntimeEngine = class {
     const coreEventProcessor = this.coreRuntime.eventProcessor;
     const coreTriggerRegistry = this.triggers?.triggerRegistry;
     const eventBusRef = this.events.eventBus;
-    coreStore.set("wrfc.config.min_review_score", wrfcConfig.score_threshold);
+    coreStore.set("wrfc.config.score_threshold", wrfcConfig.score_threshold);
     coreStore.set("wrfc.config.max_fix_attempts", wrfcConfig.max_fix_attempts);
-    coreStore.set("wrfc.config.auto_commit", wrfcConfig.enable_quality_gates);
+    coreStore.set("wrfc.config.auto_commit", wrfcConfig.auto_commit);
     coreStore.onStateChange((change) => {
       eventBusRef.emit({
         id: generateEventId(),
@@ -39165,7 +39173,7 @@ var RuntimeEngine = class {
 };
 
 // src/transport/daemon-lifecycle.ts
-var import_node_fs21 = require("node:fs");
+var import_node_fs20 = require("node:fs");
 var import_node_path24 = require("node:path");
 var import_node_child_process5 = require("node:child_process");
 var import_node_net2 = require("node:net");
@@ -39254,7 +39262,7 @@ var DaemonLifecycle = class {
       "tools/implementations/runtime-engine",
       DAEMON_ENTRY
     );
-    if (!(0, import_node_fs21.existsSync)(daemonScript)) {
+    if (!(0, import_node_fs20.existsSync)(daemonScript)) {
       throw new Error(
         `Daemon entry point not found: ${daemonScript}. Run the build first.`
       );
@@ -39287,11 +39295,11 @@ var DaemonLifecycle = class {
   }
   _tryAcquireLock(allowStaleRetry) {
     try {
-      const fd = (0, import_node_fs21.openSync)(this.lockFilePath, "wx");
+      const fd = (0, import_node_fs20.openSync)(this.lockFilePath, "wx");
       try {
-        (0, import_node_fs21.writeSync)(fd, String(process.pid));
+        (0, import_node_fs20.writeSync)(fd, String(process.pid));
       } finally {
-        (0, import_node_fs21.closeSync)(fd);
+        (0, import_node_fs20.closeSync)(fd);
       }
       return true;
     } catch (err) {
@@ -39301,7 +39309,7 @@ var DaemonLifecycle = class {
         return false;
       }
       try {
-        const content = (0, import_node_fs21.readFileSync)(this.lockFilePath, "utf-8").trim();
+        const content = (0, import_node_fs20.readFileSync)(this.lockFilePath, "utf-8").trim();
         const lockerPid = parseInt(content, 10);
         if (Number.isFinite(lockerPid) && this.isProcessAlive(lockerPid)) {
           return false;
@@ -39311,7 +39319,7 @@ var DaemonLifecycle = class {
       }
       if (allowStaleRetry) {
         try {
-          (0, import_node_fs21.unlinkSync)(this.lockFilePath);
+          (0, import_node_fs20.unlinkSync)(this.lockFilePath);
         } catch {
         }
         return this._tryAcquireLock(false);
@@ -39324,7 +39332,7 @@ var DaemonLifecycle = class {
    */
   releaseLock() {
     try {
-      (0, import_node_fs21.unlinkSync)(this.lockFilePath);
+      (0, import_node_fs20.unlinkSync)(this.lockFilePath);
     } catch (err) {
       const code = err.code;
       if (code !== "ENOENT") {
@@ -39339,7 +39347,7 @@ var DaemonLifecycle = class {
   async waitForLockRelease(timeoutMs) {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
-      if (!(0, import_node_fs21.existsSync)(this.lockFilePath))
+      if (!(0, import_node_fs20.existsSync)(this.lockFilePath))
         return;
       await new Promise((r) => setTimeout(r, 200));
     }
@@ -39488,10 +39496,10 @@ var DaemonLifecycle = class {
   }
   // ── Private Helpers ────────────────────────────────────────────
   readPid() {
-    if (!(0, import_node_fs21.existsSync)(this.pidFilePath))
+    if (!(0, import_node_fs20.existsSync)(this.pidFilePath))
       return null;
     try {
-      const content = (0, import_node_fs21.readFileSync)(this.pidFilePath, "utf-8").trim();
+      const content = (0, import_node_fs20.readFileSync)(this.pidFilePath, "utf-8").trim();
       const pid = parseInt(content, 10);
       return Number.isFinite(pid) ? pid : null;
     } catch (err) {
@@ -39500,10 +39508,10 @@ var DaemonLifecycle = class {
     }
   }
   readSocketPointer() {
-    if (!(0, import_node_fs21.existsSync)(this.socketPointerPath))
+    if (!(0, import_node_fs20.existsSync)(this.socketPointerPath))
       return null;
     try {
-      const content = (0, import_node_fs21.readFileSync)(this.socketPointerPath, "utf-8").trim();
+      const content = (0, import_node_fs20.readFileSync)(this.socketPointerPath, "utf-8").trim();
       return content || null;
     } catch (err) {
       logger61.debug("Failed to read socket pointer file", { path: this.socketPointerPath, err: toErrorMessage(err) });
@@ -39515,7 +39523,7 @@ var DaemonLifecycle = class {
   }
   probeSocket(socketPath) {
     return new Promise((done) => {
-      if (!(0, import_node_fs21.existsSync)(socketPath)) {
+      if (!(0, import_node_fs20.existsSync)(socketPath)) {
         done(false);
         return;
       }
@@ -39577,23 +39585,23 @@ var DaemonLifecycle = class {
   cleanupStaleFiles() {
     for (const path4 of [this.pidFilePath, this.socketPointerPath]) {
       try {
-        (0, import_node_fs21.unlinkSync)(path4);
+        (0, import_node_fs20.unlinkSync)(path4);
       } catch {
       }
     }
-    if ((0, import_node_fs21.existsSync)(this.lockFilePath)) {
+    if ((0, import_node_fs20.existsSync)(this.lockFilePath)) {
       try {
-        const content = (0, import_node_fs21.readFileSync)(this.lockFilePath, "utf-8").trim();
+        const content = (0, import_node_fs20.readFileSync)(this.lockFilePath, "utf-8").trim();
         const lockerPid = parseInt(content, 10);
         if (!Number.isFinite(lockerPid) || !this.isProcessAlive(lockerPid)) {
           try {
-            (0, import_node_fs21.unlinkSync)(this.lockFilePath);
+            (0, import_node_fs20.unlinkSync)(this.lockFilePath);
           } catch {
           }
         }
       } catch {
         try {
-          (0, import_node_fs21.unlinkSync)(this.lockFilePath);
+          (0, import_node_fs20.unlinkSync)(this.lockFilePath);
         } catch {
         }
       }
@@ -39679,8 +39687,6 @@ var handleRuntimeStatus = /* @__PURE__ */ __name(async (args, ctx) => {
 }, "handleRuntimeStatus");
 
 // src/plugins/mcp/handlers/config.ts
-var import_node_fs22 = require("node:fs");
-var import_node_path25 = require("node:path");
 init_utils();
 init_logger();
 init_errors();
@@ -39749,10 +39755,11 @@ var VALID_CONFIG_KEYS = /* @__PURE__ */ new Set([
   "external.http_listener.address",
   "external.http_listener.auth_token",
   "external.http_listener.max_payload_bytes",
-  // WRFC plugin config (persisted under runtime.wrfc in goodvibes.json)
+  // WRFC plugin config (part of RuntimeConfig.wrfc)
   "wrfc.score_threshold",
   "wrfc.max_fix_attempts",
-  "wrfc.auto_commit"
+  "wrfc.auto_commit",
+  "wrfc.require_review_types"
 ]);
 var CONFIG_KEY_TYPES = /* @__PURE__ */ new Map([
   ["ipc.socket_dir", "string"],
@@ -39821,7 +39828,8 @@ var CONFIG_KEY_TYPES = /* @__PURE__ */ new Map([
   // WRFC plugin config
   ["wrfc.score_threshold", "number"],
   ["wrfc.max_fix_attempts", "number"],
-  ["wrfc.auto_commit", "boolean"]
+  ["wrfc.auto_commit", "boolean"],
+  ["wrfc.require_review_types", "object"]
 ]);
 function getNestedValue(obj, path4) {
   const segments = path4.split(".");
@@ -39880,28 +39888,10 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
       const key = assertOptionalString(params.key, "key");
       const config2 = ctx.transport ? await ctx.transport.getConfig() : ctx.getConfig();
       if (key) {
-        if (key.startsWith("wrfc.")) {
-          const wrfcField = key.slice(5);
-          const stateStoreKeyMap = {
-            score_threshold: "wrfc.config.min_review_score",
-            max_fix_attempts: "wrfc.config.max_fix_attempts",
-            auto_commit: "wrfc.config.auto_commit"
-          };
-          const stateKey = stateStoreKeyMap[wrfcField];
-          const stateStore2 = ctx.getCoreStateStore?.();
-          const value2 = stateStore2 && stateKey ? stateStore2.get(stateKey) : void 0;
-          return toSuccess({ key, value: value2, source: "state_store" }, ctx.version, uptimeMs, Date.now() - start);
-        }
         const value = getNestedValue(config2, key);
         return toSuccess({ key, value }, ctx.version, uptimeMs, Date.now() - start);
       }
-      const stateStore = ctx.getCoreStateStore?.();
-      const wrfc = stateStore ? {
-        score_threshold: stateStore.get("wrfc.config.min_review_score"),
-        max_fix_attempts: stateStore.get("wrfc.config.max_fix_attempts"),
-        auto_commit: stateStore.get("wrfc.config.auto_commit")
-      } : void 0;
-      return toSuccess({ config: config2, wrfc }, ctx.version, uptimeMs, Date.now() - start);
+      return toSuccess({ config: config2 }, ctx.version, uptimeMs, Date.now() - start);
     }
     if (action === "set") {
       const key = assertOptionalString(params.key, "key");
@@ -39942,58 +39932,6 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
           );
         }
       }
-      if (key.startsWith("wrfc.")) {
-        const wrfcField = key.slice(5);
-        const stateStoreKeyMap = {
-          score_threshold: "wrfc.config.min_review_score",
-          max_fix_attempts: "wrfc.config.max_fix_attempts",
-          auto_commit: "wrfc.config.auto_commit"
-        };
-        const stateKey = stateStoreKeyMap[wrfcField];
-        if (!stateKey) {
-          return toError(
-            `Unknown wrfc config field: '${wrfcField}'.`,
-            ctx.version,
-            uptimeMs,
-            Date.now() - start
-          );
-        }
-        const goodvibesPath = (0, import_node_path25.join)(ctx.projectRoot, ".goodvibes", "goodvibes.json");
-        try {
-          let existing = {};
-          try {
-            existing = safeJsonParse((0, import_node_fs22.readFileSync)(goodvibesPath, "utf-8"), {}) ?? {};
-          } catch {
-          }
-          if (typeof existing.runtime !== "object" || existing.runtime === null) {
-            existing.runtime = {};
-          }
-          const runtime = existing.runtime;
-          if (typeof runtime.wrfc !== "object" || runtime.wrfc === null) {
-            runtime.wrfc = {};
-          }
-          runtime.wrfc[wrfcField] = value;
-          writeJsonSync(goodvibesPath, existing);
-        } catch (err) {
-          return toError(
-            `Failed to persist wrfc config: ${toErrorMessage(err)}`,
-            ctx.version,
-            uptimeMs,
-            Date.now() - start
-          );
-        }
-        const stateStore = ctx.getCoreStateStore?.();
-        if (stateStore) {
-          stateStore.set(stateKey, value);
-        }
-        logger63.info("WRFC config key set", { key, value, stateKey });
-        return toSuccess(
-          { key, value, persisted: true, state_store_key: stateKey },
-          ctx.version,
-          uptimeMs,
-          Date.now() - start
-        );
-      }
       if (key === "executor.mode") {
         if (!VALID_EXECUTOR_MODES.includes(value)) {
           return toError(
@@ -40017,6 +39955,20 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
         ctx.updateConfig(updated);
       }
       logger63.info("Config key set", { key, value });
+      if (key.startsWith("wrfc.")) {
+        const wrfcField = key.slice(5);
+        const stateStoreKeyMap = {
+          score_threshold: "wrfc.config.score_threshold",
+          max_fix_attempts: "wrfc.config.max_fix_attempts",
+          auto_commit: "wrfc.config.auto_commit",
+          require_review_types: "wrfc.config.require_review_types"
+        };
+        const stateKey = stateStoreKeyMap[wrfcField];
+        const stateStore = ctx.getCoreStateStore?.();
+        if (stateStore && stateKey) {
+          stateStore.set(stateKey, value);
+        }
+      }
       const result = { key, value, persisted: true };
       if (key === "executor.mode") {
         result.warning = "executor.mode change takes effect on next session restart. Most other config keys are hot-reloaded immediately.";

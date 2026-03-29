@@ -69,8 +69,8 @@ function makeWorkflowEngine(instanceId = 'wf-1') {
   };
 }
 
-function makeContextProvider(min_review_score = 8, max_fix_attempts = 3) {
-  return vi.fn((_workflowType: string) => ({ min_review_score, max_fix_attempts }));
+function makeContextProvider(score_threshold = 8, max_fix_attempts = 3) {
+  return vi.fn((_workflowType: string) => ({ score_threshold, max_fix_attempts }));
 }
 
 describe('TriggerActionExecutor', () => {
@@ -432,7 +432,7 @@ describe('TriggerActionExecutor', () => {
       const result = await executor.execute(action, makeEvent('build:failed'));
       expect(result.success).toBe(true);
       const [, context] = workflowEngine.create.mock.calls[0] as unknown[];
-      expect((context as Record<string, unknown>)['min_review_score']).toBe(7);
+      expect((context as Record<string, unknown>)['score_threshold']).toBe(7);
       expect((context as Record<string, unknown>)['max_fix_attempts']).toBe(4);
       expect(contextProvider).toHaveBeenCalledWith('fix_loop');
     });
@@ -443,7 +443,7 @@ describe('TriggerActionExecutor', () => {
       // The executor no longer filters values — filtering is the provider's responsibility.
       // Pass a contextProvider that returns non-finite values to verify pass-through.
       const contextProvider = vi.fn((_workflowType: string) => ({
-        min_review_score: NaN,
+        score_threshold: NaN,
         max_fix_attempts: Infinity,
       }));
       const executor = new TriggerActionExecutor(
@@ -463,7 +463,7 @@ describe('TriggerActionExecutor', () => {
       expect(contextProvider).toHaveBeenCalledWith('fix_loop');
       const [, context] = workflowEngine.create.mock.calls[0] as unknown[];
       // Values are passed through as-is; filtering is the provider's responsibility.
-      expect(Number.isNaN((context as Record<string, unknown>)['min_review_score'])).toBe(true);
+      expect(Number.isNaN((context as Record<string, unknown>)['score_threshold'])).toBe(true);
       expect((context as Record<string, unknown>)['max_fix_attempts']).toBe(Infinity);
     });
 

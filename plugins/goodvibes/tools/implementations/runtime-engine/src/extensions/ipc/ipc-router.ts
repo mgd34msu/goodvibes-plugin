@@ -493,8 +493,8 @@ export class IPCRouter {
           this.wrfcConfigStore?.set(validated);
           // Also propagate to CoreStateStore so WRFC handlers pick up the values
           if (this.stateStore) {
-            if (typeof validated.min_review_score === 'number') {
-              this.stateStore.set('wrfc.config.min_review_score', validated.min_review_score);
+            if (typeof validated.score_threshold === 'number') {
+              this.stateStore.set('wrfc.config.score_threshold', validated.score_threshold);
             }
             if (typeof validated.max_fix_attempts === 'number') {
               this.stateStore.set('wrfc.config.max_fix_attempts', validated.max_fix_attempts);

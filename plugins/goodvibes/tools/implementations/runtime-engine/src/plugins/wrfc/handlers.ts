@@ -210,7 +210,7 @@ export function handleWorkflowCreated(
 
   if (!incomingWid) {
     // Chain originator: initialise new workflow state
-    const minScore = storeGet(store, 'wrfc.config.min_review_score', DEFAULT_MIN_REVIEW_SCORE);
+    const minScore = storeGet(store, 'wrfc.config.score_threshold', DEFAULT_MIN_REVIEW_SCORE);
     const maxFix = storeGet(store, 'wrfc.config.max_fix_attempts', DEFAULT_MAX_FIX_ATTEMPTS);
 
     state_updates.push(
@@ -218,7 +218,7 @@ export function handleWorkflowCreated(
       { key: WS(sid, wid, 'agent_id'), value: agentId, op: 'set' },
       { key: WS(sid, wid, 'agent_type'), value: agentType, op: 'set' },
       { key: WS(sid, wid, 'task'), value: task, op: 'set' },
-      { key: WS(sid, wid, 'min_review_score'), value: minScore, op: 'set' },
+      { key: WS(sid, wid, 'score_threshold'), value: minScore, op: 'set' },
       { key: WS(sid, wid, 'max_fix_attempts'), value: maxFix, op: 'set' },
       { key: WS(sid, wid, 'fix_attempts'), value: 0, op: 'set' },
       { key: WS(sid, wid, 'files_modified'), value: [], op: 'set' },
@@ -314,7 +314,7 @@ export function handleAgentCompleted(
   }
 
   const phase = storeGet(store, WS(sid, wid, 'phase'), 'WRITING').toUpperCase();
-  const minScore = storeGet(store, WS(sid, wid, 'min_review_score'), DEFAULT_MIN_REVIEW_SCORE);
+  const minScore = storeGet(store, WS(sid, wid, 'score_threshold'), DEFAULT_MIN_REVIEW_SCORE);
   const maxFix = storeGet(store, WS(sid, wid, 'max_fix_attempts'), DEFAULT_MAX_FIX_ATTEMPTS);
   const fixAttempts = storeGet(store, WS(sid, wid, 'fix_attempts'), 0);
   const filesModified = storeGet<string[]>(store, WS(sid, wid, 'files_modified'), []);
@@ -546,7 +546,7 @@ export function handleQualityGate(
     return {};
   }
 
-  const minScore = storeGet(store, WS(sid, wid, 'min_review_score'), DEFAULT_MIN_REVIEW_SCORE);
+  const minScore = storeGet(store, WS(sid, wid, 'score_threshold'), DEFAULT_MIN_REVIEW_SCORE);
   const fixAttempts = storeGet(store, WS(sid, wid, 'fix_attempts'), 0);
   const maxFix = storeGet(store, WS(sid, wid, 'max_fix_attempts'), DEFAULT_MAX_FIX_ATTEMPTS);
   const filesModified = storeGet<string[]>(store, WS(sid, wid, 'files_modified'), []);

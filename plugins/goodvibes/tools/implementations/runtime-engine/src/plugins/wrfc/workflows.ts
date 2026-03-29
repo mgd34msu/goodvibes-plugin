@@ -17,12 +17,12 @@ import type { PluginWorkflowDefinition } from '../../shared/plugin.js';
 
 /** Transition passes when the review score meets the configured minimum. */
 const COND_SCORE_PASSES = [
-  { type: 'expression', expression: 'context.review_score >= context.min_review_score' },
+  { type: 'expression', expression: 'context.review_score >= context.score_threshold' },
 ];
 
 /** Transition passes when the review score is below the configured minimum. */
 const COND_SCORE_FAILS = [
-  { type: 'expression', expression: 'context.review_score < context.min_review_score' },
+  { type: 'expression', expression: 'context.review_score < context.score_threshold' },
 ];
 
 /** Transition passes when tests have all passed. */

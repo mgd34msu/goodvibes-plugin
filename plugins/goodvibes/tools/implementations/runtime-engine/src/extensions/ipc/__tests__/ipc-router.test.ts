@@ -532,7 +532,7 @@ describe('IPCRouter', () => {
 
       it('extracts wrfc from runtime.wrfc (nested goodvibes.json structure)', async () => {
         const wrfcConfig = { score_threshold: 9.9, max_fix_attempts: 5 };
-        const validated = { min_review_score: 9.9, max_fix_attempts: 5 };
+        const validated = { score_threshold: 9.9, max_fix_attempts: 5 };
         mockValidateWRFCConfig.mockReturnValueOnce(validated);
         await router.route(
           makeHookEventMsg({
@@ -547,7 +547,7 @@ describe('IPCRouter', () => {
       });
 
       it('propagates validated WRFC config to CoreStateStore', async () => {
-        const validated = { min_review_score: 9.5, max_fix_attempts: 4 };
+        const validated = { score_threshold: 9.5, max_fix_attempts: 4 };
         mockValidateWRFCConfig.mockReturnValueOnce(validated);
         await router.route(
           makeHookEventMsg({
@@ -556,14 +556,14 @@ describe('IPCRouter', () => {
           })
         );
         const stateSet = (deps.stateStore as unknown as { set: ReturnType<typeof vi.fn> }).set;
-        expect(stateSet).toHaveBeenCalledWith('wrfc.config.min_review_score', 9.5);
+        expect(stateSet).toHaveBeenCalledWith('wrfc.config.score_threshold', 9.5);
         expect(stateSet).toHaveBeenCalledWith('wrfc.config.max_fix_attempts', 4);
       });
 
       it('prefers runtime.wrfc over top-level wrfc', async () => {
         const nestedConfig = { score_threshold: 9.9 };
         const topConfig = { score_threshold: 5.0 };
-        mockValidateWRFCConfig.mockReturnValueOnce({ min_review_score: 9.9 });
+        mockValidateWRFCConfig.mockReturnValueOnce({ score_threshold: 9.9 });
         await router.route(
           makeHookEventMsg({
             hook_name: 'config:loaded',

@@ -13,7 +13,7 @@ import type { WorkflowContext } from './types.js';
 export interface WRFCFields {
   review_score?: number;
   review_issues?: unknown[];
-  min_review_score?: number;
+  score_threshold?: number;
   fix_attempts?: number;
   max_fix_attempts?: number;
   files_modified?: string[];
@@ -24,7 +24,7 @@ export function getWRFCFields(ctx: WorkflowContext): WRFCFields {
   return {
     review_score: ctx['review_score'] as number | undefined,
     review_issues: ctx['review_issues'] as unknown[] | undefined,
-    min_review_score: ctx['min_review_score'] as number | undefined,
+    score_threshold: ctx['score_threshold'] as number | undefined,
     fix_attempts: ctx['fix_attempts'] as number | undefined,
     max_fix_attempts: ctx['max_fix_attempts'] as number | undefined,
     files_modified: ctx['files_modified'] as string[] | undefined,

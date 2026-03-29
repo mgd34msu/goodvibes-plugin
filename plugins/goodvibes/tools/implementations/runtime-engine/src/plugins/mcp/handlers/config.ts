@@ -13,10 +13,7 @@ import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 import { DEFAULT_CONFIG, saveConfig, VALID_EXECUTOR_MODES } from '../../../shared/config.js';
 import type { RuntimeConfig } from '../../../shared/config.js';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { writeJsonSync } from '../../../shared/file-io.js';
-import { assertOptionalString, safeJsonParse, toErrorMessage } from '../../../shared/utils.js';
+import { assertOptionalString, toErrorMessage } from '../../../shared/utils.js';
 import { createLogger } from '../../../shared/logger.js';
 import { ConfigError } from '../../../shared/errors.js';
 import type { HandlerContext } from './types.js';
@@ -94,10 +91,11 @@ export const VALID_CONFIG_KEYS: ReadonlySet<string> = new Set([
   'external.http_listener.address',
   'external.http_listener.auth_token',
   'external.http_listener.max_payload_bytes',
-  // WRFC plugin config (persisted under runtime.wrfc in goodvibes.json)
+  // WRFC plugin config (part of RuntimeConfig.wrfc)
   'wrfc.score_threshold',
   'wrfc.max_fix_attempts',
   'wrfc.auto_commit',
+  'wrfc.require_review_types',
 ]);
 
 /**
@@ -172,6 +170,7 @@ export const CONFIG_KEY_TYPES: ReadonlyMap<string, 'boolean' | 'number' | 'strin
   ['wrfc.score_threshold', 'number'],
   ['wrfc.max_fix_attempts', 'number'],
   ['wrfc.auto_commit', 'boolean'],
+  ['wrfc.require_review_types', 'object'],
 ]);
 
 // ─── Nested key helpers ────────────────────────────────────────────────────
@@ -278,32 +277,11 @@ export const handleRuntimeConfig = async (
       const config = ctx.transport ? await ctx.transport.getConfig() : ctx.getConfig();
 
       if (key) {
-        // wrfc.* keys: read from state store or file, not from RuntimeConfig
-        if (key.startsWith('wrfc.')) {
-          const wrfcField = key.slice(5);
-          const stateStoreKeyMap: Record<string, string> = {
-            score_threshold: 'wrfc.config.min_review_score',
-            max_fix_attempts: 'wrfc.config.max_fix_attempts',
-            auto_commit: 'wrfc.config.auto_commit',
-          };
-          const stateKey = stateStoreKeyMap[wrfcField];
-          const stateStore = ctx.getCoreStateStore?.();
-          const value = stateStore && stateKey ? stateStore.get(stateKey) : undefined;
-          return toSuccess({ key, value, source: 'state_store' }, ctx.version, uptimeMs, Date.now() - start);
-        }
         const value = getNestedValue(config as unknown as Record<string, unknown>, key);
         return toSuccess({ key, value }, ctx.version, uptimeMs, Date.now() - start);
       }
 
-      // Include wrfc config in full config dump
-      const stateStore = ctx.getCoreStateStore?.();
-      const wrfc = stateStore ? {
-        score_threshold: stateStore.get('wrfc.config.min_review_score'),
-        max_fix_attempts: stateStore.get('wrfc.config.max_fix_attempts'),
-        auto_commit: stateStore.get('wrfc.config.auto_commit'),
-      } : undefined;
-
-      return toSuccess({ config, wrfc }, ctx.version, uptimeMs, Date.now() - start);
+      return toSuccess({ config }, ctx.version, uptimeMs, Date.now() - start);
     }
 
     // ── set ──────────────────────────────────────────────────────────────────
@@ -352,60 +330,6 @@ export const handleRuntimeConfig = async (
         }
       }
 
-      // ── wrfc.* keys: separate persistence path ──────────────────────────
-      // wrfc config lives under runtime.wrfc in goodvibes.json, not in RuntimeConfig.
-      // Handle it directly: persist to file + update CoreStateStore.
-      if (key.startsWith('wrfc.')) {
-        const wrfcField = key.slice(5); // e.g. 'score_threshold'
-        const stateStoreKeyMap: Record<string, string> = {
-          score_threshold: 'wrfc.config.min_review_score',
-          max_fix_attempts: 'wrfc.config.max_fix_attempts',
-          auto_commit: 'wrfc.config.auto_commit',
-        };
-        const stateKey = stateStoreKeyMap[wrfcField];
-        if (!stateKey) {
-          return toError(
-            `Unknown wrfc config field: '${wrfcField}'.`,
-            ctx.version, uptimeMs, Date.now() - start
-          );
-        }
-
-        // Persist to goodvibes.json under runtime.wrfc
-        const goodvibesPath = join(ctx.projectRoot, '.goodvibes', 'goodvibes.json');
-        try {
-          let existing: Record<string, unknown> = {};
-          try {
-            existing = safeJsonParse<Record<string, unknown>>(readFileSync(goodvibesPath, 'utf-8'), {}) ?? {};
-          } catch { /* file doesn't exist yet */ }
-          if (typeof existing.runtime !== 'object' || existing.runtime === null) {
-            existing.runtime = {};
-          }
-          const runtime = existing.runtime as Record<string, unknown>;
-          if (typeof runtime.wrfc !== 'object' || runtime.wrfc === null) {
-            runtime.wrfc = {};
-          }
-          (runtime.wrfc as Record<string, unknown>)[wrfcField] = value;
-          writeJsonSync(goodvibesPath, existing);
-        } catch (err) {
-          return toError(
-            `Failed to persist wrfc config: ${toErrorMessage(err)}`,
-            ctx.version, uptimeMs, Date.now() - start
-          );
-        }
-
-        // Update CoreStateStore so WRFC handlers pick it up immediately
-        const stateStore = ctx.getCoreStateStore?.();
-        if (stateStore) {
-          stateStore.set(stateKey, value);
-        }
-
-        logger.info('WRFC config key set', { key, value, stateKey });
-        return toSuccess(
-          { key, value, persisted: true, state_store_key: stateKey },
-          ctx.version, uptimeMs, Date.now() - start
-        );
-      }
-
       // Validate value-level constraints for specific keys
       if (key === 'executor.mode') {
         if (!(VALID_EXECUTOR_MODES as readonly string[]).includes(value as string)) {
@@ -436,6 +360,22 @@ export const handleRuntimeConfig = async (
         ctx.updateConfig(updated);
       }
       logger.info('Config key set', { key, value });
+
+      // When a wrfc.* key is set, propagate to CoreStateStore so WRFC handlers pick it up immediately
+      if (key.startsWith('wrfc.')) {
+        const wrfcField = key.slice(5);
+        const stateStoreKeyMap: Record<string, string> = {
+          score_threshold: 'wrfc.config.score_threshold',
+          max_fix_attempts: 'wrfc.config.max_fix_attempts',
+          auto_commit: 'wrfc.config.auto_commit',
+          require_review_types: 'wrfc.config.require_review_types',
+        };
+        const stateKey = stateStoreKeyMap[wrfcField];
+        const stateStore = ctx.getCoreStateStore?.();
+        if (stateStore && stateKey) {
+          stateStore.set(stateKey, value);
+        }
+      }
 
       const result: Record<string, unknown> = { key, value, persisted: true };
       if (key === 'executor.mode') {

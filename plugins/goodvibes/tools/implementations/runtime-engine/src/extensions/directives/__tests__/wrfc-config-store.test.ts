@@ -19,61 +19,61 @@ describe('WRFCConfigStore', () => {
 
   it('stores and returns the provided config', () => {
     const store = new WRFCConfigStore();
-    const config = { min_review_score: 8, max_fix_attempts: 3, auto_commit: false };
+    const config = { score_threshold: 8, max_fix_attempts: 3, auto_commit: false };
     store.set(config);
     expect(store.get()).toEqual(config);
   });
 
   it('replaces previous config when set is called again', () => {
     const store = new WRFCConfigStore();
-    store.set({ min_review_score: 7 });
+    store.set({ score_threshold: 7 });
     store.set({ max_fix_attempts: 5 });
     expect(store.get()).toEqual({ max_fix_attempts: 5 });
   });
 
   it('get returns the same reference as was set', () => {
     const store = new WRFCConfigStore();
-    const config = { min_review_score: 9 };
+    const config = { score_threshold: 9 };
     store.set(config);
     expect(store.get()).toBe(config);
   });
 });
 
 describe('validateWRFCConfig', () => {
-  // ─── min_review_score ───────────────────────────────────────────────────────
+  // ─── score_threshold ───────────────────────────────────────────────────────
 
-  it('accepts valid min_review_score (0)', () => {
-    expect(validateWRFCConfig({ min_review_score: 0 })).toEqual({ min_review_score: 0 });
+  it('accepts valid score_threshold (0)', () => {
+    expect(validateWRFCConfig({ score_threshold: 0 })).toEqual({ score_threshold: 0 });
   });
 
-  it('accepts valid min_review_score (10)', () => {
-    expect(validateWRFCConfig({ min_review_score: 10 })).toEqual({ min_review_score: 10 });
+  it('accepts valid score_threshold (10)', () => {
+    expect(validateWRFCConfig({ score_threshold: 10 })).toEqual({ score_threshold: 10 });
   });
 
-  it('accepts valid min_review_score (8.5)', () => {
-    expect(validateWRFCConfig({ min_review_score: 8.5 })).toEqual({ min_review_score: 8.5 });
+  it('accepts valid score_threshold (8.5)', () => {
+    expect(validateWRFCConfig({ score_threshold: 8.5 })).toEqual({ score_threshold: 8.5 });
   });
 
-  it('rejects min_review_score that is a string', () => {
-    expect(validateWRFCConfig({ min_review_score: '8' })).toEqual({});
+  it('rejects score_threshold that is a string', () => {
+    expect(validateWRFCConfig({ score_threshold: '8' })).toEqual({});
   });
 
-  it('rejects min_review_score below 0', () => {
-    expect(validateWRFCConfig({ min_review_score: -1 })).toEqual({});
+  it('rejects score_threshold below 0', () => {
+    expect(validateWRFCConfig({ score_threshold: -1 })).toEqual({});
   });
 
-  it('rejects min_review_score above 10', () => {
-    expect(validateWRFCConfig({ min_review_score: 11 })).toEqual({});
+  it('rejects score_threshold above 10', () => {
+    expect(validateWRFCConfig({ score_threshold: 11 })).toEqual({});
   });
 
-  // ─── score_threshold alias ────────────────────────────────────────────────
+  // ─── min_review_score legacy alias ────────────────────────────────────────────────
 
-  it('accepts score_threshold as alias for min_review_score', () => {
-    expect(validateWRFCConfig({ score_threshold: 9.9 })).toEqual({ min_review_score: 9.9 });
+  it('accepts min_review_score as legacy alias for score_threshold', () => {
+    expect(validateWRFCConfig({ min_review_score: 9.9 })).toEqual({ score_threshold: 9.9 });
   });
 
-  it('prefers min_review_score over score_threshold when both present', () => {
-    expect(validateWRFCConfig({ min_review_score: 8.0, score_threshold: 9.9 })).toEqual({ min_review_score: 8.0 });
+  it('prefers score_threshold over min_review_score when both present', () => {
+    expect(validateWRFCConfig({ score_threshold: 8.0, min_review_score: 9.9 })).toEqual({ score_threshold: 8.0 });
   });
 
   // ─── max_fix_attempts ───────────────────────────────────────────────────────
@@ -151,8 +151,8 @@ describe('validateWRFCConfig', () => {
   // ─── Unknown fields ─────────────────────────────────────────────────────────
 
   it('ignores unknown fields', () => {
-    expect(validateWRFCConfig({ unknown_field: 'value', min_review_score: 8 })).toEqual({
-      min_review_score: 8,
+    expect(validateWRFCConfig({ unknown_field: 'value', score_threshold: 8 })).toEqual({
+      score_threshold: 8,
     });
   });
 
@@ -163,13 +163,13 @@ describe('validateWRFCConfig', () => {
   // ─── Field omission ─────────────────────────────────────────────────────────
 
   it('omits undefined fields rather than rejecting them', () => {
-    // Only min_review_score is provided and valid
-    expect(validateWRFCConfig({ min_review_score: 7 })).toEqual({ min_review_score: 7 });
+    // Only score_threshold is provided and valid
+    expect(validateWRFCConfig({ score_threshold: 7 })).toEqual({ score_threshold: 7 });
   });
 
   it('accepts all valid fields together', () => {
     const raw = {
-      min_review_score: 8,
+      score_threshold: 8,
       max_fix_attempts: 3,
       auto_commit: true,
       require_review_types: ['security'],

@@ -1,7 +1,6 @@
 /** Composition root — sole cross-layer wiring point for the runtime engine. */
 
 import { join } from 'node:path';
-import { readFileSync } from 'node:fs';
 
 import type { RuntimeConfig } from './shared/config.js';
 import { loadConfig } from './shared/config.js';
@@ -176,7 +175,7 @@ export class RuntimeEngine {
   /** Generic registry of reconfigurable subsystems, populated during startup(). */
   private reconfigurables: Map<string, Reconfigurable> = new Map();
 
-  constructor(config: RuntimeConfig, projectRoot: string = process.cwd()) {
+  constructor(config: RuntimeConfig, projectRoot: string = process.env['CLAUDE_PROJECT_DIR'] ?? process.cwd()) {
     this.startTime = Date.now();
     this.config = config;
     this.projectRoot = projectRoot;
@@ -220,8 +219,8 @@ export class RuntimeEngine {
       if (!wrfcStore) return {};
       const config = wrfcStore.get();
       const defaults: Record<string, unknown> = {};
-      if (typeof config.min_review_score === 'number' && Number.isFinite(config.min_review_score)) {
-        defaults.min_review_score = config.min_review_score;
+      if (typeof config.score_threshold === 'number' && Number.isFinite(config.score_threshold)) {
+        defaults.score_threshold = config.score_threshold;
       }
       if (typeof config.max_fix_attempts === 'number' && Number.isFinite(config.max_fix_attempts)) {
         defaults.max_fix_attempts = config.max_fix_attempts;
@@ -353,42 +352,21 @@ export class RuntimeEngine {
     // WRFCPlugin.register() is the single canonical entry point: it seeds config,
     // registers all triggers, and wires all event handlers via RuntimeServices.
     // No separate registerWRFCPlugin() call is needed.
-    const wrfcConfig = getDefaultWRFCConfig();
-
-    // Override WRFC config from .goodvibes/goodvibes.json if present
-    try {
-      const raw = readFileSync(join(this.projectRoot, '.goodvibes', 'goodvibes.json'), 'utf-8');
-      const parsed = JSON.parse(raw);
-      const wrfcOverrides = parsed?.runtime?.wrfc;
-      if (wrfcOverrides && typeof wrfcOverrides === 'object') {
-        const scoreOverride = wrfcOverrides.min_review_score ?? wrfcOverrides.score_threshold;
-        if (typeof scoreOverride === 'number') {
-          wrfcConfig.score_threshold = Math.max(0, Math.min(10, scoreOverride));
-        }
-        if (typeof wrfcOverrides.max_fix_attempts === 'number') {
-          wrfcConfig.max_fix_attempts = Math.max(1, wrfcOverrides.max_fix_attempts);
-        }
-        if (typeof wrfcOverrides.enable_quality_gates === 'boolean') {
-          wrfcConfig.enable_quality_gates = wrfcOverrides.enable_quality_gates;
-        }
-        if (Array.isArray(wrfcOverrides.require_review_types)) {
-          wrfcConfig.require_review_types = wrfcOverrides.require_review_types;
-        }
-        logger.info('WRFC config overrides applied from goodvibes.json', {
-          score_threshold: wrfcConfig.score_threshold,
-          max_fix_attempts: wrfcConfig.max_fix_attempts,
-        });
-      }
-    } catch {
-      // No goodvibes.json or no runtime.wrfc section — use defaults
-    }
+    // Build WRFCPlugin config from loadConfig() result (global + project merged)
+    const wrfcConfig = {
+      ...getDefaultWRFCConfig(),
+      score_threshold: this.config.wrfc.score_threshold,
+      max_fix_attempts: this.config.wrfc.max_fix_attempts,
+      auto_commit: this.config.wrfc.auto_commit,
+      ...(this.config.wrfc.require_review_types ? { require_review_types: this.config.wrfc.require_review_types } : {}),
+    };
     // Seed wrfcConfigStore so wrfcContextProvider has values from bootstrap
     // (config:loaded may update these later via IPC, but we need initial values)
     if (this.wrfcConfigStore) {
       const seedConfig: Record<string, unknown> = {
-        min_review_score: wrfcConfig.score_threshold,
+        score_threshold: wrfcConfig.score_threshold,
         max_fix_attempts: wrfcConfig.max_fix_attempts,
-        auto_commit: wrfcConfig.enable_quality_gates,
+        auto_commit: wrfcConfig.auto_commit,
       };
       if (wrfcConfig.require_review_types && wrfcConfig.require_review_types.length > 0) {
         seedConfig.require_review_types = wrfcConfig.require_review_types;
@@ -403,9 +381,9 @@ export class RuntimeEngine {
     // Seed CoreStateStore with WRFC config so runtime_config get wrfc.* works on startup
     // (wrfcConfigStore is used by the WRFC plugin internals, but the runtime_config
     // MCP tool reads from CoreStateStore — both must be seeded)
-    coreStore.set('wrfc.config.min_review_score', wrfcConfig.score_threshold);
+    coreStore.set('wrfc.config.score_threshold', wrfcConfig.score_threshold);
     coreStore.set('wrfc.config.max_fix_attempts', wrfcConfig.max_fix_attempts);
-    coreStore.set('wrfc.config.auto_commit', wrfcConfig.enable_quality_gates);
+    coreStore.set('wrfc.config.auto_commit', wrfcConfig.auto_commit);
 
     // Wire state change notifications → event bus
     coreStore.onStateChange((change) => {

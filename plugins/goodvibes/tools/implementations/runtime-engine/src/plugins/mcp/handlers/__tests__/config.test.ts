@@ -18,6 +18,12 @@ vi.mock('../../../../shared/config.js', async () => {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function makeContext(overrides: Partial<HandlerContext> = {}): HandlerContext {
+  const mockStateStore = {
+    get: vi.fn().mockReturnValue(undefined),
+    set: vi.fn(),
+    delete: vi.fn(),
+    keys: vi.fn().mockReturnValue([]),
+  };
   return {
     getUptime: vi.fn().mockReturnValue(500),
     getConfig: vi.fn().mockReturnValue(DEFAULT_CONFIG),
@@ -32,6 +38,7 @@ function makeContext(overrides: Partial<HandlerContext> = {}): HandlerContext {
     getTriggerRegistry: vi.fn().mockReturnValue(null),
     getAgentCoordinator: vi.fn().mockReturnValue(null),
     getDirectiveQueue: vi.fn().mockReturnValue(null),
+    getCoreStateStore: vi.fn().mockReturnValue(mockStateStore),
     transport: undefined,
     ...overrides,
   } as HandlerContext;
@@ -207,6 +214,54 @@ describe('handleRuntimeConfig', () => {
       expect(result.isError).toBe(true);
       const parsed = parseResult(result);
       expect(parsed['error']).toContain('Missing required field: value');
+    });
+  });
+
+  // ── wrfc.* key propagation to CoreStateStore ─────────────────────────────────
+
+  describe('wrfc.* key propagation to CoreStateStore', () => {
+    it('propagates wrfc.score_threshold to CoreStateStore when set', async () => {
+      const mockStateStore = { get: vi.fn(), set: vi.fn(), delete: vi.fn(), keys: vi.fn() };
+      const storeCtx = makeContext({ getCoreStateStore: vi.fn().mockReturnValue(mockStateStore) });
+      const result = await handleRuntimeConfig(
+        { action: 'set', key: 'wrfc.score_threshold', value: 10 },
+        storeCtx
+      );
+      expect(result.isError).toBeFalsy();
+      expect(mockStateStore.set).toHaveBeenCalledWith('wrfc.config.score_threshold', 10);
+    });
+
+    it('propagates wrfc.max_fix_attempts to CoreStateStore when set', async () => {
+      const mockStateStore = { get: vi.fn(), set: vi.fn(), delete: vi.fn(), keys: vi.fn() };
+      const storeCtx = makeContext({ getCoreStateStore: vi.fn().mockReturnValue(mockStateStore) });
+      const result = await handleRuntimeConfig(
+        { action: 'set', key: 'wrfc.max_fix_attempts', value: 5 },
+        storeCtx
+      );
+      expect(result.isError).toBeFalsy();
+      expect(mockStateStore.set).toHaveBeenCalledWith('wrfc.config.max_fix_attempts', 5);
+    });
+
+    it('propagates wrfc.auto_commit to CoreStateStore when set', async () => {
+      const mockStateStore = { get: vi.fn(), set: vi.fn(), delete: vi.fn(), keys: vi.fn() };
+      const storeCtx = makeContext({ getCoreStateStore: vi.fn().mockReturnValue(mockStateStore) });
+      const result = await handleRuntimeConfig(
+        { action: 'set', key: 'wrfc.auto_commit', value: false },
+        storeCtx
+      );
+      expect(result.isError).toBeFalsy();
+      expect(mockStateStore.set).toHaveBeenCalledWith('wrfc.config.auto_commit', false);
+    });
+
+    it('propagates wrfc.require_review_types to CoreStateStore when set', async () => {
+      const mockStateStore = { get: vi.fn(), set: vi.fn(), delete: vi.fn(), keys: vi.fn() };
+      const storeCtx = makeContext({ getCoreStateStore: vi.fn().mockReturnValue(mockStateStore) });
+      const result = await handleRuntimeConfig(
+        { action: 'set', key: 'wrfc.require_review_types', value: ['security'] },
+        storeCtx
+      );
+      expect(result.isError).toBeFalsy();
+      expect(mockStateStore.set).toHaveBeenCalledWith('wrfc.config.require_review_types', ['security']);
     });
   });
 

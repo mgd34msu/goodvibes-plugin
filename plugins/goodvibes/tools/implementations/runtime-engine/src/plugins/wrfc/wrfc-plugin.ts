@@ -57,7 +57,7 @@ export interface WRFCPluginConfig {
   /** Maximum number of fix iterations before escalation. Default 3. */
   max_fix_attempts: number;
   /** When false, all agents auto-complete without review. Default true. */
-  enable_quality_gates: boolean;
+  auto_commit: boolean;
   /** Additional agent types that must always be reviewed (merged with hardcoded defaults). */
   require_review_types?: string[];
 }
@@ -69,7 +69,7 @@ export function getDefaultWRFCConfig(): WRFCPluginConfig {
   return {
     score_threshold: 9.5,
     max_fix_attempts: 3,
-    enable_quality_gates: true,
+    auto_commit: true,
   };
 }
 
@@ -105,9 +105,9 @@ export function registerWRFCPlugin(ctx: PluginContext): void {
   const { processor, registry, store, config } = ctx;
 
   // 1. Seed global config into state store so handlers can read it
-  store.set('wrfc.config.min_review_score', config.score_threshold);
+  store.set('wrfc.config.score_threshold', config.score_threshold);
   store.set('wrfc.config.max_fix_attempts', config.max_fix_attempts);
-  store.set('wrfc.config.enable_quality_gates', config.enable_quality_gates);
+  store.set('wrfc.config.auto_commit', config.auto_commit);
   if (config.require_review_types && config.require_review_types.length > 0) {
     store.set('wrfc.config.require_review_types', config.require_review_types);
   }
@@ -280,9 +280,9 @@ export class WRFCPlugin implements RuntimePlugin, Reconfigurable {
     const store = makeStoreAdapter(services);
 
     // Seed config into state store
-    store.set('wrfc.config.min_review_score', this.config.score_threshold);
+    store.set('wrfc.config.score_threshold', this.config.score_threshold);
     store.set('wrfc.config.max_fix_attempts', this.config.max_fix_attempts);
-    store.set('wrfc.config.enable_quality_gates', this.config.enable_quality_gates);
+    store.set('wrfc.config.auto_commit', this.config.auto_commit);
     if (this.config.require_review_types && this.config.require_review_types.length > 0) {
       store.set('wrfc.config.require_review_types', this.config.require_review_types);
     }
@@ -412,7 +412,7 @@ export class WRFCPlugin implements RuntimePlugin, Reconfigurable {
         throw new Error(`WRFCPlugin.reconfigure: score_threshold must be 0-10, got ${val}`);
       }
       this.config.score_threshold = val;
-      this._services.setState('wrfc.config.min_review_score', val);
+      this._services.setState('wrfc.config.score_threshold', val);
     }
     if (typeof config['max_fix_attempts'] === 'number') {
       const val = config['max_fix_attempts'];
@@ -422,9 +422,9 @@ export class WRFCPlugin implements RuntimePlugin, Reconfigurable {
       this.config.max_fix_attempts = val;
       this._services.setState('wrfc.config.max_fix_attempts', val);
     }
-    if (typeof config['enable_quality_gates'] === 'boolean') {
-      this.config.enable_quality_gates = config['enable_quality_gates'];
-      this._services.setState('wrfc.config.enable_quality_gates', config['enable_quality_gates']);
+    if (typeof config['auto_commit'] === 'boolean') {
+      this.config.auto_commit = config['auto_commit'];
+      this._services.setState('wrfc.config.auto_commit', config['auto_commit']);
     }
     if (Array.isArray(config['require_review_types'])) {
       this.config.require_review_types = config['require_review_types'] as string[];

@@ -180,15 +180,15 @@ describe('WRFC Handlers', () => {
       expect(phaseUpdate).toBeUndefined();
     });
 
-    it('uses config values for min_review_score and max_fix_attempts from store', () => {
+    it('uses config values for score_threshold and max_fix_attempts from store', () => {
       const store = makeStore({
-        'wrfc.config.min_review_score': 8.0,
+        'wrfc.config.score_threshold': 8.0,
         'wrfc.config.max_fix_attempts': 5,
       });
       const event = makeEvent({ agent_id: 'agent-3', agent_type: 'engineer' });
       const result = handleWorkflowCreated(event, STUB_TRIGGER, store);
       const updates = result.state_updates!;
-      const minScoreUpdate = updates.find((u) => u.key.endsWith('.min_review_score'));
+      const minScoreUpdate = updates.find((u) => u.key.endsWith('.score_threshold'));
       expect(minScoreUpdate?.value).toBe(8.0);
       const maxFixUpdate = updates.find((u) => u.key.endsWith('.max_fix_attempts'));
       expect(maxFixUpdate?.value).toBe(5);
@@ -216,7 +216,7 @@ describe('WRFC Handlers', () => {
       // workflow_id provided directly in payload
       const store = makeStore({
         [WS('wf-direct', 'phase')]: 'WRITING',
-        [WS('wf-direct', 'min_review_score')]: 9.5,
+        [WS('wf-direct', 'score_threshold')]: 9.5,
         [WS('wf-direct', 'max_fix_attempts')]: 3,
         [WS('wf-direct', 'fix_attempts')]: 0,
         [WS('wf-direct', 'files_modified')]: [],
@@ -238,7 +238,7 @@ describe('WRFC Handlers', () => {
           const store = makeStore({
             [AM('agent-auto')]: 'wf-1',
             [WS('wf-1', 'phase')]: 'WRITING',
-            [WS('wf-1', 'min_review_score')]: 9.5,
+            [WS('wf-1', 'score_threshold')]: 9.5,
             [WS('wf-1', 'max_fix_attempts')]: 3,
             [WS('wf-1', 'fix_attempts')]: 0,
             [WS('wf-1', 'files_modified')]: [],
@@ -264,7 +264,7 @@ describe('WRFC Handlers', () => {
           const store = makeStore({
             [AM('agent-eng')]: 'wf-1',
             [WS('wf-1', 'phase')]: 'WRITING',
-            [WS('wf-1', 'min_review_score')]: 9.5,
+            [WS('wf-1', 'score_threshold')]: 9.5,
             [WS('wf-1', 'max_fix_attempts')]: 3,
             [WS('wf-1', 'fix_attempts')]: 0,
             [WS('wf-1', 'files_modified')]: ['src/foo.ts'],
@@ -290,7 +290,7 @@ describe('WRFC Handlers', () => {
         const store = makeStore({
           [AM('agent-work')]: 'wf-1',
           [WS('wf-1', 'phase')]: 'WRITING',
-          [WS('wf-1', 'min_review_score')]: 9.5,
+          [WS('wf-1', 'score_threshold')]: 9.5,
           [WS('wf-1', 'max_fix_attempts')]: 3,
           [WS('wf-1', 'fix_attempts')]: 0,
           [WS('wf-1', 'files_modified')]: [],
@@ -309,7 +309,7 @@ describe('WRFC Handlers', () => {
         const store = makeStore({
           [AM('agent-work')]: 'wf-1',
           [WS('wf-1', 'phase')]: 'WRITING',
-          [WS('wf-1', 'min_review_score')]: 9.5,
+          [WS('wf-1', 'score_threshold')]: 9.5,
           [WS('wf-1', 'max_fix_attempts')]: 3,
           [WS('wf-1', 'fix_attempts')]: 0,
           [WS('wf-1', 'files_modified')]: ['src/a.ts', 'src/b.ts'],
@@ -328,7 +328,7 @@ describe('WRFC Handlers', () => {
           const store = makeStore({
             [AM('agent-1')]: 'wf-1',
             [WS('wf-1', 'phase')]: phase,
-            [WS('wf-1', 'min_review_score')]: 9.5,
+            [WS('wf-1', 'score_threshold')]: 9.5,
             [WS('wf-1', 'max_fix_attempts')]: 3,
             [WS('wf-1', 'fix_attempts')]: 0,
             [WS('wf-1', 'files_modified')]: [],
@@ -350,7 +350,7 @@ describe('WRFC Handlers', () => {
         const store = makeStore({
           [AM('agent-rev')]: 'wf-1',
           [WS('wf-1', 'phase')]: 'REVIEWING',
-          [WS('wf-1', 'min_review_score')]: 9.5,
+          [WS('wf-1', 'score_threshold')]: 9.5,
           [WS('wf-1', 'max_fix_attempts')]: 3,
           [WS('wf-1', 'fix_attempts')]: 0,
           [WS('wf-1', 'files_modified')]: [],
@@ -370,7 +370,7 @@ describe('WRFC Handlers', () => {
         const store = makeStore({
           [AM('agent-rev')]: 'wf-1',
           [WS('wf-1', 'phase')]: 'REVIEWING',
-          [WS('wf-1', 'min_review_score')]: 9.5,
+          [WS('wf-1', 'score_threshold')]: 9.5,
           [WS('wf-1', 'max_fix_attempts')]: 3,
           [WS('wf-1', 'fix_attempts')]: 0,
           [WS('wf-1', 'files_modified')]: [],
@@ -390,7 +390,7 @@ describe('WRFC Handlers', () => {
         const store = makeStore({
           [AM('agent-rev')]: 'wf-1',
           [WS('wf-1', 'phase')]: 'REVIEWING',
-          [WS('wf-1', 'min_review_score')]: 9.5,
+          [WS('wf-1', 'score_threshold')]: 9.5,
           [WS('wf-1', 'max_fix_attempts')]: 3,
           [WS('wf-1', 'fix_attempts')]: 0,
           [WS('wf-1', 'files_modified')]: [],
@@ -414,7 +414,7 @@ describe('WRFC Handlers', () => {
         const store = makeStore({
           [AM('agent-rev')]: 'wf-1',
           [WS('wf-1', 'phase')]: 'REVIEWING',
-          [WS('wf-1', 'min_review_score')]: 9.5,
+          [WS('wf-1', 'score_threshold')]: 9.5,
           [WS('wf-1', 'max_fix_attempts')]: 3,
           [WS('wf-1', 'fix_attempts')]: 0,
           [WS('wf-1', 'files_modified')]: [],
@@ -436,7 +436,7 @@ describe('WRFC Handlers', () => {
         const store = makeStore({
           [AM('agent-eng')]: 'wf-1',
           [WS('wf-1', 'phase')]: 'REVIEWING',
-          [WS('wf-1', 'min_review_score')]: 9.5,
+          [WS('wf-1', 'score_threshold')]: 9.5,
           [WS('wf-1', 'max_fix_attempts')]: 3,
           [WS('wf-1', 'fix_attempts')]: 0,
           [WS('wf-1', 'files_modified')]: [],
@@ -454,7 +454,7 @@ describe('WRFC Handlers', () => {
         const store = makeStore({
           [AM('agent-fix')]: 'wf-1',
           [WS('wf-1', 'phase')]: 'FIXING',
-          [WS('wf-1', 'min_review_score')]: 9.5,
+          [WS('wf-1', 'score_threshold')]: 9.5,
           [WS('wf-1', 'max_fix_attempts')]: 3,
           [WS('wf-1', 'fix_attempts')]: 2, // next will be 3 = max
           [WS('wf-1', 'files_modified')]: [],
@@ -477,7 +477,7 @@ describe('WRFC Handlers', () => {
         const store = makeStore({
           [AM('agent-fix')]: 'wf-1',
           [WS('wf-1', 'phase')]: 'FIXING',
-          [WS('wf-1', 'min_review_score')]: 9.5,
+          [WS('wf-1', 'score_threshold')]: 9.5,
           [WS('wf-1', 'max_fix_attempts')]: 3,
           [WS('wf-1', 'fix_attempts')]: 1,
           [WS('wf-1', 'files_modified')]: [],
@@ -499,7 +499,7 @@ describe('WRFC Handlers', () => {
         const store = makeStore({
           [AM('agent-fix')]: 'wf-1',
           [WS('wf-1', 'phase')]: 'FIXING',
-          [WS('wf-1', 'min_review_score')]: 9.5,
+          [WS('wf-1', 'score_threshold')]: 9.5,
           [WS('wf-1', 'max_fix_attempts')]: 3,
           [WS('wf-1', 'fix_attempts')]: 0,
           [WS('wf-1', 'files_modified')]: ['src/existing.ts'],
@@ -517,7 +517,7 @@ describe('WRFC Handlers', () => {
         const store = makeStore({
           [AM('agent-rev')]: 'wf-1',
           [WS('wf-1', 'phase')]: 'FIXING',
-          [WS('wf-1', 'min_review_score')]: 9.5,
+          [WS('wf-1', 'score_threshold')]: 9.5,
           [WS('wf-1', 'max_fix_attempts')]: 3,
           [WS('wf-1', 'fix_attempts')]: 0,
           [WS('wf-1', 'files_modified')]: [],
@@ -534,7 +534,7 @@ describe('WRFC Handlers', () => {
         const store = makeStore({
           [AM('agent-1')]: 'wf-1',
           [WS('wf-1', 'phase')]: 'COMPLETED',
-          [WS('wf-1', 'min_review_score')]: 9.5,
+          [WS('wf-1', 'score_threshold')]: 9.5,
           [WS('wf-1', 'max_fix_attempts')]: 3,
           [WS('wf-1', 'fix_attempts')]: 0,
           [WS('wf-1', 'files_modified')]: [],
@@ -551,7 +551,7 @@ describe('WRFC Handlers', () => {
         const store = makeStore({
           [AM('agent-hook')]: 'wf-1',
           [WS('wf-1', 'phase')]: 'WRITING',
-          [WS('wf-1', 'min_review_score')]: 9.5,
+          [WS('wf-1', 'score_threshold')]: 9.5,
           [WS('wf-1', 'max_fix_attempts')]: 3,
           [WS('wf-1', 'fix_attempts')]: 0,
           [WS('wf-1', 'files_modified')]: [],
@@ -575,7 +575,7 @@ describe('WRFC Handlers', () => {
           'wrfc.config.require_review_types': ['custom-writer'],
           [AM('agent-cw')]: 'wf-1',
           [WS('wf-1', 'phase')]: 'WRITING',
-          [WS('wf-1', 'min_review_score')]: 9.5,
+          [WS('wf-1', 'score_threshold')]: 9.5,
           [WS('wf-1', 'max_fix_attempts')]: 3,
           [WS('wf-1', 'fix_attempts')]: 0,
           [WS('wf-1', 'files_modified')]: [],
@@ -610,7 +610,7 @@ describe('WRFC Handlers', () => {
     it('returns empty when workflow phase is already COMPLETED', () => {
       const store = makeStore({
         [WS('wf-1', 'phase')]: 'COMPLETED',
-        [WS('wf-1', 'min_review_score')]: 9.5,
+        [WS('wf-1', 'score_threshold')]: 9.5,
         [WS('wf-1', 'fix_attempts')]: 0,
         [WS('wf-1', 'max_fix_attempts')]: 3,
         [WS('wf-1', 'files_modified')]: [],
@@ -623,7 +623,7 @@ describe('WRFC Handlers', () => {
     it('returns empty when workflow phase is already ESCALATED', () => {
       const store = makeStore({
         [WS('wf-1', 'phase')]: 'ESCALATED',
-        [WS('wf-1', 'min_review_score')]: 9.5,
+        [WS('wf-1', 'score_threshold')]: 9.5,
         [WS('wf-1', 'fix_attempts')]: 3,
         [WS('wf-1', 'max_fix_attempts')]: 3,
         [WS('wf-1', 'files_modified')]: [],
@@ -633,9 +633,9 @@ describe('WRFC Handlers', () => {
       expect(result).toEqual({});
     });
 
-    it('completes workflow when score meets min_review_score', () => {
+    it('completes workflow when score meets score_threshold', () => {
       const store = makeStore({
-        [WS('wf-1', 'min_review_score')]: 9.5,
+        [WS('wf-1', 'score_threshold')]: 9.5,
         [WS('wf-1', 'fix_attempts')]: 0,
         [WS('wf-1', 'max_fix_attempts')]: 3,
         [WS('wf-1', 'files_modified')]: [],
@@ -647,9 +647,9 @@ describe('WRFC Handlers', () => {
       expect(phaseUpdate?.value).toBe('COMPLETED');
     });
 
-    it('completes workflow when score exceeds min_review_score', () => {
+    it('completes workflow when score exceeds score_threshold', () => {
       const store = makeStore({
-        [WS('wf-1', 'min_review_score')]: 8.0,
+        [WS('wf-1', 'score_threshold')]: 8.0,
         [WS('wf-1', 'fix_attempts')]: 0,
         [WS('wf-1', 'max_fix_attempts')]: 3,
         [WS('wf-1', 'files_modified')]: [],
@@ -661,7 +661,7 @@ describe('WRFC Handlers', () => {
 
     it('spawns fixer when score fails and fix budget not exhausted', () => {
       const store = makeStore({
-        [WS('wf-1', 'min_review_score')]: 9.5,
+        [WS('wf-1', 'score_threshold')]: 9.5,
         [WS('wf-1', 'fix_attempts')]: 0,
         [WS('wf-1', 'max_fix_attempts')]: 3,
         [WS('wf-1', 'files_modified')]: ['src/foo.ts'],
@@ -684,7 +684,7 @@ describe('WRFC Handlers', () => {
 
     it('escalates when score fails and fix budget is exhausted', () => {
       const store = makeStore({
-        [WS('wf-1', 'min_review_score')]: 9.5,
+        [WS('wf-1', 'score_threshold')]: 9.5,
         [WS('wf-1', 'fix_attempts')]: 2,
         [WS('wf-1', 'max_fix_attempts')]: 3,
         [WS('wf-1', 'files_modified')]: [],
@@ -698,7 +698,7 @@ describe('WRFC Handlers', () => {
 
     it('uses fallback issues message when issues field is empty', () => {
       const store = makeStore({
-        [WS('wf-1', 'min_review_score')]: 9.5,
+        [WS('wf-1', 'score_threshold')]: 9.5,
         [WS('wf-1', 'fix_attempts')]: 0,
         [WS('wf-1', 'max_fix_attempts')]: 3,
         [WS('wf-1', 'files_modified')]: [],
@@ -713,7 +713,7 @@ describe('WRFC Handlers', () => {
 
     it('records the review_score in state updates', () => {
       const store = makeStore({
-        [WS('wf-1', 'min_review_score')]: 9.5,
+        [WS('wf-1', 'score_threshold')]: 9.5,
         [WS('wf-1', 'fix_attempts')]: 0,
         [WS('wf-1', 'max_fix_attempts')]: 3,
         [WS('wf-1', 'files_modified')]: [],
@@ -726,7 +726,7 @@ describe('WRFC Handlers', () => {
 
     it('accepts numeric string review_score via parseFloat', () => {
       const store = makeStore({
-        [WS('wf-1', 'min_review_score')]: 9.5,
+        [WS('wf-1', 'score_threshold')]: 9.5,
         [WS('wf-1', 'fix_attempts')]: 0,
         [WS('wf-1', 'max_fix_attempts')]: 3,
         [WS('wf-1', 'files_modified')]: [],

@@ -310,7 +310,7 @@ Phase 6 is managed entirely by the runtime engine via `<gv>` directives. The orc
 2. The runtime evaluates the output and issues a directive:
    - `{"action":"spawn","type":"reviewer","task":"..."}` — orchestrator spawns the reviewer
    - After review, if fixes needed: `{"action":"spawn","type":"engineer","task":"Fix: ..."}` — orchestrator spawns fixer
-   - When score meets `min_review_score` from `goodvibes.json`: `{"action":"complete"}` — chain is done
+   - When score meets `score_threshold` from `goodvibes.json`: `{"action":"complete"}` — chain is done
    - If `max_fix_attempts` exceeded: `{"action":"escalate","reason":"..."}` — report to user
 
 **Orchestrator actions:**
