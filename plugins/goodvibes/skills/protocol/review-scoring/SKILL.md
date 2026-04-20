@@ -237,8 +237,8 @@ The overall score determines the verdict:
 
 | Score Range | Verdict | Action Required |
 |-------------|---------|----------------|
-| **>= 9.5** | PASS | Ship it -- production ready |
-| **8.0-9.49** | CONDITIONAL PASS | Minor issues -- fix and re-check (8.0 is inclusive, no full re-review) |
+| **>= 9.9** | PASS | Ship it -- production ready |
+| **8.0-9.89** | CONDITIONAL PASS | Minor issues -- fix and re-check (8.0 is inclusive, no full re-review) |
 | **6.0-7.9** | FAIL | Significant issues -- fix and full re-review required |
 | **Below 6.0** | FAIL | Major rework needed -- fix and full re-review required |
 
@@ -422,7 +422,7 @@ This skill is a critical component of the Work-Review-Fix-Check loop:
 4. **Check**: Re-reviewer verifies fixes -> re-scores -> determines if another loop needed
 
 The orchestrator uses the numeric score and verdict to make decisions:
-- **PASS (9.5+)**: Exit loop, mark complete
+- **PASS (9.9+)**: Exit loop, mark complete
 - **CONDITIONAL PASS (8.0-9.49)**: One more quick fix+check cycle
 - **FAIL (<8.0)**: Full review-fix-check loop again
 
@@ -454,7 +454,7 @@ The orchestrator uses the numeric score and verdict to make decisions:
 
 ### Verdict Mismatch
 **Wrong**: Overall score 7.2/10 with verdict "PASS"
-**Right**: Score 7.2 -> Verdict FAIL (threshold is 8.0 for conditional, 9.5 for pass)
+**Right**: Score 7.2 -> Verdict FAIL (threshold is 8.0 for conditional, 9.9 for pass)
 
 ## Validation Scripts
 
@@ -483,8 +483,8 @@ Integration:       5%
 
 ### Verdict Thresholds
 ```
-9.5+ -> PASS
-8.0-9.49 -> CONDITIONAL PASS
+9.9+ -> PASS
+8.0-9.89 -> CONDITIONAL PASS
 6.0-7.9 -> FAIL
 <6.0 -> FAIL (major rework)
 ```

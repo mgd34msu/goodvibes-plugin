@@ -50,7 +50,7 @@ The fullstack feature workflow consists of 7 phases:
 
 The runtime engine automatically creates a WRFC (Work-Review-Fix-Complete) chain for each work agent. When an agent completes its work and emits a `<gv>` tag, the runtime:
 
-1. Evaluates the output against the configured `score_threshold` (default: 9.5 from `goodvibes.json`)
+1. Evaluates the output against the configured `score_threshold` (default: 9.9 from `goodvibes.json`)
 2. Issues directives to the orchestrator via system messages
 3. Orchestrator executes those directives mechanically
 

@@ -23391,7 +23391,7 @@ var DEFAULT_CONFIG = {
     include: []
   },
   wrfc: {
-    score_threshold: 9.5,
+    score_threshold: 9.9,
     max_fix_attempts: 3,
     auto_commit: true
   }
@@ -26370,7 +26370,7 @@ __name(loadCustomWorkflows, "loadCustomWorkflows");
 
 // src/extensions/workflow/guards.ts
 function checkReviewScoreGuard(context) {
-  const threshold = typeof context.score_threshold === "number" && Number.isFinite(context.score_threshold) ? context.score_threshold : 9.5;
+  const threshold = typeof context.score_threshold === "number" && Number.isFinite(context.score_threshold) ? context.score_threshold : 9.9;
   return typeof context.review_score === "number" && context.review_score >= threshold;
 }
 __name(checkReviewScoreGuard, "checkReviewScoreGuard");
@@ -32557,7 +32557,7 @@ function matchesAgentType(agentType, typeSet) {
 }
 __name(matchesAgentType, "matchesAgentType");
 var REQUIRE_REVIEW_AGENT_TYPES = /* @__PURE__ */ new Set([...ENGINEER_AGENT_TYPES]);
-var DEFAULT_MIN_REVIEW_SCORE = 9.5;
+var DEFAULT_MIN_REVIEW_SCORE = 9.9;
 var EARLY_WORKFLOW_STATES = /* @__PURE__ */ new Set(["IDLE", "GATHERING", "PLANNING"]);
 
 // src/plugins/wrfc/handlers.ts
@@ -33110,7 +33110,7 @@ __name(getWRFCTriggerDefinitions, "getWRFCTriggerDefinitions");
 var log8 = createLogger("wrfc-plugin");
 function getDefaultWRFCConfig() {
   return {
-    score_threshold: 9.5,
+    score_threshold: 9.9,
     max_fix_attempts: 3,
     auto_commit: true
   };

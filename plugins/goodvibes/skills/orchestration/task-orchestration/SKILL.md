@@ -67,7 +67,7 @@ The runtime engine issues directives to the orchestrator via system messages con
 ### Configurable Thresholds
 
 The runtime reads `goodvibes.json` for:
-- `score_threshold` (default: 9.5) — score threshold for PASS
+- `score_threshold` (default: 9.9) — score threshold for PASS
 - `max_fix_attempts` (default: 3) — max fix cycles before escalation
 
 The orchestrator never hardcodes these values. The runtime engine enforces them.

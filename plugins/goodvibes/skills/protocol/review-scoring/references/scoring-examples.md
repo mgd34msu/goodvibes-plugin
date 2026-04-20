@@ -234,7 +234,7 @@ Performance: 6/10 -- Three N+1 query patterns found:
 - **Overall Score**: 9.2/10
 - **Verdict**: PASS
 ```
-(PASS requires 9.5+, this should be CONDITIONAL PASS)
+(PASS requires 9.9+, this should be CONDITIONAL PASS)
 
 [NO] **Wrong**:
 ```
@@ -256,7 +256,7 @@ Performance: 6/10 -- Three N+1 query patterns found:
 Before submitting a review, verify:
 
 - [ ] Overall score is calculated correctly using weighted dimensions
-- [ ] Verdict matches score thresholds (9.5+ PASS, 8.0-9.49 CONDITIONAL, <8.0 FAIL)
+- [ ] Verdict matches score thresholds (9.9+ PASS, 8.0-9.89 CONDITIONAL, <8.0 FAIL)
 - [ ] All 10 dimensions scored with specific justification (not "looks good")
 - [ ] Every issue has FILE:LINE reference
 - [ ] Every issue has severity (Critical/Major/Minor) matching guidelines

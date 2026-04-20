@@ -83,7 +83,7 @@ Report results in a structured, token-efficient format that enables orchestrator
 The LAST line of your response MUST be a `<gv>` tag with ALL fields:
 
 ```
-<gv>{"agent-type":{"name":"goodvibes:reviewer","required-fields":{"agent_minimum_score":true,"agent_score":true,"agent_files":true,"agent_count":true}},"minimum_score":9.5,"score":9.5,"files":[],"count":0}</gv>
+<gv>{"agent-type":{"name":"goodvibes:reviewer","required-fields":{"agent_minimum_score":true,"agent_score":true,"agent_files":true,"agent_count":true}},"minimum_score":9.9,"score":9.9,"files":[],"count":0}</gv>
 ```
 
 Required for this agent: `name` is "goodvibes:reviewer", `agent_minimum_score` is true, `agent_score` is true, `agent_files` is true, `agent_count` is true, `minimum_score` (threshold provided on start by orchestrator), `score` (this is the score you gave 0-10), `files` (array of files reviewed), `count` (number of issues found)

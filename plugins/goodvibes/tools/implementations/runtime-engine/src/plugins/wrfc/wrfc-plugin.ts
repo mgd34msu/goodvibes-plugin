@@ -52,7 +52,7 @@ const log = createLogger('wrfc-plugin');
  * Configuration for the WRFC plugin.
  */
 export interface WRFCPluginConfig {
-  /** Minimum review score (0–10) required to pass the quality gate. Default 9.5. */
+  /** Minimum review score (0–10) required to pass the quality gate. Default 9.9. */
   score_threshold: number;
   /** Maximum number of fix iterations before escalation. Default 3. */
   max_fix_attempts: number;
@@ -67,7 +67,7 @@ export interface WRFCPluginConfig {
  */
 export function getDefaultWRFCConfig(): WRFCPluginConfig {
   return {
-    score_threshold: 9.5,
+    score_threshold: 9.9,
     max_fix_attempts: 3,
     auto_commit: true,
   };

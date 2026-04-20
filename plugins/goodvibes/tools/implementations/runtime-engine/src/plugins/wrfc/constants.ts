@@ -49,7 +49,7 @@ export function matchesAgentType(agentType: string | undefined, typeSet: Set<str
 export const REQUIRE_REVIEW_AGENT_TYPES = new Set<string>([...ENGINEER_AGENT_TYPES]);
 
 /** Default minimum score a review must reach for auto-complete */
-export const DEFAULT_MIN_REVIEW_SCORE = 9.5;
+export const DEFAULT_MIN_REVIEW_SCORE = 9.9;
 
 /**
  * Workflow states that are considered "early" / not yet processing.

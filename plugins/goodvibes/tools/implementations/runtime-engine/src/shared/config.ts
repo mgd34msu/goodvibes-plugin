@@ -77,7 +77,7 @@ export interface WorkflowsConfig {
 
 /** WRFC (Write-Review-Fix-Confirm) quality loop configuration */
 export interface WRFCConfig {
-  /** Minimum review score (0-10) required to pass the quality gate. Default 9.5. */
+  /** Minimum review score (0-10) required to pass the quality gate. Default 9.9. */
   score_threshold: number;
   /** Maximum number of fix iterations before escalation. Default 3. */
   max_fix_attempts: number;
@@ -467,7 +467,7 @@ export const DEFAULT_CONFIG: RuntimeConfig = {
     include: [],
   },
   wrfc: {
-    score_threshold: 9.5,
+    score_threshold: 9.9,
     max_fix_attempts: 3,
     auto_commit: true,
   },

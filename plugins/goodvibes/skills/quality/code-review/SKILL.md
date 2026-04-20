@@ -635,7 +635,7 @@ See `plugins/goodvibes/skills/protocol/review-scoring/SKILL.md` for the full rub
 **Overall score = weighted average**
 
 Pass/fail thresholds:
-- **9.5+**: Excellent (approve immediately)
+- **9.9+**: Excellent (approve immediately)
 - **8.0-9.4**: Good (approve with minor suggestions)
 - **7.0-7.9**: Acceptable (request changes - minor issues)
 - **5.0-6.9**: Needs work (request changes - major issues)
