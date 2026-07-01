@@ -54,7 +54,9 @@ export const allSchemas = [
         },
         value: {
           description:
-            'Value to assign. Required for set. Accepts any JSON-serialisable value.',
+            'Value to assign. Required for set. Accepts any JSON-serialisable value. ' +
+            "Values are coerced to the key's expected type, so numbers, booleans, and " +
+            'JSON objects/arrays may also be passed as strings (e.g. "15", "true", "[\\"security\\"]").',
         },
       },
       additionalProperties: false,

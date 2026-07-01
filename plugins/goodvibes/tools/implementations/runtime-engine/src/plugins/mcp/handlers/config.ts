@@ -173,6 +173,68 @@ export const CONFIG_KEY_TYPES: ReadonlyMap<string, 'boolean' | 'number' | 'strin
   ['wrfc.require_review_types', 'object'],
 ]);
 
+// ─── Value coercion ─────────────────────────────────────────────────────────
+
+/**
+ * Coerce an incoming config value to the expected type for its key.
+ *
+ * MCP clients serialise the untyped `value` field of runtime_config as a
+ * string when it crosses the tool bridge (the schema declares no type for
+ * `value`, so e.g. the number 15 arrives as the string "15"). This normalises
+ * such string-encoded values back to the type the config key expects, so
+ * callers can pass values naturally without hand-editing goodvibes.json.
+ *
+ * Returns the coerced value on success, or { ok: false } when the value cannot
+ * be represented as the expected type (e.g. "fast" for a number key), so the
+ * caller can surface a type error.
+ */
+export function coerceConfigValue(
+  value: unknown,
+  expectedType: 'boolean' | 'number' | 'string' | 'object'
+): { ok: true; value: unknown } | { ok: false } {
+  const actualType = Array.isArray(value) ? 'object' : typeof value;
+
+  // Already the correct type — no coercion needed.
+  if (actualType === expectedType) return { ok: true, value };
+
+  // The bridge only ever mangles values into strings, so string is the primary
+  // source type we coerce from.
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    switch (expectedType) {
+      case 'number': {
+        if (trimmed === '') return { ok: false };
+        const n = Number(trimmed);
+        return Number.isFinite(n) ? { ok: true, value: n } : { ok: false };
+      }
+      case 'boolean': {
+        const lower = trimmed.toLowerCase();
+        if (lower === 'true') return { ok: true, value: true };
+        if (lower === 'false') return { ok: true, value: false };
+        return { ok: false };
+      }
+      case 'object': {
+        try {
+          const parsed: unknown = JSON.parse(trimmed);
+          if (parsed !== null && typeof parsed === 'object') {
+            return { ok: true, value: parsed };
+          }
+          return { ok: false };
+        } catch {
+          return { ok: false };
+        }
+      }
+    }
+  }
+
+  // A raw number/boolean destined for a string key — stringify it.
+  if (expectedType === 'string' && (actualType === 'number' || actualType === 'boolean')) {
+    return { ok: true, value: String(value) };
+  }
+
+  return { ok: false };
+}
+
 // ─── Nested key helpers ────────────────────────────────────────────────────
 
 /**
@@ -287,7 +349,7 @@ export const handleRuntimeConfig = async (
     // ── set ──────────────────────────────────────────────────────────────────
     if (action === 'set') {
       const key = assertOptionalString(params.key, 'key');
-      const value = params.value;
+      let value = params.value;
 
       if (!key) {
         return toError(
@@ -316,11 +378,17 @@ export const handleRuntimeConfig = async (
         );
       }
 
-      // Validate value type against expected type (FIND-008)
+      // Validate value type against expected type (FIND-008), coercing
+      // string-encoded values first. MCP clients serialise the untyped `value`
+      // field to a string across the tool bridge (e.g. the number 15 arrives as
+      // "15"), so coerce it back to the key's expected type rather than forcing
+      // callers to hand-edit goodvibes.json. Genuinely mistyped values (e.g.
+      // "fast" for a number key) still fail.
       const expectedType = CONFIG_KEY_TYPES.get(key);
       if (expectedType !== undefined) {
-        const actualType = Array.isArray(value) ? 'object' : typeof value;
-        if (actualType !== expectedType) {
+        const coerced = coerceConfigValue(value, expectedType);
+        if (!coerced.ok) {
+          const actualType = Array.isArray(value) ? 'object' : typeof value;
           return toError(
             `Invalid value type for '${key}': expected ${expectedType}, got ${actualType}.`,
             ctx.version,
@@ -328,6 +396,7 @@ export const handleRuntimeConfig = async (
             Date.now() - start
           );
         }
+        value = coerced.value;
       }
 
       // Validate value-level constraints for specific keys

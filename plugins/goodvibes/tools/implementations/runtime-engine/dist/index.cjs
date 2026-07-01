@@ -39831,6 +39831,46 @@ var CONFIG_KEY_TYPES = /* @__PURE__ */ new Map([
   ["wrfc.auto_commit", "boolean"],
   ["wrfc.require_review_types", "object"]
 ]);
+function coerceConfigValue(value, expectedType) {
+  const actualType = Array.isArray(value) ? "object" : typeof value;
+  if (actualType === expectedType)
+    return { ok: true, value };
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    switch (expectedType) {
+      case "number": {
+        if (trimmed === "")
+          return { ok: false };
+        const n = Number(trimmed);
+        return Number.isFinite(n) ? { ok: true, value: n } : { ok: false };
+      }
+      case "boolean": {
+        const lower = trimmed.toLowerCase();
+        if (lower === "true")
+          return { ok: true, value: true };
+        if (lower === "false")
+          return { ok: true, value: false };
+        return { ok: false };
+      }
+      case "object": {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (parsed !== null && typeof parsed === "object") {
+            return { ok: true, value: parsed };
+          }
+          return { ok: false };
+        } catch {
+          return { ok: false };
+        }
+      }
+    }
+  }
+  if (expectedType === "string" && (actualType === "number" || actualType === "boolean")) {
+    return { ok: true, value: String(value) };
+  }
+  return { ok: false };
+}
+__name(coerceConfigValue, "coerceConfigValue");
 function getNestedValue(obj, path4) {
   const segments = path4.split(".");
   let current = obj;
@@ -39895,7 +39935,7 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
     }
     if (action === "set") {
       const key = assertOptionalString(params.key, "key");
-      const value = params.value;
+      let value = params.value;
       if (!key) {
         return toError(
           "Missing required field: key.",
@@ -39922,8 +39962,9 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
       }
       const expectedType = CONFIG_KEY_TYPES.get(key);
       if (expectedType !== void 0) {
-        const actualType = Array.isArray(value) ? "object" : typeof value;
-        if (actualType !== expectedType) {
+        const coerced = coerceConfigValue(value, expectedType);
+        if (!coerced.ok) {
+          const actualType = Array.isArray(value) ? "object" : typeof value;
           return toError(
             `Invalid value type for '${key}': expected ${expectedType}, got ${actualType}.`,
             ctx.version,
@@ -39931,6 +39972,7 @@ var handleRuntimeConfig = /* @__PURE__ */ __name(async (args, ctx) => {
             Date.now() - start
           );
         }
+        value = coerced.value;
       }
       if (key === "executor.mode") {
         if (!VALID_EXECUTOR_MODES.includes(value)) {
@@ -41654,7 +41696,7 @@ var allSchemas = [
           description: 'Dot-separated configuration key (e.g. "server.log_level"). Required for set; optional for get (returns full config if omitted).'
         },
         value: {
-          description: "Value to assign. Required for set. Accepts any JSON-serialisable value."
+          description: `Value to assign. Required for set. Accepts any JSON-serialisable value. Values are coerced to the key's expected type, so numbers, booleans, and JSON objects/arrays may also be passed as strings (e.g. "15", "true", "[\\"security\\"]").`
         }
       },
       additionalProperties: false

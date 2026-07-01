@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { handleRuntimeConfig } from '../config.js';
+import { handleRuntimeConfig, coerceConfigValue } from '../config.js';
 import type { HandlerContext } from '../types.js';
 import { DEFAULT_CONFIG } from '../../../../shared/config.js';
 
@@ -190,6 +190,56 @@ describe('handleRuntimeConfig', () => {
       const parsed = parseResult(result);
       expect(parsed['error']).toContain('expected number');
     });
+
+    it('coerces a string-encoded number to a number (agents.max_concurrent)', async () => {
+      const result = await handleRuntimeConfig(
+        { action: 'set', key: 'agents.max_concurrent', value: '15' },
+        ctx
+      );
+      expect(result.isError).toBeFalsy();
+      const data = parseData(result);
+      expect(data['value']).toBe(15);
+    });
+
+    it('coerces a string-encoded boolean to a boolean', async () => {
+      const result = await handleRuntimeConfig(
+        { action: 'set', key: 'executor.transport.auto_start', value: 'true' },
+        ctx
+      );
+      expect(result.isError).toBeFalsy();
+      const data = parseData(result);
+      expect(data['value']).toBe(true);
+    });
+
+    it('coerces a string-encoded JSON array to an array for an object key', async () => {
+      const result = await handleRuntimeConfig(
+        { action: 'set', key: 'wrfc.require_review_types', value: '["security"]' },
+        ctx
+      );
+      expect(result.isError).toBeFalsy();
+      const data = parseData(result);
+      expect(data['value']).toEqual(['security']);
+    });
+
+    it('still rejects a non-numeric string for a number key', async () => {
+      const result = await handleRuntimeConfig(
+        { action: 'set', key: 'agents.max_concurrent', value: 'lots' },
+        ctx
+      );
+      expect(result.isError).toBe(true);
+      const parsed = parseResult(result);
+      expect(parsed['error']).toContain('expected number');
+    });
+
+    it('coerces a string-encoded JSON object for an object key', async () => {
+      const result = await handleRuntimeConfig(
+        { action: 'set', key: 'agents.budget_thresholds', value: '{"warn":0.8}' },
+        ctx
+      );
+      expect(result.isError).toBeFalsy();
+      const data = parseData(result);
+      expect(data['value']).toEqual({ warn: 0.8 });
+    });
   });
 
   // ── input validation ────────────────────────────────────────────────────────
@@ -263,6 +313,17 @@ describe('handleRuntimeConfig', () => {
       expect(result.isError).toBeFalsy();
       expect(mockStateStore.set).toHaveBeenCalledWith('wrfc.config.require_review_types', ['security']);
     });
+
+    it('coerces a string-encoded wrfc.score_threshold to a number before propagating', async () => {
+      const mockStateStore = { get: vi.fn(), set: vi.fn(), delete: vi.fn(), keys: vi.fn() };
+      const storeCtx = makeContext({ getCoreStateStore: vi.fn().mockReturnValue(mockStateStore) });
+      const result = await handleRuntimeConfig(
+        { action: 'set', key: 'wrfc.score_threshold', value: '10' },
+        storeCtx
+      );
+      expect(result.isError).toBeFalsy();
+      expect(mockStateStore.set).toHaveBeenCalledWith('wrfc.config.score_threshold', 10);
+    });
   });
 
   // ── transport (daemon) path ─────────────────────────────────────────────────
@@ -301,5 +362,125 @@ describe('handleRuntimeConfig', () => {
       expect(result.isError).toBeFalsy();
       expect(mockUpdateConfig).toHaveBeenCalledWith(DEFAULT_CONFIG);
     });
+  });
+});
+
+describe('coerceConfigValue (unit)', () => {
+  // ── already-correct-type passthrough ────────────────────────────────────
+  it('passes through a value that is already the correct type: number', () => {
+    const result = coerceConfigValue(15, 'number');
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value).toBe(15);
+  });
+
+  it('passes through a value that is already the correct type: boolean', () => {
+    const result = coerceConfigValue(true, 'boolean');
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value).toBe(true);
+  });
+
+  // ── number coercion ──────────────────────────────────────────────────────
+  it('coerces a numeric string to a number', () => {
+    const result = coerceConfigValue('15', 'number');
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value).toBe(15);
+  });
+
+  it('coerces a numeric string with surrounding whitespace to a number', () => {
+    const result = coerceConfigValue('  15  ', 'number');
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value).toBe(15);
+  });
+
+  it('coerces a negative float string to a number', () => {
+    const result = coerceConfigValue('-3.5', 'number');
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value).toBe(-3.5);
+  });
+
+  // ── number rejection guards ──────────────────────────────────────────────
+  it('rejects an empty string for a number key', () => {
+    expect(coerceConfigValue('', 'number').ok).toBe(false);
+  });
+
+  it('rejects a whitespace-only string for a number key', () => {
+    expect(coerceConfigValue('   ', 'number').ok).toBe(false);
+  });
+
+  it('rejects "Infinity" for a number key', () => {
+    expect(coerceConfigValue('Infinity', 'number').ok).toBe(false);
+  });
+
+  it('rejects "NaN" for a number key', () => {
+    expect(coerceConfigValue('NaN', 'number').ok).toBe(false);
+  });
+
+  it('rejects a non-numeric string for a number key', () => {
+    expect(coerceConfigValue('fast', 'number').ok).toBe(false);
+  });
+
+  // ── boolean coercion ─────────────────────────────────────────────────────
+  it('coerces "true" to boolean true', () => {
+    const result = coerceConfigValue('true', 'boolean');
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value).toBe(true);
+  });
+
+  it('coerces "FALSE" (mixed case) to boolean false', () => {
+    const result = coerceConfigValue('FALSE', 'boolean');
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value).toBe(false);
+  });
+
+  it('rejects "yes" for a boolean key', () => {
+    expect(coerceConfigValue('yes', 'boolean').ok).toBe(false);
+  });
+
+  it('rejects "1" for a boolean key', () => {
+    expect(coerceConfigValue('1', 'boolean').ok).toBe(false);
+  });
+
+  // ── object coercion ──────────────────────────────────────────────────────
+  it('coerces a string-encoded JSON object to an object', () => {
+    const result = coerceConfigValue('{"security":true}', 'object');
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value).toEqual({ security: true });
+  });
+
+  it('coerces a string-encoded JSON array to an array', () => {
+    const result = coerceConfigValue('["security"]', 'object');
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value).toEqual(['security']);
+  });
+
+  it('rejects a bare number string for an object key', () => {
+    expect(coerceConfigValue('15', 'object').ok).toBe(false);
+  });
+
+  it('rejects "null" for an object key', () => {
+    expect(coerceConfigValue('null', 'object').ok).toBe(false);
+  });
+
+  it('rejects invalid JSON for an object key', () => {
+    expect(coerceConfigValue('not json', 'object').ok).toBe(false);
+  });
+
+  // ── string branch ────────────────────────────────────────────────────────
+  it('passes through any string for a string key', () => {
+    const result = coerceConfigValue('anything', 'string');
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value).toBe('anything');
+  });
+
+  it('stringifies a number for a string key', () => {
+    const result = coerceConfigValue(42, 'string');
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value).toBe('42');
+  });
+
+  it('stringifies a boolean for a string key', () => {
+    const result = coerceConfigValue(true, 'string');
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value).toBe('true');
   });
 });
