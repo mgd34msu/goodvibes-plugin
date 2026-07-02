@@ -20,7 +20,7 @@
     {
       "name": "goodvibes-intel",
       "source": "./plugins/goodvibes-intel",
-      "description": "Structure-aware code search/read + verified static analyzers (14 tools).",
+      "description": "Structure-aware code search/read + verified static analyzers (15 tools).",
       "version": "2.0.0-alpha.1",
       "author": {
         "name": "Mike Davis"

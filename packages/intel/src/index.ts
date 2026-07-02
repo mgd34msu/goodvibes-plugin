@@ -34,6 +34,9 @@ import { componentTreeTool } from './tools/component_tree.js';
 import { hookDependenciesTool } from './tools/hook_dependencies.js';
 import { clientBoundaryTool } from './tools/client_boundary.js';
 import { layoutAnalysisTool } from './tools/layout_analysis.js';
+// Lane 10: structural_edit (§8 addendum, intel tool 15) — the one preview-gated
+// write surface on an otherwise read-only server.
+import { structuralEditTool } from './tools/structural_edit.js';
 
 export const SERVER_NAME = 'goodvibes-intel';
 export const SERVER_VERSION = '2.0.0-alpha.1';
@@ -58,6 +61,7 @@ const TOOLS: ToolDefinition[] = [
   hookDependenciesTool,
   clientBoundaryTool,
   layoutAnalysisTool,
+  structuralEditTool,
 ];
 
 /**

@@ -1,7 +1,7 @@
 # goodvibes-intel
 
 Structure-aware code search/read and verified static analyzers for Claude Code —
-**14 tools**, read-only, one MCP server. The flagship of the goodvibes v2 line
+**15 tools**, read-only except one preview-gated editor, one MCP server. The flagship of the goodvibes v2 line
 (`goodvibes-intel`, `goodvibes-analytics`, `goodvibes-connect` — three opt-in
 plugins, install only what you need).
 
@@ -11,7 +11,7 @@ plugins, install only what you need).
 
 ## What it is
 
-A single stdio MCP server exposing 14 tools. Every filesystem tool takes a
+A single stdio MCP server exposing 15 tools. Every filesystem tool takes a
 `base_path` and echoes the absolute `resolved_path` for each file it touches, so
 results are unambiguous across working directories. Every response is a compact
 envelope with an honest token estimate, `output.max_tokens` enforcement, and
@@ -33,17 +33,27 @@ truthful `truncated` / `effective_caps` accounting.
 | `client_boundary` | Client/server boundary graph and issues |
 | `layout_analysis` | Tailwind/JSX layout hierarchy: overflow, sizing, stacking-context analysis |
 | `scaffold` | Generate a project from the `full` / `minimal` templates |
+| `structural_edit` | The one write tool: a preview-gated, AST-aware editor. `preview` returns a per-entry unified diff, a single-use token, and each file's content hash; `apply` re-checks every hash and writes atomically (a file changed since preview is refused, never silently re-matched) |
 
 Tools surface as `mcp__goodvibes-intel__code_read`, `mcp__goodvibes-intel__code_grep`,
 and so on — the server key is the namespace.
 
-**intel is read-only.** It reads, searches, and analyzes; it does not edit files.
-(An AST-based, preview-gated editor is planned for a later milestone, not this alpha.)
+**intel is read-only except `structural_edit`, which is preview-gated.** Every
+other tool only reads, searches, and analyzes. `structural_edit` is the single
+write surface, and it cannot write blind: a `preview` call writes nothing (it
+returns diffs, a single-use token, and per-file content hashes), and an `apply`
+call only writes when the caller passes that token back AND every target file's
+hash still matches — a file that changed since preview is refused per-entry
+(`refused_stale`), never silently re-matched. Edits are byte-exact outside the
+changed span (newlines/CRLF preserved), and an atomic batch rolls back from
+pre-apply snapshots if any entry cannot apply. Modes are `exact`, `ast`
+(TypeScript-compiler node matching), and `ast_pattern` (ast-grep, active only
+when `@ast-grep/napi` is installed) — no fuzzy, no regex.
 
 ## Token cost
 
 Tool schemas are **deferred behind Tool Search**, which is on by default in
-current Claude Code — so the 14 schemas are not loaded into every session; the
+current Claude Code — so the 15 schemas are not loaded into every session; the
 model pulls a tool's schema when it decides to call it. What *is* always-on is a
 small amount of skill/command metadata:
 
@@ -52,7 +62,7 @@ small amount of skill/command metadata:
 | goodvibes-intel | **~484** |
 
 For comparison, the v1 monolith carried a ~13,530-token always-on tax. If your
-client has Tool Search disabled, the 14 tool schemas load eagerly — that cost is
+client has Tool Search disabled, the 15 tool schemas load eagerly — that cost is
 your client's configuration, not something this plugin's manifest can change.
 
 ## Measured performance (gate 5)
@@ -112,7 +122,10 @@ Be honest with yourself about the operation:
 - **A one-shot grep whose every hit you're going to read anyway** — native `Grep`
   is simpler. `code_grep` pays off when you want capped, deduplicated results, a
   single relevance-sorted representation, or batched queries in one call.
-- **Editing** — intel does not edit. Use the native `Edit`/`Write` tools.
+- **A quick one-off edit** — the native `Edit`/`Write` tools are simpler.
+  `structural_edit` earns its keep on AST-scoped or batched changes where you
+  want a diff preview, a stale-file guard, and atomic rollback before any bytes
+  are written.
 - **Reading a public web page** — that is `goodvibes-connect`'s (or native
   `WebFetch`'s) job, not intel's.
 
@@ -145,6 +158,9 @@ run `/goodvibes-intel:plugin setup` to install them with explicit consent.
 
 ## Tests
 
-`npx vitest run --project intel` — 163 passing, 3 skipped (the outline-mode
-assertions gate on the grammar probe above and skip with a clear reason rather
-than failing red). `npx tsc --noEmit -p packages/intel` — zero errors.
+`npx vitest run --project intel` — 178 passing (includes the `structural_edit`
+write-path suite: preview/apply round trip, stale-hash refusal, atomic rollback
+reporting, CRLF preservation, single-use tokens, and token expiry). The
+outline-mode assertions skip with a clear reason when the tree-sitter grammar
+cannot load, rather than failing red. `npx tsc --noEmit -p packages/intel` —
+zero errors.
