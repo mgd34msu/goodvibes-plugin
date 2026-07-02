@@ -31,7 +31,6 @@ interface RegistryEntry {
 
 interface Registry {
   version: string;
-  generated: string;
   total: number;
   categories: Record<string, any>;
   search_index: Array<{
@@ -519,7 +518,6 @@ function scanTemplates(): Array<{
 function writeRegistry(name: string, entries: RegistryEntry[]) {
   const registry: Registry = {
     version: '1.0.0',
-    generated: new Date().toISOString(),
     total: entries.length,
     categories: buildCategoryTree(entries),
     search_index: entries.map(e => ({
@@ -559,7 +557,6 @@ function main() {
   // Build registry with server-based organization
   const toolsRegistry = {
     version: '2.0.0',
-    generated: new Date().toISOString(),
     total: tools.length,
     servers: MCP_SERVERS.map(server => ({
       name: server,
@@ -601,7 +598,6 @@ function main() {
 
   const templatesRegistry = {
     version: '1.0.0',
-    generated: new Date().toISOString(),
     total: templates.length,
     categories: Object.fromEntries(
       Object.entries(byCategory).map(([cat, temps]) => [
