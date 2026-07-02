@@ -388,6 +388,16 @@ Headline math *(tribunal-final)*: 77 tools → **24** (14 intel + 7 analytics + 
 ## 13. Open questions for Mike
 
 1. ~~Does automation ship?~~ **ANSWERED 2026-07-02: cut.** Mike delegated the call with no standing usage to defend it; ruling recorded in §0/§6/§11.
-2. `structural_edit` in v2.1 — is AST-pattern editing worth re-entering the write path for, given the reporting/newline lessons?
+2. ~~`structural_edit` in v2.1?~~ **ANSWERED 2026-07-02: pulled into alpha** (Mike supplied the demand signal; ruling and conditions in the Addendum below).
 3. The gateway ambition (the OpenClaw conversation): deferred, not rejected — revisit after v2.0 ships, on the Agent SDK if at all.
 4. ~~Which outcome/quality skills do you reach for?~~ **ANSWERED 2026-07-02:** the skills existed for the agents; with the roster consolidating, only `service-integration` and `project-onboarding` survive (rewritten). Ruling recorded in §9.1.
+
+---
+
+## 14. Addendum (2026-07-02) — alpha scope additions; supersedes counts above
+
+Two additions decided with Mike after the build wave launched. Both land as follow-on lanes (9/10) once lanes 1–8 complete; details in `docs/v2-carveout-architecture.md` Addendum.
+
+**A. Observability lands in analytics** (from the native-vs-plugin operating discussion): (1) live session cost — `query` gains a live mode reading the current session's still-growing transcript, priced per-model, split main-loop vs. per-subagent; (2) host-health — a slow (60s, unref'd) sampler reading load, session children, and orphaned plugin processes (the parented-to-init + plugin-cache-path + sustained-CPU heuristic from field issue 9), surfaced as a `dashboard` section plus a `doctor` mode that lists offenders with ready-to-run kill commands but never auto-kills; (3) agent-liveness — transcript mtime/write-rate/tail-state scanner classifying background agents as thinking / executing / wedged (issued-call-with-no-result-and-no-child). All three ride the transcript-reader + telemetry base; **analytics stays 7 tools** (these are modes of `query`/`dashboard`, not new tools). Intel's SessionStart context-gather may surface a one-line health nudge when thresholds trip, via loose file coupling to analytics' sampler state (graceful when absent).
+
+**B. `structural_edit` pulled from v2.1 into alpha as intel tool 15.** Demand signal supplied by Mike; the machinery (ast-grep, tree-sitter, preview_replace) already ships with code_grep, so the delta is the apply step. Non-negotiable conditions (each one a v1-defect lesson): preview-first — `apply` requires a preview token from a prior preview call plus per-file content hashes that still match (stale = per-entry refusal, never silent); newline/CRLF preservation byte-for-byte outside the edit spans; per-entry results keyed like api_request entries with a first-class status enum (`applied` / `refused_stale` / `rolled_back` / `failed`) and envelope `success:false` whenever any entry fails atomically; no fuzzy fallback — structural (AST) and exact modes only. **Intel's posture becomes "read-only except `structural_edit`, which is preview-gated" — stated plainly in the README, never buried. Headline counts supersede to: intel 15, total 25.**
