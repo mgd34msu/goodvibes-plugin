@@ -167,25 +167,19 @@ function detectLanguage(filePath: string): string {
  */
 export async function toLangEnum(language: string): Promise<Lang> {
   const { Lang } = await loadAstGrepNapi();
-  const langMap: Record<string, Lang> = {
-    'javascript': Lang.JavaScript,
-    'typescript': Lang.TypeScript,
-    'tsx': Lang.Tsx,
-    'python': Lang.Python,
-    'rust': Lang.Rust,
-    'go': Lang.Go,
-    'c': Lang.C,
-    'cpp': Lang.Cpp,
-    'java': Lang.Java,
-    'kotlin': Lang.Kotlin,
-    'swift': Lang.Swift,
-    'ruby': Lang.Ruby,
-    'csharp': Lang.CSharp,
-    'html': Lang.Html,
-    'css': Lang.Css,
-    'bash': Lang.Bash,
-    'scala': Lang.Scala,
-    'php': Lang.Php,
+  // NOTE: The installed @ast-grep/napi build only bundles Html, JavaScript,
+  // Tsx, Css, and TypeScript. The previous entries for python/rust/go/c/cpp/
+  // java/kotlin/swift/ruby/csharp/bash/scala/php referenced enum members that
+  // do not exist at runtime; they evaluated to undefined and always fell
+  // through to the JavaScript default below. Removed to match runtime reality.
+  // Supporting those languages requires @ast-grep/lang-* packages registered
+  // via registerDynamicLanguage.
+  const langMap: Record<string, Lang | undefined> = {
+    javascript: Lang.JavaScript,
+    typescript: Lang.TypeScript,
+    tsx: Lang.Tsx,
+    html: Lang.Html,
+    css: Lang.Css,
   };
 
   return langMap[language.toLowerCase()] || Lang.JavaScript;

@@ -23,6 +23,7 @@ import {
   ListToolsRequestSchema,
   ErrorCode,
   McpError,
+  type ServerResult,
 } from '@modelcontextprotocol/sdk/types.js';
 
 import { SERVER_NAME, SERVER_VERSION } from './config.js';
@@ -79,7 +80,7 @@ class PrecisionEngineServer {
       }
 
       try {
-        return await executeHandler(name, handler, args);
+        return (await executeHandler(name, handler, args)) as ServerResult;
       } catch (error) {
         if (error instanceof McpError) throw error;
         const message = error instanceof Error ? error.message : String(error);

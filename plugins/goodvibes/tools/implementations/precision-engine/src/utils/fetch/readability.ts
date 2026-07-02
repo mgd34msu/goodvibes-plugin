@@ -12,17 +12,17 @@ import { htmlToMarkdown } from './turndown.js';
  */
 export interface ReadabilityResult {
   /** Article title */
-  title: string;
+  title?: string | null;
   /** Article author (extracted from byline) */
-  byline: string | null;
+  byline?: string | null;
   /** Brief excerpt or description */
-  excerpt: string | null;
+  excerpt?: string | null;
   /** Site name (e.g., "New York Times") */
-  siteName: string | null;
+  siteName?: string | null;
   /** Clean article content in Markdown format */
   content: string;
   /** Content length in characters */
-  length: number;
+  length?: number | null;
 }
 
 /**
@@ -66,13 +66,23 @@ export function extractReadableContent(
     const { document } = parseHTML(html);
 
     // Create Readability instance
-    const reader = new Readability(document, { url });
+    // Readability typings do not declare url; keep passing it through unchanged
+    // to preserve existing runtime behavior (unknown options are ignored).
+    const readabilityOptions: { debug?: boolean; url?: string } = { url };
+    const reader = new Readability(document, readabilityOptions);
 
     // Extract article content
     const article = reader.parse();
 
     // Return null if Readability couldn't identify article content
     if (!article) {
+      return null;
+    }
+
+    // Readability may return null/undefined content; previously that threw
+    // inside htmlToMarkdown and the catch below returned null. Return null
+    // directly for the same observable result.
+    if (article.content == null) {
       return null;
     }
 

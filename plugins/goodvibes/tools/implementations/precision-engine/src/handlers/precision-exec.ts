@@ -535,7 +535,11 @@ async function executeCommand(
     let untilTimedOut = false;
     let matchedLine: string | null = null;
     let matchedAtMs: number | null = null;
-    let backgroundResult: BgStartResult | null = null;
+    // NOTE(latent): never assigned in this scope. Background promotion happens
+    // inside handleUntilMatch, which resolves its own result; the close-handler
+    // check below is currently unreachable. The assertion keeps the declared
+    // type wide so that block still typechecks.
+    let backgroundResult = null as BgStartResult | null;
     let untilTimeoutId: NodeJS.Timeout | null = null;
 
     if (spec.until) {
@@ -1057,7 +1061,7 @@ async function executeWithRetry(
  */
 function mapCommandResults(
   results: CommandResult[],
-  commandsWithContext: Array<{ cmd: string; previousRun?: { exit_code: number; duration_ms: number; timestamp: string } }>,
+  commandsWithContext: Array<{ spec: CommandSpec; previousRun?: { exit_code: number; duration_ms: number; timestamp: number } }>,
   truncateOutput: boolean
 ) {
   return results.map((r, i) => {
@@ -1903,7 +1907,11 @@ export const handlePrecisionExec: ToolHandler = async (args: unknown) => {
         };
         break;
 
-      case 'standard':
+      case "standard":
+      // LATENT-BUG FIX: outputMode is the wide OutputMode union; modes outside
+      // the cases here (e.g. files_only) previously left data unassigned and
+      // crashed below with a confusing internal error. Fall back to standard.
+      default:
         data = {
           commands: mapCommandResults(results, commandsWithContext, true),
           summary: {

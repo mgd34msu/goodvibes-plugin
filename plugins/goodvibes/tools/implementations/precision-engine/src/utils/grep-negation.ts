@@ -110,9 +110,10 @@ export async function findFilesWithoutPattern(
     }
 
     // Step 3: Set difference - files WITHOUT the pattern (using normalized absolute paths)
-    const filesWithoutPattern = candidateAbsolute.filter(
-      file => !filesWithPattern.has(file)
-    );
+    // Sorted so that capped result membership is deterministic across runs.
+    const filesWithoutPattern = candidateAbsolute
+      .filter(file => !filesWithPattern.has(file))
+      .sort((a, b) => a.localeCompare(b));
 
     // Edge case: All files match
     if (filesWithoutPattern.length === 0) {

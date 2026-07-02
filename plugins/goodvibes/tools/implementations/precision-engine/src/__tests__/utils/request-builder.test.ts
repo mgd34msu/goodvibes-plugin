@@ -283,8 +283,10 @@ describe('request-builder', () => {
     it('should allow auth override at request level', async () => {
       await registry.addService('auth-service', {
         base_url: 'https://api.example.com',
-        auth: { type: 'bearer', token: 'service-token' },
-      });
+        auth: { type: "bearer", token: "service-token" },
+        // ServiceConfig has no inline auth field; the runtime ignores it and the
+        // assertion below only checks the request-level override.
+      } as Parameters<typeof registry.addService>[1]);
       const built = await builder.buildRequest({
         url: 'https://api.example.com/test',
         service: 'auth-service',

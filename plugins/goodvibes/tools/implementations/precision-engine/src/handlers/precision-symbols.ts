@@ -800,7 +800,7 @@ export const handlePrecisionSymbols: ToolHandler = async (args: unknown) => {
       });
       let timer: ReturnType<typeof setTimeout>;
       
-      const timeoutPromise = new Promise((_, reject) => {
+      const timeoutPromise = new Promise<never>((_, reject) => {
         timer = setTimeout(() => reject(new Error(`File timeout: ${file}`)), PER_FILE_TIMEOUT_MS);
       });
       

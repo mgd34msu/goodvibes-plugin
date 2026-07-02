@@ -81,7 +81,7 @@ beforeEach(() => {
   vi.mocked(fsp.readFile).mockRejectedValue(new Error('ENOENT: no such file'));
 
   // Default: empty directory
-  vi.mocked(fsp.readdir).mockResolvedValue([] as unknown as Dirent[]);
+  vi.mocked(fsp.readdir).mockResolvedValue([] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
 
   // Default: stat returns 0-byte file
   vi.mocked(fsp.stat).mockResolvedValue(makeStat(0));
@@ -127,7 +127,7 @@ describe('buildProjectIndex — basic behavior', () => {
   it('produces a valid v4 index structure', async () => {
     vi.mocked(fsp.readdir).mockResolvedValue([
       makeDirent('index.ts', `${PROJECT_DIR}/src`),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(400));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -151,7 +151,7 @@ describe('buildProjectIndex — basic behavior', () => {
       makeDirent('index.ts', `${PROJECT_DIR}/src`),
       makeDirent('utils.ts', `${PROJECT_DIR}/src/helpers`),
       makeDirent('README.md', PROJECT_DIR),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -171,7 +171,7 @@ describe('buildProjectIndex — basic behavior', () => {
       makeDirent('big.ts', `${PROJECT_DIR}/src`),
       makeDirent('tiny.ts', `${PROJECT_DIR}/src`),
       makeDirent('exact.ts', `${PROJECT_DIR}/src`),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat)
       .mockResolvedValueOnce(makeStat(1001)) // ceil(1001/4) = 251
       .mockResolvedValueOnce(makeStat(1))    // ceil(1/4) = 1
@@ -191,7 +191,7 @@ describe('buildProjectIndex — basic behavior', () => {
       makeDirent('a.ts', `${PROJECT_DIR}/src`),
       makeDirent('b.ts', `${PROJECT_DIR}/src`),
       makeDirent('c.ts', `${PROJECT_DIR}/lib`),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(40));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -205,7 +205,7 @@ describe('buildProjectIndex — basic behavior', () => {
   it('handles stat() failure gracefully (uses 0 tokens)', async () => {
     vi.mocked(fsp.readdir).mockResolvedValue([
       makeDirent('broken.ts', `${PROJECT_DIR}/src`),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockRejectedValue(new Error('EPERM'));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -225,7 +225,7 @@ describe('buildProjectIndex — file exclusion', () => {
     vi.mocked(fsp.readdir).mockResolvedValue([
       makeDirent('index.js', `${PROJECT_DIR}/node_modules/some-pkg`),
       makeDirent('keep.ts', `${PROJECT_DIR}/src`),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -239,7 +239,7 @@ describe('buildProjectIndex — file exclusion', () => {
   it('excludes .git directory', async () => {
     vi.mocked(fsp.readdir).mockResolvedValue([
       makeDirent('config', `${PROJECT_DIR}/.git`),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -252,7 +252,7 @@ describe('buildProjectIndex — file exclusion', () => {
   it('excludes dist directory', async () => {
     vi.mocked(fsp.readdir).mockResolvedValue([
       makeDirent('bundle.js', `${PROJECT_DIR}/dist`),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -265,7 +265,7 @@ describe('buildProjectIndex — file exclusion', () => {
   it('excludes .goodvibes directory', async () => {
     vi.mocked(fsp.readdir).mockResolvedValue([
       makeDirent('project-index.json', `${PROJECT_DIR}/.goodvibes`),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -280,7 +280,7 @@ describe('buildProjectIndex — file exclusion', () => {
       makeDirent('report.json', `${PROJECT_DIR}/coverage`),
       makeDirent('cache.json', `${PROJECT_DIR}/.next`),
       makeDirent('meta.json', `${PROJECT_DIR}/.turbo`),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -295,7 +295,7 @@ describe('buildProjectIndex — file exclusion', () => {
   it('excludes __tests__ directory', async () => {
     vi.mocked(fsp.readdir).mockResolvedValue([
       makeDirent('foo.test.ts', `${PROJECT_DIR}/src/__tests__`),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -309,7 +309,7 @@ describe('buildProjectIndex — file exclusion', () => {
     vi.mocked(fsp.readdir).mockResolvedValue([
       makeDirent('foo.test.ts', `${PROJECT_DIR}/src`),
       makeDirent('foo.ts', `${PROJECT_DIR}/src`),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -324,7 +324,7 @@ describe('buildProjectIndex — file exclusion', () => {
     vi.mocked(fsp.readdir).mockResolvedValue([
       makeDirent('bar.spec.ts', `${PROJECT_DIR}/src`),
       makeDirent('bar.ts', `${PROJECT_DIR}/src`),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -339,7 +339,7 @@ describe('buildProjectIndex — file exclusion', () => {
     vi.mocked(fsp.readdir).mockResolvedValue([
       makeDirent('types.d.ts', `${PROJECT_DIR}/src`),
       makeDirent('types.ts', `${PROJECT_DIR}/src`),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -353,7 +353,7 @@ describe('buildProjectIndex — file exclusion', () => {
   it('excludes .map source map files', async () => {
     vi.mocked(fsp.readdir).mockResolvedValue([
       makeDirent('bundle.js.map', `${PROJECT_DIR}/dist`),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -370,7 +370,7 @@ describe('buildProjectIndex — file exclusion', () => {
       makeDirent('icon.svg', `${PROJECT_DIR}/public`),
       makeDirent('font.woff2', `${PROJECT_DIR}/public`),
       makeDirent('keep.ts', `${PROJECT_DIR}/src`),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -385,7 +385,7 @@ describe('buildProjectIndex — file exclusion', () => {
     vi.mocked(fsp.readdir).mockResolvedValue([
       makeDirent('package-lock.json', PROJECT_DIR),
       makeDirent('package.json', PROJECT_DIR),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -401,7 +401,7 @@ describe('buildProjectIndex — file exclusion', () => {
       makeDirent('yarn.lock', PROJECT_DIR),
       makeDirent('pnpm-lock.yaml', PROJECT_DIR),
       makeDirent('keep.ts', PROJECT_DIR),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -417,7 +417,7 @@ describe('buildProjectIndex — file exclusion', () => {
     vi.mocked(fsp.readdir).mockResolvedValue([
       makeDirent('.DS_Store', PROJECT_DIR),
       makeDirent('README.md', PROJECT_DIR),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -432,7 +432,7 @@ describe('buildProjectIndex — file exclusion', () => {
     vi.mocked(fsp.readdir).mockResolvedValue([
       makeDirent('Button.stories.tsx', `${PROJECT_DIR}/src`),
       makeDirent('Button.tsx', `${PROJECT_DIR}/src`),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -447,7 +447,7 @@ describe('buildProjectIndex — file exclusion', () => {
     vi.mocked(fsp.readdir).mockResolvedValue([
       makeDirent('app.min.js', `${PROJECT_DIR}/dist`),
       makeDirent('style.min.css', `${PROJECT_DIR}/dist`),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -461,7 +461,7 @@ describe('buildProjectIndex — file exclusion', () => {
     vi.mocked(fsp.readdir).mockResolvedValue([
       makeDirent('src', PROJECT_DIR, true),   // directory
       makeDirent('index.ts', `${PROJECT_DIR}/src`), // file inside
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -480,11 +480,11 @@ describe('buildProjectIndex — file exclusion', () => {
 
 describe('buildProjectIndex — gitignore support', () => {
   it('ignores files matching a simple gitignore pattern', async () => {
-    vi.mocked(fsp.readFile).mockResolvedValue('*.log\n' as unknown as Uint8Array);
+    vi.mocked(fsp.readFile).mockResolvedValue('*.log\n' as unknown as Awaited<ReturnType<typeof fsp.readFile>>);
     vi.mocked(fsp.readdir).mockResolvedValue([
       makeDirent('server.log', PROJECT_DIR),
       makeDirent('README.md', PROJECT_DIR),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -496,11 +496,11 @@ describe('buildProjectIndex — gitignore support', () => {
   });
 
   it('ignores directories matching gitignore pattern', async () => {
-    vi.mocked(fsp.readFile).mockResolvedValue('build/\n' as unknown as Uint8Array);
+    vi.mocked(fsp.readFile).mockResolvedValue('build/\n' as unknown as Awaited<ReturnType<typeof fsp.readFile>>);
     vi.mocked(fsp.readdir).mockResolvedValue([
       makeDirent('output.js', `${PROJECT_DIR}/build`),
       makeDirent('main.ts', `${PROJECT_DIR}/src`),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -512,12 +512,12 @@ describe('buildProjectIndex — gitignore support', () => {
   });
 
   it('respects negation patterns (!pattern)', async () => {
-    vi.mocked(fsp.readFile).mockResolvedValue('*.log\n!important.log\n' as unknown as Uint8Array);
+    vi.mocked(fsp.readFile).mockResolvedValue('*.log\n!important.log\n' as unknown as Awaited<ReturnType<typeof fsp.readFile>>);
     vi.mocked(fsp.readdir).mockResolvedValue([
       makeDirent('server.log', PROJECT_DIR),
       makeDirent('important.log', PROJECT_DIR),
       makeDirent('README.md', PROJECT_DIR),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -530,11 +530,11 @@ describe('buildProjectIndex — gitignore support', () => {
   });
 
   it('ignores files in a gitignored directory (trailing slash pattern)', async () => {
-    vi.mocked(fsp.readFile).mockResolvedValue('temp/\n' as unknown as Uint8Array);
+    vi.mocked(fsp.readFile).mockResolvedValue('temp/\n' as unknown as Awaited<ReturnType<typeof fsp.readFile>>);
     vi.mocked(fsp.readdir).mockResolvedValue([
       makeDirent('scratch.txt', `${PROJECT_DIR}/temp`),
       makeDirent('keep.ts', `${PROJECT_DIR}/src`),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -546,12 +546,12 @@ describe('buildProjectIndex — gitignore support', () => {
   });
 
   it('handles glob patterns with wildcards in gitignore', async () => {
-    vi.mocked(fsp.readFile).mockResolvedValue('*.tmp\n' as unknown as Uint8Array);
+    vi.mocked(fsp.readFile).mockResolvedValue('*.tmp\n' as unknown as Awaited<ReturnType<typeof fsp.readFile>>);
     vi.mocked(fsp.readdir).mockResolvedValue([
       makeDirent('session.tmp', PROJECT_DIR),
       makeDirent('data.tmp', PROJECT_DIR),
       makeDirent('index.ts', PROJECT_DIR),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -564,11 +564,11 @@ describe('buildProjectIndex — gitignore support', () => {
   });
 
   it('handles path-based gitignore patterns (containing /)', async () => {
-    vi.mocked(fsp.readFile).mockResolvedValue('src/generated/\n' as unknown as Uint8Array);
+    vi.mocked(fsp.readFile).mockResolvedValue('src/generated/\n' as unknown as Awaited<ReturnType<typeof fsp.readFile>>);
     vi.mocked(fsp.readdir).mockResolvedValue([
       makeDirent('auto.ts', `${PROJECT_DIR}/src/generated`),
       makeDirent('manual.ts', `${PROJECT_DIR}/src`),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -583,7 +583,7 @@ describe('buildProjectIndex — gitignore support', () => {
     // readFile already defaults to rejecting (no .gitignore)
     vi.mocked(fsp.readdir).mockResolvedValue([
       makeDirent('index.ts', `${PROJECT_DIR}/src`),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -596,12 +596,12 @@ describe('buildProjectIndex — gitignore support', () => {
 
   it('ignores comment lines and blank lines in .gitignore', async () => {
     vi.mocked(fsp.readFile).mockResolvedValue(
-      '# This is a comment\n\n*.log\n\n# Another comment\n' as unknown as Uint8Array
+      '# This is a comment\n\n*.log\n\n# Another comment\n' as unknown as Awaited<ReturnType<typeof fsp.readFile>>
     );
     vi.mocked(fsp.readdir).mockResolvedValue([
       makeDirent('debug.log', PROJECT_DIR),
       makeDirent('keep.ts', PROJECT_DIR),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -636,7 +636,7 @@ describe('buildProjectIndex — logger injection', () => {
     const logger = makeLogger();
     vi.mocked(fsp.readdir).mockResolvedValue([
       makeDirent('a.ts', `${PROJECT_DIR}/src`),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, logger);
@@ -648,7 +648,7 @@ describe('buildProjectIndex — logger injection', () => {
     // Default logger writes to stderr — just verify it does not throw
     vi.mocked(fsp.readdir).mockResolvedValue([
       makeDirent('index.ts', `${PROJECT_DIR}/src`),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await expect(buildProjectIndex(PROJECT_DIR)).resolves.toBeUndefined();
@@ -724,7 +724,7 @@ describe('buildProjectIndex — sorted output', () => {
       makeDirent('z.ts', `${PROJECT_DIR}/zoo`),
       makeDirent('a.ts', `${PROJECT_DIR}/alpha`),
       makeDirent('m.ts', `${PROJECT_DIR}/middle`),
-    ] as unknown as Dirent[];
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>;
     vi.mocked(fsp.readdir).mockResolvedValue(entries);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
@@ -748,7 +748,7 @@ describe('buildProjectIndex — sorted output', () => {
       makeDirent('zebra.ts', `${PROJECT_DIR}/src`),
       makeDirent('alpha.ts', `${PROJECT_DIR}/src`),
       makeDirent('middle.ts', `${PROJECT_DIR}/src`),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -767,7 +767,7 @@ describe('buildProjectIndex — sorted output', () => {
 
 describe('buildProjectIndex — edge cases', () => {
   it('handles empty directory (no files indexed)', async () => {
-    vi.mocked(fsp.readdir).mockResolvedValue([] as unknown as Dirent[]);
+    vi.mocked(fsp.readdir).mockResolvedValue([] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
 
@@ -782,7 +782,7 @@ describe('buildProjectIndex — edge cases', () => {
     vi.mocked(fsp.readdir).mockResolvedValue([
       makeDirent('README.md', PROJECT_DIR),
       makeDirent('package.json', PROJECT_DIR),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(40));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -823,7 +823,7 @@ describe('buildProjectIndex — edge cases', () => {
       makeDirent('a.ts', `${PROJECT_DIR}/src`),
       makeDirent('b.ts', `${PROJECT_DIR}/src`),
       makeDirent('c.ts', `${PROJECT_DIR}/src`),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -836,7 +836,7 @@ describe('buildProjectIndex — edge cases', () => {
   it('does not include partial field in stats when indexing completes normally', async () => {
     vi.mocked(fsp.readdir).mockResolvedValue([
       makeDirent('index.ts', `${PROJECT_DIR}/src`),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(100));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());
@@ -849,7 +849,7 @@ describe('buildProjectIndex — edge cases', () => {
   it('handles nested deep paths correctly', async () => {
     vi.mocked(fsp.readdir).mockResolvedValue([
       makeDirent('leaf.ts', `${PROJECT_DIR}/a/b/c/d`),
-    ] as unknown as Dirent[]);
+    ] as unknown as Awaited<ReturnType<typeof fsp.readdir>>);
     vi.mocked(fsp.stat).mockResolvedValue(makeStat(80));
 
     await buildProjectIndex(PROJECT_DIR, makeLogger());

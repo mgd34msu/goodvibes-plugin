@@ -6,7 +6,14 @@
  * - Batch multiple queries
  * - Output modes: count_only, files_only, locations, matches, context
  * - Context expansion: line, block, function, class
- * - Max caps for files, matches, tokens
+ * - Clean cap layer (each cap does exactly one job):
+ *   - max_results caps the FILE LIST
+ *   - max_per_item caps matches INCLUDED PER FILE
+ *   - max_total_matches caps matches INCLUDED ACROSS ALL FILES
+ *   Counts (file_count / match_count) are always TRUE counts — never capped.
+ *   count_only counts with no caps applied at all.
+ * - Truthful truncation: `truncated` is set only when output was actually
+ *   trimmed, and `effective_caps` names exactly the caps that bit.
  * - Parallel query execution
  */
 
@@ -75,6 +82,7 @@ interface PrecisionGrepInput {
   relationships?: boolean;
   preview_replace?: string;
   ranked?: boolean;
+  base_path?: string;
 }
 
 interface GrepMatch {
@@ -92,11 +100,23 @@ interface GrepFileResult {
   match_count?: number;
 }
 
+/**
+ * Names exactly the caps that actually trimmed output. Only present on a
+ * query result when `truncated` is true, and only the caps that bit are set.
+ */
+interface EffectiveCaps {
+  max_results?: number;
+  max_per_item?: number;
+  max_total_matches?: number;
+  max_tokens?: number;
+}
+
 interface GrepResult {
   files?: GrepFileResult[];
   file_count?: number;
   match_count?: number;
   truncated?: boolean;
+  effective_caps?: EffectiveCaps;
   lines_truncated?: number;
   note?: string;
   pagination?: PaginationMetadata;
@@ -106,6 +126,13 @@ interface GrepResult {
   ranked_files?: RankedFile[];
   stats?: GrepStatsSummary;
   tokens_used?: number;
+}
+
+interface ResolvedCaps {
+  maxFiles: number;
+  maxPerItem: number;
+  maxTotalMatches: number;
+  maxTokens: number;
 }
 
 // === Singleton Instances ===
@@ -151,169 +178,233 @@ function truncateLine(line: string, maxLength: number | undefined): string {
 }
 
 /**
- * Transform RipgrepSearchResult to GrepResult format with expand_to support
+ * Transform RipgrepSearchResult to GrepResult format with expand_to support.
+ *
+ * Cap semantics (each cap does exactly one job):
+ * - count_only counts with NO caps applied — the true line-based totals.
+ * - maxFiles (max_results) caps the file LIST only.
+ * - maxPerItem (max_per_item) caps matches included per file (detail modes).
+ * - maxTotalMatches caps matches included across all files (detail modes).
+ * - maxTokens caps accumulated match content tokens (matches/context modes).
+ *
+ * `file_count` and `match_count` always report TRUE totals (matched lines);
+ * `truncated` reflects only actual output trimming, with the responsible caps
+ * echoed in `effective_caps`.
  */
 async function transformRipgrepResult(
   ripgrepResult: RipgrepSearchResult,
   output: GrepOutput,
   workDir: string,
-  maxFiles: number,
-  maxTotalMatches: number,
-  maxTokens: number
+  caps: ResolvedCaps
 ): Promise<GrepResult> {
-  const fileMap = new Map<string, GrepFileResult>();
-  let totalMatches = 0;
-  let totalTokens = 0;
-  let truncated = ripgrepResult.truncated;
-  let linesTruncated = 0;
+  const { maxFiles, maxPerItem, maxTotalMatches, maxTokens } = caps;
 
-  // Group matches by file
+  // Group matches by file (the core emits one match per matched line),
+  // preserving ripgrep's emission order.
+  const byFile = new Map<string, import('../core/ripgrep.js').RipgrepMatch[]>();
   for (const match of ripgrepResult.matches) {
-    if (fileMap.size >= maxFiles || totalMatches >= maxTotalMatches || totalTokens >= maxTokens) {
-      truncated = true;
-      break;
-    }
-
     const relativePath = path.relative(workDir, match.file);
-    let fileResult = fileMap.get(relativePath);
-
-    if (!fileResult) {
-      fileResult = {
-        file: relativePath,
-        matches: [],
-        match_count: 0,
-      };
-      fileMap.set(relativePath, fileResult);
+    const existing = byFile.get(relativePath);
+    if (existing) {
+      existing.push(match);
+    } else {
+      byFile.set(relativePath, [match]);
     }
+  }
 
-    totalMatches++;
-    fileResult.match_count!++;
+  const trueFileCount = byFile.size;
+  const trueMatchCount = ripgrepResult.matches.length;
 
-    const grepMatch: GrepMatch = {
-      line: match.line,
+  // count_only: pure counting — no caps apply, nothing is trimmed.
+  if (output.mode === 'count_only') {
+    const countResult: GrepResult = {
+      file_count: trueFileCount,
+      match_count: trueMatchCount,
+      truncated: false,
     };
+    countResult.tokens_used = estimateTokens(JSON.stringify(countResult));
+    return countResult;
+  }
 
-    // Add column for locations mode and above
-    if (output.mode !== 'count_only' && output.mode !== 'files_only') {
-      grepMatch.column = match.column;
+  const effectiveCaps: EffectiveCaps = {};
+  let truncated = false;
+
+  // max_results caps the file list (and ONLY the file list). Entries are
+  // sorted by path so that capped list membership is deterministic across
+  // identical runs (the ripgrep parallel walk emits files in nondeterministic
+  // order) and offset pagination sees a stable ordering.
+  const fileEntries = Array.from(byFile.entries())
+    .sort(([a], [b]) => a.localeCompare(b));
+  const includedEntries = fileEntries.length > maxFiles
+    ? fileEntries.slice(0, maxFiles)
+    : fileEntries;
+  if (includedEntries.length < fileEntries.length) {
+    truncated = true;
+    effectiveCaps.max_results = maxFiles;
+  }
+
+  if (output.mode === 'files_only') {
+    const filesOnlyResult: GrepResult = {
+      files: includedEntries.map(([file, fileMatches]) => ({
+        file,
+        match_count: fileMatches.length,
+      })),
+      file_count: trueFileCount,
+      match_count: trueMatchCount,
+      truncated,
+    };
+    if (truncated) {
+      filesOnlyResult.effective_caps = effectiveCaps;
     }
+    filesOnlyResult.tokens_used = estimateTokens(JSON.stringify(filesOnlyResult));
+    return filesOnlyResult;
+  }
 
-    // Add content and highlight for matches mode and above
-    if (output.mode === 'matches' || output.mode === 'context') {
-      const originalLine = match.lineContent;
-      grepMatch.content = truncateLine(match.lineContent, output.max_line_length);
-      if (grepMatch.content !== originalLine) {
-        linesTruncated++;
+  // Detail modes: locations / matches / context / stats.
+  let includedMatches = 0;
+  let totalTokens = 0;
+  let linesTruncated = 0;
+  const files: GrepFileResult[] = [];
+
+  outer:
+  for (const [relativePath, fileMatches] of includedEntries) {
+    const fileResult: GrepFileResult = {
+      file: relativePath,
+      matches: [],
+      // True matched-line count for this file (the matches array may be shorter).
+      match_count: fileMatches.length,
+    };
+    files.push(fileResult);
+
+    for (const match of fileMatches) {
+      if (fileResult.matches!.length >= maxPerItem) {
+        truncated = true;
+        effectiveCaps.max_per_item = maxPerItem;
+        break;
+      }
+      if (includedMatches >= maxTotalMatches) {
+        truncated = true;
+        effectiveCaps.max_total_matches = maxTotalMatches;
+        break outer;
+      }
+      if (totalTokens >= maxTokens) {
+        truncated = true;
+        if (output.max_tokens !== undefined) {
+          effectiveCaps.max_tokens = output.max_tokens;
+        }
+        break outer;
       }
 
-      // Calculate highlight position
-      const matchStart = match.column - 1; // Convert to 0-indexed
-      const matchEnd = matchStart + match.matchText.length;
-      grepMatch.highlight = [matchStart, matchEnd];
-      totalTokens += estimateTokens(grepMatch.content);
-    }
+      const grepMatch: GrepMatch = {
+        line: match.line,
+        column: match.column,
+      };
 
-    // Add context for context mode
-    if (output.mode === 'context') {
-      // Handle expand_to with tree-sitter for function/class
-      if (output.expand_to === 'function' || output.expand_to === 'class') {
-        try {
-          const fileContent = await fs.readFile(path.join(workDir, relativePath), 'utf-8');
-          const tree = await treeSitterCore.parse(fileContent, relativePath);
-          const range = output.expand_to === 'function'
-            ? treeSitterCore.getEnclosingFunction(tree, match.line)
-            : treeSitterCore.getEnclosingClass(tree, match.line);
+      // Add content and highlight for matches mode and above
+      if (output.mode === 'matches' || output.mode === 'context') {
+        const originalLine = match.lineContent;
+        grepMatch.content = truncateLine(match.lineContent, output.max_line_length);
+        if (grepMatch.content !== originalLine) {
+          linesTruncated++;
+        }
 
-          if (range) {
-            const lines = fileContent.split('\n');
-            const start = range.start.line - 1; // Convert to 0-indexed
-            const end = range.end.line - 1;
-            const matchLineIndex = match.line - 1;
+        // Calculate highlight position
+        const matchStart = match.column - 1; // Convert to 0-indexed
+        const matchEnd = matchStart + match.matchText.length;
+        grepMatch.highlight = [matchStart, matchEnd];
+        totalTokens += estimateTokens(grepMatch.content);
+      }
 
-            if (start < matchLineIndex) {
-              const beforeLines = lines.slice(start, matchLineIndex);
-              grepMatch.before = beforeLines.map(l => {
-                const truncated = truncateLine(l, output.max_line_length);
-                if (truncated !== l) linesTruncated++;
-                return truncated;
+      // Add context for context mode
+      if (output.mode === 'context') {
+        // Handle expand_to with tree-sitter for function/class
+        if (output.expand_to === 'function' || output.expand_to === 'class') {
+          try {
+            const fileContent = await fs.readFile(path.join(workDir, relativePath), 'utf-8');
+            const tree = await treeSitterCore.parse(fileContent, relativePath);
+            const range = output.expand_to === 'function'
+              ? treeSitterCore.getEnclosingFunction(tree, match.line)
+              : treeSitterCore.getEnclosingClass(tree, match.line);
+
+            if (range) {
+              const lines = fileContent.split('\n');
+              const start = range.start.line - 1; // Convert to 0-indexed
+              const end = range.end.line - 1;
+              const matchLineIndex = match.line - 1;
+
+              if (start < matchLineIndex) {
+                const beforeLines = lines.slice(start, matchLineIndex);
+                grepMatch.before = beforeLines.map(l => {
+                  const truncatedLine = truncateLine(l, output.max_line_length);
+                  if (truncatedLine !== l) linesTruncated++;
+                  return truncatedLine;
+                });
+                totalTokens += estimateTokens(grepMatch.before.join('\n'));
+              }
+
+              if (end > matchLineIndex) {
+                const afterLines = lines.slice(matchLineIndex + 1, end + 1);
+                grepMatch.after = afterLines.map(l => {
+                  const truncatedLine = truncateLine(l, output.max_line_length);
+                  if (truncatedLine !== l) linesTruncated++;
+                  return truncatedLine;
+                });
+                totalTokens += estimateTokens(grepMatch.after.join('\n'));
+              }
+            }
+          } catch {
+            // Fall back to ripgrep context if tree-sitter fails
+            if (match.contextBefore) {
+              grepMatch.before = match.contextBefore.map(l => {
+                const truncatedLine = truncateLine(l, output.max_line_length);
+                if (truncatedLine !== l) linesTruncated++;
+                return truncatedLine;
               });
               totalTokens += estimateTokens(grepMatch.before.join('\n'));
             }
-
-            if (end > matchLineIndex) {
-              const afterLines = lines.slice(matchLineIndex + 1, end + 1);
-              grepMatch.after = afterLines.map(l => {
-                const truncated = truncateLine(l, output.max_line_length);
-                if (truncated !== l) linesTruncated++;
-                return truncated;
+            if (match.contextAfter) {
+              grepMatch.after = match.contextAfter.map(l => {
+                const truncatedLine = truncateLine(l, output.max_line_length);
+                if (truncatedLine !== l) linesTruncated++;
+                return truncatedLine;
               });
               totalTokens += estimateTokens(grepMatch.after.join('\n'));
             }
           }
-        } catch {
-          // Fall back to ripgrep context if tree-sitter fails
+        } else {
+          // Use ripgrep context for line/block or no expand_to
           if (match.contextBefore) {
             grepMatch.before = match.contextBefore.map(l => {
-              const truncated = truncateLine(l, output.max_line_length);
-              if (truncated !== l) linesTruncated++;
-              return truncated;
+              const truncatedLine = truncateLine(l, output.max_line_length);
+              if (truncatedLine !== l) linesTruncated++;
+              return truncatedLine;
             });
             totalTokens += estimateTokens(grepMatch.before.join('\n'));
           }
           if (match.contextAfter) {
             grepMatch.after = match.contextAfter.map(l => {
-              const truncated = truncateLine(l, output.max_line_length);
-              if (truncated !== l) linesTruncated++;
-              return truncated;
+              const truncatedLine = truncateLine(l, output.max_line_length);
+              if (truncatedLine !== l) linesTruncated++;
+              return truncatedLine;
             });
             totalTokens += estimateTokens(grepMatch.after.join('\n'));
           }
         }
-      } else {
-        // Use ripgrep context for line/block or no expand_to
-        if (match.contextBefore) {
-          grepMatch.before = match.contextBefore.map(l => {
-            const truncated = truncateLine(l, output.max_line_length);
-            if (truncated !== l) linesTruncated++;
-            return truncated;
-          });
-          totalTokens += estimateTokens(grepMatch.before.join('\n'));
-        }
-        if (match.contextAfter) {
-          grepMatch.after = match.contextAfter.map(l => {
-            const truncated = truncateLine(l, output.max_line_length);
-            if (truncated !== l) linesTruncated++;
-            return truncated;
-          });
-          totalTokens += estimateTokens(grepMatch.after.join('\n'));
-        }
       }
-    }
 
-    fileResult.matches!.push(grepMatch);
+      fileResult.matches!.push(grepMatch);
+      includedMatches++;
+    }
   }
 
-  const files = Array.from(fileMap.values());
-
-  // Build result based on output mode
   const result: GrepResult = {
+    files,
+    file_count: trueFileCount,
+    match_count: trueMatchCount,
     truncated,
   };
-
-  switch (output.mode) {
-    case 'count_only':
-      result.file_count = files.length;
-      result.match_count = totalMatches;
-      break;
-    case 'files_only':
-      result.files = files.map(r => ({ file: r.file, match_count: r.match_count }));
-      result.file_count = files.length;
-      result.match_count = totalMatches;
-      break;
-    default:
-      result.files = files;
-      result.file_count = files.length;
-      result.match_count = totalMatches;
+  if (truncated) {
+    result.effective_caps = effectiveCaps;
   }
 
   // Add truncation info if lines were truncated
@@ -323,7 +414,7 @@ async function transformRipgrepResult(
   }
 
   // Include token count for cumulative tracking
-  // Content-level tracking for matches/context; fall back to structure estimate for count/files modes
+  // Content-level tracking for matches/context; fall back to structure estimate for other modes
   result.tokens_used = totalTokens > 0 ? totalTokens : estimateTokens(JSON.stringify(result));
 
   return result;
@@ -333,7 +424,7 @@ async function executeQuery(
   query: GrepQuery,
   output: GrepOutput,
   workDir: string
-): Promise<GrepResultData> {
+): Promise<GrepResult> {
   // Warn about deprecated parameters
   if (output.max_files !== undefined && output.max_results === undefined) {
     warnDeprecatedParam('output.max_files', 'output.max_results', 'precision_grep');
@@ -375,7 +466,7 @@ async function executeQuery(
   // Resolve pattern (support base64-encoded patterns)
   const patternStr = resolveStringField(query as unknown as Record<string, unknown>, 'pattern', {
     allowFile: true,
-    basePath: process.cwd(),
+    basePath: workDir,
     required: true,
     fieldName: 'pattern'
   });
@@ -401,17 +492,25 @@ async function executeQuery(
       hidden: query.include_hidden ?? true,
     });
 
-    const negationReturn = {
+    // Honest truncation: the file list is capped by max_results while
+    // file_count reports the true number of files without the pattern.
+    const negationTruncated =
+      negationResult.files.length < negationResult.total_files_without_match;
+
+    const negationReturn: GrepResult = {
       files: negationResult.files.map(f => ({
         file: f.file,
         match_count: 0,
       })),
       file_count: negationResult.total_files_without_match,
       match_count: 0,
-      truncated: false,
+      truncated: negationTruncated,
       negation: negationResult,
       tokens_used: estimateTokens(JSON.stringify({ files: negationResult.files, negation: negationResult })),
     };
+    if (negationTruncated) {
+      negationReturn.effective_caps = { max_results: maxFiles };
+    }
     return negationReturn;
   }
 
@@ -481,6 +580,9 @@ async function executeQuery(
     ...((query.include_hidden ?? true) === false ? ['**/.*', '.*'] : []),
   ];
 
+  // NOTE: no per-file maxCount is passed to ripgrep. All caps are applied
+  // post-parse in transformRipgrepResult so that file_count/match_count stay
+  // TRUE counts (a per-file --max-count would silently leak into totals).
   const ripgrepOptions: import('../core/ripgrep.js').RipgrepSearchOptions = {
     pattern: patternStr,
     path: searchPath,
@@ -492,7 +594,6 @@ async function executeQuery(
     includeBinary: query.include_binary,
     contextBefore,
     contextAfter,
-    maxCount: maxMatchesPerFile,
     maxColumns: output.max_line_length,
     hidden: query.include_hidden ?? true,
   };
@@ -501,7 +602,12 @@ async function executeQuery(
   const ripgrepResult = await ripgrepCore.search(ripgrepOptions);
 
   // Transform RipgrepSearchResult to GrepResult format
-  return transformRipgrepResult(ripgrepResult, output, workDir, maxFiles, maxTotalMatches, maxTokens);
+  return transformRipgrepResult(ripgrepResult, output, workDir, {
+    maxFiles,
+    maxPerItem: maxMatchesPerFile,
+    maxTotalMatches,
+    maxTokens,
+  });
 }
 
 // === Main Handler ===
@@ -511,9 +617,14 @@ export const handlePrecisionGrep: ToolHandler = async (args: unknown) => {
   const rawInput = args as PrecisionGrepInput;
   const input = { ...rawInput, queries: ensureArray(rawInput.queries) ?? parseJsonField(rawInput.queries) } as PrecisionGrepInput;
   const outputMode = parseOutputMode(args, "precision_grep");
-  const workDir = process.cwd();
 
   try {
+    // Resolve the base directory for relative query paths.
+    // Default remains process.cwd(); an explicit base_path is validated first.
+    const workDir = input.base_path
+      ? await validateDirectoryPath(input.base_path, process.cwd())
+      : process.cwd();
+
     // Validate input
     if (!input.queries || !Array.isArray(input.queries) || input.queries.length === 0) {
       return toCallToolResult(createErrorResult(formatMissingParamError('precision_grep', 'queries', 'array of search queries'), { output_mode: outputMode, execution_ms: getElapsed() }));
@@ -570,7 +681,7 @@ export const handlePrecisionGrep: ToolHandler = async (args: unknown) => {
       // Resolve pattern once at the top of the loop for reuse
       const patternStr = resolveStringField(query as unknown as Record<string, unknown>, 'pattern', {
         allowFile: true,
-        basePath: process.cwd(),
+        basePath: workDir,
         required: true,
         fieldName: 'pattern'
       });

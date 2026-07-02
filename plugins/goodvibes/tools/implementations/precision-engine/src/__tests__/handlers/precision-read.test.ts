@@ -3,8 +3,32 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 import { handlePrecisionRead } from '../../handlers/precision-read.js';
+import { FileStateCache } from '../../state/file-cache.js';
 import { createTestFile, createTestFiles, expectSuccess, expectError, SAMPLE_TS_CODE } from '../test-utils.js';
+
+interface ReadEntry {
+  exists: boolean;
+  content?: string;
+  lines?: string[];
+  line_count?: number;
+  truncated?: boolean;
+  probe?: boolean;
+  cache_hit?: boolean;
+  cache?: {
+    status: string;
+    unchanged_since_last_read?: boolean;
+    hash?: string;
+    read_count?: number;
+  };
+}
+
+interface ReadData {
+  files: Record<string, ReadEntry>;
+  summary: Record<string, unknown>;
+}
 
 describe('precision_read handler', () => {
   describe('input validation', () => {
@@ -641,6 +665,249 @@ describe('precision_read handler', () => {
       const data = expectSuccess<TruncatableData>(result).data!;
       expect(data.files['small-outline.ts'].truncated).toBeUndefined();
       expect(data.summary.truncated).toBe(false);
+    });
+  });
+
+  describe('base_path parameter', () => {
+    it('resolves relative paths against base_path', async () => {
+      await createTestFile('sub/base-target.ts', 'base path content');
+      const result = await handlePrecisionRead({
+        files: ['base-target.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+        base_path: path.join(process.cwd(), 'sub'),
+      });
+      const data = expectSuccess<ReadData>(result).data!;
+      expect(data.files['base-target.ts'].exists).toBe(true);
+      expect(data.files['base-target.ts'].content).toContain('base path content');
+    });
+
+    it('returns an error for a nonexistent base_path', async () => {
+      const result = await handlePrecisionRead({
+        files: ['whatever.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+        base_path: path.join(process.cwd(), 'does-not-exist-dir'),
+      });
+      expectError(result);
+    });
+  });
+
+  describe('same-path batch entries (field issue 3)', () => {
+    beforeEach(async () => {
+      FileStateCache.resetInstance();
+      await createTestFile('dup.ts', 'line 1\nline 2\nline 3\nline 4\nline 5\nline 6');
+    });
+
+    it('returns both ranges when one file is requested twice with different ranges', async () => {
+      const result = await handlePrecisionRead({
+        files: [
+          { path: 'dup.ts', extract: 'lines', range: { start: 1, end: 2 } },
+          { path: 'dup.ts', extract: 'lines', range: { start: 4, end: 5 } },
+        ],
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+      const data = expectSuccess<ReadData>(result).data!;
+      const keys = Object.keys(data.files);
+      expect(keys).toHaveLength(2);
+      const allLines = keys.map((k) => data.files[k].lines);
+      expect(allLines).toContainEqual(['line 1', 'line 2']);
+      expect(allLines).toContainEqual(['line 4', 'line 5']);
+      expect(data.summary.files_read).toBe(2);
+    });
+
+    it('keeps the plain path key for unique entries', async () => {
+      const result = await handlePrecisionRead({
+        files: [{ path: 'dup.ts', extract: 'lines', range: { start: 1, end: 2 } }],
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+      const data = expectSuccess<ReadData>(result).data!;
+      expect(Object.keys(data.files)).toEqual(['dup.ts']);
+    });
+  });
+
+  describe('file cache rebuild (v2): content always served, probe opt-in', () => {
+    beforeEach(() => {
+      FileStateCache.resetInstance();
+    });
+
+    it('returns content for a first-in-session read of a file another tool wrote', async () => {
+      const fullPath = await createTestFile('written.ts', 'written by another process');
+      // Simulate a write/edit having registered the file in the server-global cache
+      const realPath = await fs.realpath(fullPath);
+      FileStateCache.getInstance().update(realPath, 'written by another process', 'precision_write');
+      const result = await handlePrecisionRead({
+        files: ['written.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+      const data = expectSuccess<ReadData>(result).data!;
+      expect(data.files['written.ts'].content).toContain('written by another process');
+    });
+
+    it('serves a range read of a previously-read file without force', async () => {
+      await createTestFile('cached-range.ts', 'line 1\nline 2\nline 3\nline 4');
+      await handlePrecisionRead({
+        files: ['cached-range.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+      const result = await handlePrecisionRead({
+        files: [{ path: 'cached-range.ts', extract: 'lines', range: { start: 2, end: 3 } }],
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+      const data = expectSuccess<ReadData>(result).data!;
+      const entry = data.files['cached-range.ts'];
+      expect(entry.lines).toEqual(['line 2', 'line 3']);
+      expect(entry.cache_hit).toBe(true);
+      expect(entry.cache?.status).toBe('unchanged');
+      expect(entry.cache?.unchanged_since_last_read).toBe(true);
+      expect(entry.cache?.hash).toBeDefined();
+    });
+
+    it('probe returns freshness metadata with no content', async () => {
+      await createTestFile('probe.ts', 'alpha\nbeta');
+      await handlePrecisionRead({
+        files: ['probe.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+      const result = await handlePrecisionRead({
+        files: [{ path: 'probe.ts', probe: true }],
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+      const data = expectSuccess<ReadData>(result).data!;
+      const entry = data.files['probe.ts'];
+      expect(entry.content).toBeUndefined();
+      expect(entry.lines).toBeUndefined();
+      expect(entry.probe).toBe(true);
+      expect(entry.cache_hit).toBe(true);
+      expect(entry.cache?.status).toBe('unchanged');
+      expect(entry.cache?.unchanged_since_last_read).toBe(true);
+      expect(entry.cache?.hash).toBeDefined();
+      expect(entry.line_count).toBe(2);
+    });
+
+    it('probe on an unread file reports status new with no content', async () => {
+      await createTestFile('probe-new.ts', 'first sight');
+      const result = await handlePrecisionRead({
+        files: [{ path: 'probe-new.ts', probe: true }],
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+      const data = expectSuccess<ReadData>(result).data!;
+      const entry = data.files['probe-new.ts'];
+      expect(entry.content).toBeUndefined();
+      expect(entry.probe).toBe(true);
+      expect(entry.cache?.status).toBe('new');
+      expect(entry.cache?.hash).toBeDefined();
+    });
+
+    it('probe detects external modification', async () => {
+      const fullPath = await createTestFile('probe-mod.ts', 'v1');
+      await handlePrecisionRead({
+        files: ['probe-mod.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+      await fs.writeFile(fullPath, 'v2 changed', 'utf-8');
+      const result = await handlePrecisionRead({
+        files: [{ path: 'probe-mod.ts', probe: true }],
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+      const data = expectSuccess<ReadData>(result).data!;
+      const entry = data.files['probe-mod.ts'];
+      expect(entry.content).toBeUndefined();
+      expect(entry.cache?.status).toBe('modified');
+    });
+
+    it('never reports tokens_saved', async () => {
+      await createTestFile('no-credit.ts', 'no self crediting');
+      await handlePrecisionRead({
+        files: ['no-credit.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+      const result = await handlePrecisionRead({
+        files: ['no-credit.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+      const parsed = expectSuccess<ReadData>(result);
+      expect(JSON.stringify(parsed)).not.toContain('tokens_saved');
+      expect(parsed.data!.files['no-credit.ts'].content).toBeDefined();
+    });
+
+    it('force bypasses cache metadata but still returns content', async () => {
+      await createTestFile('force.ts', 'force content');
+      await handlePrecisionRead({
+        files: ['force.ts'],
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+      const result = await handlePrecisionRead({
+        files: [{ path: 'force.ts', force: true }],
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+      const data = expectSuccess<ReadData>(result).data!;
+      expect(data.files['force.ts'].content).toContain('force content');
+      expect(data.files['force.ts'].cache).toBeUndefined();
+      expect(data.files['force.ts'].cache_hit).toBeUndefined();
+    });
+  });
+
+  describe('extract lines honors include_line_numbers', () => {
+    beforeEach(async () => {
+      FileStateCache.resetInstance();
+      await createTestFile('numbered.ts', 'alpha\nbeta\ngamma');
+    });
+
+    it('numbers lines when enabled, using the range start line', async () => {
+      const result = await handlePrecisionRead({
+        files: [{ path: 'numbered.ts', extract: 'lines', range: { start: 2, end: 3 } }],
+        extract: 'content',
+        output: { mode: 'standard', include_line_numbers: true },
+      });
+      const data = expectSuccess<ReadData>(result).data!;
+      expect(data.files['numbered.ts'].lines).toEqual(['    2 | beta', '    3 | gamma']);
+    });
+
+    it('returns raw lines when disabled (default)', async () => {
+      const result = await handlePrecisionRead({
+        files: [{ path: 'numbered.ts', extract: 'lines' }],
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+      const data = expectSuccess<ReadData>(result).data!;
+      expect(data.files['numbered.ts'].lines).toEqual(['alpha', 'beta', 'gamma']);
+    });
+  });
+
+  describe('size gate UTF-8 safety', () => {
+    it('does not split multi-byte characters or return a partial final line', async () => {
+      FileStateCache.resetInstance();
+      const line = 'é'.repeat(1000); // 2000 bytes per line (2-byte chars)
+      const lineCount = 300; // > 512KB total, triggers the pre-read size gate
+      await createTestFile('big-utf8.txt', Array.from({ length: lineCount }, () => line).join('\n'));
+      const result = await handlePrecisionRead({
+        files: ['big-utf8.txt'],
+        extract: 'content',
+        output: { mode: 'standard' },
+      });
+      const data = expectSuccess<ReadData>(result).data!;
+      const entry = data.files['big-utf8.txt'];
+      expect(entry.truncated).toBe(true);
+      expect(entry.content).not.toContain('�');
+      expect(entry.lines!.length).toBeGreaterThan(0);
+      for (const l of entry.lines!) {
+        expect(l).toBe(line);
+      }
     });
   });
 });

@@ -38,7 +38,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'paths_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files.every((f: string) => f.endsWith('.ts'))).toBe(true);
     });
 
@@ -48,7 +48,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'paths_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files.some((f: string) => f.includes('src'))).toBe(true);
     });
 
@@ -58,7 +58,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'paths_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files.some((f: string) => f.endsWith('.ts'))).toBe(true);
       expect(parsed.data.files.some((f: string) => f.endsWith('.js'))).toBe(true);
     });
@@ -75,7 +75,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'count_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.summary).toBeDefined();
       expect(parsed.data.summary.total_files).toBe(1);
       expect(parsed.data.files).toBeUndefined();
@@ -87,7 +87,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'paths_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files).toBeInstanceOf(Array);
       expect(typeof parsed.data.files[0]).toBe('string');
     });
@@ -98,7 +98,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'with_stats' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files[0]).toHaveProperty('path');
       expect(parsed.data.files[0]).toHaveProperty('size');
       expect(parsed.data.files[0]).toHaveProperty('modified');
@@ -112,7 +112,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'with_preview', preview_lines: 3 },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files[0]).toHaveProperty('preview');
       expect(parsed.data.files[0].preview).toHaveLength(3);
     });
@@ -134,7 +134,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'with_stats' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files.every((f: { size: number }) => f.size >= 50)).toBe(true);
     });
 
@@ -145,7 +145,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'with_stats' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files.every((f: { size: number }) => f.size <= 10)).toBe(true);
     });
 
@@ -156,7 +156,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'paths_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files).toContain('empty.ts');
     });
 
@@ -172,7 +172,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'paths_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files).toContain('match.ts');
       expect(parsed.data.files).not.toContain('nomatch.ts');
     });
@@ -190,7 +190,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'paths_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files).toContain('with-export.ts');
       expect(parsed.data.files).toContain('also-export.ts');
       expect(parsed.data.files).not.toContain('without-export.ts');
@@ -213,7 +213,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'paths_only', sort_by: 'name', sort_order: 'asc' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files[0]).toBe('a.ts');
     });
 
@@ -223,7 +223,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'paths_only', sort_by: 'name', sort_order: 'desc' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files[0]).toBe('c.ts');
     });
 
@@ -233,7 +233,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'with_stats', sort_by: 'size', sort_order: 'asc' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files[0].size).toBeLessThanOrEqual(parsed.data.files[1].size);
     });
   });
@@ -254,7 +254,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'paths_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files).not.toContain('exclude.ts');
     });
 
@@ -264,7 +264,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'paths_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files.some((f: string) => f.includes('node_modules'))).toBe(false);
     });
 
@@ -276,7 +276,7 @@ describe('precision_glob handler', () => {
       });
 
       // This depends on implementation - may still exclude node_modules
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
     });
   });
 
@@ -295,7 +295,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'paths_only', max_files: 10 },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files.length).toBeLessThanOrEqual(10);
       expect(parsed.data.summary.truncated).toBe(true);
     });
@@ -308,7 +308,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'count_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.summary.total_files).toBe(0);
     });
 
@@ -320,7 +320,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'paths_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files.some((f: string) => f.includes('[1]'))).toBe(true);
     });
   });
@@ -339,7 +339,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'paths_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.summary.total_files).toBe(2);
     });
 
@@ -349,7 +349,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'with_stats' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.summary.total_size).toBeGreaterThan(0);
     });
   });
@@ -365,7 +365,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'paths_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.tokens_used).toBeGreaterThan(0);
     });
 
@@ -375,7 +375,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'paths_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.meta.execution_ms).toBeGreaterThanOrEqual(0);
     });
   });
@@ -395,7 +395,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'paths_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files.length).toBeGreaterThan(0);
       expect(parsed.data.files.every((f: string) => f.endsWith('.ts'))).toBe(true);
     });
@@ -413,7 +413,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'paths_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files.some((f: string) => f.endsWith('.ts'))).toBe(true);
       expect(parsed.data.files.some((f: string) => f.endsWith('.js'))).toBe(true);
     });
@@ -426,7 +426,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'paths_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files.some((f: string) => f.endsWith('.ts'))).toBe(true);
     });
 
@@ -439,7 +439,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'paths_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files.some((f: string) => f.includes('[chars]'))).toBe(true);
     });
   });
@@ -456,7 +456,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'paths_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files.length).toBeGreaterThan(0);
     });
 
@@ -467,7 +467,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'paths_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files.length).toBeGreaterThan(0);
     });
 
@@ -479,7 +479,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'paths_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files.length).toBeGreaterThan(0);
     });
   });
@@ -499,7 +499,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'paths_only', max_results: 5 },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files.length).toBeLessThanOrEqual(5);
     });
 
@@ -509,7 +509,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'paths_only', max_files: 5 },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files.length).toBeLessThanOrEqual(5);
     });
 
@@ -519,7 +519,7 @@ describe('precision_glob handler', () => {
         output: { mode: 'paths_only', max_results: 5, max_files: 15 },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files.length).toBeLessThanOrEqual(5);
     });
   });
@@ -539,7 +539,7 @@ describe('precision_glob handler', () => {
         output: { format: 'count_only' } as any,
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.summary).toBeDefined();
       expect(parsed.data.summary.total_files).toBeGreaterThan(0);
       expect(parsed.data.files).toBeUndefined(); // count_only does not return file paths
@@ -551,7 +551,7 @@ describe('precision_glob handler', () => {
         output: { format: 'with_stats' } as any,
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files).toBeInstanceOf(Array);
       expect(parsed.data.files[0]).toHaveProperty('path');
       expect(parsed.data.files[0]).toHaveProperty('size');
@@ -566,7 +566,7 @@ describe('precision_glob handler', () => {
         output: { format: 'with_preview', preview_lines: 3 } as any,
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.files).toBeInstanceOf(Array);
       expect(parsed.data.files[0]).toHaveProperty('preview');
       expect(parsed.data.files[0].preview).toHaveLength(3);
@@ -578,12 +578,140 @@ describe('precision_glob handler', () => {
         output: { mode: 'paths_only', format: 'with_stats' } as any,
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       // mode: 'paths_only' should win, so files should be strings, not objects with stats
       expect(parsed.data.files).toBeInstanceOf(Array);
       expect(typeof parsed.data.files[0]).toBe('string');
       // Should NOT have stats properties if paths_only is used
       expect(parsed.data.files[0]).not.toHaveProperty('size');
+    });
+  });
+
+  describe('gitignore and default excludes', () => {
+    it('excludes nested node_modules at defaults (un-anchored DEFAULT_EXCLUDES)', async () => {
+      await createTestFiles({
+        'keep.ts': 'content',
+        'packages/app/node_modules/dep/index.ts': 'content',
+      });
+
+      const result = await handlePrecisionGlob({
+        patterns: ['**/*.ts'],
+        output: { mode: 'paths_only' },
+      });
+
+      const parsed = expectSuccess<any>(result);
+      expect(parsed.data.files.some((f: string) => f.includes('node_modules'))).toBe(false);
+      expect(parsed.data.files).toContain('keep.ts');
+    });
+
+    it('excludes nested node_modules at defaults with the fast-glob backend', async () => {
+      await createTestFiles({
+        'keep.ts': 'content',
+        'packages/app/node_modules/dep/index.ts': 'content',
+      });
+
+      const result = await handlePrecisionGlob({
+        patterns: ['**/*.ts'],
+        backend: 'fast-glob',
+        output: { mode: 'paths_only' },
+      });
+
+      const parsed = expectSuccess<any>(result);
+      expect(parsed.data.files.some((f: string) => f.includes('node_modules'))).toBe(false);
+      expect(parsed.data.files).toContain('keep.ts');
+    });
+
+    it('respects root .gitignore with the fast-glob backend', async () => {
+      await createTestFiles({
+        'keep.ts': 'content',
+        'ignored-dir/skip.ts': 'content',
+        'deep/output.generated.ts': 'content',
+      });
+      await createTestFile('.gitignore', 'ignored-dir/\n*.generated.ts\n');
+
+      const result = await handlePrecisionGlob({
+        patterns: ['**/*.ts'],
+        backend: 'fast-glob',
+        output: { mode: 'paths_only' },
+      });
+
+      const parsed = expectSuccess<any>(result);
+      expect(parsed.data.files).toContain('keep.ts');
+      expect(parsed.data.files.some((f: string) => f.includes('ignored-dir'))).toBe(false);
+      expect(parsed.data.files.some((f: string) => f.includes('generated'))).toBe(false);
+    });
+
+    it('respects root .gitignore with the ripgrep backend outside a git repo', async () => {
+      await createTestFiles({
+        'keep.ts': 'content',
+        'ignored-dir/skip.ts': 'content',
+      });
+      await createTestFile('.gitignore', 'ignored-dir/\n');
+
+      const result = await handlePrecisionGlob({
+        patterns: ['**/*.ts'],
+        backend: 'ripgrep',
+        output: { mode: 'paths_only' },
+      });
+
+      const parsed = expectSuccess<any>(result);
+      expect(parsed.data.files).toContain('keep.ts');
+      expect(parsed.data.files.some((f: string) => f.includes('ignored-dir'))).toBe(false);
+    });
+
+    it('includes gitignored files when respect_gitignore is false', async () => {
+      await createTestFiles({
+        'keep.ts': 'content',
+        'ignored-dir/skip.ts': 'content',
+      });
+      await createTestFile('.gitignore', 'ignored-dir/\n');
+
+      const result = await handlePrecisionGlob({
+        patterns: ['**/*.ts'],
+        backend: 'fast-glob',
+        respect_gitignore: false,
+        output: { mode: 'paths_only' },
+      });
+
+      const parsed = expectSuccess<any>(result);
+      expect(parsed.data.files).toContain('ignored-dir/skip.ts');
+    });
+  });
+
+  describe('honest truncation summary', () => {
+    it('reports true total_files and effective_caps when max_results trims', async () => {
+      const manyFiles: Record<string, string> = {};
+      for (let i = 0; i < 30; i++) {
+        manyFiles[`file${String(i).padStart(2, '0')}.ts`] = 'content';
+      }
+      await createTestFiles(manyFiles);
+
+      const result = await handlePrecisionGlob({
+        patterns: ['*.ts'],
+        output: { mode: 'paths_only', max_results: 10 },
+      });
+
+      const parsed = expectSuccess<any>(result);
+      expect(parsed.data.files.length).toBe(10);
+      expect(parsed.data.summary.total_files).toBe(30);
+      expect(parsed.data.summary.returned).toBe(10);
+      expect(parsed.data.summary.truncated).toBe(true);
+      expect(parsed.data.summary.effective_caps).toEqual({ max_results: 10 });
+    });
+
+    it('does not set truncated when results are complete', async () => {
+      await createTestFiles({ 'a.ts': 'x', 'b.ts': 'y' });
+
+      const result = await handlePrecisionGlob({
+        patterns: ['*.ts'],
+        output: { mode: 'paths_only' },
+      });
+
+      const parsed = expectSuccess<any>(result);
+      expect(parsed.data.summary.total_files).toBe(2);
+      expect(parsed.data.summary.returned).toBe(2);
+      expect(parsed.data.summary.truncated).toBe(false);
+      expect(parsed.data.summary.effective_caps).toBeUndefined();
     });
   });
 });

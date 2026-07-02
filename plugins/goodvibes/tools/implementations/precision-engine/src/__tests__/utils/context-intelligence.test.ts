@@ -33,7 +33,7 @@ describe('context-intelligence', () => {
   });
 
   const mockGoodvibesDir = (projectRoot: string) => {
-    mockStat.mockImplementation(async (path: string) => {
+    mockStat.mockImplementation(async (path) => {
       if (typeof path === 'string' && path.includes('.goodvibes')) {
         return { isDirectory: () => true } as any;
       }
@@ -42,7 +42,7 @@ describe('context-intelligence', () => {
   };
 
   const mockMemoryFiles = (decisions: any[] = [], patterns: any[] = [], failures: any[] = []) => {
-    mockReadFile.mockImplementation(async (path: string) => {
+    mockReadFile.mockImplementation(async (path) => {
       const pathStr = typeof path === 'string' ? path : path.toString();
       if (pathStr.endsWith('decisions.json')) {
         return JSON.stringify({ entries: decisions });
@@ -406,7 +406,7 @@ describe('context-intelligence', () => {
 
     describe('project root discovery', () => {
       it('finds .goodvibes directory by walking up', async () => {
-        mockStat.mockImplementation(async (path: string) => {
+        mockStat.mockImplementation(async (path) => {
           const pathStr = typeof path === 'string' ? path : path.toString();
           if (pathStr === '/project/.goodvibes') {
             return { isDirectory: () => true } as any;
@@ -439,7 +439,7 @@ describe('context-intelligence', () => {
     describe('memory file loading', () => {
       it('handles missing decisions.json gracefully', async () => {
         mockGoodvibesDir('/project');
-        mockReadFile.mockImplementation(async (path: string) => {
+        mockReadFile.mockImplementation(async (path) => {
           const pathStr = typeof path === 'string' ? path : path.toString();
           if (pathStr.endsWith('decisions.json')) {
             throw new Error('ENOENT');
@@ -455,7 +455,7 @@ describe('context-intelligence', () => {
 
       it('handles missing patterns.json gracefully', async () => {
         mockGoodvibesDir('/project');
-        mockReadFile.mockImplementation(async (path: string) => {
+        mockReadFile.mockImplementation(async (path) => {
           const pathStr = typeof path === 'string' ? path : path.toString();
           if (pathStr.endsWith('patterns.json')) {
             throw new Error('ENOENT');
@@ -471,7 +471,7 @@ describe('context-intelligence', () => {
 
       it('handles missing failures.json gracefully', async () => {
         mockGoodvibesDir('/project');
-        mockReadFile.mockImplementation(async (path: string) => {
+        mockReadFile.mockImplementation(async (path) => {
           const pathStr = typeof path === 'string' ? path : path.toString();
           if (pathStr.endsWith('failures.json')) {
             throw new Error('ENOENT');
@@ -560,7 +560,7 @@ describe('context-intelligence', () => {
 
       it('invalidates cache when memoryDir changes', async () => {
         // First project
-        mockStat.mockImplementation(async (path: string) => {
+        mockStat.mockImplementation(async (path) => {
           const pathStr = typeof path === 'string' ? path : path.toString();
           if (pathStr.includes('/project1/.goodvibes')) {
             return { isDirectory: () => true } as any;

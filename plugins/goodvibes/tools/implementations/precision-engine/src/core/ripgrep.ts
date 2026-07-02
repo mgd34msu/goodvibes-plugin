@@ -32,6 +32,12 @@ export interface RipgrepSearchResult {
   matches: RipgrepMatch[];
   fileCount: number;
   matchCount: number;
+  /**
+   * Best-effort per-file cap signal: true only when a maxCount was requested
+   * AND at least one file emitted maxCount matched lines (that file MAY have
+   * had further matches suppressed by ripgrep). Always false when no maxCount
+   * was passed — searches without a per-file cap are never truncated here.
+   */
   truncated: boolean;
 }
 
@@ -41,6 +47,8 @@ export interface RipgrepListOptions {
   path: string;
   exclude?: string[];
   hidden?: boolean;
+  /** Pass --no-ignore so ripgrep skips .gitignore/.ignore handling. */
+  noIgnore?: boolean;
 }
 
 interface RipgrepJsonMatch {
@@ -123,6 +131,10 @@ export class RipgrepCore {
 
     if (options.hidden) {
       args.push('--hidden');
+    }
+
+    if (options.noIgnore) {
+      args.push('--no-ignore');
     }
 
     args.push(options.path);
@@ -285,11 +297,20 @@ export class RipgrepCore {
     }
     return records;
   }
+
+  /**
+   * Parse ripgrep --json output into structured matches.
+   *
+   * COUNTING: one RipgrepMatch is produced per matched LINE (one ripgrep
+   * 'match' record), not per regex submatch. This keeps matchCount consistent
+   * with ripgrep's own line-based counting (--max-count, -c) and with the cap
+   * layer in precision_grep, which also counts lines. The first submatch on a
+   * line provides column/matchText.
+   */
   private parseSearchResults(output: string, options: RipgrepSearchOptions): RipgrepSearchResult {
     const matches: RipgrepMatch[] = [];
     const files = new Set<string>();
-    let totalMatches = 0;
-    let truncated = false;
+    const perFileCounts = new Map<string, number>();
 
     // Parse all JSON records first
     const records = this.parseJsonOutput(output);
@@ -305,6 +326,7 @@ export class RipgrepCore {
         const lineContent = data.lines.text.replace(/\n$/, '');
 
         files.add(file);
+        perFileCounts.set(file, (perFileCounts.get(file) ?? 0) + 1);
 
         // Look backward for contextBefore
         const contextBefore: string[] = [];
@@ -332,31 +354,37 @@ export class RipgrepCore {
           }
         }
 
-        // Extract match text from submatches
-        for (const submatch of data.submatches) {
-          const match: RipgrepMatch = {
-            file,
-            line: lineNumber,
-            column: submatch.start + 1, // ripgrep uses 0-based columns
-            matchText: submatch.match.text,
-            lineContent,
-          };
+        // One match per matched line; first submatch supplies position/text.
+        const firstSubmatch = data.submatches[0];
+        const match: RipgrepMatch = {
+          file,
+          line: lineNumber,
+          column: firstSubmatch ? firstSubmatch.start + 1 : 1, // ripgrep uses 0-based columns
+          matchText: firstSubmatch ? firstSubmatch.match.text : '',
+          lineContent,
+        };
 
-          if (contextBefore.length > 0) {
-            match.contextBefore = contextBefore;
-          }
-
-          if (contextAfter.length > 0) {
-            match.contextAfter = contextAfter;
-          }
-
-          matches.push(match);
-          totalMatches++;
+        if (contextBefore.length > 0) {
+          match.contextBefore = contextBefore;
         }
-      } else if (record.type === 'summary') {
-        // Check if results were truncated by max-count
-        if (options.maxCount && totalMatches >= options.maxCount) {
+
+        if (contextAfter.length > 0) {
+          match.contextAfter = contextAfter;
+        }
+
+        matches.push(match);
+      }
+    }
+
+    // Best-effort per-file cap signal (see RipgrepSearchResult.truncated).
+    // Never derived from totals: comparing the TOTAL match count against the
+    // PER-FILE cap fired falsely on nearly every search.
+    let truncated = false;
+    if (options.maxCount !== undefined && options.maxCount > 0) {
+      for (const count of perFileCounts.values()) {
+        if (count >= options.maxCount) {
           truncated = true;
+          break;
         }
       }
     }
@@ -364,7 +392,7 @@ export class RipgrepCore {
     return {
       matches,
       fileCount: files.size,
-      matchCount: totalMatches,
+      matchCount: matches.length,
       truncated,
     };
   }

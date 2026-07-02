@@ -34,7 +34,7 @@ export interface CacheEntry {
   limit?: number; // if partial read
   readCount: number; // total reads this session
   tokenCost: number; // estimated tokens per full read
-  tokensSaved: number; // accumulated tokens saved
+  tokensSaved: number; // legacy accumulator — self-crediting removed in v2 rebuild (stays 0)
   version: number; // OCC version counter
   lastModifiedBy?: string; // agent ID or tool name
   lastModifiedAt?: number;
@@ -47,8 +47,8 @@ export interface CacheEntry {
 export interface CacheLookupResult {
   status: 'miss' | 'unchanged' | 'modified';
   entry: CacheEntry;
-  // For 'unchanged':
-  tokensSaved?: number;
+  // For 'unchanged' | 'modified': timestamp of the previous read (before this lookup)
+  previousReadAt?: number;
   // For 'modified':
   diff?: string;
   changes?: {
@@ -308,21 +308,20 @@ export class FileStateCache {
 
     // Update read tracking
     const oldBytes = existing.contentBytes;
+    const previousReadAt = existing.lastReadAt;
     existing.lastReadAt = now;
     existing.readCount++;
     existing.lastExtract = extract;
     existing.offset = offset;
     existing.limit = limit;
 
-    // Content unchanged - cache hit!
+    // Content unchanged - cache hit. No token self-crediting: the handler
+    // always delivers the requested content; the cache only adds freshness.
     if (contentHash === existing.contentHash) {
-      const tokensSaved = existing.tokenCost;
-      existing.tokensSaved += tokensSaved;
-
       return {
         status: 'unchanged',
         entry: existing,
-        tokensSaved,
+        previousReadAt,
       };
     }
 
@@ -363,6 +362,7 @@ export class FileStateCache {
     return {
       status: 'modified',
       entry: existing,
+      previousReadAt,
       diff,
       changes,
       modifiedBy: existing.lastModifiedBy,

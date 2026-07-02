@@ -328,7 +328,7 @@ async function fetchSingleUrl(
     const contentType = response.headers.get('content-type') ?? undefined;
 
     // Detect PDF responses and handle binary parsing
-    if (isPdfResponse(contentType) || extract === 'pdf') {
+    if (isPdfResponse(contentType ?? null) || extract === 'pdf') {
       const buffer = Buffer.from(await response.arrayBuffer());
       const pdfResult = await parsePdfBuffer(buffer);
 

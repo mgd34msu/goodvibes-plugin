@@ -3,6 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
+import * as path from 'path';
 import { handlePrecisionGrep } from '../../handlers/precision-grep.js';
 import { createTestFile, createTestFiles, expectSuccess, expectError } from '../test-utils.js';
 
@@ -43,7 +44,7 @@ describe('precision_grep handler', () => {
         output: { mode: 'count_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.queries['find-foo'].match_count).toBeGreaterThan(0);
     });
 
@@ -53,7 +54,7 @@ describe('precision_grep handler', () => {
         output: { mode: 'files_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.queries['find-foo'].file_count).toBe(3);
     });
 
@@ -63,7 +64,7 @@ describe('precision_grep handler', () => {
         output: { mode: 'files_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.queries['find-foo'].file_count).toBe(2);
     });
   });
@@ -79,7 +80,7 @@ describe('precision_grep handler', () => {
         output: { mode: 'count_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.queries['q1'].file_count).toBe(1);
       expect(parsed.data.queries['q1'].match_count).toBe(2);
       expect(parsed.data.queries['q1'].files).toBeUndefined();
@@ -91,7 +92,7 @@ describe('precision_grep handler', () => {
         output: { mode: 'files_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.queries['q1'].files).toBeDefined();
       expect(parsed.data.queries['q1'].files[0].file).toBeDefined();
       expect(parsed.data.queries['q1'].files[0].match_count).toBeDefined();
@@ -103,7 +104,7 @@ describe('precision_grep handler', () => {
         output: { mode: 'locations' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.queries['q1'].files[0].matches).toBeDefined();
       expect(parsed.data.queries['q1'].files[0].matches[0].line).toBeDefined();
       expect(parsed.data.queries['q1'].files[0].matches[0].column).toBeDefined();
@@ -115,7 +116,7 @@ describe('precision_grep handler', () => {
         output: { mode: 'matches' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.queries['q1'].files[0].matches[0].content).toBeDefined();
       expect(parsed.data.queries['q1'].files[0].matches[0].highlight).toBeDefined();
     });
@@ -130,7 +131,7 @@ describe('precision_grep handler', () => {
         },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       const match = parsed.data.queries['q1'].files[0].matches[0];
       // Line 1 with foo has no before context (at file start)
       // Line 3 with foo should have before/after
@@ -163,7 +164,7 @@ class MyClass {
         },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       const match = parsed.data.queries['q1'].files[0].matches[0];
       expect(match.before || match.after).toBeDefined();
     });
@@ -177,7 +178,7 @@ class MyClass {
         },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       const match = parsed.data.queries['q1'].files[0].matches[0];
       // Should include function signature in context
     });
@@ -199,7 +200,7 @@ class MyClass {
         output: { mode: 'count_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.queries['q1'].match_count).toBe(1);
       expect(parsed.data.queries['q2'].match_count).toBe(1);
     });
@@ -214,7 +215,7 @@ class MyClass {
         output: { mode: 'count_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.summary.total_matches).toBe(2);
     });
   });
@@ -236,9 +237,12 @@ class MyClass {
         output: { mode: 'files_only', max_files: 2 },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.queries['q1'].files.length).toBeLessThanOrEqual(2);
       expect(parsed.data.queries['q1'].truncated).toBe(true);
+      expect(parsed.data.queries['q1'].effective_caps.max_results).toBe(2);
+      // file_count reports the TRUE number of matching files
+      expect(parsed.data.queries['q1'].file_count).toBe(3);
     });
 
     it('should respect max_matches_per_file limit', async () => {
@@ -247,25 +251,37 @@ class MyClass {
         output: { mode: 'locations', max_matches_per_file: 5 },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       const firstFile = parsed.data.queries['q1'].files[0];
       expect(firstFile.matches.length).toBeLessThanOrEqual(5);
+      // per-file match_count reports the TRUE matched-line count
+      expect(firstFile.match_count).toBe(50);
     });
 
-    it('should respect max_total_matches limit', async () => {
+    it('should respect max_total_matches limit on returned matches', async () => {
       const result = await handlePrecisionGrep({
         queries: [{ id: 'q1', pattern: 'match' }],
-        output: { mode: 'locations', max_total_matches: 10 },
+        output: { mode: 'locations', max_total_matches: 10, max_per_item: 50 },
       });
 
-      const parsed = expectSuccess(result);
-      expect(parsed.data.queries['q1'].match_count).toBeLessThanOrEqual(10);
+      const parsed = expectSuccess<any>(result);
+      const query = parsed.data.queries['q1'];
+      const includedMatches = query.files.reduce(
+        (sum: number, f: { matches?: unknown[] }) => sum + (f.matches?.length ?? 0),
+        0
+      );
+      expect(includedMatches).toBeLessThanOrEqual(10);
+      // Counts stay TRUE totals; only the returned matches are capped
+      expect(query.match_count).toBe(150);
+      expect(query.truncated).toBe(true);
+      expect(query.effective_caps.max_total_matches).toBe(10);
     });
   });
 
   describe('match options', () => {
     beforeEach(async () => {
-      await createTestFile('code.ts', 'FOO foo Foo foobar');
+      // One candidate per line: match_count counts matched LINES
+      await createTestFile('code.ts', 'FOO\nfoo\nFoo\nfoobar');
     });
 
     it('should support case insensitive search', async () => {
@@ -274,7 +290,7 @@ class MyClass {
         output: { mode: 'count_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.queries['q1'].match_count).toBe(4);
     });
 
@@ -284,7 +300,7 @@ class MyClass {
         output: { mode: 'count_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.queries['q1'].match_count).toBe(2); // foo, foobar
     });
 
@@ -294,8 +310,22 @@ class MyClass {
         output: { mode: 'count_only' },
       });
 
-      const parsed = expectSuccess(result);
-      expect(parsed.data.queries['q1'].match_count).toBeLessThan(4);
+      const parsed = expectSuccess<any>(result);
+      expect(parsed.data.queries['q1'].match_count).toBe(1); // only the bare 'foo' line
+    });
+
+    it('should count matched lines, not submatches', async () => {
+      // Three occurrences on a single line still count as ONE matched line,
+      // consistent with how the caps count.
+      await createTestFile('multi.ts', 'foo foo foo\nplain line');
+
+      const result = await handlePrecisionGrep({
+        queries: [{ id: 'q1', pattern: 'foo', path: 'multi.ts' }],
+        output: { mode: 'count_only' },
+      });
+
+      const parsed = expectSuccess<any>(result);
+      expect(parsed.data.queries['q1'].match_count).toBe(1);
     });
   });
 
@@ -308,7 +338,7 @@ class MyClass {
         output: { mode: 'count_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.queries['q1'].match_count).toBe(0);
     });
 
@@ -320,7 +350,7 @@ class MyClass {
         output: { mode: 'count_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.queries['q1'].match_count).toBe(0);
     });
 
@@ -334,7 +364,7 @@ class MyClass {
       });
 
       // Binary files should be skipped by default
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
     });
 
     it('should include binary files when requested', async () => {
@@ -343,7 +373,7 @@ class MyClass {
         output: { mode: 'count_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
     });
   });
 
@@ -361,7 +391,7 @@ class MyClass {
         output: { mode: 'count_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.summary.total_files).toBe(2);
     });
 
@@ -371,7 +401,7 @@ class MyClass {
         output: { mode: 'count_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.summary.total_matches).toBe(2);
     });
 
@@ -384,8 +414,237 @@ class MyClass {
         output: { mode: 'locations', max_total_matches: 5 },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.summary.truncated).toBe(true);
+    });
+  });
+
+  describe('cap separation and truthful truncation', () => {
+    it('count_only returns the true count above the per-file cap default', async () => {
+      // 50 matched lines in one file — far above the old per-file cap of 10
+      // that used to leak into count_only totals.
+      const content = Array(50).fill('needle').join('\n');
+      await createTestFile('big.ts', content);
+
+      const result = await handlePrecisionGrep({
+        queries: [{ id: 'q1', pattern: 'needle' }],
+        output: { mode: 'count_only' },
+      });
+
+      const parsed = expectSuccess<any>(result);
+      expect(parsed.data.queries['q1'].match_count).toBe(50);
+      expect(parsed.data.queries['q1'].file_count).toBe(1);
+      expect(parsed.data.queries['q1'].truncated).toBe(false);
+      expect(parsed.data.queries['q1'].effective_caps).toBeUndefined();
+    });
+
+    it('count_only counts above max_total_matches too', async () => {
+      // 3 files x 50 lines = 150 true matches (> default max_total_matches 100)
+      const content = Array(50).fill('needle').join('\n');
+      await createTestFiles({ 'a.ts': content, 'b.ts': content, 'c.ts': content });
+
+      const result = await handlePrecisionGrep({
+        queries: [{ id: 'q1', pattern: 'needle' }],
+        output: { mode: 'count_only' },
+      });
+
+      const parsed = expectSuccess<any>(result);
+      expect(parsed.data.queries['q1'].match_count).toBe(150);
+      expect(parsed.data.queries['q1'].truncated).toBe(false);
+    });
+
+    it('files_only file list is not ceilinged by max_total_matches', async () => {
+      // 15 files x 20 matches = 300 true matches. The old implementation
+      // stopped the file list at ~10 files when total matches hit 100.
+      const files: Record<string, string> = {};
+      for (let i = 0; i < 15; i++) {
+        files[`f${String(i).padStart(2, '0')}.ts`] = Array(20).fill('needle').join('\n');
+      }
+      await createTestFiles(files);
+
+      const result = await handlePrecisionGrep({
+        queries: [{ id: 'q1', pattern: 'needle' }],
+        output: { mode: 'files_only' },
+      });
+
+      const parsed = expectSuccess<any>(result);
+      const query = parsed.data.queries['q1'];
+      expect(query.files.length).toBe(15);
+      expect(query.file_count).toBe(15);
+      expect(query.match_count).toBe(300);
+      expect(query.truncated).toBe(false);
+      expect(query.effective_caps).toBeUndefined();
+      // per-file counts are true counts, not capped at the old default of 10
+      expect(query.files[0].match_count).toBe(20);
+    });
+
+    it('files_only reaches max_results and reports effective_caps when trimmed', async () => {
+      const files: Record<string, string> = {};
+      for (let i = 0; i < 15; i++) {
+        files[`f${String(i).padStart(2, '0')}.ts`] = Array(20).fill('needle').join('\n');
+      }
+      await createTestFiles(files);
+
+      const result = await handlePrecisionGrep({
+        queries: [{ id: 'q1', pattern: 'needle' }],
+        output: { mode: 'files_only', max_results: 12 },
+      });
+
+      const parsed = expectSuccess<any>(result);
+      const query = parsed.data.queries['q1'];
+      expect(query.files.length).toBe(12);
+      expect(query.file_count).toBe(15);
+      expect(query.truncated).toBe(true);
+      expect(query.effective_caps).toEqual({ max_results: 12 });
+    });
+
+    it('deterministic file list membership across identical runs', async () => {
+      const files: Record<string, string> = {};
+      for (let i = 0; i < 12; i++) {
+        files[`f${String(i).padStart(2, '0')}.ts`] = Array(15).fill('needle').join('\n');
+      }
+      await createTestFiles(files);
+
+      const run = async () => {
+        const result = await handlePrecisionGrep({
+          queries: [{ id: 'q1', pattern: 'needle' }],
+          output: { mode: 'files_only', max_results: 6 },
+        });
+        const parsed = expectSuccess<any>(result);
+        return parsed.data.queries['q1'].files
+          .map((f: { file: string }) => f.file)
+          .sort();
+      };
+
+      const first = await run();
+      const second = await run();
+      const third = await run();
+      expect(second).toEqual(first);
+      expect(third).toEqual(first);
+    });
+
+    it('truncated stays false when results are complete', async () => {
+      await createTestFile('one.ts', 'needle here\nplain line');
+
+      const result = await handlePrecisionGrep({
+        queries: [{ id: 'q1', pattern: 'needle' }],
+        output: { mode: 'matches' },
+      });
+
+      const parsed = expectSuccess<any>(result);
+      expect(parsed.data.queries['q1'].truncated).toBe(false);
+      expect(parsed.data.queries['q1'].effective_caps).toBeUndefined();
+      expect(parsed.data.summary.truncated).toBe(false);
+    });
+
+    it('max_per_item trims per-file matches and reports effective_caps', async () => {
+      const content = Array(50).fill('needle').join('\n');
+      await createTestFile('big.ts', content);
+
+      const result = await handlePrecisionGrep({
+        queries: [{ id: 'q1', pattern: 'needle' }],
+        output: { mode: 'locations', max_per_item: 5 },
+      });
+
+      const parsed = expectSuccess<any>(result);
+      const query = parsed.data.queries['q1'];
+      expect(query.files[0].matches.length).toBe(5);
+      expect(query.files[0].match_count).toBe(50);
+      expect(query.match_count).toBe(50);
+      expect(query.truncated).toBe(true);
+      expect(query.effective_caps.max_per_item).toBe(5);
+    });
+
+    it('negate reports honest truncation with effective_caps', async () => {
+      await createTestFiles({
+        'hit.ts': 'needle',
+        'a.ts': 'plain',
+        'b.ts': 'plain',
+        'c.ts': 'plain',
+        'd.ts': 'plain',
+        'e.ts': 'plain',
+      });
+
+      const result = await handlePrecisionGrep({
+        queries: [{ id: 'q1', pattern: 'needle', negate: true }],
+        output: { mode: 'files_only', max_results: 2 },
+      });
+
+      const parsed = expectSuccess<any>(result);
+      const query = parsed.data.queries['q1'];
+      expect(query.files.length).toBe(2);
+      expect(query.file_count).toBe(5);
+      expect(query.truncated).toBe(true);
+      expect(query.effective_caps).toEqual({ max_results: 2 });
+    });
+
+    it('negate reports truncated false when the list is complete', async () => {
+      await createTestFiles({
+        'hit.ts': 'needle',
+        'a.ts': 'plain',
+        'b.ts': 'plain',
+      });
+
+      const result = await handlePrecisionGrep({
+        queries: [{ id: 'q1', pattern: 'needle', negate: true }],
+        output: { mode: 'files_only' },
+      });
+
+      const parsed = expectSuccess<any>(result);
+      const query = parsed.data.queries['q1'];
+      expect(query.files.length).toBe(2);
+      expect(query.file_count).toBe(2);
+      expect(query.truncated).toBe(false);
+      expect(query.effective_caps).toBeUndefined();
+    });
+  });
+
+  describe('base_path', () => {
+    it('resolves relative query paths against base_path', async () => {
+      await createTestFiles({
+        'decoy.ts': 'needle here',
+        'sub/inner/hit.ts': 'needle here',
+      });
+
+      const result = await handlePrecisionGrep({
+        queries: [{ id: 'q1', pattern: 'needle' }],
+        base_path: path.join(process.cwd(), 'sub'),
+        output: { mode: 'files_only' },
+      });
+
+      const parsed = expectSuccess<any>(result);
+      const files = parsed.data.queries['q1'].files.map((f: { file: string }) => f.file);
+      expect(files).toContain('inner/hit.ts');
+      expect(files.some((f: string) => f.includes('decoy'))).toBe(false);
+    });
+
+    it('resolves a relative query path against base_path', async () => {
+      await createTestFiles({
+        'inner/decoy.ts': 'needle here',
+        'sub/inner/hit.ts': 'needle here',
+      });
+
+      const result = await handlePrecisionGrep({
+        queries: [{ id: 'q1', pattern: 'needle', path: 'inner' }],
+        base_path: path.join(process.cwd(), 'sub'),
+        output: { mode: 'files_only' },
+      });
+
+      const parsed = expectSuccess<any>(result);
+      const files = parsed.data.queries['q1'].files.map((f: { file: string }) => f.file);
+      expect(files).toContain('inner/hit.ts');
+      expect(files.some((f: string) => f.includes('decoy'))).toBe(false);
+    });
+
+    it('errors on an invalid base_path', async () => {
+      const result = await handlePrecisionGrep({
+        queries: [{ id: 'q1', pattern: 'needle' }],
+        base_path: path.join(process.cwd(), 'does-not-exist'),
+        output: { mode: 'files_only' },
+      });
+
+      const parsed = expectError(result);
+      expect(parsed.error).toContain('does not exist');
     });
   });
 
@@ -400,7 +659,7 @@ class MyClass {
         output: { mode: 'count_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.data.tokens_used).toBeGreaterThan(0);
     });
 
@@ -410,7 +669,7 @@ class MyClass {
         output: { mode: 'count_only' },
       });
 
-      const parsed = expectSuccess(result);
+      const parsed = expectSuccess<any>(result);
       expect(parsed.meta.execution_ms).toBeGreaterThanOrEqual(0);
     });
   });

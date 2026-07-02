@@ -72,6 +72,8 @@ interface EditSpec {
   find_base64?: string;
   replace: string;
   replace_base64?: string;
+  find_file?: string;
+  replace_file?: string;
   occurrence?: OccurrenceType;
   hints?: EditHints;
 }
@@ -568,6 +570,13 @@ async function astGrepMatch(
   try {
     // Detect language from file path or use override
     const lang = language || detectLanguage(filePath);
+    if (!lang) {
+      // detectLanguage returned null (unsupported extension). Previously this
+      // threw inside toLangEnum and was swallowed by the catch below, which
+      // returns an empty match list; return the same result directly.
+      console.error("ast-grep matching skipped (unsupported language):", filePath);
+      return [];
+    }
     const langEnum = await toLangEnum(lang);
     const { parse } = await loadAstGrepNapi();
 

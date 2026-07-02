@@ -10,7 +10,15 @@ import type { PrecisionResult } from '../types.js';
 /**
  * Parse the JSON result from a CallToolResult.
  */
-export function parseResult<T = unknown>(result: CallToolResult): PrecisionResult<T> {
+/**
+ * Loose payload type used as the default generic for parsed tool results.
+ * Tool responses are free-form JSON envelopes and tests probe arbitrary
+ * paths; supply an explicit T for stricter checking.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type LooseToolData = any;
+
+export function parseResult<T = LooseToolData>(result: CallToolResult): PrecisionResult<T> {
   const content = result.content?.[0];
   if (!content || content.type !== 'text') {
     throw new Error('Expected text content in result');
@@ -21,7 +29,7 @@ export function parseResult<T = unknown>(result: CallToolResult): PrecisionResul
 /**
  * Assert that a result is successful.
  */
-export function expectSuccess<T>(result: CallToolResult): PrecisionResult<T> {
+export function expectSuccess<T = LooseToolData>(result: CallToolResult): PrecisionResult<T> {
   const parsed = parseResult<T>(result);
   if (!parsed.success) {
     throw new Error(`Expected success but got error: ${parsed.error}`);

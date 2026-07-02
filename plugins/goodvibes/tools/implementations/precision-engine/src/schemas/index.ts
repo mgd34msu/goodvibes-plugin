@@ -284,6 +284,9 @@ export const discoverSchema: Tool = {
  * - output.max_results (or max_files): defaults to 100
  * - output.max_per_item (or max_matches_per_file): defaults to 10
  * - output.max_total_matches: defaults to 100
+ * Caps trim OUTPUT only: file_count/match_count are always true counts and
+ * count_only results are never capped. When output is trimmed, truncated=true
+ * and effective_caps names the caps that bit.
  */
 export const precisionGrepSchema: Tool = {
   name: 'precision_grep',
@@ -324,14 +327,15 @@ export const precisionGrepSchema: Tool = {
           expand_to: { type: 'string', enum: ['line', 'block', 'function', 'class'], description: 'Expand match context to enclosing scope' },
           max_results: { type: 'integer', minimum: 1, description: 'Max files to return (alias for max_files, default: 100)' },
           max_files: { type: 'integer', minimum: 1, description: 'DEPRECATED: Use max_results. Max files to return (default: 100)' },
-          max_per_item: { type: 'integer', minimum: 1, description: 'Cap per file (alias for max_matches_per_file, default: 10)' },
-          max_matches_per_file: { type: 'integer', minimum: 1, description: 'DEPRECATED: Use max_per_item. Cap per file (default: 10)' },
-          max_total_matches: { type: 'integer', minimum: 1, description: 'Total cap (default: 100)' },
+          max_per_item: { type: 'integer', minimum: 1, description: 'Max matches returned per file (alias for max_matches_per_file, default: 10). Never caps count_only/files_only counting.' },
+          max_matches_per_file: { type: 'integer', minimum: 1, description: 'DEPRECATED: Use max_per_item. Max matches returned per file (default: 10)' },
+          max_total_matches: { type: 'integer', minimum: 1, description: 'Max total matches returned across files (default: 100). Does not cap the files_only list or count_only totals.' },
           max_tokens: { type: 'integer', minimum: 1, description: 'Hard token cap' },
           max_line_length: { type: 'integer', minimum: 1, description: 'Truncate lines longer than this (default: no truncation)' },
           offset: { type: 'integer', minimum: 0, description: 'Skip first N file results for pagination (default: 0)' },
         },
       },
+      base_path: { type: 'string', description: 'Base directory to resolve relative query paths against (validated; defaults to process.cwd())' },
       parallel: { type: 'boolean', default: true, description: 'Run queries in parallel (default: true)' },
       relationships: { type: 'boolean', description: 'Show cross-file import/export relationships for matched symbols' },
       preview_replace: { type: 'string', description: 'Preview replacement string — shows what find-and-replace would look like without writing' },
@@ -379,7 +383,8 @@ export const precisionReadSchema: Tool = {
               },
             },
             pages: { type: 'string', description: "Page range for PDF files (e.g., '1-5', '3', '10-20'). Max 20 pages per request." },
-            force: { type: 'boolean', default: false, description: 'Bypass size gate and cache. Read full file regardless of size.' },
+            force: { type: 'boolean', default: false, description: 'Bypass cache metadata and the size gate. Content is always returned; force just skips freshness reporting.' },
+            probe: { type: 'boolean', default: false, description: 'Freshness probe: return metadata (hash, changed status, line count) with NO content.' },
           },
           required: ['path'],
         },
@@ -397,7 +402,9 @@ export const precisionReadSchema: Tool = {
         },
       },
       pages: { type: 'string', description: "Page range for PDF files (e.g., '1-5', '3', '10-20'). Max 20 pages per request." },
-      force: { type: 'boolean', default: false, description: 'Bypass size gate and cache. Read full file regardless of size.' },
+      force: { type: 'boolean', default: false, description: 'Bypass cache metadata and the size gate for all files. Content is always returned; force just skips freshness reporting.' },
+      probe: { type: 'boolean', default: false, description: 'Freshness probe for all files: return metadata (hash, changed status, line count) with NO content.' },
+      base_path: { type: 'string', description: 'Base directory to resolve relative file paths against (validated; defaults to process.cwd())' },
       output: {
         type: 'object',
         properties: {
@@ -456,7 +463,7 @@ export const precisionGlobSchema: Tool = {
           max_tokens: { type: 'integer', minimum: 1, description: 'Hard token cap for output' },
         },
       },
-      respect_gitignore: { type: 'boolean', default: true, description: 'Respect .gitignore rules' },
+      respect_gitignore: { type: 'boolean', default: true, description: 'Respect .gitignore rules (root-level .gitignore is parsed for both backends; nested .gitignore files are honored only by the ripgrep backend inside git repos)' },
       follow_symlinks: { type: 'boolean', default: false, description: 'Follow symbolic links' },
       include_hidden: { type: 'boolean', default: true, description: 'Include hidden/dot files and directories (e.g. .git, .config). Enabled by default for widest search coverage.' },
       backend: { type: 'string', enum: ['auto', 'fast-glob', 'ripgrep'], description: 'File listing backend' },

@@ -531,7 +531,7 @@ export const handleDiscover: ToolHandler = async (args: unknown) => {
   const getElapsed = startTimer();
   const rawInput = args as DiscoverInput;
   const input = { ...rawInput, queries: ensureArray(rawInput.queries) ?? parseJsonField(rawInput.queries) } as DiscoverInput;
-  const outputMode: DiscoverOutputMode = (input.output_mode as DiscoverOutputMode) || (TOOL_SPECIFIC_DEFAULTS.discover?.output_mode as DiscoverOutputMode) || 'files_only';
+  const outputMode: DiscoverOutputMode = (input.output_mode as DiscoverOutputMode) || (TOOL_SPECIFIC_DEFAULTS.discover?.verbosity as DiscoverOutputMode) || 'files_only';
   const projectRoot = process.cwd();
 
   try {

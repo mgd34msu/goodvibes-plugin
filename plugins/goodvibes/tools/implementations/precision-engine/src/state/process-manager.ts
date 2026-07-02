@@ -253,7 +253,7 @@ export class ProcessManager {
   spawn(
     command: string,
     args: string[],
-    options: { cwd?: string; env?: Record<string, string>; stdinFile?: string } = {}
+    options: { cwd?: string; env?: NodeJS.ProcessEnv; stdinFile?: string } = {}
   ): BgStartResult {
     this.enforceProcessLimit();
 

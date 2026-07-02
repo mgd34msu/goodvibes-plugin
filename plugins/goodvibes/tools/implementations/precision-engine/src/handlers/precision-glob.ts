@@ -5,7 +5,12 @@
  * Features:
  * - Output modes: count_only, paths_only, with_stats, with_preview
  * - Filters: min_size, max_size, modified_after/before, has_content, is_empty
- * - gitignore support
+ * - gitignore support: the ROOT-LEVEL .gitignore of base_path is parsed and
+ *   applied on BOTH backends (nested .gitignore files are additionally honored
+ *   by the ripgrep backend inside git repositories); respect_gitignore: false
+ *   passes --no-ignore to ripgrep
+ * - Honest summary: total_files is the TRUE match count; `returned` is what
+ *   the response contains; `truncated`/`effective_caps` reflect actual trimming
  * - Symlink handling
  * - Preview content
  */
@@ -22,6 +27,7 @@ import { DEFAULT_EXCLUDES } from '../config.js';
 import { warnDeprecatedParam } from '../utils/deprecation.js';
 import { RipgrepCore } from '../core/ripgrep.js';
 import { validateDirectoryPath } from '../utils/path-validation.js';
+import { loadGitignorePatterns } from '../utils/gitignore.js';
 
 
 // === Ripgrep Instance ===
@@ -86,6 +92,12 @@ interface GlobFileResult {
   preview?: string[];
 }
 
+/** Names exactly the caps that actually trimmed output. */
+interface GlobEffectiveCaps {
+  max_results?: number;
+  max_tokens?: number;
+}
+
 // === Helper Functions ===
 
 function estimateTokens(str: string): number {
@@ -97,7 +109,8 @@ async function listFilesWithRipgrep(
   patterns: string[],
   exclude: string[],
   timeoutMs?: number,
-  hidden?: boolean
+  hidden?: boolean,
+  noIgnore?: boolean
 ): Promise<string[]> {
   return ripgrepCore.listFiles({
     path: basePath,
@@ -105,6 +118,7 @@ async function listFilesWithRipgrep(
     exclude,
     timeoutMs: timeoutMs ?? 30000,
     hidden,
+    noIgnore,
   });
 }
 
@@ -213,9 +227,18 @@ export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
     const followSymlinks = input.follow_symlinks ?? false;
     const includeHidden = input.include_hidden ?? true;
 
+    // Parse the ROOT-LEVEL .gitignore of workDir into exclude patterns so that
+    // BOTH backends actually respect it (fast-glob has no native gitignore
+    // support; ripgrep only honors .gitignore inside git repositories).
+    // Depth: root-level only — see utils/gitignore.ts.
+    const gitignoreExcludes = respectGitignore
+      ? await loadGitignorePatterns(workDir)
+      : [];
+
     // Build exclude patterns
     const excludePatterns = [
       ...(respectGitignore ? DEFAULT_EXCLUDES : []),
+      ...gitignoreExcludes,
       ...(input.exclude ?? []),
       // Exclude hidden files/dirs when include_hidden is explicitly false
       ...(includeHidden === false ? ['**/.*', '.*'] : []),
@@ -229,10 +252,17 @@ export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
       (backend === 'auto' && !input.filters?.has_content && !hasSubdirPatterns);
 
     // Find files using selected backend
-    let rawFiles: Array<string | { path: string; stats: Stats | null }>;
+    let rawFiles: Array<string | { path: string; stats?: Stats | null }>;
     if (useRipgrep) {
       try {
-        const filePaths = await listFilesWithRipgrep(workDir, patterns, excludePatterns, undefined, includeHidden);
+        const filePaths = await listFilesWithRipgrep(
+          workDir,
+          patterns,
+          excludePatterns,
+          undefined,
+          includeHidden,
+          !respectGitignore
+        );
         rawFiles = filePaths.map(path => ({ path, stats: null }));
       } catch (error) {
         // Fallback to fast-glob on error
@@ -350,8 +380,11 @@ export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
       return sortOrder === 'desc' ? -comparison : comparison;
     });
 
+    // TRUE total of files matched (after filters, before any output capping).
+    const totalMatched = files.length;
+
     // Limit files
-    const truncated = files.length > maxFiles;
+    const truncatedByMaxFiles = files.length > maxFiles;
     files = files.slice(0, maxFiles);
 
     // Build results
@@ -389,12 +422,34 @@ export const handlePrecisionGlob: ToolHandler = async (args: unknown) => {
       results.push(result);
     }
 
-    // Build output based on mode
-    const summary = {
-      total_files: results.length,
+    // Truthful truncation: set only when output was actually trimmed, and
+    // name the caps that bit in effective_caps.
+    const truncatedByTokens = results.length < files.length;
+    const truncated = truncatedByMaxFiles || truncatedByTokens;
+    const effectiveCaps: GlobEffectiveCaps = {};
+    if (truncatedByMaxFiles) effectiveCaps.max_results = maxFiles;
+    if (truncatedByTokens && output.max_tokens !== undefined) {
+      effectiveCaps.max_tokens = output.max_tokens;
+    }
+
+    // Build output based on mode.
+    // total_files is the TRUE number of matching files; `returned` is how many
+    // are actually included in this response.
+    const summary: {
+      total_files: number;
+      returned: number;
+      total_size: number;
+      truncated: boolean;
+      effective_caps?: GlobEffectiveCaps;
+    } = {
+      total_files: totalMatched,
+      returned: results.length,
       total_size: totalSize,
       truncated,
     };
+    if (truncated) {
+      summary.effective_caps = effectiveCaps;
+    }
 
     let data: unknown;
     switch (output.mode) {

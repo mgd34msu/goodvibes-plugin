@@ -39,20 +39,25 @@ export const TEXT_EXTENSIONS = new Set([
 
 /**
  * Default patterns to exclude from searches.
+ *
+ * Patterns are un-anchored (prefixed with `**\/`) so they match at ANY depth,
+ * not just at the search root. Root-anchored patterns (e.g. 'node_modules/**')
+ * let nested directories such as 'packages/app/node_modules' leak through
+ * both the fast-glob and ripgrep backends.
  */
 export const DEFAULT_EXCLUDES = [
-  'node_modules/**',
-  '.git/**',
-  'dist/**',
-  'build/**',
-  'coverage/**',
-  '.next/**',
-  '.nuxt/**',
-  '.cache/**',
-  '*.lock',
-  'package-lock.json',
-  'yarn.lock',
-  'pnpm-lock.yaml',
+  '**/node_modules/**',
+  '**/.git/**',
+  '**/dist/**',
+  '**/build/**',
+  '**/coverage/**',
+  '**/.next/**',
+  '**/.nuxt/**',
+  '**/.cache/**',
+  '**/*.lock',
+  '**/package-lock.json',
+  '**/yarn.lock',
+  '**/pnpm-lock.yaml',
 ];
 
 /**

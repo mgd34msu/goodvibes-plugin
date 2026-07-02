@@ -16,7 +16,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import type * as fsPromisesType from 'fs/promises';
+import type { Stats as FsStats } from "fs";
 
 // Mock fs/promises BEFORE importing KVState
 vi.mock('fs/promises');
@@ -326,7 +326,7 @@ describe('persist', () => {
 describe('load', () => {
   it('merges persisted data into in-memory state', async () => {
     vi.mocked(fsPromises.readFile).mockResolvedValue(
-      makeSessionJson({ 'session.task': 'resumed-task' }) as unknown as Buffer
+      makeSessionJson({ 'session.task': 'resumed-task' }) as unknown as Awaited<ReturnType<typeof fsPromises.readFile>>
     );
 
     const state = KVState.getInstance();
@@ -344,7 +344,7 @@ describe('load', () => {
 
   it('loads only once (subsequent operations skip disk)', async () => {
     vi.mocked(fsPromises.readFile).mockResolvedValue(
-      makeSessionJson({ counter: 1 }) as unknown as Buffer
+      makeSessionJson({ counter: 1 }) as unknown as Awaited<ReturnType<typeof fsPromises.readFile>>
     );
 
     const state = KVState.getInstance();
@@ -356,7 +356,7 @@ describe('load', () => {
   });
 
   it('handles corrupt JSON gracefully (uses in-memory defaults)', async () => {
-    vi.mocked(fsPromises.readFile).mockResolvedValue('{ corrupt json' as unknown as Buffer);
+    vi.mocked(fsPromises.readFile).mockResolvedValue('{ corrupt json' as unknown as Awaited<ReturnType<typeof fsPromises.readFile>>);
     const state = KVState.getInstance();
     const result = await state.list();
     expect(result['id']).toBeDefined();
@@ -371,7 +371,7 @@ describe('load', () => {
 describe('load (explicit)', () => {
   it('re-reads from disk and merges data into in-memory state', async () => {
     vi.mocked(fsPromises.readFile).mockResolvedValue(
-      makeSessionJson({ 'session.resumed': 'yes' }) as unknown as Buffer
+      makeSessionJson({ 'session.resumed': 'yes' }) as unknown as Awaited<ReturnType<typeof fsPromises.readFile>>
     );
 
     const state = KVState.getInstance();
@@ -388,7 +388,7 @@ describe('load (explicit)', () => {
 
     // Disk returns data with overridden protected keys
     vi.mocked(fsPromises.readFile).mockResolvedValue(
-      makeSessionJson({ id: 'overridden', started_at: '1970-01-01T00:00:00.000Z', 'extra.key': 'value' }) as unknown as Buffer
+      makeSessionJson({ id: 'overridden', started_at: '1970-01-01T00:00:00.000Z', 'extra.key': 'value' }) as unknown as Awaited<ReturnType<typeof fsPromises.readFile>>
     );
 
     await state.load();
@@ -401,8 +401,8 @@ describe('load (explicit)', () => {
 
   it('can be called multiple times and correctly merges latest disk data', async () => {
     vi.mocked(fsPromises.readFile)
-      .mockResolvedValueOnce(makeSessionJson({ counter: 1 }) as unknown as Buffer)
-      .mockResolvedValueOnce(makeSessionJson({ counter: 2 }) as unknown as Buffer);
+      .mockResolvedValueOnce(makeSessionJson({ counter: 1 }) as unknown as Awaited<ReturnType<typeof fsPromises.readFile>>)
+      .mockResolvedValueOnce(makeSessionJson({ counter: 2 }) as unknown as Awaited<ReturnType<typeof fsPromises.readFile>>);
 
     const state = KVState.getInstance();
     await state.load();
@@ -466,9 +466,9 @@ describe('cleanupOldSessions', () => {
       'session_ccdd3344.json',
     ] as unknown as Awaited<ReturnType<typeof fsPromises.readdir>>);
 
-    vi.mocked(fsPromises.stat as unknown as (path: string) => Promise<fsPromisesType.Stats>)
-      .mockResolvedValueOnce({ mtimeMs: 1000 } as fsPromisesType.Stats)
-      .mockResolvedValueOnce({ mtimeMs: 2000 } as fsPromisesType.Stats);
+    vi.mocked(fsPromises.stat as unknown as (path: string) => Promise<FsStats>)
+      .mockResolvedValueOnce({ mtimeMs: 1000 } as FsStats)
+      .mockResolvedValueOnce({ mtimeMs: 2000 } as FsStats);
 
     const state = KVState.getInstance();
     const deleted = await state.cleanupOldSessions(5);
@@ -485,11 +485,11 @@ describe('cleanupOldSessions', () => {
     ] as unknown as Awaited<ReturnType<typeof fsPromises.readdir>>);
 
     // Assign mtimes: 0001 = oldest, 0004 = newest
-    vi.mocked(fsPromises.stat as unknown as (path: string) => Promise<fsPromisesType.Stats>)
-      .mockResolvedValueOnce({ mtimeMs: 1000 } as fsPromisesType.Stats)
-      .mockResolvedValueOnce({ mtimeMs: 2000 } as fsPromisesType.Stats)
-      .mockResolvedValueOnce({ mtimeMs: 3000 } as fsPromisesType.Stats)
-      .mockResolvedValueOnce({ mtimeMs: 4000 } as fsPromisesType.Stats);
+    vi.mocked(fsPromises.stat as unknown as (path: string) => Promise<FsStats>)
+      .mockResolvedValueOnce({ mtimeMs: 1000 } as FsStats)
+      .mockResolvedValueOnce({ mtimeMs: 2000 } as FsStats)
+      .mockResolvedValueOnce({ mtimeMs: 3000 } as FsStats)
+      .mockResolvedValueOnce({ mtimeMs: 4000 } as FsStats);
 
     const state = KVState.getInstance();
     const deleted = await state.cleanupOldSessions(2);

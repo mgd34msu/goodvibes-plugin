@@ -22,7 +22,7 @@ import { formatMissingParamError, createErrorResult } from '../utils/errors.js';
 import Parser from 'web-tree-sitter';
 import { TreeSitterCore, OutlineNode as TSOutlineNode, SymbolInfo as TSSymbolInfo } from '../core/tree-sitter.js';
 import { isLanguageSupported } from '../core/languages.js';
-import { validateFilePath } from '../utils/path-validation.js';
+import { validateFilePath, validateDirectoryPath } from '../utils/path-validation.js';
 import { getFileSuggestions, type FileSuggestion } from '../utils/file-suggestions.js';
 import { getSlowFsThreshold, getSlowFsPrefixes, getMaxFileBytes, getMaxTokenEstimate, getPageSizeLines } from '../runtime-config.js';
 import { FileStateCache } from '../state/file-cache.js';
@@ -43,11 +43,14 @@ interface FileReadSpec {
   range?: { start: number; end: number };
   lines?: { start: number; end: number };  // @deprecated - use 'range' instead
   pages?: string; // PDF page range (e.g., "1-5", "3", "10-20")
-  force?: boolean; // Skip size gate and read entire file
+  force?: boolean; // Bypass cache metadata and the size gate; always read from disk
+  probe?: boolean; // Freshness probe: return metadata (hash, changed status) with no content
 }
 
 interface ReadOutput {
   mode: ReadOutputMode;
+  // SPEC-v2 wire name; normalized into mode by the handler
+  format?: ReadOutputMode;
   include_line_numbers?: boolean;
   include_metadata?: boolean;
   // Standardized name (preferred)
@@ -67,6 +70,9 @@ interface PrecisionReadInput {
   output_mode?: OutputMode;
   token_budget?: number;
   page?: number;
+  force?: boolean;
+  probe?: boolean;
+  base_path?: string;
 }
 
 interface SymbolInfo {
@@ -149,6 +155,12 @@ interface FileReadResult {
   suggestions?: FileSuggestion[];
   hint?: string;
   token_cost?: number;
+  /** True when served content matches the session cache (freshness hit) */
+  cache_hit?: boolean;
+  /** True for probe results (freshness metadata only, no content) */
+  probe?: boolean;
+  /** Unique key for this batch entry (disambiguates same-path entries) */
+  result_key?: string;
   context?: ContextMetadata;
   pagination?: {
     page: number;
@@ -162,14 +174,13 @@ interface FileReadResult {
     hint?: string;
   };
   cache?: {
-    status: 'unchanged' | 'modified';
+    status: 'unchanged' | 'modified' | 'new';
+    unchanged_since_last_read?: boolean;
     last_read?: string;
     read_count?: number;
-    tokens_saved?: number;
     hash?: string;
-    hint?: string;
     previous_lines?: number;
-    changes?: string;
+    changes?: { added: number; removed: number; modifiedRanges: string[] };
     diff?: string;
     modified_by?: string;
   };
@@ -459,6 +470,34 @@ function estimateTokens(str: string): number {
 }
 
 /**
+ * Decode a UTF-8 buffer that may end mid multi-byte sequence.
+ * Trims incomplete trailing bytes so no replacement character is produced.
+ */
+function decodeUtf8Prefix(buf: Buffer): string {
+  let end = buf.length;
+  let i = buf.length - 1;
+  let continuationBytes = 0;
+  // Walk back over UTF-8 continuation bytes (0b10xxxxxx), max 3
+  while (i >= 0 && (buf[i] & 0xc0) === 0x80 && continuationBytes < 3) {
+    i--;
+    continuationBytes++;
+  }
+  if (i >= 0) {
+    const lead = buf[i];
+    let seqLen = 0;
+    if ((lead & 0x80) === 0x00) seqLen = 1;
+    else if ((lead & 0xe0) === 0xc0) seqLen = 2;
+    else if ((lead & 0xf0) === 0xe0) seqLen = 3;
+    else if ((lead & 0xf8) === 0xf0) seqLen = 4;
+    // Drop the trailing sequence if it is incomplete
+    if (seqLen > 1 && continuationBytes + 1 < seqLen) {
+      end = i;
+    }
+  }
+  return buf.subarray(0, end).toString('utf-8');
+}
+
+/**
  * Split a single file's content into multiple pages based on token budget.
  * 
  * @param result - File read result to split
@@ -473,7 +512,8 @@ function paginateSingleFile(
 ): { paginatedResults: FileReadResult[]; paginationMeta: ReadPaginationMetadata } {
   // If file has no content or lines, can't paginate it
   if (!result.content && !result.lines) {
-    const cost = estimateTokens(JSON.stringify(result));
+    const { image_base64: _img0, result_key: _rk0, ...costTarget0 } = result;
+    const cost = estimateTokens(JSON.stringify(costTarget0));
     return {
       paginatedResults: [result],
       paginationMeta: {
@@ -535,8 +575,9 @@ function paginateSingleFile(
     line_count: allLines.length, // Keep total line count
   };
   
-  // Calculate token cost for the full response (not just content)
-  const { image_base64: _img, ...costTarget } = pageResult;
+  // Calculate token cost for the full response (not just content).
+  // result_key is response bookkeeping and is excluded from cost.
+  const { image_base64: _img, result_key: _rk, ...costTarget } = pageResult;
   const tokensUsed = estimateTokens(JSON.stringify(costTarget));
   pageResult.token_cost = tokensUsed;
 
@@ -579,10 +620,8 @@ function paginateByTokenBudget(
   // Special case: single file that exceeds budget should be split by content
   if (results.length === 1) {
     const result = results[0];
-    const { image_base64: _img, ...costTarget } = result;
-    const fileCost = result.size_bytes !== undefined && result.size_bytes > 0 && result.status === 'unchanged'
-      ? Math.ceil(result.size_bytes / 4)
-      : estimateTokens(JSON.stringify(costTarget));
+    const { image_base64: _img, result_key: _rk, ...costTarget } = result;
+    const fileCost = estimateTokens(JSON.stringify(costTarget));
     
     // If single file exceeds budget and has content to split, use single-file pagination
     if (fileCost > tokenBudget && (result.content || result.lines)) {
@@ -593,14 +632,9 @@ function paginateByTokenBudget(
   // Multi-file pagination: use bin-packing algorithm
   // Calculate token cost per result
   const costsPerFile: { index: number; cost: number }[] = results.map((r, i) => {
-    // Strip image_base64 before cost calculation to avoid inflating token cost
-    const { image_base64: _img, ...costTarget } = r;
-    
-    // For cached/unchanged results, use size_bytes for realistic token estimate
-    // instead of stringified metadata which is much smaller than actual content
-    const cost = r.size_bytes !== undefined && r.size_bytes > 0 && r.status === 'unchanged'
-      ? Math.ceil(r.size_bytes / 4)  // ~4 bytes per token
-      : estimateTokens(JSON.stringify(costTarget));
+    // Strip image_base64 and result_key before cost calculation
+    const { image_base64: _img, result_key: _rk, ...costTarget } = r;
+    const cost = estimateTokens(JSON.stringify(costTarget));
     
     return {
       index: i,
@@ -1046,6 +1080,41 @@ async function readSingleFile(
       return result;
     }
 
+    // Probe mode: freshness metadata only (hash, changed status) — never content.
+    // Reads the file to compare against the session cache, but returns no body.
+    if (spec.probe) {
+      const probeBuffer = await fs.readFile(validatedPath);
+      result.probe = true;
+      if (isBinaryFile(probeBuffer)) {
+        result.is_binary = true;
+        return result;
+      }
+      const probeContent = probeBuffer.toString('utf-8');
+      result.encoding = 'utf-8';
+      result.line_count = probeContent.split('\n').length;
+      const probeLookup = FileStateCache.getInstance().lookup(validatedPath, probeContent, extract);
+      result.cache_hit = probeLookup.status === 'unchanged';
+      result.cache = {
+        status: probeLookup.status === 'miss' ? 'new' : probeLookup.status,
+        unchanged_since_last_read: probeLookup.status === 'unchanged',
+        read_count: probeLookup.entry.readCount,
+        hash: probeLookup.entry.contentHash.substring(0, 8),
+      };
+      if (probeLookup.previousReadAt !== undefined) {
+        result.cache.last_read = formatTimeAgo(probeLookup.previousReadAt);
+      }
+      if (probeLookup.status === 'modified') {
+        result.cache.previous_lines = probeLookup.previousLineCount;
+        if (probeLookup.changes) {
+          result.cache.changes = probeLookup.changes;
+        }
+        if (probeLookup.modifiedBy) {
+          result.cache.modified_by = probeLookup.modifiedBy;
+        }
+      }
+      return result;
+    }
+
     // Handle PDF files early - they require special parsing and should bypass text size gate and extract mode routing
     if (isPdfFile(validatedPath)) {
       const buffer = await fs.readFile(validatedPath);
@@ -1077,15 +1146,21 @@ async function readSingleFile(
         
         const fd = await fs.open(validatedPath, 'r');
         const buf = Buffer.alloc(bytesToRead);
-        await fd.read(buf, 0, bytesToRead, 0);
+        const { bytesRead } = await fd.read(buf, 0, bytesToRead, 0);
         await fd.close();
-        
-        const partialContent = buf.toString('utf-8');
+
+        // UTF-8-safe truncation: never split a multi-byte character, and never
+        // return a partial final line (unless the entire file fit in the window).
+        const partialContent = decodeUtf8Prefix(buf.subarray(0, bytesRead));
         const allPartialLines = partialContent.split('\n');
-        const firstPageLines = allPartialLines.slice(0, pageSizeLines);
-        
+        const readWholeFile = bytesRead >= stats.size;
+        const completeLines = readWholeFile || allPartialLines.length <= 1
+          ? allPartialLines
+          : allPartialLines.slice(0, -1);
+        const firstPageLines = completeLines.slice(0, pageSizeLines);
+
         // Estimate total lines based on average bytes per line
-        const avgBytesPerLine = bytesToRead / allPartialLines.length;
+        const avgBytesPerLine = bytesRead / Math.max(allPartialLines.length, 1);
         const estimatedTotalLines = Math.ceil(stats.size / avgBytesPerLine);
         
         result.content = firstPageLines.join('\n');
@@ -1191,38 +1266,37 @@ async function readSingleFile(
     const allLines = content.split('\n');
     result.line_count = allLines.length;
 
-    // FileStateCache lookup — check if content is unchanged since last read
-    // Skip cache entirely if force is true
+    // FileStateCache bookkeeping — always record the read so the session cache
+    // stays fresh. Content is ALWAYS served from the just-read disk state; the
+    // cache only contributes freshness metadata. force bypasses that metadata.
     const cache = FileStateCache.getInstance();
-    const cacheLookup = spec.force ? { status: 'miss' as const } : cache.lookup(validatedPath, content, extract);
+    const cacheLookup = cache.lookup(validatedPath, content, extract);
 
-    if (cacheLookup.status === 'unchanged') {
-      // Return abbreviated response — file hasn't changed
-      result.content = undefined; // Don't send full content
-      result.status = 'unchanged';
-      result.line_count = cacheLookup.entry.lineCount;
-      result.size_bytes = cacheLookup.entry.byteSize;
+    if (!spec.force && cacheLookup.status === 'unchanged') {
+      // Freshness hit: the requested extract/range is still served below from
+      // the current content (identical to the cached copy) — never a stub.
+      result.cache_hit = true;
       result.cache = {
         status: 'unchanged',
-        last_read: formatTimeAgo(cacheLookup.entry.lastReadAt),
+        unchanged_since_last_read: true,
         read_count: cacheLookup.entry.readCount,
-        tokens_saved: cacheLookup.tokensSaved,
         hash: cacheLookup.entry.contentHash.substring(0, 8),
-        hint: 'Use force: true to get full content',
       };
-      return result;
+      if (cacheLookup.previousReadAt !== undefined) {
+        result.cache.last_read = formatTimeAgo(cacheLookup.previousReadAt);
+      }
     }
 
-    if (cacheLookup.status === 'modified' && !spec.force) {
+    if (!spec.force && cacheLookup.status === 'modified') {
       // File changed since last read — include diff info in metadata
       result.cache = {
         status: 'modified',
+        unchanged_since_last_read: false,
         previous_lines: cacheLookup.previousLineCount,
         changes: cacheLookup.changes,
         diff: cacheLookup.diff,
         modified_by: cacheLookup.modifiedBy,
-        tokens_saved: cacheLookup.tokensSaved ?? 0,
-        hint: 'Use force: true for full content without diff',
+        hash: cacheLookup.entry.contentHash.substring(0, 8),
       };
       // Continue with normal content return (agent gets both content and diff)
     }
@@ -1261,9 +1335,15 @@ async function readSingleFile(
         }
         break;
 
-      case 'lines':
-        result.lines = lines;
+      case 'lines': {
+        if (output.include_line_numbers) {
+          const startLine = lineRange?.start ?? 1;
+          result.lines = lines.map((line, i) => `${String(startLine + i).padStart(5)} | ${line}`);
+        } else {
+          result.lines = lines;
+        }
         break;
+      }
 
       case 'outline':
         if (isLanguageSupported(filePath)) {
@@ -1430,9 +1510,13 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
   const rawInput = args as PrecisionReadInput;
   const input = { ...rawInput, files: ensureArray(rawInput.files) ?? parseJsonField(rawInput.files) } as PrecisionReadInput;
   const outputMode = parseOutputMode(args, "precision_read");
-  const workDir = process.cwd();
 
   try {
+    // Resolve working directory: explicit base_path (validated) or process.cwd()
+    const workDir = input.base_path
+      ? await validateDirectoryPath(input.base_path, process.cwd())
+      : process.cwd();
+
     // Validate input
     if (!input.files || !Array.isArray(input.files) || input.files.length === 0) {
       return toCallToolResult(createErrorResult(formatMissingParamError('precision_read', 'files', 'array of file paths or file specs'), { output_mode: outputMode, execution_ms: getElapsed() }));
@@ -1450,11 +1534,11 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
 
     // Normalize file specs
     // If token_budget is set, force-read files to ensure we have full content for pagination
-    const forceRead = input.token_budget !== undefined && input.token_budget > 0;
+    const forceRead = (input.token_budget !== undefined && input.token_budget > 0) || input.force === true;
     const fileSpecs: FileReadSpec[] = input.files.map(f =>
       typeof f === 'string'
-        ? { path: f, pages: input.pages, force: forceRead }
-        : { pages: input.pages, force: forceRead || f.force, ...f }  // per-file force overrides
+        ? { path: f, pages: input.pages, force: forceRead, probe: input.probe }
+        : { pages: input.pages, force: forceRead || f.force, probe: input.probe, ...f }  // per-file force/probe overrides
     );
 
     // Read all files in parallel
@@ -1463,6 +1547,33 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
         readSingleFile(spec, extract, output, input.symbol_filter, input.default_range, workDir)
       )
     );
+
+    // Assign unique result keys: batch entries that repeat the same path (e.g.
+    // two different ranges of one file) must not collapse when results are
+    // keyed by path (field issue 3). Unique paths keep their plain path key.
+    const pathCounts = new Map<string, number>();
+    for (const r of results) {
+      pathCounts.set(r.path, (pathCounts.get(r.path) ?? 0) + 1);
+    }
+    const usedKeys = new Set<string>();
+    results.forEach((r, i) => {
+      let key = r.path;
+      if ((pathCounts.get(r.path) ?? 0) > 1) {
+        const spec = fileSpecs[i];
+        const entryRange = spec.range ?? spec.lines ?? input.default_range;
+        const qualifier = entryRange
+          ? `L${entryRange.start}-${entryRange.end}`
+          : (spec.extract ?? extract);
+        key = `${r.path}#${qualifier}`;
+      }
+      let uniqueKey = key;
+      let suffix = 2;
+      while (usedKeys.has(uniqueKey)) {
+        uniqueKey = `${key}#${suffix++}`;
+      }
+      usedKeys.add(uniqueKey);
+      r.result_key = uniqueKey;
+    });
 
     // Token-Budgeted Batch Pagination (Item 7)
     let paginatedResults = results;
@@ -1538,7 +1649,7 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
               if (r.suggestions !== undefined) fileObj.suggestions = r.suggestions;
               if (r.hint) fileObj.hint = r.hint;
 
-              return [r.path, fileObj];
+              return [r.result_key ?? r.path, fileObj];
             })
           ),
           summary,
@@ -1548,7 +1659,7 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
       case 'verbose':
         data = {
           files: Object.fromEntries(paginatedResults.map(r => {
-            const { image_base64, ...rest } = r;
+            const { image_base64, result_key: _resultKey, ...rest } = r;
             
             // Add cache version to response metadata for OCC tracking
             const filePath = path.isAbsolute(r.path) ? r.path : path.join(workDir, r.path);
@@ -1557,7 +1668,7 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
               (rest as Record<string, unknown>).cache_version = cacheEntry.version;
             }
             
-            return [r.path, rest];
+            return [r.result_key ?? r.path, rest];
           })),
           summary,
           tokens_used: estimateTokens(JSON.stringify(paginatedResults)),
@@ -1581,6 +1692,7 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
               if (r.is_image) entry.is_image = r.is_image;
               if (r.mime_type) entry.mime_type = r.mime_type;
               if (r.status !== undefined) entry.status = r.status;
+              if (r.truncated) entry.truncated = true;
               if (r.size_bytes !== undefined) entry.size_bytes = r.size_bytes;
               if (r.warning) entry.warning = r.warning;
               if (r.suggestions !== undefined) entry.suggestions = r.suggestions;
@@ -1588,6 +1700,8 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
               if (r.context) entry.context = r.context;
               if (r.pagination) entry.pagination = r.pagination;
               if (r.cache) entry.cache = r.cache;
+              if (r.cache_hit !== undefined) entry.cache_hit = r.cache_hit;
+              if (r.probe) entry.probe = true;
               if (r.metadata) entry.metadata = r.metadata;
               
               // Add cache version to response metadata for OCC tracking
@@ -1598,7 +1712,7 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
               }
               
               // Don't include image_base64 in JSON - it's in the ImageContent block
-              return [r.path, entry];
+              return [r.result_key ?? r.path, entry];
             })
           ),
           summary,
@@ -1641,8 +1755,9 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
         const dataObj = data as { files?: Record<string, Record<string, unknown>>; tokens_used?: number };
         if (dataObj.files) {
           for (const r of paginatedResults) {
-            if (r.truncated && dataObj.files[r.path]) {
-              dataObj.files[r.path].truncated = true;
+            const trimKey = r.result_key ?? r.path;
+            if (r.truncated && dataObj.files[trimKey]) {
+              dataObj.files[trimKey].truncated = true;
             }
           }
         }
