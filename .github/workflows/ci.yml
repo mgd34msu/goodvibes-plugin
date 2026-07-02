@@ -157,8 +157,13 @@ jobs:
       - name: Manifest version consistency
         continue-on-error: true
         run: node scripts/check-versions.mjs
-      # Root eslint baseline is known-red (~2.4k problems). There is no root
-      # package-lock.json, so npm install rather than npm ci.
+      # Root eslint baseline is known-red (2445 problems: 1877 errors,
+      # 568 warnings as of 2026-07-02). A root package-lock.json exists, but
+      # ~50 legacy entries under the plugins/goodvibes/hooks/scripts workspace
+      # lack resolved/integrity fields, so keep the forgiving npm install
+      # rather than npm ci. eslint-config-prettier is a root devDependency so
+      # the hooks/scripts flat config resolves even without a workspace
+      # install.
       - name: Install root dev dependencies
         continue-on-error: true
         run: npm install --include=dev --ignore-scripts --no-audit --no-fund
