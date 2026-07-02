@@ -5,13 +5,9 @@
   "description": "VibePlug - Claude Code Plugin Framework",
   "type": "module",
   "workspaces": [
-    "plugins/goodvibes",
-    "plugins/goodvibes/hooks/scripts",
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspace=plugins/goodvibes",
-    "build:hooks": "npm run build --workspace=plugins/goodvibes/hooks/scripts",
     "build:v2": "node packages/intel/build.mjs && node packages/analytics/build.mjs && node packages/connect/build.mjs",
     "test": "npm run test --workspaces --if-present",
     "test:v2": "vitest run",
