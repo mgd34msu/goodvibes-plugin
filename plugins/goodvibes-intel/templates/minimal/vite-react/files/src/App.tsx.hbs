@@ -1,0 +1,32 @@
+function App() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+        {{project_name}}
+      </h1>
+      <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">
+        {{description}}
+      </p>
+      <div className="flex gap-4">
+        <a
+          href="https://vitejs.dev"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+        >
+          Vite Docs
+        </a>
+        <a
+          href="https://react.dev"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+        >
+          React Docs
+        </a>
+      </div>
+    </div>
+  );
+}
+
+export default App;

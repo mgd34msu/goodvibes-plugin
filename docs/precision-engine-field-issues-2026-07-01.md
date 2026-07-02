@@ -115,6 +115,16 @@ The Claude Code Workflow tool worktree isolation snapshots the repository at wor
 
 ---
 
+## Issue 9 — Orphaned engine servers spin at 100% CPU after session death (HIGH, added 2026-07-02)
+
+**Observed (live, during v2.0-alpha work):** nine goodvibes engine server processes (precision-engine and analytics-engine instances, including two from the superseded 1.10.2 install) were found reparented to systemd --user and pinned at 100% CPU for 12–37 hours each — roughly nine cores saturated. Every plugin-loaded session spawns its own set of six engine servers; when a session dies non-gracefully the servers leak, and at least the precision and analytics servers enter a busy loop. SIGTERM is ineffective (a busy-spinning node event loop never services the handler, and the servers install keep-alive exception handlers); SIGKILL was required.
+
+**Consequences:** host-wide contention caused agent tool calls (both Bash and MCP) to have their results delayed or lost, and because the MCP client has no per-call timeout, affected agents waited forever — four separate workflow stalls over one day were traced to this, initially misattributed to model capability.
+
+**Suggested fixes:** (1) parent-liveness watchdog in every engine server: exit when the spawning process dies (the stdin-close shutdown exists but does not fire from the busy state); (2) find and fix the busy loops (suspects: analytics TUI SQLite flush loop, precision telemetry loop); (3) idle self-termination after N minutes without a request; (4) v2's two-server design shrinks the leak surface 3x by construction; (5) client side: per-call timeouts on MCP invocations so a lost result degrades to an error instead of an infinite wait.
+
+---
+
 ## What worked well (keep these)
 
 - Batched edits with atomic transactions (when the find patterns are fresh) — the rollback itself behaved correctly in Issue 7; only the reporting is wrong.

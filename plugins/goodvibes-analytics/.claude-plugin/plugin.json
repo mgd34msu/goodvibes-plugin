@@ -1,0 +1,21 @@
+{
+  "name": "goodvibes-analytics",
+  "version": "2.0.0-alpha.1",
+  "description": "Token and cost analytics with a tmux TUI dashboard (7 tools).",
+  "author": {
+    "name": "Mike Davis",
+    "email": "mgd34msu@gmail.com"
+  },
+  "homepage": "https://goodvibes.sh",
+  "repository": "https://github.com/mgd34msu/goodvibes.sh",
+  "license": "MIT",
+  "keywords": [
+    "analytics",
+    "cost",
+    "telemetry",
+    "mcp",
+    "dashboard"
+  ],
+  "mcpServers": "./.mcp.json",
+  "commands": "./commands/"
+}

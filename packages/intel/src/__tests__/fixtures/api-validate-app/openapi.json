@@ -1,0 +1,26 @@
+{
+  "openapi": "3.0.3",
+  "info": { "title": "api-validate-fixture", "version": "1.0.0" },
+  "paths": {
+    "/api/users/{id}": {
+      "get": {
+        "operationId": "getUsersById",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "OK" } }
+      }
+    },
+    "/api/users": {
+      "post": {
+        "operationId": "postUsers",
+        "responses": { "201": { "description": "Created" } }
+      }
+    },
+    "/api/posts/{id}": {
+      "get": {
+        "operationId": "getPostsById",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "OK" } }
+      }
+    }
+  }
+}

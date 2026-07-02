@@ -1,0 +1,32 @@
+{
+  "name": "@goodvibes/core",
+  "version": "2.0.0-alpha.1",
+  "description": "Shared infrastructure for the GoodVibes v2 servers (envelope, fsx, proc, config, telemetry, cache, logging). Source-only; bundled into each server by esbuild.",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./envelope": "./src/envelope/index.ts",
+    "./fsx": "./src/fsx/index.ts",
+    "./proc": "./src/proc/index.ts",
+    "./config": "./src/config/index.ts",
+    "./telemetry": "./src/telemetry/index.ts",
+    "./cache": "./src/cache/index.ts",
+    "./logging": "./src/logging/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "diff": "^8.0.3",
+    "sql.js": "^1.12.0"
+  },
+  "devDependencies": {
+    "@types/diff": "^7.0.2",
+    "@types/node": "^20.10.0",
+    "@types/sql.js": "^1.4.9",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.17"
+  }
+}

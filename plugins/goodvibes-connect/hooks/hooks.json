@@ -1,0 +1,29 @@
+{
+  "description": "goodvibes-connect hooks — open-mode announcement (SessionStart) and the warn-first secrets commit guard (PreToolUse/Bash). Both yield to v1 when present (R16).",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start-open-mode.mjs\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/commit-guard.mjs\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

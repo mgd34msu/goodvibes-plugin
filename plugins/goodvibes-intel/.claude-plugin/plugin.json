@@ -1,0 +1,22 @@
+{
+  "name": "goodvibes-intel",
+  "version": "2.0.0-alpha.1",
+  "description": "Structure-aware code search/read + verified static analyzers, plus one preview-gated editor (15 tools).",
+  "author": {
+    "name": "Mike Davis",
+    "email": "mgd34msu@gmail.com"
+  },
+  "homepage": "https://goodvibes.sh",
+  "repository": "https://github.com/mgd34msu/goodvibes.sh",
+  "license": "MIT",
+  "keywords": [
+    "code-intelligence",
+    "static-analysis",
+    "search",
+    "mcp",
+    "typescript"
+  ],
+  "mcpServers": "./.mcp.json",
+  "commands": "./commands/",
+  "skills": "./skills/"
+}

@@ -1,0 +1,12 @@
+{
+  "name": "goodvibes-intel-server",
+  "version": "2.0.0-alpha.1",
+  "private": true,
+  "description": "Runtime-only dependency manifest for the committed goodvibes-intel server bundle. The unbundleable native/WASM deps install on first run via the Setup hook / plugin command (explicit consent) — no postinstall chain.",
+  "dependencies": {
+    "@ast-grep/napi": "^0.40.5",
+    "@vscode/ripgrep": "^1.17.0",
+    "sql.js": "^1.12.0",
+    "web-tree-sitter": "0.26.10"
+  }
+}

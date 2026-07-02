@@ -1,0 +1,22 @@
+{
+  "name": "goodvibes-connect",
+  "version": "2.0.0-alpha.1",
+  "description": "Registered HTTP and database access under an explicit trust boundary (3 tools).",
+  "author": {
+    "name": "Mike Davis",
+    "email": "mgd34msu@gmail.com"
+  },
+  "homepage": "https://goodvibes.sh",
+  "repository": "https://github.com/mgd34msu/goodvibes.sh",
+  "license": "MIT",
+  "keywords": [
+    "http",
+    "database",
+    "integrations",
+    "credentials",
+    "mcp"
+  ],
+  "mcpServers": "./.mcp.json",
+  "commands": "./commands/",
+  "skills": "./skills/"
+}

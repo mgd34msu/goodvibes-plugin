@@ -1,0 +1,7 @@
+{
+  "name": "api-fastify-fixture",
+  "version": "1.0.0",
+  "dependencies": {
+    "fastify": "^4.28.0"
+  }
+}
