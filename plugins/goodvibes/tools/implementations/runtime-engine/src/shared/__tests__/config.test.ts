@@ -87,7 +87,7 @@ describe('DEFAULT_CONFIG', () => {
   });
 
   it('has correct wrfc defaults', () => {
-    expect(DEFAULT_CONFIG.wrfc.score_threshold).toBe(9.5);
+    expect(DEFAULT_CONFIG.wrfc.score_threshold).toBe(9.9);
     expect(DEFAULT_CONFIG.wrfc.max_fix_attempts).toBe(3);
     expect(DEFAULT_CONFIG.wrfc.auto_commit).toBe(true);
   });

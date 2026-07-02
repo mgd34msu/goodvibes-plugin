@@ -223,6 +223,18 @@ export class WatchdogCoordinator {
     const { directiveQueue, agentWorkflowMap } = this.deps;
     if (!directiveQueue) return;
 
+    // The watchdog has no live hook/session context — it acts on persisted
+    // workflow records (possibly long after the originating hook fired, or
+    // after a daemon restart). Recover the owning session from the persisted
+    // workflow context (session_id is written there at workflow creation) so
+    // re-enqueued directives are tagged for the session that owns this
+    // workflow. Legacy records without a session_id fall back to 'default',
+    // which leaves the directive untagged — deliverable to any session —
+    // rather than tagging it with a session that never existed.
+    const rawSessionId = workflow.context['session_id'];
+    const sessionId =
+      typeof rawSessionId === 'string' && rawSessionId.length > 0 ? rawSessionId : 'default';
+
     const wrfc = getWRFCFields(workflow.context);
     const filesModified = Array.isArray(wrfc.files_modified) ? wrfc.files_modified : [];
 
@@ -245,11 +257,12 @@ export class WatchdogCoordinator {
         priority: 25,
         source: 'watchdog',
         workflow_id: workflow.id,
+        ...(sessionId !== 'default' && { session_id: sessionId }),
       });
 
       if (agentWorkflowMap) {
-        agentWorkflowMap.addPendingBind('reviewer', workflow.id);
-        agentWorkflowMap.addPendingBind('goodvibes:reviewer', workflow.id);
+        agentWorkflowMap.addPendingBind('reviewer', workflow.id, sessionId);
+        agentWorkflowMap.addPendingBind('goodvibes:reviewer', workflow.id, sessionId);
       }
 
       logger.info('Watchdog: reviewer spawn directive re-enqueued', {
@@ -269,6 +282,7 @@ export class WatchdogCoordinator {
           priority: 30,
           source: 'watchdog',
           workflow_id: workflow.id,
+          ...(sessionId !== 'default' && { session_id: sessionId }),
         });
         logger.warn('Watchdog: escalation directive re-enqueued (fix budget exhausted)', {
           workflow_id: workflow.id,
@@ -305,11 +319,12 @@ export class WatchdogCoordinator {
           priority: 25,
           source: 'watchdog',
           workflow_id: workflow.id,
+          ...(sessionId !== 'default' && { session_id: sessionId }),
         });
 
         if (agentWorkflowMap) {
-          agentWorkflowMap.addPendingBind('engineer', workflow.id);
-          agentWorkflowMap.addPendingBind('goodvibes:engineer', workflow.id);
+          agentWorkflowMap.addPendingBind('engineer', workflow.id, sessionId);
+          agentWorkflowMap.addPendingBind('goodvibes:engineer', workflow.id, sessionId);
         }
 
         logger.info('Watchdog: engineer fix directive re-enqueued', {

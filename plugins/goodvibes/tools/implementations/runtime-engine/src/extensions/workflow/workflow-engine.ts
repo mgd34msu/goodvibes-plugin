@@ -895,6 +895,14 @@ export class WorkflowEngine {
               break;
             }
 
+            // Session context travels in the workflow context (set at workflow
+            // creation). Tag the directive with it — mirroring how
+            // ActionExecutor.execute obtains and attaches session_id — so
+            // session-scoped drains deliver it only to the session that owns
+            // this workflow. A 'default' session leaves the directive untagged,
+            // keeping it deliverable to any session.
+            const sessionId = (context.session_id as string | undefined) ?? 'default';
+
             // Build and enqueue the spawn directive
             const spawnMessage = buildSpawnDirectiveMessage(agentType, task, {
               workflow_id: workflowId,
@@ -905,13 +913,13 @@ export class WorkflowEngine {
               priority: 10,
               source: 'workflow-engine:spawn_agent',
               workflow_id: workflowId,
+              ...(sessionId !== 'default' && { session_id: sessionId }),
             };
             this.directiveQueue.enqueue('subagent_stop', spawnDirective);
 
             // Register a pending bind so SubagentStart can route the spawned agent
             // to this workflow. Use session_id from context when available.
             if (this.agentWorkflowMap) {
-              const sessionId = (context.session_id as string | undefined) ?? 'default';
               this.agentWorkflowMap.addPendingBind(agentType, workflowId, sessionId);
               if (!agentType.startsWith('goodvibes:')) {
                 this.agentWorkflowMap.addPendingBind(`goodvibes:${agentType}`, workflowId, sessionId);

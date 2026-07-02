@@ -2,20 +2,20 @@ import { describe, it, expect } from 'vitest';
 import { checkReviewScoreGuard } from '../guards.js';
 
 describe('checkReviewScoreGuard', () => {
-  // ─── Default threshold (9.5) ────────────────────────────────────────────────
+  // ─── Default threshold (9.9) ────────────────────────────────────────────────
 
-  describe('default threshold (9.5)', () => {
+  describe('default threshold (9.9)', () => {
     it('returns true when score meets default threshold exactly', () => {
-      expect(checkReviewScoreGuard({ review_score: 9.5 })).toBe(true);
+      expect(checkReviewScoreGuard({ review_score: 9.9 })).toBe(true);
     });
 
     it('returns true when score exceeds default threshold', () => {
       expect(checkReviewScoreGuard({ review_score: 10 })).toBe(true);
-      expect(checkReviewScoreGuard({ review_score: 9.9 })).toBe(true);
+      expect(checkReviewScoreGuard({ review_score: 9.95 })).toBe(true);
     });
 
     it('returns false when score is below default threshold', () => {
-      expect(checkReviewScoreGuard({ review_score: 9.4 })).toBe(false);
+      expect(checkReviewScoreGuard({ review_score: 9.8 })).toBe(false);
       expect(checkReviewScoreGuard({ review_score: 0 })).toBe(false);
       expect(checkReviewScoreGuard({ review_score: -1 })).toBe(false);
     });
@@ -55,7 +55,7 @@ describe('checkReviewScoreGuard', () => {
     });
 
     it('returns false when review_score is a string', () => {
-      expect(checkReviewScoreGuard({ review_score: '9.5' })).toBe(false);
+      expect(checkReviewScoreGuard({ review_score: '9.9' })).toBe(false);
     });
 
     it('returns false when review_score is null', () => {
@@ -67,37 +67,37 @@ describe('checkReviewScoreGuard', () => {
     });
   });
 
-  // ─── Invalid threshold falls back to 9.5 ───────────────────────────────────
+  // ─── Invalid threshold falls back to 9.9 ───────────────────────────────────
 
-  describe('invalid score_threshold falls back to default (9.5)', () => {
-    it('falls back to 9.5 when score_threshold is a string', () => {
-      // score 9.5 meets fallback threshold
-      expect(checkReviewScoreGuard({ review_score: 9.5, score_threshold: 'high' })).toBe(true);
-      expect(checkReviewScoreGuard({ review_score: 9.4, score_threshold: 'high' })).toBe(false);
+  describe('invalid score_threshold falls back to default (9.9)', () => {
+    it('falls back to 9.9 when score_threshold is a string', () => {
+      // score 9.9 meets fallback threshold
+      expect(checkReviewScoreGuard({ review_score: 9.9, score_threshold: 'high' })).toBe(true);
+      expect(checkReviewScoreGuard({ review_score: 9.8, score_threshold: 'high' })).toBe(false);
     });
 
-    it('falls back to 9.5 when score_threshold is null', () => {
-      expect(checkReviewScoreGuard({ review_score: 9.5, score_threshold: null })).toBe(true);
-      expect(checkReviewScoreGuard({ review_score: 9.4, score_threshold: null })).toBe(false);
+    it('falls back to 9.9 when score_threshold is null', () => {
+      expect(checkReviewScoreGuard({ review_score: 9.9, score_threshold: null })).toBe(true);
+      expect(checkReviewScoreGuard({ review_score: 9.8, score_threshold: null })).toBe(false);
     });
 
-    it('falls back to 9.5 when score_threshold is Infinity', () => {
-      // Infinity is not finite — falls back to 9.5
-      expect(checkReviewScoreGuard({ review_score: 9.5, score_threshold: Infinity })).toBe(true);
-      expect(checkReviewScoreGuard({ review_score: 9.4, score_threshold: Infinity })).toBe(false);
+    it('falls back to 9.9 when score_threshold is Infinity', () => {
+      // Infinity is not finite — falls back to 9.9
+      expect(checkReviewScoreGuard({ review_score: 9.9, score_threshold: Infinity })).toBe(true);
+      expect(checkReviewScoreGuard({ review_score: 9.8, score_threshold: Infinity })).toBe(false);
     });
 
-    it('falls back to 9.5 when score_threshold is NaN', () => {
-      expect(checkReviewScoreGuard({ review_score: 9.5, score_threshold: NaN })).toBe(true);
-      expect(checkReviewScoreGuard({ review_score: 9.4, score_threshold: NaN })).toBe(false);
+    it('falls back to 9.9 when score_threshold is NaN', () => {
+      expect(checkReviewScoreGuard({ review_score: 9.9, score_threshold: NaN })).toBe(true);
+      expect(checkReviewScoreGuard({ review_score: 9.8, score_threshold: NaN })).toBe(false);
     });
 
-    it('falls back to 9.5 when score_threshold is undefined', () => {
-      expect(checkReviewScoreGuard({ review_score: 9.5, score_threshold: undefined })).toBe(true);
+    it('falls back to 9.9 when score_threshold is undefined', () => {
+      expect(checkReviewScoreGuard({ review_score: 9.9, score_threshold: undefined })).toBe(true);
     });
 
-    it('falls back to 9.5 when score_threshold is absent', () => {
-      expect(checkReviewScoreGuard({ review_score: 9.5 })).toBe(true);
+    it('falls back to 9.9 when score_threshold is absent', () => {
+      expect(checkReviewScoreGuard({ review_score: 9.9 })).toBe(true);
     });
   });
 
@@ -110,7 +110,7 @@ describe('checkReviewScoreGuard', () => {
 
     it('handles a context with extra unrelated fields', () => {
       expect(
-        checkReviewScoreGuard({ review_score: 9.5, agent_id: 'abc', workflow_id: 'xyz' }),
+        checkReviewScoreGuard({ review_score: 9.9, agent_id: 'abc', workflow_id: 'xyz' }),
       ).toBe(true);
     });
   });

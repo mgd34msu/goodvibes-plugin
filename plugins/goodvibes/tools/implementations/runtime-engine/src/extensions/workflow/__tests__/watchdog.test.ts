@@ -357,8 +357,8 @@ describe('WatchdogCoordinator', () => {
       const watchdog = new WatchdogCoordinator(deps);
       watchdog.checkStaleWorkflows();
 
-      expect(deps.agentWorkflowMap!.addPendingBind).toHaveBeenCalledWith('reviewer', 'wf_rev2');
-      expect(deps.agentWorkflowMap!.addPendingBind).toHaveBeenCalledWith('goodvibes:reviewer', 'wf_rev2');
+      expect(deps.agentWorkflowMap!.addPendingBind).toHaveBeenCalledWith('reviewer', 'wf_rev2', 'default');
+      expect(deps.agentWorkflowMap!.addPendingBind).toHaveBeenCalledWith('goodvibes:reviewer', 'wf_rev2', 'default');
     });
 
     it('skips addPendingBind when agentWorkflowMap is null', () => {
@@ -472,8 +472,8 @@ describe('WatchdogCoordinator', () => {
       const watchdog = new WatchdogCoordinator(deps);
       watchdog.checkStaleWorkflows();
 
-      expect(deps.agentWorkflowMap!.addPendingBind).toHaveBeenCalledWith('engineer', 'wf_fix2');
-      expect(deps.agentWorkflowMap!.addPendingBind).toHaveBeenCalledWith('goodvibes:engineer', 'wf_fix2');
+      expect(deps.agentWorkflowMap!.addPendingBind).toHaveBeenCalledWith('engineer', 'wf_fix2', 'default');
+      expect(deps.agentWorkflowMap!.addPendingBind).toHaveBeenCalledWith('goodvibes:engineer', 'wf_fix2', 'default');
     });
 
     it('uses defaults when fix_attempts/max_fix_attempts are not numbers', () => {

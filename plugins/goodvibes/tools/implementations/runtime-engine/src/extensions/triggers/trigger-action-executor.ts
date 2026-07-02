@@ -273,12 +273,22 @@ export class TriggerActionExecutor {
       resolvedTask,
     );
 
+    // Thread the originating session from event metadata — mirroring how
+    // ActionExecutor.execute obtains session_id from its context — so
+    // session-scoped drains deliver this spawn directive only to the session
+    // whose event triggered it. Events without a session ('' or 'default')
+    // leave the directive untagged so it remains deliverable to any session.
+    const rawSessionId = event.metadata?.session_id;
+    const sessionId =
+      typeof rawSessionId === 'string' && rawSessionId.length > 0 ? rawSessionId : 'default';
+
     this.directiveQueue.enqueue('subagent_stop', {
       type: 'inject_system_message',
       content: message,
       priority: 10,
       source: 'action-executor:spawn_agent',
       workflow_id: undefined,
+      ...(sessionId !== 'default' && { session_id: sessionId }),
     });
 
     log.info('spawn_agent action: directive enqueued', {
