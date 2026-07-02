@@ -139,6 +139,63 @@ jobs:
       - run: bash scripts/check-registry-fresh.sh
 
   # ---------------------------------------------------------------------
+  # v2 carve-out gating jobs (§5.4). v2 code starts clean, so these gate at
+  # 0 tsc errors / green vitest / byte-identical bundles / manifest lockstep.
+  # ---------------------------------------------------------------------
+  v2-packages:
+    name: v2 packages (${{ matrix.pkg }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        pkg: [core, intel, analytics, connect]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      # Gate 1: new code starts clean — 0 tsc errors.
+      - run: npx tsc --noEmit -p packages/${{ matrix.pkg }}
+      - run: npx vitest run --project ${{ matrix.pkg }}
+
+  v2-dist-match:
+    name: v2 dist match (rebuild + byte diff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - name: Rebuild server bundles
+        run: |
+          node packages/intel/build.mjs
+          node packages/analytics/build.mjs
+          node packages/connect/build.mjs
+      - name: Assert committed bundles are byte-identical to a fresh rebuild
+        run: >-
+          git diff --exit-code --
+          plugins/goodvibes-intel/server
+          plugins/goodvibes-analytics/server
+          plugins/goodvibes-connect/server
+
+  v2-manifests:
+    name: v2 manifest lockstep
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      # 3× plugin.json ↔ marketplace.json lockstep for the v2 plugins.
+      - run: node scripts/check-versions.mjs --v2
+
+  # ---------------------------------------------------------------------
   # Advisory group (continue-on-error): known-red baselines, documented in
   # CI without blocking merges.
   # ---------------------------------------------------------------------

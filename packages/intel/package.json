@@ -1,0 +1,22 @@
+{
+  "name": "@goodvibes/intel",
+  "version": "2.0.0-alpha.1",
+  "description": "GoodVibes intel MCP server — structure-aware code search/read + verified static analyzers (14 tools). Alpha scaffold.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@goodvibes/core": "*",
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "esbuild": "^0.27.2",
+    "vitest": "^4.0.17"
+  }
+}

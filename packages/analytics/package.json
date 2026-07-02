@@ -1,0 +1,22 @@
+{
+  "name": "@goodvibes/analytics",
+  "version": "2.0.0-alpha.1",
+  "description": "GoodVibes analytics MCP server — token/cost analytics with tmux TUI (7 tools). Alpha scaffold.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@goodvibes/core": "*",
+    "@modelcontextprotocol/sdk": "^1.12.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "esbuild": "^0.27.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.17"
+  }
+}

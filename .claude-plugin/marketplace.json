@@ -11,8 +11,35 @@
     {
       "name": "goodvibes",
       "source": "./plugins/goodvibes",
-      "description": "Comprehensive Claude Code plugin with agents, skills, tools, hooks, and MCP servers for full-stack development.",
+      "description": "DEPRECATED (v2.0-alpha): the monolithic v1 plugin is superseded by goodvibes-intel, goodvibes-analytics, and goodvibes-connect. Kept installable through the alpha so existing users keep a working setup; removed at v2.0. Comprehensive Claude Code plugin with agents, skills, tools, hooks, and MCP servers for full-stack development.",
       "version": "1.0.0",
+      "author": {
+        "name": "Mike Davis"
+      }
+    },
+    {
+      "name": "goodvibes-intel",
+      "source": "./plugins/goodvibes-intel",
+      "description": "Structure-aware code search/read + verified static analyzers (14 tools).",
+      "version": "2.0.0-alpha.1",
+      "author": {
+        "name": "Mike Davis"
+      }
+    },
+    {
+      "name": "goodvibes-analytics",
+      "source": "./plugins/goodvibes-analytics",
+      "description": "Token and cost analytics with a tmux TUI dashboard (7 tools).",
+      "version": "2.0.0-alpha.1",
+      "author": {
+        "name": "Mike Davis"
+      }
+    },
+    {
+      "name": "goodvibes-connect",
+      "source": "./plugins/goodvibes-connect",
+      "description": "Registered HTTP and database access under an explicit trust boundary (3 tools).",
+      "version": "2.0.0-alpha.1",
       "author": {
         "name": "Mike Davis"
       }
