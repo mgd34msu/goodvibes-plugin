@@ -1,0 +1,176 @@
+# CI skeleton for the goodvibes plugin monorepo (v1.11).
+# See docs/goodvibes-v2-plan.md sections 10 and 12.
+#
+# Two groups:
+#   - Gating jobs: must pass; they are green against the current tree.
+#   - Advisory job (continue-on-error): known-red baselines (root eslint,
+#     precision-engine typecheck, manifest version drift) are documented in
+#     CI without blocking merges. Promote each to gating as it is fixed.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # ---------------------------------------------------------------------
+  # Gating jobs (must pass)
+  # ---------------------------------------------------------------------
+  hooks-typecheck:
+    name: hooks/scripts typecheck
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: plugins/goodvibes/hooks/scripts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: plugins/goodvibes/hooks/scripts/package-lock.json
+      - run: npm ci --include=dev
+      - run: npm run typecheck
+
+  registry-engine-tests:
+    name: registry-engine tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: plugins/goodvibes/tools/implementations/registry-engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: plugins/goodvibes/tools/implementations/registry-engine/package-lock.json
+      - run: npm ci --include=dev
+      - run: npm test
+
+  analytics-engine-tests:
+    name: analytics-engine tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: plugins/goodvibes/tools/implementations/analytics-engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: plugins/goodvibes/tools/implementations/analytics-engine/package-lock.json
+      - run: npm ci --include=dev
+      - run: npm test
+
+  precision-engine-tests:
+    name: precision-engine tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: plugins/goodvibes/tools/implementations/precision-engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: plugins/goodvibes/tools/implementations/precision-engine/package-lock.json
+      # Lifecycle scripts must run here: @vscode/ripgrep downloads its binary
+      # in postinstall and the grep/glob suites need it (do NOT add
+      # --ignore-scripts to this npm ci).
+      - run: npm ci --include=dev
+      # Known baseline defect: src/__tests__/handlers/precision-agent.test.ts
+      # fails at collection (its vi.mock of ../../state/project-index.js has
+      # no "projectIndex" export; broken since ~2026-02, not a v1.11
+      # regression). Every collected test passes (1252/1252 as of 2026-07-02),
+      # so that single file is excluded rather than gating on a flaky
+      # "N failures or better" count. Drop the exclude once the mock is fixed.
+      - run: >-
+          npx vitest run
+          --exclude "src/__tests__/handlers/precision-agent.test.ts"
+
+  runtime-engine-tests:
+    name: runtime-engine tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: plugins/goodvibes/tools/implementations/runtime-engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: plugins/goodvibes/tools/implementations/runtime-engine/package-lock.json
+      - run: npm ci --include=dev
+      # Known baseline defect: the recorded baseline has 9 failing tests
+      # (threshold drift; see docs/goodvibes-v2-plan.md section 10 release
+      # gates), confined to two files:
+      #   src/extensions/workflow/__tests__/guards.test.ts
+      #   src/shared/__tests__/config.test.ts
+      # (2721 passed / 9 failed as of 2026-07-02). Instead of a flaky
+      # "current pass count or better" gate, those two files are excluded and
+      # everything else gates at 100% (2669 tests). Drop the excludes once the
+      # baseline is fixed.
+      - run: >-
+          npx vitest run
+          --exclude "src/extensions/workflow/__tests__/guards.test.ts"
+          --exclude "src/shared/__tests__/config.test.ts"
+
+  registry-freshness:
+    name: registry freshness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: plugins/goodvibes/package-lock.json
+      # --ignore-scripts: the plugins/goodvibes postinstall chain runs a full
+      # build + hook install; the registry rebuild only needs tsx and js-yaml.
+      - run: npm ci --include=dev --ignore-scripts
+        working-directory: plugins/goodvibes
+      # Gating: deterministic registry output (timestamp fix) lands in this
+      # same release (v1.11 lane C), so stale _registry.yaml files fail CI.
+      - run: bash scripts/check-registry-fresh.sh
+
+  # ---------------------------------------------------------------------
+  # Advisory group (continue-on-error): known-red baselines, documented in
+  # CI without blocking merges.
+  # ---------------------------------------------------------------------
+  advisory:
+    name: advisory checks (non-blocking)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      # Manifest version drift is known (marketplace.json 1.0.0 vs
+      # plugin.json 1.10.4); advisory until the single-source-of-truth fix
+      # lands (docs/goodvibes-v2-plan.md section 10).
+      - name: Manifest version consistency
+        continue-on-error: true
+        run: node scripts/check-versions.mjs
+      # Root eslint baseline is known-red (~2.4k problems). There is no root
+      # package-lock.json, so npm install rather than npm ci.
+      - name: Install root dev dependencies
+        continue-on-error: true
+        run: npm install --include=dev --ignore-scripts --no-audit --no-fund
+      - name: Root eslint (known-red baseline)
+        continue-on-error: true
+        run: npx eslint .
+      # precision-engine typecheck baseline is known-red (~607 errors).
+      - name: Install precision-engine dev dependencies
+        continue-on-error: true
+        run: npm ci --include=dev --ignore-scripts
+        working-directory: plugins/goodvibes/tools/implementations/precision-engine
+      - name: precision-engine typecheck (known-red baseline)
+        continue-on-error: true
+        run: npx tsc --noEmit
+        working-directory: plugins/goodvibes/tools/implementations/precision-engine
