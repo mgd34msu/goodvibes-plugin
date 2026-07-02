@@ -14,7 +14,6 @@ const ppidPollMs = Number(process.env.PPID_POLL_MS ?? '1000');
 
 installProcessHygiene({
   ppidPollMs,
-  idleExitMinutes: 60, // long enough that idle never fires during the test
   watchStdin: false,
   watchSignals: true,
 });

@@ -30,12 +30,10 @@ describe('config defaults', () => {
     expect(cfg.budgets.search_ms).toBe(15000);
     expect(cfg.budgets.http_default_ms).toBe(30000);
     expect(cfg.budgets.http_max_ms).toBe(120000);
-    expect(cfg.idle_exit_minutes).toBe(30);
     expect(cfg.ppid_poll_ms).toBe(5000);
   });
 
   it('DEFAULT_CONFIG and CONFIG_KEYS agree on documented defaults', () => {
-    expect(DEFAULT_CONFIG.idle_exit_minutes).toBe(CONFIG_KEYS.idle_exit_minutes.default);
     expect(DEFAULT_CONFIG.mode).toBe(CONFIG_KEYS.mode.default);
     expect(DEFAULT_CONFIG.budgets.analyzer_ms).toBe(CONFIG_KEYS['budgets.analyzer_ms'].default);
   });

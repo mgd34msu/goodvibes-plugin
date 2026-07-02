@@ -42,8 +42,6 @@ export interface GoodvibesConfig {
   mode: EnvelopeMode;
   /** Loud, separate key that keeps `open` mode across sessions (re-announced each session). */
   dangerously_persist_across_sessions: boolean;
-  /** Idle self-exit after this many request-free minutes. */
-  idle_exit_minutes: number;
   /** Parent-liveness ppid poll interval (ms). */
   ppid_poll_ms: number;
   /** Whether telemetry writing is enabled. */
@@ -76,10 +74,6 @@ export const CONFIG_KEYS: Record<string, KeyDoc> = {
     default: false,
     description:
       "Keep 'open' mode across sessions. Loud, separate key; re-announced at every session start when true.",
-  },
-  idle_exit_minutes: {
-    default: 30,
-    description: 'Server self-exits after this many minutes without a request.',
   },
   ppid_poll_ms: {
     default: 5000,
@@ -127,7 +121,6 @@ export const CONFIG_KEYS: Record<string, KeyDoc> = {
 export const DEFAULT_CONFIG: GoodvibesConfig = Object.freeze({
   mode: 'restricted',
   dangerously_persist_across_sessions: false,
-  idle_exit_minutes: 30,
   ppid_poll_ms: 5000,
   telemetry_enabled: true,
   cache_max_mb: 200,
@@ -228,7 +221,6 @@ export function loadConfig(cwd: string = process.cwd()): GoodvibesConfig {
   const value: GoodvibesConfig = {
     mode,
     dangerously_persist_across_sessions: merged.dangerously_persist_across_sessions === true,
-    idle_exit_minutes: num('idle_exit_minutes', DEFAULT_CONFIG.idle_exit_minutes),
     ppid_poll_ms: num('ppid_poll_ms', DEFAULT_CONFIG.ppid_poll_ms),
     telemetry_enabled: merged.telemetry_enabled !== false,
     cache_max_mb: num('cache_max_mb', DEFAULT_CONFIG.cache_max_mb),

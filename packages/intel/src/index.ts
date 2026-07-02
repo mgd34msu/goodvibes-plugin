@@ -97,7 +97,6 @@ export function createServer(onActivity?: () => void): Server {
 export async function main(): Promise<void> {
   const cfg = loadConfig();
   const hygiene = installProcessHygiene({
-    idleExitMinutes: cfg.idle_exit_minutes,
     ppidPollMs: cfg.ppid_poll_ms,
   });
   const server = createServer(() => hygiene.noteActivity());

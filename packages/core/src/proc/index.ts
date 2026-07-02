@@ -7,7 +7,8 @@
  *
  *  (a) Parent-liveness watchdog — exits on stdin close AND on a `ppid` poll that
  *      catches reparent-to-init/systemd (the case stdin-close alone misses).
- *  (b) Idle self-exit after `idleExitMinutes` (default 30) with no request.
+ *  (b) There is NO idle self-exit — an installed server runs for the life of
+ *      its session, period (Mike's explicit direction, 2026-07-02).
  *  (c) Per-request time budget via `withBudget(ms, task)` — a handler returns a
  *      partial result with honest `budget_exceeded` accounting instead of
  *      hanging the client forever.
@@ -83,12 +84,8 @@ export async function withBudget<T>(
 
 /** Options for `installProcessHygiene`. */
 export interface ProcHygieneOptions {
-  /** Idle self-exit threshold in minutes (default 30). */
-  idleExitMinutes?: number;
   /** Parent-liveness poll interval in ms (default 5000). */
   ppidPollMs?: number;
-  /** How often to check idleness in ms (default min(idle, 60000)). */
-  idleCheckMs?: number;
   /** Watch stdin close (default true). Disable in unit tests. */
   watchStdin?: boolean;
   /** Install SIGTERM/SIGINT handlers (default true). Disable in unit tests. */
@@ -103,7 +100,9 @@ export interface ProcHygieneOptions {
 
 /** Handle returned by `installProcessHygiene`. */
 export interface ProcHygiene {
-  /** Reset the idle timer — call on every incoming request. */
+  /** Kept for call-site compatibility; a no-op. There is NO idle self-exit —
+   *  an installed server runs for the life of its session, period (Mike's
+   *  explicit direction, 2026-07-02). Orphan defense is parent-liveness only. */
   noteActivity(): void;
   /** Tear down all timers and listeners (shutdown / test cleanup). */
   stop(): void;
@@ -117,16 +116,12 @@ export interface ProcHygiene {
  * @returns a handle to note activity and tear down
  */
 export function installProcessHygiene(options: ProcHygieneOptions = {}): ProcHygiene {
-  const idleMs = (options.idleExitMinutes ?? 30) * 60_000;
   const ppidPollMs = options.ppidPollMs ?? 5000;
-  const idleCheckMs = options.idleCheckMs ?? Math.min(idleMs, 60_000);
   const watchStdin = options.watchStdin ?? true;
   const watchSignals = options.watchSignals ?? true;
-  const now = options.now ?? (() => Date.now());
   const exit = options.exit ?? ((code: number) => process.exit(code));
 
   const initialPpid = process.ppid;
-  let lastActivity = now();
   let stopped = false;
   let shuttingDown = false;
   const timers: Array<ReturnType<typeof setInterval>> = [];
@@ -168,14 +163,11 @@ export function installProcessHygiene(options: ProcHygieneOptions = {}): ProcHyg
     void shutdown('signal');
   }
 
-  // (b) idle self-exit
-  const idleTimer = setInterval(() => {
-    if (now() - lastActivity >= idleMs) void shutdown('idle');
-  }, idleCheckMs);
-  idleTimer.unref?.();
-  timers.push(idleTimer);
+  // NO idle self-exit — by Mike's explicit direction (2026-07-02): an
+  // installed server runs for the life of its session. Orphan cleanup is the
+  // parent-liveness watchdog's job alone; it fires only when the session dies.
 
-  // (a) ppid poll — catches reparent-to-init that stdin-close alone misses
+  // ppid poll — catches reparent-to-init that stdin-close alone misses
   const ppidTimer = setInterval(() => {
     const p = process.ppid;
     if (p !== initialPpid || p === 1) void shutdown('reparented');
@@ -201,7 +193,7 @@ export function installProcessHygiene(options: ProcHygieneOptions = {}): ProcHyg
 
   return {
     noteActivity() {
-      lastActivity = now();
+      // No-op: idle self-exit is removed by design. Kept so call sites need no change.
     },
     stop,
     initialPpid,
