@@ -1,0 +1,80 @@
+name: next-saas
+version: "1.0.0"
+description: Full-stack SaaS starter with NextAuth, Prisma, Stripe, and Tailwind
+
+stack:
+  framework: next
+  ui_library: react
+  language: typescript
+  styling: tailwind
+  auth: nextauth
+  database: prisma
+  payments: stripe
+
+required_skills:
+  - webdev/meta-frameworks/nextjs
+  - webdev/authentication/nextauth
+  - webdev/databases-orms/prisma
+  - webdev/payments/stripe
+  - webdev/styling/tailwind
+  - webdev/forms/react-hook-form
+
+variables:
+  - name: project_name
+    prompt: "Project name"
+    default: "my-saas-app"
+    validate: "^[a-z][a-z0-9-]*$"
+
+  - name: description
+    prompt: "Project description"
+    default: "A full-stack SaaS application"
+
+  - name: database_provider
+    prompt: "Database provider"
+    options: [postgresql, mysql, sqlite]
+    default: postgresql
+
+features:
+  - Next.js 15 App Router
+  - NextAuth.js with multiple providers
+  - Prisma ORM with migrations
+  - Stripe subscriptions & webhooks
+  - Tailwind CSS with dark mode
+  - React Hook Form + Zod validation
+  - Protected routes middleware
+  - User dashboard
+  - Admin panel structure
+  - API rate limiting
+  - Email templates
+
+files:
+  - package.json.hbs
+  - tsconfig.json
+  - next.config.ts
+  - tailwind.config.ts
+  - postcss.config.js
+  - .env.example.hbs
+  - .gitignore
+  - prisma/schema.prisma.hbs
+  - src/app/layout.tsx.hbs
+  - src/app/page.tsx
+  - src/app/globals.css
+  - src/app/(auth)/login/page.tsx
+  - src/app/(auth)/register/page.tsx
+  - src/app/(dashboard)/dashboard/page.tsx
+  - src/app/api/auth/[...nextauth]/route.ts
+  - src/app/api/webhooks/stripe/route.ts
+  - src/lib/auth.ts.hbs
+  - src/lib/prisma.ts
+  - src/lib/stripe.ts
+  - src/middleware.ts
+  - src/components/Button.tsx
+  - src/components/Input.tsx
+
+post_create:
+  - command: npm install
+    description: Install dependencies
+  - command: npx prisma generate
+    description: Generate Prisma client
+  - command: git init
+    description: Initialize git repository

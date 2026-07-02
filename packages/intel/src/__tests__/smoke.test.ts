@@ -1,6 +1,9 @@
 /**
- * Boot smoke test: the server answers `initialize` and lists an empty tool set
- * over an in-memory transport (the same handshake the stdio bundle serves).
+ * Boot smoke test: the server answers `initialize` and lists its registered
+ * tools over an in-memory transport (the same handshake the stdio bundle
+ * serves). The tools list starts empty in the lane-0 skeleton and grows as
+ * lanes 1-4 and 7 register tools (§4.1) — this test asserts shape, not an
+ * exact count, so it stays green as the roster grows.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -9,7 +12,7 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { createServer, SERVER_NAME, SERVER_VERSION } from '../index.js';
 
 describe('goodvibes-intel skeleton', () => {
-  it('completes initialize and serves an empty tools list', async () => {
+  it('completes initialize and serves well-formed tool definitions', async () => {
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
     const server = createServer();
     await server.connect(serverTransport);
@@ -22,7 +25,11 @@ describe('goodvibes-intel skeleton', () => {
     expect(version?.version).toBe(SERVER_VERSION);
 
     const tools = await client.listTools();
-    expect(tools.tools).toEqual([]);
+    for (const tool of tools.tools) {
+      expect(typeof tool.name).toBe('string');
+      expect(tool.name.length).toBeGreaterThan(0);
+      expect(tool.inputSchema).toBeTruthy();
+    }
 
     await client.close();
     await server.close();

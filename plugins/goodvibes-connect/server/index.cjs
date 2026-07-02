@@ -3497,8 +3497,8 @@ var require_utils = __commonJS({
       return ind;
     }
     __name(findToken, "findToken");
-    function removeDotSegments(path2) {
-      let input = path2;
+    function removeDotSegments(path7) {
+      let input = path7;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3761,8 +3761,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path2, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path2 && path2 !== "/" ? path2 : void 0;
+        const [path7, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path7 && path7 !== "/" ? path7 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -13318,12 +13318,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs2, exportName) {
+    function addFormats(ajv, list, fs6, exportName) {
       var _a3;
       var _b;
       (_a3 = (_b = ajv.opts.code).formats) !== null && _a3 !== void 0 ? _a3 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs2[f]);
+        ajv.addFormat(f, fs6[f]);
     }
     __name(addFormats, "addFormats");
     module2.exports = exports2 = formatsPlugin;
@@ -13612,16 +13612,16 @@ function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
 __name(cloneDef, "cloneDef");
-function getElementAtPath(obj, path2) {
-  if (!path2)
+function getElementAtPath(obj, path7) {
+  if (!path7)
     return obj;
-  return path2.reduce((acc, key) => acc?.[key], obj);
+  return path7.reduce((acc, key) => acc?.[key], obj);
 }
 __name(getElementAtPath, "getElementAtPath");
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
-  const promises = keys.map((key) => promisesObj[key]);
-  return Promise.all(promises).then((results) => {
+  const promises5 = keys.map((key) => promisesObj[key]);
+  return Promise.all(promises5).then((results) => {
     const resolvedObj = {};
     for (let i = 0; i < keys.length; i++) {
       resolvedObj[keys[i]] = results[i];
@@ -14048,11 +14048,11 @@ function explicitlyAborted(x, startIndex = 0) {
   return false;
 }
 __name(explicitlyAborted, "explicitlyAborted");
-function prefixIssues(path2, issues) {
+function prefixIssues(path7, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path2);
+    iss.path.unshift(path7);
     return iss;
   });
 }
@@ -14217,16 +14217,16 @@ function flattenError(error2, mapper = (issue2) => issue2.message) {
 __name(flattenError, "flattenError");
 function formatError(error2, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = /* @__PURE__ */ __name((error3, path2 = []) => {
+  const processError = /* @__PURE__ */ __name((error3, path7 = []) => {
     for (const issue2 of error3.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path2, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path7, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path2, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path7, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path2, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path7, ...issue2.path]);
       } else {
-        const fullpath = [...path2, ...issue2.path];
+        const fullpath = [...path7, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -22141,6 +22141,32 @@ var StdioServerTransport = class {
 };
 
 // packages/core/src/proc/index.ts
+var BUDGET_EXPIRED = /* @__PURE__ */ Symbol("budget-expired");
+async function withBudget(ms, task) {
+  const start = Date.now();
+  const signal = { aborted: false };
+  let timer;
+  const budgetHit = new Promise((resolve) => {
+    timer = setTimeout(() => {
+      signal.aborted = true;
+      resolve(BUDGET_EXPIRED);
+    }, ms);
+    timer.unref?.();
+  });
+  const taskP = task(signal);
+  const first = await Promise.race([
+    taskP.then((value2) => ({ value: value2 })),
+    budgetHit
+  ]);
+  if (first !== BUDGET_EXPIRED) {
+    if (timer) clearTimeout(timer);
+    return { value: first.value, budget_exceeded: false, elapsed_ms: Date.now() - start };
+  }
+  const value = await taskP;
+  if (timer) clearTimeout(timer);
+  return { value, budget_exceeded: true, elapsed_ms: Date.now() - start };
+}
+__name(withBudget, "withBudget");
 function installProcessHygiene(options = {}) {
   const idleMs = (options.idleExitMinutes ?? 30) * 6e4;
   const ppidPollMs = options.ppidPollMs ?? 5e3;
@@ -22229,6 +22255,19 @@ function estimatePayloadTokens(payload) {
 }
 __name(estimatePayloadTokens, "estimatePayloadTokens");
 
+// packages/core/src/shared/utf8.ts
+function utf8SafeSlice(input, maxUnits) {
+  if (maxUnits <= 0) return "";
+  if (input.length <= maxUnits) return input;
+  let end = maxUnits;
+  const lastKept = input.charCodeAt(end - 1);
+  if (lastKept >= 55296 && lastKept <= 56319) {
+    end -= 1;
+  }
+  return input.slice(0, end);
+}
+__name(utf8SafeSlice, "utf8SafeSlice");
+
 // packages/core/src/config/index.ts
 var fs = __toESM(require("fs"), 1);
 var os = __toESM(require("os"), 1);
@@ -22255,6 +22294,10 @@ function getStatePath(cwd, ...segments) {
   return path.join(cwd, ...V2_STATE_SEGMENTS, ...segments);
 }
 __name(getStatePath, "getStatePath");
+function statePath(...segments) {
+  return getStatePath(process.cwd(), ...segments);
+}
+__name(statePath, "statePath");
 function projectConfigPath(cwd = process.cwd()) {
   return getStatePath(cwd, "config.json");
 }
@@ -22316,6 +22359,10 @@ function configForEnvelope(cfg = loadConfig()) {
 __name(configForEnvelope, "configForEnvelope");
 
 // packages/core/src/envelope/index.ts
+function successEnvelope(data, meta2 = {}) {
+  return { success: true, data, meta: { token_estimate: 0, ...meta2 } };
+}
+__name(successEnvelope, "successEnvelope");
 function errorEnvelope(error2, meta2 = {}) {
   return { success: false, error: error2, meta: { token_estimate: 0, ...meta2 } };
 }
@@ -22335,6 +22382,2716 @@ function toCallToolResult(env) {
   return { content: [block], isError: !env.success };
 }
 __name(toCallToolResult, "toCallToolResult");
+function startTimer() {
+  const start = performance.now();
+  return () => Math.round(performance.now() - start);
+}
+__name(startTimer, "startTimer");
+
+// packages/connect/src/fetch/registry-store.ts
+var fs2 = __toESM(require("fs"), 1);
+var path2 = __toESM(require("path"), 1);
+function registryPath() {
+  return statePath("services.json");
+}
+__name(registryPath, "registryPath");
+function getRegistry() {
+  try {
+    const content = fs2.readFileSync(registryPath(), "utf-8");
+    return JSON.parse(content);
+  } catch {
+    return {};
+  }
+}
+__name(getRegistry, "getRegistry");
+async function saveRegistry(config2) {
+  const file = registryPath();
+  await fs2.promises.mkdir(path2.dirname(file), { recursive: true });
+  await fs2.promises.writeFile(file, JSON.stringify(config2, null, 2) + "\n", "utf-8");
+}
+__name(saveRegistry, "saveRegistry");
+
+// packages/connect/src/fetch/secrets-store.ts
+var fs4 = __toESM(require("fs"), 1);
+var path4 = __toESM(require("path"), 1);
+
+// packages/connect/src/fetch/secrets-guard.ts
+var fs3 = __toESM(require("fs"), 1);
+var path3 = __toESM(require("path"), 1);
+var PROTECTED_FILES = ["goodvibes.secrets.json", "goodvibes.cookies.json"];
+async function ensureGitignore(projectRoot) {
+  const gitignorePath = path3.join(projectRoot, ".gitignore");
+  let content = "";
+  try {
+    content = await fs3.promises.readFile(gitignorePath, "utf-8");
+  } catch (error2) {
+    if (error2.code !== "ENOENT") {
+      throw error2;
+    }
+  }
+  const lines = content.split("\n").map((l) => l.trim());
+  const missingEntries = PROTECTED_FILES.filter((entry) => !lines.includes(entry));
+  if (missingEntries.length === 0) {
+    return;
+  }
+  const addition = "\n# GoodVibes secrets (auto-added)\n" + missingEntries.join("\n") + "\n";
+  const newContent = content.endsWith("\n") ? content + addition : content + "\n" + addition;
+  await fs3.promises.writeFile(gitignorePath, newContent, "utf-8");
+}
+__name(ensureGitignore, "ensureGitignore");
+
+// packages/connect/src/fetch/secrets-store.ts
+function getSecretsPath() {
+  return statePath("goodvibes.secrets.json");
+}
+__name(getSecretsPath, "getSecretsPath");
+async function loadSecrets() {
+  const secretsPath = getSecretsPath();
+  try {
+    const content = await fs4.promises.readFile(secretsPath, "utf-8");
+    const parsed = JSON.parse(content);
+    return {
+      services: parsed.services ?? {},
+      global: parsed.global ?? {}
+    };
+  } catch (error2) {
+    if (error2.code === "ENOENT") {
+      return { services: {}, global: {} };
+    }
+    throw error2;
+  }
+}
+__name(loadSecrets, "loadSecrets");
+async function saveSecrets(secrets) {
+  const secretsPath = getSecretsPath();
+  const secretsDir = path4.dirname(secretsPath);
+  await ensureGitignore(process.cwd());
+  await fs4.promises.mkdir(secretsDir, { recursive: true });
+  await fs4.promises.writeFile(secretsPath, JSON.stringify(secrets, null, 2) + "\n", {
+    encoding: "utf-8",
+    mode: 384
+  });
+}
+__name(saveSecrets, "saveSecrets");
+async function getServiceSecrets(name) {
+  const secrets = await loadSecrets();
+  return secrets.services[name];
+}
+__name(getServiceSecrets, "getServiceSecrets");
+async function setServiceSecret(name, auth) {
+  const secrets = await loadSecrets();
+  secrets.services[name] = auth;
+  await saveSecrets(secrets);
+}
+__name(setServiceSecret, "setServiceSecret");
+async function removeServiceSecret(name) {
+  const secrets = await loadSecrets();
+  if (!(name in secrets.services)) {
+    return false;
+  }
+  delete secrets.services[name];
+  await saveSecrets(secrets);
+  return true;
+}
+__name(removeServiceSecret, "removeServiceSecret");
+function isEnvRef(value) {
+  return typeof value === "object" && value !== null && "$env" in value && typeof value.$env === "string";
+}
+__name(isEnvRef, "isEnvRef");
+function resolveSecretValue(value) {
+  if (value === void 0) return void 0;
+  if (typeof value === "string") return value;
+  if (isEnvRef(value)) return process.env[value.$env];
+  return void 0;
+}
+__name(resolveSecretValue, "resolveSecretValue");
+function resolveAuthConfig(auth) {
+  const resolved = { type: auth.type };
+  if (auth.token !== void 0) resolved.token = resolveSecretValue(auth.token);
+  if (auth.username !== void 0) resolved.username = resolveSecretValue(auth.username);
+  if (auth.password !== void 0) resolved.password = resolveSecretValue(auth.password);
+  if (auth.key !== void 0) resolved.key = resolveSecretValue(auth.key);
+  if (auth.client_id !== void 0) resolved.client_id = resolveSecretValue(auth.client_id);
+  if (auth.client_secret !== void 0)
+    resolved.client_secret = resolveSecretValue(auth.client_secret);
+  if (auth.access_token !== void 0) resolved.access_token = auth.access_token;
+  if (auth.refresh_token !== void 0) resolved.refresh_token = auth.refresh_token;
+  if (auth.header !== void 0) resolved.header = auth.header;
+  if (auth.token_url !== void 0) resolved.token_url = auth.token_url;
+  if (auth.authorize_url !== void 0) resolved.authorize_url = auth.authorize_url;
+  if (auth.redirect_uri !== void 0) resolved.redirect_uri = auth.redirect_uri;
+  if (auth.scopes !== void 0) resolved.scopes = [...auth.scopes];
+  if (auth.expires_at !== void 0) resolved.expires_at = auth.expires_at;
+  if (auth.login_url !== void 0) resolved.login_url = auth.login_url;
+  if (auth.token_path !== void 0) resolved.token_path = auth.token_path;
+  if (auth.headers) {
+    resolved.headers = {};
+    for (const [key, value] of Object.entries(auth.headers)) {
+      const resolvedVal = resolveSecretValue(value);
+      if (resolvedVal !== void 0) resolved.headers[key] = resolvedVal;
+    }
+  }
+  if (auth.login_body) {
+    resolved.login_body = {};
+    for (const [key, value] of Object.entries(auth.login_body)) {
+      const resolvedVal = resolveSecretValue(value);
+      if (resolvedVal !== void 0) resolved.login_body[key] = resolvedVal;
+    }
+  }
+  return resolved;
+}
+__name(resolveAuthConfig, "resolveAuthConfig");
+
+// packages/connect/src/fetch/service-registry.ts
+function getFetchConfig() {
+  return getRegistry();
+}
+__name(getFetchConfig, "getFetchConfig");
+function getFetchServices() {
+  return getFetchConfig().services ?? {};
+}
+__name(getFetchServices, "getFetchServices");
+function getService(name) {
+  return getFetchServices()[name];
+}
+__name(getService, "getService");
+async function addService(name, config2, force = false) {
+  const fetchConfig = { ...getFetchConfig() };
+  const services = { ...fetchConfig.services ?? {} };
+  if (!force && name in services) {
+    throw new Error(`Service "${name}" already exists. Use force=true to overwrite.`);
+  }
+  services[name] = config2;
+  fetchConfig.services = services;
+  await saveRegistry(fetchConfig);
+}
+__name(addService, "addService");
+async function removeService(name) {
+  const fetchConfig = { ...getFetchConfig() };
+  const services = { ...fetchConfig.services ?? {} };
+  if (!(name in services)) {
+    return false;
+  }
+  delete services[name];
+  fetchConfig.services = services;
+  if (fetchConfig.url_patterns) {
+    fetchConfig.url_patterns = fetchConfig.url_patterns.filter((p) => p.service !== name);
+  }
+  await saveRegistry(fetchConfig);
+  try {
+    await removeServiceSecret(name);
+  } catch {
+  }
+  return true;
+}
+__name(removeService, "removeService");
+function getUrlPatterns() {
+  return getFetchConfig().url_patterns ?? [];
+}
+__name(getUrlPatterns, "getUrlPatterns");
+async function addUrlPattern(hostname, serviceName) {
+  const fetchConfig = { ...getFetchConfig() };
+  const patterns = [...fetchConfig.url_patterns ?? []];
+  const services = fetchConfig.services ?? {};
+  if (!(serviceName in services)) {
+    throw new Error(`Service "${serviceName}" not found. Add the service first.`);
+  }
+  const existingIndex = patterns.findIndex((p) => p.hostname === hostname);
+  if (existingIndex >= 0) {
+    patterns[existingIndex] = { ...patterns[existingIndex], service: serviceName };
+  } else {
+    patterns.push({ hostname, service: serviceName });
+  }
+  fetchConfig.url_patterns = patterns;
+  await saveRegistry(fetchConfig);
+}
+__name(addUrlPattern, "addUrlPattern");
+function matchServiceByUrl(url) {
+  let hostname;
+  try {
+    hostname = new URL(url).hostname;
+  } catch {
+    return void 0;
+  }
+  return getUrlPatterns().find((p) => p.hostname === hostname)?.service;
+}
+__name(matchServiceByUrl, "matchServiceByUrl");
+function getFetchGlobalDefaults() {
+  return getFetchConfig().global_defaults;
+}
+__name(getFetchGlobalDefaults, "getFetchGlobalDefaults");
+function listServiceNames() {
+  return Object.keys(getFetchServices());
+}
+__name(listServiceNames, "listServiceNames");
+function getAllowlist() {
+  return getFetchConfig().allowlist ?? [];
+}
+__name(getAllowlist, "getAllowlist");
+async function addAllowlistHost(hostname) {
+  const fetchConfig = { ...getFetchConfig() };
+  const allowlist = new Set(fetchConfig.allowlist ?? []);
+  allowlist.add(hostname);
+  fetchConfig.allowlist = [...allowlist];
+  await saveRegistry(fetchConfig);
+}
+__name(addAllowlistHost, "addAllowlistHost");
+async function removeAllowlistHost(hostname) {
+  const fetchConfig = { ...getFetchConfig() };
+  const before = fetchConfig.allowlist ?? [];
+  if (!before.includes(hostname)) return false;
+  fetchConfig.allowlist = before.filter((h) => h !== hostname);
+  await saveRegistry(fetchConfig);
+  return true;
+}
+__name(removeAllowlistHost, "removeAllowlistHost");
+function getConnections() {
+  return getFetchConfig().connections ?? {};
+}
+__name(getConnections, "getConnections");
+function getConnection(name) {
+  return getConnections()[name];
+}
+__name(getConnection, "getConnection");
+function listConnectionNames() {
+  return Object.keys(getConnections());
+}
+__name(listConnectionNames, "listConnectionNames");
+async function addConnection(name, connection, force = false) {
+  const fetchConfig = { ...getFetchConfig() };
+  const connections = { ...fetchConfig.connections ?? {} };
+  if (!force && name in connections) {
+    throw new Error(`Connection "${name}" already exists. Use force=true to overwrite.`);
+  }
+  connections[name] = connection;
+  fetchConfig.connections = connections;
+  await saveRegistry(fetchConfig);
+}
+__name(addConnection, "addConnection");
+async function removeConnection(name) {
+  const fetchConfig = { ...getFetchConfig() };
+  const connections = { ...fetchConfig.connections ?? {} };
+  if (!(name in connections)) return false;
+  delete connections[name];
+  fetchConfig.connections = connections;
+  await saveRegistry(fetchConfig);
+  return true;
+}
+__name(removeConnection, "removeConnection");
+function getConnectionSummary(name) {
+  const conn = getConnection(name);
+  if (!conn) return void 0;
+  return {
+    name,
+    kind: conn.url_env ? "url_env" : "url",
+    allow_writes: conn.allow_writes === true,
+    description: conn.description
+  };
+}
+__name(getConnectionSummary, "getConnectionSummary");
+function getServiceSummary(name) {
+  const service = getService(name);
+  if (!service) return void 0;
+  return {
+    name,
+    base_url: service.base_url,
+    auth_type: service.auth_type,
+    description: service.description
+  };
+}
+__name(getServiceSummary, "getServiceSummary");
+function getAllServiceSummaries() {
+  return Object.entries(getFetchServices()).map(([name, config2]) => ({
+    name,
+    base_url: config2.base_url,
+    auth_type: config2.auth_type,
+    description: config2.description
+  }));
+}
+__name(getAllServiceSummaries, "getAllServiceSummaries");
+
+// packages/connect/src/fetch/service-resolver.ts
+async function resolveService(nameOrUrl) {
+  let serviceName;
+  let config2;
+  config2 = getService(nameOrUrl);
+  if (config2) serviceName = nameOrUrl;
+  if (!serviceName) {
+    serviceName = matchServiceByUrl(nameOrUrl);
+    if (serviceName) config2 = getService(serviceName);
+  }
+  if (!serviceName || !config2) return void 0;
+  const rawAuth = await getServiceSecrets(serviceName);
+  const auth = rawAuth ? resolveAuthConfig(rawAuth) : void 0;
+  return {
+    name: serviceName,
+    config: config2,
+    auth,
+    has_auth: auth !== void 0 && auth.type !== "none"
+  };
+}
+__name(resolveService, "resolveService");
+function buildServiceHeaders(service, requestHeaders) {
+  const headers = {};
+  const globalDefaults = getFetchGlobalDefaults();
+  if (globalDefaults?.headers) Object.assign(headers, globalDefaults.headers);
+  if (globalDefaults?.user_agent) headers["User-Agent"] = globalDefaults.user_agent;
+  if (service?.config.default_headers) Object.assign(headers, service.config.default_headers);
+  if (requestHeaders) Object.assign(headers, requestHeaders);
+  return headers;
+}
+__name(buildServiceHeaders, "buildServiceHeaders");
+function resolveBaseUrl(service, urlOrPath) {
+  try {
+    new URL(urlOrPath);
+    return urlOrPath;
+  } catch {
+  }
+  if (!service?.config.base_url) {
+    throw new Error(`Cannot resolve relative URL "${urlOrPath}" without a service base_url`);
+  }
+  const base = service.config.base_url.replace(/\/+$/, "");
+  const relativePath = urlOrPath.replace(/^\/+/, "");
+  return `${base}/${relativePath}`;
+}
+__name(resolveBaseUrl, "resolveBaseUrl");
+
+// packages/connect/src/fetch/request-builder.ts
+var DEFAULT_TIMEOUT = 3e4;
+function buildRequestUrl(spec, service) {
+  let url = resolveBaseUrl(service ?? void 0, spec.url);
+  if (spec.params && Object.keys(spec.params).length > 0) {
+    const urlObj = new URL(url);
+    for (const [key, value] of Object.entries(spec.params)) {
+      urlObj.searchParams.set(key, String(value));
+    }
+    url = urlObj.toString();
+  }
+  return url;
+}
+__name(buildRequestUrl, "buildRequestUrl");
+function buildRequestBody(spec) {
+  if (spec.body_data !== void 0) {
+    const bodyType = spec.body_type ?? "json";
+    switch (bodyType) {
+      case "json": {
+        const jsonBody = typeof spec.body_data === "string" ? spec.body_data : JSON.stringify(spec.body_data);
+        return [jsonBody, "application/json"];
+      }
+      case "form": {
+        if (typeof spec.body_data === "string") {
+          return [spec.body_data, "application/x-www-form-urlencoded"];
+        }
+        const params = new URLSearchParams();
+        for (const [key, value] of Object.entries(spec.body_data)) {
+          params.set(key, String(value));
+        }
+        return [params.toString(), "application/x-www-form-urlencoded"];
+      }
+      case "multipart": {
+        if (typeof spec.body_data === "string") {
+          return [spec.body_data, "multipart/form-data"];
+        }
+        const boundary = `----GoodvibesConnect${Date.now()}`;
+        const parts = [];
+        for (const [key, value] of Object.entries(spec.body_data)) {
+          parts.push(
+            `--${boundary}\r
+Content-Disposition: form-data; name="${key}"\r
+\r
+${String(value)}`
+          );
+        }
+        parts.push(`--${boundary}--`);
+        return [parts.join("\r\n"), `multipart/form-data; boundary=${boundary}`];
+      }
+      case "raw": {
+        const rawBody = typeof spec.body_data === "string" ? spec.body_data : JSON.stringify(spec.body_data);
+        return [rawBody, void 0];
+      }
+      default:
+        return [void 0, void 0];
+    }
+  }
+  if (spec.body_base64) {
+    return [Buffer.from(spec.body_base64, "base64").toString("utf-8"), void 0];
+  }
+  if (spec.body) {
+    return [spec.body, void 0];
+  }
+  return [void 0, void 0];
+}
+__name(buildRequestBody, "buildRequestBody");
+function buildRequestHeaders(spec, service, autoContentType) {
+  const headers = buildServiceHeaders(service, spec.headers);
+  const hasContentType = Object.keys(headers).some((k) => k.toLowerCase() === "content-type");
+  if (autoContentType && !hasContentType) {
+    headers["Content-Type"] = autoContentType;
+  }
+  if (spec.auth) applyRequestAuth(headers, spec.auth);
+  return headers;
+}
+__name(buildRequestHeaders, "buildRequestHeaders");
+function applyRequestAuth(headers, auth) {
+  switch (auth.type) {
+    case "none":
+      break;
+    case "bearer":
+      headers["Authorization"] = `Bearer ${auth.token}`;
+      break;
+    case "basic": {
+      const encoded = Buffer.from(`${auth.username}:${auth.password}`).toString("base64");
+      headers["Authorization"] = `Basic ${encoded}`;
+      break;
+    }
+    case "api-key":
+      headers[auth.header] = auth.key;
+      break;
+    case "custom-headers":
+      Object.assign(headers, auth.headers);
+      break;
+  }
+}
+__name(applyRequestAuth, "applyRequestAuth");
+async function buildRequest(spec) {
+  let service;
+  if (spec.service) {
+    service = await resolveService(spec.service);
+  } else {
+    service = await resolveService(spec.url);
+  }
+  const url = buildRequestUrl(spec, service);
+  const [body, autoContentType] = buildRequestBody(spec);
+  const headers = buildRequestHeaders(spec, service, autoContentType);
+  return {
+    url,
+    method: spec.method ?? "GET",
+    headers,
+    body,
+    timeout_ms: spec.timeout_ms ?? service?.config.timeout_ms ?? DEFAULT_TIMEOUT,
+    service
+  };
+}
+__name(buildRequest, "buildRequest");
+
+// packages/connect/src/fetch/rate-limiter.ts
+var DEFAULT_RATE_LIMIT_CONFIG = { per_domain: 2, delay_ms: 500 };
+var RateLimiter = class {
+  static {
+    __name(this, "RateLimiter");
+  }
+  domainStates = /* @__PURE__ */ new Map();
+  config;
+  constructor(config2) {
+    this.config = { ...DEFAULT_RATE_LIMIT_CONFIG, ...config2 };
+  }
+  getDomain(url) {
+    try {
+      const parsed = new URL(url);
+      const hostname = parsed.hostname;
+      const port = parsed.port;
+      const isStandardPort = parsed.protocol === "http:" && port === "80" || parsed.protocol === "https:" && port === "443" || port === "";
+      return isStandardPort ? hostname : `${hostname}:${port}`;
+    } catch {
+      return url;
+    }
+  }
+  getState(domain) {
+    let state = this.domainStates.get(domain);
+    if (!state) {
+      state = { active: 0, last_request_at: 0, queue: [] };
+      this.domainStates.set(domain, state);
+    }
+    return state;
+  }
+  processQueue(domain) {
+    const state = this.getState(domain);
+    while (state.queue.length > 0 && state.active < this.config.per_domain) {
+      if (state.retry_after && Date.now() < state.retry_after) {
+        const delay = state.retry_after - Date.now();
+        const t = setTimeout(() => this.processQueue(domain), delay);
+        t.unref?.();
+        return;
+      }
+      const timeSinceLastRequest = Date.now() - state.last_request_at;
+      if (timeSinceLastRequest < this.config.delay_ms) {
+        const delay = this.config.delay_ms - timeSinceLastRequest;
+        const t = setTimeout(() => this.processQueue(domain), delay);
+        t.unref?.();
+        return;
+      }
+      const next = state.queue.shift();
+      if (next) {
+        state.active++;
+        state.last_request_at = Date.now();
+        next.resolve();
+      }
+    }
+  }
+  /** Acquire permission to make a request to `url`. */
+  async acquire(url) {
+    const domain = this.getDomain(url);
+    const state = this.getState(domain);
+    const timeSinceLastRequest = Date.now() - state.last_request_at;
+    const needsDelay = state.last_request_at > 0 && timeSinceLastRequest < this.config.delay_ms;
+    const needsRetryAfterWait = state.retry_after && Date.now() < state.retry_after;
+    if (state.active < this.config.per_domain && !needsDelay && !needsRetryAfterWait) {
+      state.active++;
+      state.last_request_at = Date.now();
+      return;
+    }
+    return new Promise((resolve, reject) => {
+      state.queue.push({ resolve, reject });
+      this.processQueue(domain);
+    });
+  }
+  /** Release a slot after a request completes, honouring Retry-After. */
+  release(url, response) {
+    const domain = this.getDomain(url);
+    const state = this.getState(domain);
+    state.active = Math.max(0, state.active - 1);
+    if (response) {
+      const retryAfter = this.parseRetryAfter(response);
+      if (retryAfter) state.retry_after = Date.now() + retryAfter;
+    }
+    this.processQueue(domain);
+  }
+  parseRetryAfter(response) {
+    const retryAfter = response.headers.get("retry-after");
+    if (!retryAfter) return null;
+    const seconds = parseInt(retryAfter, 10);
+    if (!isNaN(seconds) && seconds > 0) return seconds * 1e3;
+    const date3 = new Date(retryAfter);
+    const delay = date3.getTime() - Date.now();
+    return delay > 0 ? delay : null;
+  }
+  /** Execute `fn` under the rate limit, acquiring and releasing a slot. */
+  async execute(url, fn) {
+    await this.acquire(url);
+    try {
+      const result = await fn();
+      if (result instanceof Response) {
+        this.release(url, result);
+      } else {
+        this.release(url);
+      }
+      return result;
+    } catch (error2) {
+      this.release(url);
+      throw error2;
+    }
+  }
+  /** Current stats for a domain (debugging). */
+  getStats(url) {
+    const domain = this.getDomain(url);
+    const state = this.getState(domain);
+    return {
+      domain,
+      active: state.active,
+      queued: state.queue.length,
+      last_request_at: state.last_request_at,
+      retry_after: state.retry_after
+    };
+  }
+  /** Clear all rate-limit state (rejecting queued waiters). */
+  reset() {
+    for (const state of this.domainStates.values()) {
+      for (const item of state.queue) item.reject(new Error("Rate limiter was reset"));
+    }
+    this.domainStates.clear();
+  }
+  /** Update rate-limit config (does not affect queued requests). */
+  updateConfig(config2) {
+    this.config = { ...this.config, ...config2 };
+  }
+};
+var globalRateLimiter = new RateLimiter();
+async function rateLimitedFetch(url, options, config2) {
+  if (config2) globalRateLimiter.updateConfig(config2);
+  return globalRateLimiter.execute(url, () => fetch(url, options));
+}
+__name(rateLimitedFetch, "rateLimitedFetch");
+
+// packages/connect/src/fetch/auth/static-auth.ts
+function applyBearerAuth(headers, token) {
+  const resolved = resolveSecretValue(token);
+  if (!resolved?.trim()) return false;
+  headers["Authorization"] = `Bearer ${resolved}`;
+  return true;
+}
+__name(applyBearerAuth, "applyBearerAuth");
+function applyBasicAuth(headers, username, password) {
+  const user = resolveSecretValue(username);
+  const pass = resolveSecretValue(password);
+  if (!user?.trim() || !pass?.trim()) return false;
+  const encoded = Buffer.from(`${user}:${pass}`, "utf-8").toString("base64");
+  headers["Authorization"] = `Basic ${encoded}`;
+  return true;
+}
+__name(applyBasicAuth, "applyBasicAuth");
+function applyApiKeyAuth(headers, headerName, key) {
+  const resolved = resolveSecretValue(key);
+  if (!resolved?.trim()) return false;
+  headers[headerName] = resolved;
+  return true;
+}
+__name(applyApiKeyAuth, "applyApiKeyAuth");
+function applyCustomHeaders(headers, customHeaders) {
+  if (Object.keys(customHeaders).length === 0) return false;
+  let applied = false;
+  for (const [key, value] of Object.entries(customHeaders)) {
+    const resolved = resolveSecretValue(value);
+    if (resolved?.trim()) {
+      headers[key] = resolved;
+      applied = true;
+    }
+  }
+  return applied;
+}
+__name(applyCustomHeaders, "applyCustomHeaders");
+function applyStaticAuth(headers, auth) {
+  switch (auth.type) {
+    case "bearer":
+      if (!auth.token) return false;
+      return applyBearerAuth(headers, auth.token);
+    case "basic":
+      if (!auth.username || !auth.password) return false;
+      return applyBasicAuth(headers, auth.username, auth.password);
+    case "api-key":
+      if (!auth.header || !auth.key) return false;
+      return applyApiKeyAuth(headers, auth.header, auth.key);
+    case "custom-headers":
+      if (!auth.headers) return false;
+      return applyCustomHeaders(headers, auth.headers);
+    case "none":
+      return true;
+    default:
+      return false;
+  }
+}
+__name(applyStaticAuth, "applyStaticAuth");
+
+// packages/connect/src/fetch/auth/oauth2-refresh.ts
+function isTokenExpired(auth) {
+  if (!auth.expires_at) return false;
+  const buffer = 60 * 1e3;
+  return Date.now() + buffer >= auth.expires_at;
+}
+__name(isTokenExpired, "isTokenExpired");
+function canRefreshToken(auth) {
+  return !!(auth.refresh_token && auth.token_url && auth.client_id);
+}
+__name(canRefreshToken, "canRefreshToken");
+async function refreshAccessToken(auth) {
+  if (!auth.refresh_token || !auth.token_url || !auth.client_id) {
+    return { success: false, error: "Missing required fields: refresh_token, token_url, client_id" };
+  }
+  try {
+    new URL(auth.token_url);
+  } catch {
+    return { success: false, error: `Invalid token_url: ${auth.token_url}` };
+  }
+  try {
+    const body = new URLSearchParams({
+      grant_type: "refresh_token",
+      refresh_token: auth.refresh_token,
+      client_id: resolveSecretValue(auth.client_id) ?? ""
+    });
+    if (auth.client_secret) {
+      body.set("client_secret", resolveSecretValue(auth.client_secret) ?? "");
+    }
+    const response = await fetch(auth.token_url, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString()
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        success: false,
+        error: `Token refresh failed: HTTP ${response.status} - ${errorText.slice(0, 200)}`
+      };
+    }
+    const data = await response.json();
+    const accessToken = data.access_token;
+    if (!accessToken) {
+      return { success: false, error: "Token refresh response missing access_token" };
+    }
+    let expiresAt;
+    if (typeof data.expires_in === "number") {
+      expiresAt = Date.now() + data.expires_in * 1e3;
+    }
+    return {
+      success: true,
+      access_token: accessToken,
+      refresh_token: data.refresh_token ?? auth.refresh_token,
+      expires_at: expiresAt
+    };
+  } catch (error2) {
+    return {
+      success: false,
+      error: `Token refresh error: ${error2 instanceof Error ? error2.message : String(error2)}`
+    };
+  }
+}
+__name(refreshAccessToken, "refreshAccessToken");
+async function refreshAndStore(serviceName, currentAuth) {
+  const result = await refreshAccessToken(currentAuth);
+  if (!result.success || !result.access_token) return null;
+  const updatedAuth = {
+    ...currentAuth,
+    access_token: result.access_token,
+    refresh_token: result.refresh_token ?? currentAuth.refresh_token,
+    expires_at: result.expires_at
+  };
+  await setServiceSecret(serviceName, updatedAuth);
+  return updatedAuth;
+}
+__name(refreshAndStore, "refreshAndStore");
+
+// packages/connect/src/fetch/auth/session-auth.ts
+function canAcquireSession(auth) {
+  return !!(auth.login_url && auth.login_body);
+}
+__name(canAcquireSession, "canAcquireSession");
+function extractFromPath(obj, jsonPath) {
+  const parts = jsonPath.split(".");
+  let current = obj;
+  for (const part of parts) {
+    if (current === null || current === void 0 || typeof current !== "object") {
+      return void 0;
+    }
+    current = current[part];
+  }
+  return current;
+}
+__name(extractFromPath, "extractFromPath");
+function resolveLoginBody(body) {
+  const resolved = {};
+  for (const [key, value] of Object.entries(body)) {
+    const resolvedValue = resolveSecretValue(value);
+    if (resolvedValue !== void 0) resolved[key] = resolvedValue;
+  }
+  return resolved;
+}
+__name(resolveLoginBody, "resolveLoginBody");
+async function acquireSessionToken(auth) {
+  if (!auth.login_url || !auth.login_body) {
+    return { success: false, error: "Missing required fields: login_url, login_body" };
+  }
+  try {
+    new URL(auth.login_url);
+  } catch {
+    return { success: false, error: `Invalid login_url: ${auth.login_url}` };
+  }
+  try {
+    const resolvedBody = resolveLoginBody(auth.login_body);
+    const response = await fetch(auth.login_url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(resolvedBody)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        success: false,
+        error: `Session login failed: HTTP ${response.status} - ${errorText.slice(0, 200)}`
+      };
+    }
+    const data = await response.json();
+    const tokenPath = auth.token_path ?? "access_token";
+    const token = extractFromPath(data, tokenPath);
+    if (!token || typeof token !== "string") {
+      return { success: false, error: `Token not found at path "${tokenPath}" in login response` };
+    }
+    let expiresAt;
+    const expiresIn = extractFromPath(data, "expires_in");
+    if (typeof expiresIn === "number") expiresAt = Date.now() + expiresIn * 1e3;
+    return { success: true, token, expires_at: expiresAt };
+  } catch (error2) {
+    return {
+      success: false,
+      error: `Session login error: ${error2 instanceof Error ? error2.message : String(error2)}`
+    };
+  }
+}
+__name(acquireSessionToken, "acquireSessionToken");
+async function acquireAndStore(serviceName, currentAuth) {
+  const result = await acquireSessionToken(currentAuth);
+  if (!result.success || !result.token) return null;
+  const updatedAuth = {
+    ...currentAuth,
+    access_token: result.token,
+    expires_at: result.expires_at
+  };
+  await setServiceSecret(serviceName, updatedAuth);
+  return updatedAuth;
+}
+__name(acquireAndStore, "acquireAndStore");
+
+// packages/connect/src/fetch/cookie-jar.ts
+var fs5 = __toESM(require("fs"), 1);
+var path5 = __toESM(require("path"), 1);
+var MAX_COOKIES = 1e3;
+var MAX_FILE_SIZE = 512 * 1024;
+var CookieJar = class {
+  static {
+    __name(this, "CookieJar");
+  }
+  cookies = [];
+  dirty = false;
+  loaded = false;
+  cookiePath;
+  projectRoot;
+  constructor() {
+    this.cookiePath = statePath("goodvibes.cookies.json");
+    this.projectRoot = process.cwd();
+  }
+  getCookiePath() {
+    return this.cookiePath;
+  }
+  /** Load cookies from disk. */
+  async load() {
+    const cookiePath = this.getCookiePath();
+    try {
+      const content = await fs5.promises.readFile(cookiePath, "utf-8");
+      const parsed = JSON.parse(content);
+      this.cookies = parsed.cookies ?? [];
+      this.pruneExpired();
+      if (this.dirty) {
+        await this.save();
+      }
+      this.loaded = true;
+    } catch (error2) {
+      if (error2.code === "ENOENT") {
+        this.cookies = [];
+        this.loaded = true;
+        return;
+      }
+      throw error2;
+    }
+  }
+  /** Save cookies to disk with 0600 permissions and size-based eviction. */
+  async save() {
+    if (!this.dirty) return;
+    const cookiePath = this.getCookiePath();
+    const cookieDir = path5.dirname(cookiePath);
+    await ensureGitignore(this.projectRoot);
+    await fs5.promises.mkdir(cookieDir, { recursive: true });
+    const data = { cookies: this.cookies, updated_at: (/* @__PURE__ */ new Date()).toISOString() };
+    let content = JSON.stringify(data, null, 2) + "\n";
+    const contentSize = Buffer.byteLength(content, "utf-8");
+    if (contentSize > MAX_FILE_SIZE) {
+      this.cookies.sort((a, b) => {
+        const aExpiry = a.expires ?? Infinity;
+        const bExpiry = b.expires ?? Infinity;
+        return bExpiry - aExpiry;
+      });
+      const updatedAt = (/* @__PURE__ */ new Date()).toISOString();
+      while (Buffer.byteLength(content, "utf-8") > MAX_FILE_SIZE && this.cookies.length > 0) {
+        this.cookies.shift();
+        content = JSON.stringify({ cookies: this.cookies, updated_at: updatedAt }, null, 2) + "\n";
+      }
+    }
+    await fs5.promises.writeFile(cookiePath, content, { encoding: "utf-8", mode: 384 });
+    this.dirty = false;
+  }
+  async ensureLoaded() {
+    if (!this.loaded) await this.load();
+  }
+  /** Parse Set-Cookie headers and store the cookies. */
+  async setCookies(url, setCookieHeaders) {
+    await this.ensureLoaded();
+    const domain = new URL(url).hostname;
+    for (const header of setCookieHeaders) {
+      const cookie = this.parseSetCookie(header, domain);
+      if (!cookie) continue;
+      this.cookies = this.cookies.filter(
+        (c) => !(c.name === cookie.name && c.domain === cookie.domain && c.path === cookie.path)
+      );
+      this.cookies.push(cookie);
+    }
+    if (this.cookies.length > MAX_COOKIES) {
+      this.cookies.sort((a, b) => {
+        const aExpiry = a.expires ?? Infinity;
+        const bExpiry = b.expires ?? Infinity;
+        return aExpiry - bExpiry;
+      });
+      this.cookies = this.cookies.slice(-MAX_COOKIES);
+    }
+    this.dirty = true;
+    await this.save();
+  }
+  /** Get cookies matching a URL (domain/path/secure filtered). */
+  async getCookies(url) {
+    await this.ensureLoaded();
+    const wasDirty = this.dirty;
+    this.pruneExpired();
+    if (!wasDirty && this.dirty) await this.save();
+    const urlObj = new URL(url);
+    const domain = urlObj.hostname;
+    const urlPath = urlObj.pathname;
+    const isSecure = urlObj.protocol === "https:";
+    return this.cookies.filter((cookie) => {
+      if (!this.domainMatches(domain, cookie.domain)) return false;
+      if (!urlPath.startsWith(cookie.path)) return false;
+      if (cookie.secure && !isSecure) return false;
+      return true;
+    });
+  }
+  /** Format cookies as a `Cookie` header value. */
+  toCookieHeader(cookies) {
+    return cookies.map((c) => `${c.name}=${c.value}`).join("; ");
+  }
+  /** Clear cookies, optionally scoped to a domain. */
+  async clear(domain) {
+    await this.ensureLoaded();
+    if (domain) {
+      this.cookies = this.cookies.filter((c) => c.domain !== domain);
+    } else {
+      this.cookies = [];
+    }
+    this.dirty = true;
+    await this.save();
+  }
+  /** Get a copy of all stored cookies (for inspection). */
+  async getAllCookies() {
+    await this.ensureLoaded();
+    return [...this.cookies];
+  }
+  parseSetCookie(header, defaultDomain) {
+    const parts = header.split(";").map((s) => s.trim());
+    if (parts.length === 0) return null;
+    const [nameValue, ...attributes] = parts;
+    const eqIndex = nameValue.indexOf("=");
+    if (eqIndex < 0) return null;
+    const name = nameValue.slice(0, eqIndex).trim();
+    const value = nameValue.slice(eqIndex + 1).trim();
+    if (!name) return null;
+    const cookie = { name, value, domain: defaultDomain, path: "/" };
+    for (const attr of attributes) {
+      const [attrName, ...attrValueParts] = attr.split("=");
+      const attrNameLower = attrName.trim().toLowerCase();
+      const attrValue = attrValueParts.join("=").trim();
+      switch (attrNameLower) {
+        case "domain": {
+          const normalizedDomain = attrValue.replace(/^\./, "");
+          if (!normalizedDomain.includes(".")) {
+            return null;
+          }
+          cookie.domain = normalizedDomain;
+          break;
+        }
+        case "path":
+          cookie.path = attrValue || "/";
+          break;
+        case "expires": {
+          const date3 = new Date(attrValue);
+          if (!isNaN(date3.getTime())) cookie.expires = date3.getTime();
+          break;
+        }
+        case "max-age": {
+          const seconds = parseInt(attrValue, 10);
+          if (!isNaN(seconds)) {
+            cookie.expires = seconds <= 0 ? Date.now() - 1 : Date.now() + seconds * 1e3;
+          }
+          break;
+        }
+        case "httponly":
+          cookie.httpOnly = true;
+          break;
+        case "secure":
+          cookie.secure = true;
+          break;
+        case "samesite":
+          cookie.sameSite = attrValue;
+          break;
+      }
+    }
+    return cookie;
+  }
+  domainMatches(hostname, cookieDomain) {
+    if (hostname === cookieDomain) return true;
+    return hostname.endsWith("." + cookieDomain);
+  }
+  pruneExpired() {
+    const now = Date.now();
+    const before = this.cookies.length;
+    this.cookies = this.cookies.filter((c) => !c.expires || c.expires > now);
+    if (this.cookies.length !== before) this.dirty = true;
+  }
+};
+var globalCookieJar = new CookieJar();
+
+// packages/connect/src/fetch/auth/auth-orchestrator.ts
+async function applyAuth(headers, url, requestAuth, serviceName) {
+  let authApplied = false;
+  if (requestAuth && requestAuth.type !== "none") {
+    switch (requestAuth.type) {
+      case "bearer":
+        if (requestAuth.token?.trim()) {
+          headers["Authorization"] = `Bearer ${requestAuth.token}`;
+          authApplied = true;
+        }
+        break;
+      case "basic":
+        if (requestAuth.username?.trim() && requestAuth.password?.trim()) {
+          const encoded = Buffer.from(
+            `${requestAuth.username}:${requestAuth.password}`,
+            "utf-8"
+          ).toString("base64");
+          headers["Authorization"] = `Basic ${encoded}`;
+          authApplied = true;
+        }
+        break;
+      case "api-key":
+        if (requestAuth.header?.trim() && requestAuth.key?.trim()) {
+          headers[requestAuth.header] = requestAuth.key;
+          authApplied = true;
+        }
+        break;
+      case "custom-headers":
+        if (requestAuth.headers && Object.keys(requestAuth.headers).length > 0) {
+          Object.assign(headers, requestAuth.headers);
+          authApplied = true;
+        }
+        break;
+    }
+  } else if (serviceName) {
+    const auth = await getServiceSecrets(serviceName);
+    if (auth) {
+      if (auth.type === "oauth2") {
+        let currentAuth = auth;
+        if (isTokenExpired(currentAuth) && canRefreshToken(currentAuth)) {
+          const refreshedAuth = await refreshAndStore(serviceName, currentAuth);
+          if (refreshedAuth) currentAuth = refreshedAuth;
+        }
+        if (currentAuth.access_token?.trim()) {
+          headers["Authorization"] = `Bearer ${currentAuth.access_token}`;
+          authApplied = true;
+        }
+      } else if (auth.type === "session") {
+        if (auth.access_token?.trim()) {
+          headers["Authorization"] = `Bearer ${auth.access_token}`;
+          authApplied = true;
+        }
+      } else {
+        const staticApplied = applyStaticAuth(headers, auth);
+        authApplied = authApplied || staticApplied;
+      }
+    }
+  }
+  try {
+    const cookies = await globalCookieJar.getCookies(url);
+    if (cookies.length > 0) {
+      const cookieHeader = globalCookieJar.toCookieHeader(cookies);
+      if (cookieHeader) {
+        headers["Cookie"] = cookieHeader;
+        authApplied = true;
+      }
+    }
+  } catch {
+  }
+  return authApplied;
+}
+__name(applyAuth, "applyAuth");
+async function handleAuthFailure(response, serviceName) {
+  if (response.status !== 401) return { retry: false };
+  if (!serviceName) return { retry: false };
+  try {
+    const auth = await getServiceSecrets(serviceName);
+    if (!auth) return { retry: false };
+    if (auth.type === "oauth2") {
+      if (canRefreshToken(auth)) {
+        const refreshed = await refreshAndStore(serviceName, auth);
+        if (refreshed) return { retry: true };
+      }
+      return { retry: false, hint: "needs_browser_auth" };
+    }
+    if (auth.type === "session") {
+      if (canAcquireSession(auth)) {
+        const acquired = await acquireAndStore(serviceName, auth);
+        if (acquired) return { retry: true };
+      }
+      return { retry: false };
+    }
+    return { retry: false };
+  } catch {
+    return { retry: false };
+  }
+}
+__name(handleAuthFailure, "handleAuthFailure");
+async function getAuthStatus(serviceName) {
+  try {
+    const auth = await getServiceSecrets(serviceName);
+    if (!auth) return "no_auth_configured";
+    const hasCredentials = (() => {
+      switch (auth.type) {
+        case "bearer":
+          return !!auth.token;
+        case "basic":
+          return !!(auth.username && auth.password);
+        case "api-key":
+          return !!(auth.header && auth.key);
+        case "custom-headers":
+          return !!(auth.headers && Object.keys(auth.headers).length > 0);
+        case "oauth2":
+          return !!auth.access_token;
+        case "session":
+          return !!auth.access_token;
+        case "none":
+          return true;
+        default:
+          return false;
+      }
+    })();
+    if (!hasCredentials) return "no_credentials";
+    if (auth.type === "oauth2") {
+      if (isTokenExpired(auth)) {
+        if (canRefreshToken(auth)) return "needs_refresh";
+        return "needs_browser_auth";
+      }
+    }
+    if ("expires_at" in auth && typeof auth.expires_at === "number") {
+      if (auth.expires_at < Date.now()) {
+        if (auth.type !== "oauth2" && !("login_url" in auth)) return "expired";
+      }
+    }
+    return "valid";
+  } catch {
+    return "no_auth_configured";
+  }
+}
+__name(getAuthStatus, "getAuthStatus");
+
+// packages/connect/src/trust.ts
+var SAFE_METHODS = ["GET", "HEAD", "OPTIONS"];
+function originOf(url) {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
+}
+__name(originOf, "originOf");
+function isSameOrigin(a, b) {
+  const oa = originOf(a);
+  const ob = originOf(b);
+  return oa !== null && ob !== null && oa === ob;
+}
+__name(isSameOrigin, "isSameOrigin");
+function isSafeMethod(method) {
+  return SAFE_METHODS.includes(method.toUpperCase());
+}
+__name(isSafeMethod, "isSafeMethod");
+function isDestinationAllowed(finalUrl, policy) {
+  const origin = originOf(finalUrl);
+  if (!origin) {
+    return { allowed: false, reason: `Malformed URL: ${finalUrl}` };
+  }
+  let host;
+  try {
+    host = new URL(finalUrl).hostname;
+  } catch {
+    return { allowed: false, reason: `Malformed URL: ${finalUrl}` };
+  }
+  if (policy.registeredOrigins.includes(origin)) {
+    return { allowed: true };
+  }
+  if (policy.allowlist.includes(host)) {
+    return { allowed: true };
+  }
+  if (policy.mode === "open") {
+    return { allowed: true };
+  }
+  return {
+    allowed: false,
+    reason: `Destination '${host}' is not a registered service origin and is not on the allowlist. Register the service, add the host via the services command, or open the trust mode (human-only, out-of-band).`
+  };
+}
+__name(isDestinationAllowed, "isDestinationAllowed");
+function isCredentialAttachAllowed(finalUrl, serviceBaseUrl) {
+  return isSameOrigin(finalUrl, serviceBaseUrl);
+}
+__name(isCredentialAttachAllowed, "isCredentialAttachAllowed");
+function isMethodAllowed(method, opts) {
+  if (isSafeMethod(method)) return { allowed: true };
+  const upper = method.toUpperCase();
+  if (opts.hasService) {
+    const opted = (opts.writeMethods ?? []).map((m) => m.toUpperCase());
+    if (opted.includes(upper)) return { allowed: true };
+    return {
+      allowed: false,
+      reason: `Method ${upper} is a write and this service is read-only by default. Add ${upper} to the service's write_methods to opt in.`
+    };
+  }
+  if (opts.mode === "open") return { allowed: true };
+  return {
+    allowed: false,
+    reason: `Method ${upper} is a write to an unregistered URL. Register the target as a service with a write_methods opt-in, or open the trust mode (human-only).`
+  };
+}
+__name(isMethodAllowed, "isMethodAllowed");
+function collectSecretValues(auth) {
+  const out = /* @__PURE__ */ new Set();
+  const add = /* @__PURE__ */ __name((v) => {
+    if (typeof v === "string" && v.trim().length >= 4) out.add(v);
+  }, "add");
+  if (!auth) return [];
+  add(auth.token);
+  add(auth.key);
+  add(auth.password);
+  add(auth.access_token);
+  add(auth.refresh_token);
+  add(auth.client_secret);
+  if (typeof auth.username === "string" && typeof auth.password === "string") {
+    add(Buffer.from(`${auth.username}:${auth.password}`, "utf-8").toString("base64"));
+  }
+  if (auth.headers) {
+    for (const value of Object.values(auth.headers)) add(value);
+  }
+  return [...out];
+}
+__name(collectSecretValues, "collectSecretValues");
+var REDACTION = "***REDACTED***";
+function redactString(text, secrets) {
+  let out = text;
+  for (const secret of secrets) {
+    if (!secret) continue;
+    out = out.split(secret).join(REDACTION);
+  }
+  return out;
+}
+__name(redactString, "redactString");
+function redactValue(value, secrets) {
+  if (secrets.length === 0) return value;
+  if (typeof value === "string") return redactString(value, secrets);
+  if (Array.isArray(value)) return value.map((v) => redactValue(v, secrets));
+  if (value && typeof value === "object") {
+    const out = {};
+    for (const [k, v] of Object.entries(value)) {
+      out[k] = redactValue(v, secrets);
+    }
+    return out;
+  }
+  return value;
+}
+__name(redactValue, "redactValue");
+
+// packages/connect/src/tools/api-request.ts
+var apiRequestTool = {
+  name: "api_request",
+  description: "Make one or more HTTP requests under the connect trust boundary. Credentials attach only to their registered service origin; unregistered destinations are gated by a default-on allowlist; write methods require a per-service opt-in. Results are keyed per entry with error isolation; extract is json | text | headers | status.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      requests: {
+        type: "array",
+        description: "The batch of requests. Each result is keyed by id (or array index).",
+        items: {
+          type: "object",
+          properties: {
+            id: { type: "string", description: "Result key (defaults to the array index)." },
+            service: { type: "string", description: "Registered service name." },
+            path: { type: "string", description: "Path relative to the service base_url." },
+            url: { type: "string", description: "Absolute URL for an unregistered target." },
+            method: { type: "string", description: "HTTP method (default GET)." },
+            headers: { type: "object", additionalProperties: { type: "string" } },
+            params: { type: "object", description: "Query parameters." },
+            body: {
+              type: "object",
+              description: "Structured body.",
+              properties: {
+                type: { type: "string", enum: ["json", "form", "text", "multipart"] },
+                data: {}
+              },
+              required: ["type", "data"]
+            },
+            body_plain: { type: "string", description: "Plain body (alternate of body_base64)." },
+            body_base64: {
+              type: "string",
+              description: "Base64 body (alternate of body_plain; preferred when both present)."
+            },
+            timeout_ms: { type: "number" },
+            extract: { type: "string", enum: ["json", "text", "headers", "status"] }
+          }
+        }
+      },
+      output: {
+        type: "object",
+        properties: { max_tokens: { type: "number" } }
+      }
+    },
+    required: ["requests"]
+  }
+};
+async function fetchWithTimeout(url, options, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  timer.unref?.();
+  try {
+    return await rateLimitedFetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+__name(fetchWithTimeout, "fetchWithTimeout");
+function toRequestSpec(entry) {
+  const spec = {
+    url: entry.url ?? entry.path ?? "",
+    method: entry.method,
+    headers: entry.headers,
+    params: entry.params,
+    service: entry.service,
+    auth: entry.auth,
+    timeout_ms: entry.timeout_ms
+  };
+  let warning;
+  const hasPlain = typeof entry.body_plain === "string";
+  const hasBase64 = typeof entry.body_base64 === "string";
+  if (hasPlain && hasBase64) {
+    spec.body_base64 = entry.body_base64;
+    warning = "Both body_plain and body_base64 were provided; using body_base64 (the two are mutually-exclusive alternates).";
+  } else if (hasBase64) {
+    spec.body_base64 = entry.body_base64;
+  } else if (hasPlain) {
+    spec.body = entry.body_plain;
+  }
+  if (entry.body) {
+    spec.body_type = entry.body.type === "text" ? "raw" : entry.body.type;
+    spec.body_data = entry.body.data;
+    spec.body_base64 = void 0;
+    spec.body = void 0;
+  }
+  return { spec, warning };
+}
+__name(toRequestSpec, "toRequestSpec");
+async function extractResponse(response, extract) {
+  const headers = {};
+  response.headers.forEach((value, key) => {
+    headers[key] = value;
+  });
+  switch (extract) {
+    case "status":
+      return {};
+    case "headers":
+      return { headers };
+    case "text":
+      return { body: await response.text() };
+    case "json":
+    default: {
+      const text = await response.text();
+      try {
+        return { body: JSON.parse(text) };
+      } catch {
+        return {
+          body: {
+            _parse_error: "Response was not valid JSON; returning raw text.",
+            text
+          }
+        };
+      }
+    }
+  }
+}
+__name(extractResponse, "extractResponse");
+async function runEntry(entry, mode) {
+  const { spec, warning } = toRequestSpec(entry);
+  if (!spec.url) {
+    return {
+      status: null,
+      resolved_url: null,
+      truncated: false,
+      error: "Each request needs a service+path or an absolute url."
+    };
+  }
+  let built;
+  try {
+    built = await buildRequest(spec);
+  } catch (e) {
+    return {
+      status: null,
+      resolved_url: null,
+      truncated: false,
+      error: e instanceof Error ? e.message : String(e),
+      warning
+    };
+  }
+  const finalUrl = built.url;
+  const method = built.method.toUpperCase();
+  const hasService = !!built.service;
+  const services = getFetchServices();
+  const registeredOrigins = Object.values(services).map((s) => originOf(s.base_url)).filter((o) => o !== null);
+  const destDecision = isDestinationAllowed(finalUrl, {
+    mode,
+    registeredOrigins,
+    allowlist: getAllowlist()
+  });
+  if (!destDecision.allowed) {
+    return { status: null, resolved_url: finalUrl, truncated: false, error: destDecision.reason ?? "Destination denied.", warning };
+  }
+  const methodDecision = isMethodAllowed(method, {
+    mode,
+    hasService,
+    writeMethods: built.service?.config.write_methods
+  });
+  if (!methodDecision.allowed) {
+    return { status: null, resolved_url: finalUrl, truncated: false, error: methodDecision.reason ?? "Method denied.", warning };
+  }
+  const pinnedOk = hasService && isCredentialAttachAllowed(finalUrl, built.service.config.base_url);
+  try {
+    if (pinnedOk) {
+      await applyAuth(built.headers, finalUrl, void 0, built.service.name);
+    } else {
+      await applyAuth(built.headers, finalUrl, void 0, void 0);
+    }
+  } catch {
+  }
+  const timeoutMs = built.timeout_ms;
+  const extract = entry.extract ?? "json";
+  const fetchOptions = { method, headers: { ...built.headers } };
+  if (method !== "GET" && method !== "HEAD" && built.body !== void 0) {
+    fetchOptions.body = built.body;
+  }
+  try {
+    let response = await fetchWithTimeout(finalUrl, fetchOptions, timeoutMs);
+    if (response.status === 401 && pinnedOk) {
+      try {
+        const recovery = await handleAuthFailure(response, built.service.name);
+        if (recovery.retry) {
+          await applyAuth(built.headers, finalUrl, void 0, built.service.name);
+          response = await fetchWithTimeout(
+            finalUrl,
+            { ...fetchOptions, headers: { ...built.headers } },
+            timeoutMs
+          );
+        }
+      } catch {
+      }
+    }
+    const extracted = await extractResponse(response, extract);
+    const secrets = collectSecretValues(built.service?.auth);
+    const body = extracted.body !== void 0 ? redactValue(extracted.body, secrets) : void 0;
+    const headers = extracted.headers ? redactValue(extracted.headers, secrets) : void 0;
+    return {
+      status: response.status,
+      resolved_url: finalUrl,
+      ...body !== void 0 ? { body } : {},
+      ...headers ? { headers } : {},
+      truncated: false,
+      error: response.ok ? null : `HTTP ${response.status} ${response.statusText}`.trim(),
+      warning
+    };
+  } catch (e) {
+    const err = e instanceof Error ? e : new Error(String(e));
+    const isTimeout = err.name === "AbortError";
+    return {
+      status: null,
+      resolved_url: finalUrl,
+      truncated: false,
+      error: isTimeout ? `Request timed out after ${timeoutMs}ms` : err.message,
+      warning
+    };
+  }
+}
+__name(runEntry, "runEntry");
+function capToBudget(results, mode, maxTokens) {
+  const render = /* @__PURE__ */ __name(() => estimatePayloadTokens(JSON.stringify({ mode, results })), "render");
+  if (render() <= maxTokens) return { truncated: false };
+  let trimmedAny = false;
+  for (let i = 0; i < 64; i++) {
+    const est = render();
+    if (est <= maxTokens) break;
+    let pickKey = null;
+    let pickLen = 0;
+    for (const [key, r2] of Object.entries(results)) {
+      if (r2.body === void 0) continue;
+      const text2 = typeof r2.body === "string" ? r2.body : JSON.stringify(r2.body);
+      if (text2.length > pickLen) {
+        pickLen = text2.length;
+        pickKey = key;
+      }
+    }
+    if (pickKey === null || pickLen === 0) break;
+    const r = results[pickKey];
+    const text = typeof r.body === "string" ? r.body : JSON.stringify(r.body);
+    const over = est - maxTokens;
+    const cutChars = Math.max(Math.ceil(over * 3.5), 16);
+    const newLen = Math.max(0, text.length - cutChars);
+    r.body = utf8SafeSlice(text, newLen);
+    r.truncated = true;
+    trimmedAny = true;
+  }
+  return { truncated: trimmedAny };
+}
+__name(capToBudget, "capToBudget");
+async function handleApiRequest(args) {
+  const elapsed = startTimer();
+  const cfg = loadConfig();
+  const mode = cfg.mode;
+  const input = args ?? {};
+  if (!input.requests || !Array.isArray(input.requests) || input.requests.length === 0) {
+    const env2 = {
+      success: false,
+      error: "api_request requires a non-empty `requests` array.",
+      meta: { token_estimate: 0, mode, execution_ms: elapsed() }
+    };
+    return toCallToolResult(env2);
+  }
+  const entries = input.requests;
+  const maxTokens = input.output?.max_tokens ?? cfg.max_tokens_default;
+  const budgetMs = cfg.budgets.http_max_ms + 5e3;
+  const outcome = await withBudget(budgetMs, async () => {
+    const settled = await Promise.all(
+      entries.map(
+        (entry) => runEntry(entry, mode).catch((e) => ({
+          status: null,
+          resolved_url: null,
+          truncated: false,
+          error: e instanceof Error ? e.message : String(e)
+        }))
+      )
+    );
+    const results2 = {};
+    settled.forEach((res, i) => {
+      const key = entries[i].id ?? String(i);
+      results2[key] = res;
+    });
+    return results2;
+  });
+  const results = outcome.value;
+  const cap = capToBudget(results, mode, maxTokens);
+  const env = successEnvelope(
+    { mode, results },
+    {
+      mode,
+      execution_ms: elapsed(),
+      budget_exceeded: outcome.budget_exceeded || void 0,
+      truncated: cap.truncated || void 0,
+      effective_caps: cap.truncated ? { max_tokens: maxTokens } : void 0
+    }
+  );
+  return toCallToolResult(env);
+}
+__name(handleApiRequest, "handleApiRequest");
+
+// packages/connect/src/tools/service.ts
+var serviceTool = {
+  name: "service",
+  description: "Manage registered API services under the connect trust boundary: list/get (credential-free summaries), register, remove (purges credentials), set_auth (stored 0600, never echoed), set_url_pattern, allow/unallow a destination host, and status. The trust mode is human-only and cannot be changed here.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      action: {
+        type: "string",
+        enum: [
+          "list",
+          "get",
+          "register",
+          "remove",
+          "set_auth",
+          "set_url_pattern",
+          "allow",
+          "unallow",
+          "register_connection",
+          "remove_connection",
+          "status"
+        ]
+      },
+      name: { type: "string", description: "Service or connection name." },
+      hostname: { type: "string", description: "Host for set_url_pattern / allow / unallow." },
+      force: { type: "boolean", description: "Overwrite an existing service on register." },
+      config: {
+        type: "object",
+        description: "Service configuration for register.",
+        properties: {
+          base_url: { type: "string" },
+          default_headers: { type: "object", additionalProperties: { type: "string" } },
+          auth_type: { type: "string" },
+          description: { type: "string" },
+          timeout_ms: { type: "number" },
+          rate_limit_rps: { type: "number" },
+          write_methods: {
+            type: "array",
+            items: { type: "string" },
+            description: "Write methods this service opts into (read-only by default)."
+          }
+        },
+        required: ["base_url"]
+      },
+      auth: {
+        type: "object",
+        description: "Auth config stored to the 0600 secrets file. Never echoed back."
+      },
+      connection: {
+        type: "object",
+        description: "Database connection for register_connection (prefer url_env for networked DBs).",
+        properties: {
+          url: { type: "string" },
+          url_env: { type: "string" },
+          allow_writes: { type: "boolean" },
+          description: { type: "string" }
+        }
+      }
+    },
+    required: ["action"]
+  }
+};
+async function handleService(args) {
+  const elapsed = startTimer();
+  const cfg = loadConfig();
+  const { mode } = configForEnvelope(cfg);
+  const input = args ?? {};
+  const fail = /* @__PURE__ */ __name((msg) => toCallToolResult(errorEnvelope(msg, { mode, execution_ms: elapsed() })), "fail");
+  const ok = /* @__PURE__ */ __name((data) => toCallToolResult(
+    successEnvelope(data, { mode, execution_ms: elapsed() })
+  ), "ok");
+  try {
+    switch (input.action) {
+      case "list":
+        return ok({
+          services: getAllServiceSummaries(),
+          connections: listConnectionNames(),
+          allowlist: getAllowlist(),
+          mode
+        });
+      case "get": {
+        if (!input.name) return fail("`get` requires a service `name`.");
+        const summary = getServiceSummary(input.name);
+        if (!summary) return fail(`Service "${input.name}" is not registered.`);
+        const auth_status = await getAuthStatus(input.name);
+        return ok({ ...summary, auth_status });
+      }
+      case "register": {
+        if (!input.name) return fail("`register` requires a service `name`.");
+        if (!input.config?.base_url) return fail("`register` requires `config.base_url`.");
+        if (!originValid(input.config.base_url)) {
+          return fail(`base_url "${input.config.base_url}" is not a valid absolute URL.`);
+        }
+        await addService(input.name, input.config, input.force ?? false);
+        return ok({ registered: input.name, summary: getServiceSummary(input.name) });
+      }
+      case "remove": {
+        if (!input.name) return fail("`remove` requires a service `name`.");
+        const removed = await removeService(input.name);
+        return ok({ removed, name: input.name });
+      }
+      case "set_auth": {
+        if (!input.name) return fail("`set_auth` requires a service `name`.");
+        if (!input.auth) return fail("`set_auth` requires an `auth` config.");
+        await setServiceSecret(input.name, input.auth);
+        const auth_status = await getAuthStatus(input.name);
+        return ok({ name: input.name, stored: true, auth_status });
+      }
+      case "set_url_pattern": {
+        if (!input.hostname || !input.name) {
+          return fail("`set_url_pattern` requires `hostname` and `name`.");
+        }
+        await addUrlPattern(input.hostname, input.name);
+        return ok({ hostname: input.hostname, service: input.name });
+      }
+      case "allow": {
+        if (!input.hostname) return fail("`allow` requires a `hostname`.");
+        await addAllowlistHost(input.hostname);
+        return ok({ allowlist: getAllowlist() });
+      }
+      case "unallow": {
+        if (!input.hostname) return fail("`unallow` requires a `hostname`.");
+        const removed = await removeAllowlistHost(input.hostname);
+        return ok({ removed, allowlist: getAllowlist() });
+      }
+      case "register_connection": {
+        if (!input.name) return fail("`register_connection` requires a `name`.");
+        if (!input.connection || !input.connection.url && !input.connection.url_env) {
+          return fail("`register_connection` requires `connection.url` or `connection.url_env`.");
+        }
+        await addConnection(input.name, input.connection, input.force ?? false);
+        return ok({ registered_connection: input.name, summary: getConnectionSummary(input.name) });
+      }
+      case "remove_connection": {
+        if (!input.name) return fail("`remove_connection` requires a `name`.");
+        const removed = await removeConnection(input.name);
+        return ok({ removed, name: input.name });
+      }
+      case "status":
+        return ok({
+          mode,
+          read_only: mode === "restricted",
+          dangerously_persist_across_sessions: cfg.dangerously_persist_across_sessions,
+          services: listServiceNames(),
+          connections: listConnectionNames(),
+          allowlist: getAllowlist(),
+          note: "Trust mode is human-only. To open it, a person edits .goodvibes/v2/config.json out-of-band; no tool can flip it."
+        });
+      default:
+        return fail(
+          `Unknown service action "${String(input.action)}". Valid: list, get, register, remove, set_auth, set_url_pattern, allow, unallow, status.`
+        );
+    }
+  } catch (e) {
+    return fail(e instanceof Error ? e.message : String(e));
+  }
+}
+__name(handleService, "handleService");
+function originValid(url) {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
+__name(originValid, "originValid");
+
+// packages/connect/src/db/url-parser.ts
+var MIN_PORT = 0;
+var MAX_PORT = 65535;
+function validatePort(port, context) {
+  if (!Number.isInteger(port) || port < MIN_PORT || port > MAX_PORT) {
+    throw new Error(
+      `Invalid port ${port} in ${context} URL. Port must be an integer between ${MIN_PORT} and ${MAX_PORT}.`
+    );
+  }
+}
+__name(validatePort, "validatePort");
+function validateHostname(hostname, context) {
+  if (!hostname || hostname.trim() === "") {
+    throw new Error(`Invalid or empty hostname in ${context} URL.`);
+  }
+}
+__name(validateHostname, "validateHostname");
+function parseConnectionUrl(url) {
+  if (url === ":memory:" || url === "sqlite::memory:" || url === "sqlite://:memory:") {
+    return { type: "sqlite", database: ":memory:", filepath: ":memory:" };
+  }
+  if (url.startsWith("sqlite:") || url.startsWith("file:")) {
+    let filepath = url.replace(/^sqlite:(\/\/)?/, "").replace(/^file:/, "");
+    if (filepath === ":memory:" || filepath === "/:memory:") {
+      return { type: "sqlite", database: ":memory:", filepath: ":memory:" };
+    }
+    if (!filepath.startsWith("/") && !filepath.startsWith("./") && !filepath.match(/^[A-Za-z]:[/\\]/)) {
+      filepath = "./" + filepath;
+    }
+    return { type: "sqlite", database: filepath, filepath };
+  }
+  if (url.match(/\.(db|sqlite|sqlite3)$/i)) {
+    let filepath = url;
+    if (!filepath.startsWith("/") && !filepath.startsWith("./") && !filepath.match(/^[A-Za-z]:[/\\]/)) {
+      filepath = "./" + filepath;
+    }
+    return { type: "sqlite", database: filepath, filepath };
+  }
+  if (url.startsWith("postgres://") || url.startsWith("postgresql://")) {
+    try {
+      const parsed = new URL(url);
+      const host = parsed.hostname || "localhost";
+      const port = parsed.port ? parseInt(parsed.port, 10) : 5432;
+      validateHostname(host, "PostgreSQL");
+      validatePort(port, "PostgreSQL");
+      return {
+        type: "postgresql",
+        host,
+        port,
+        database: parsed.pathname.replace(/^\//, "") || "postgres",
+        user: parsed.username || void 0,
+        password: parsed.password || void 0
+      };
+    } catch (err) {
+      if (err instanceof Error && err.message.startsWith("Invalid")) throw err;
+      return { type: "unknown", database: "" };
+    }
+  }
+  if (url.startsWith("mysql://")) {
+    try {
+      const parsed = new URL(url);
+      const host = parsed.hostname || "localhost";
+      const port = parsed.port ? parseInt(parsed.port, 10) : 3306;
+      validateHostname(host, "MySQL");
+      validatePort(port, "MySQL");
+      return {
+        type: "mysql",
+        host,
+        port,
+        database: parsed.pathname.replace(/^\//, "") || "mysql",
+        user: parsed.username || void 0,
+        password: parsed.password || void 0
+      };
+    } catch (err) {
+      if (err instanceof Error && err.message.startsWith("Invalid")) throw err;
+      return { type: "unknown", database: "" };
+    }
+  }
+  return { type: "unknown", database: "" };
+}
+__name(parseConnectionUrl, "parseConnectionUrl");
+
+// packages/connect/src/db/constants.ts
+var WRITE_KEYWORDS = [
+  "INSERT",
+  "UPDATE",
+  "DELETE",
+  "DROP",
+  "CREATE",
+  "ALTER",
+  "TRUNCATE",
+  "REPLACE",
+  "UPSERT",
+  "MERGE",
+  "GRANT",
+  "REVOKE",
+  "VACUUM"
+];
+
+// packages/connect/src/db/query-analysis.ts
+var STRIP_LINE_COMMENTS = /^--.*$/gm;
+var STRIP_BLOCK_COMMENTS = /\/\*[\s\S]*?\*\//g;
+var CTE_END_PATTERNS = {};
+function getCteEndPattern(keyword) {
+  if (!CTE_END_PATTERNS[keyword]) {
+    CTE_END_PATTERNS[keyword] = new RegExp(`\\)\\s*${keyword}\\b`, "i");
+  }
+  return CTE_END_PATTERNS[keyword];
+}
+__name(getCteEndPattern, "getCteEndPattern");
+function stripLeadingComments(query) {
+  return query.replace(STRIP_LINE_COMMENTS, "").replace(STRIP_BLOCK_COMMENTS, "").trim();
+}
+__name(stripLeadingComments, "stripLeadingComments");
+function isWriteOperation(query) {
+  const normalizedQuery = query.trim().toUpperCase();
+  const withoutComments = stripLeadingComments(normalizedQuery);
+  for (const keyword of WRITE_KEYWORDS) {
+    if (withoutComments.startsWith(keyword)) return true;
+  }
+  if (withoutComments.startsWith("WITH")) {
+    for (const keyword of WRITE_KEYWORDS) {
+      if (getCteEndPattern(keyword).test(withoutComments)) return true;
+    }
+  }
+  return false;
+}
+__name(isWriteOperation, "isWriteOperation");
+function isReadOnlyQuery(query) {
+  const normalizedQuery = query.trim().toUpperCase();
+  const withoutComments = stripLeadingComments(normalizedQuery);
+  if (withoutComments.startsWith("SELECT") || withoutComments.startsWith("EXPLAIN")) {
+    return true;
+  }
+  if (withoutComments.startsWith("WITH")) {
+    return !WRITE_KEYWORDS.some((keyword) => getCteEndPattern(keyword).test(withoutComments));
+  }
+  if (withoutComments.startsWith("PRAGMA")) {
+    return !withoutComments.includes("=");
+  }
+  return false;
+}
+__name(isReadOnlyQuery, "isReadOnlyQuery");
+function hasLimitClause(query) {
+  const normalizedQuery = query.trim().toUpperCase();
+  return /\bLIMIT\s+\d+/i.test(normalizedQuery) || /\bLIMIT\s+\$\d+/i.test(normalizedQuery) || /\bLIMIT\s+\?/i.test(normalizedQuery);
+}
+__name(hasLimitClause, "hasLimitClause");
+function addLimitClause(query, limit) {
+  const trimmedQuery = query.trim();
+  if (!/^(SELECT|WITH)/i.test(trimmedQuery)) return trimmedQuery;
+  if (hasLimitClause(trimmedQuery)) return trimmedQuery;
+  const withoutSemicolon = trimmedQuery.replace(/;\s*$/, "");
+  return `${withoutSemicolon} LIMIT ${limit}`;
+}
+__name(addLimitClause, "addLimitClause");
+
+// packages/connect/src/db/formatters.ts
+var MAX_COLUMN_DISPLAY_WIDTH = 50;
+function formatCellValue(value) {
+  if (value === null || value === void 0) return "NULL";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+__name(formatCellValue, "formatCellValue");
+function formatQueryResult(rows, columns) {
+  if (rows.length === 0) return "(no rows)";
+  const colWidths = {};
+  for (const col of columns) colWidths[col.name] = col.name.length;
+  for (const row of rows) {
+    const rowObj = row;
+    for (const col of columns) {
+      const value = formatCellValue(rowObj[col.name]);
+      colWidths[col.name] = Math.max(colWidths[col.name], value.length);
+    }
+  }
+  for (const col of columns) {
+    colWidths[col.name] = Math.min(colWidths[col.name], MAX_COLUMN_DISPLAY_WIDTH);
+  }
+  const headerCells = columns.map((col) => col.name.padEnd(colWidths[col.name]));
+  const headerLine = "| " + headerCells.join(" | ") + " |";
+  const separatorCells = columns.map((col) => "-".repeat(colWidths[col.name]));
+  const separatorLine = "|-" + separatorCells.join("-|-") + "-|";
+  const rowLines = rows.map((row) => {
+    const rowObj = row;
+    const cells = columns.map((col) => {
+      const value = formatCellValue(rowObj[col.name]);
+      return value.slice(0, colWidths[col.name]).padEnd(colWidths[col.name]);
+    });
+    return "| " + cells.join(" | ") + " |";
+  });
+  return [headerLine, separatorLine, ...rowLines].join("\n");
+}
+__name(formatQueryResult, "formatQueryResult");
+
+// packages/connect/src/db/errors.ts
+var DatabaseError = class extends Error {
+  constructor(message, cause) {
+    super(message);
+    this.cause = cause;
+    this.name = "DatabaseError";
+  }
+  static {
+    __name(this, "DatabaseError");
+  }
+};
+var ConnectionError = class extends DatabaseError {
+  static {
+    __name(this, "ConnectionError");
+  }
+  constructor(message, cause) {
+    super(message, cause);
+    this.name = "ConnectionError";
+  }
+};
+var QueryError = class extends DatabaseError {
+  static {
+    __name(this, "QueryError");
+  }
+  constructor(message, cause) {
+    super(message, cause);
+    this.name = "QueryError";
+  }
+};
+function enhanceDatabaseError(message, dbType) {
+  if (dbType === "postgresql") {
+    const pgEnhancements = [
+      [/duplicate key value/i, `${message}
+
+Hint: A unique constraint was violated. A record with this value already exists.`],
+      [/relation "[^"]+" does not exist/i, `${message}
+
+Hint: The table or view does not exist.`],
+      [/null value in column/i, `${message}
+
+Hint: A NOT NULL constraint was violated. Provide a value for the required column.`],
+      [/permission denied/i, `${message}
+
+Hint: The database user lacks permission for this operation.`]
+    ];
+    for (const [pattern, enhanced] of pgEnhancements) {
+      if (pattern.test(message)) return enhanced;
+    }
+    return message;
+  }
+  if (dbType === "mysql") {
+    const mysqlEnhancements = [
+      [/Duplicate entry/i, `${message}
+
+Hint: A unique constraint was violated. A record with this value already exists.`],
+      [/Table '[^']+' doesn't exist/i, `${message}
+
+Hint: The table does not exist. Use 'SHOW TABLES' to list available tables.`],
+      [/Access denied/i, `${message}
+
+Hint: The database user lacks permission for this operation.`],
+      [/Unknown column/i, `${message}
+
+Hint: The column does not exist. Use 'DESCRIBE table_name' to see columns.`]
+    ];
+    for (const [pattern, enhanced] of mysqlEnhancements) {
+      if (pattern.test(message)) return enhanced;
+    }
+    return message;
+  }
+  if (dbType !== "sqlite") return message;
+  const enhancements = [
+    [/SQLITE_READONLY/i, `${message}
+
+Hint: The database is opened read-only. Enable writes explicitly to mutate.`],
+    [/SQLITE_BUSY/i, `${message}
+
+Hint: The database is locked by another connection. Wait and retry.`],
+    [/SQLITE_CONSTRAINT/i, `${message}
+
+Hint: A constraint was violated (foreign key, unique, not null, etc.).`],
+    [/no such table/i, `${message}
+
+Hint: The table does not exist. Use 'SELECT name FROM sqlite_master WHERE type="table"'.`],
+    [/no such column/i, `${message}
+
+Hint: The column does not exist. Use 'PRAGMA table_info(table_name)'.`],
+    [/SQLITE_CORRUPT/i, `${message}
+
+Hint: The database file appears corrupted. Restore from a backup.`],
+    [/unable to open database/i, `${message}
+
+Hint: Cannot open the database file. Check the path and permissions.`]
+  ];
+  for (const [pattern, enhanced] of enhancements) {
+    if (pattern.test(message)) return enhanced;
+  }
+  return message;
+}
+__name(enhanceDatabaseError, "enhanceDatabaseError");
+
+// packages/connect/src/db/drivers.ts
+var import_module = require("module");
+var import_url = require("url");
+var path6 = __toESM(require("path"), 1);
+var mockDrivers = {};
+function resolveFromTarget(moduleName) {
+  try {
+    const req = (0, import_module.createRequire)(path6.join(process.cwd(), "noop.js"));
+    return req.resolve(moduleName);
+  } catch {
+    return null;
+  }
+}
+__name(resolveFromTarget, "resolveFromTarget");
+async function dynamicImport(moduleName) {
+  if (moduleName in mockDrivers) return mockDrivers[moduleName];
+  const resolved = resolveFromTarget(moduleName);
+  if (!resolved) return null;
+  try {
+    return await import((0, import_url.pathToFileURL)(resolved).href);
+  } catch {
+    return null;
+  }
+}
+__name(dynamicImport, "dynamicImport");
+async function loadPostgresDriver() {
+  return dynamicImport("pg");
+}
+__name(loadPostgresDriver, "loadPostgresDriver");
+async function loadMysqlDriver() {
+  return dynamicImport("mysql2/promise");
+}
+__name(loadMysqlDriver, "loadMysqlDriver");
+
+// packages/connect/src/db/executors/postgres.ts
+function getPostgresTypeName(oid) {
+  const typeMap = {
+    16: "boolean",
+    20: "bigint",
+    21: "smallint",
+    23: "integer",
+    25: "text",
+    114: "json",
+    700: "real",
+    701: "double precision",
+    1043: "varchar",
+    1082: "date",
+    1083: "time",
+    1114: "timestamp",
+    1184: "timestamptz",
+    1700: "numeric",
+    1186: "interval",
+    2950: "uuid",
+    3802: "jsonb",
+    2277: "anyarray"
+  };
+  return typeMap[oid] || "unknown";
+}
+__name(getPostgresTypeName, "getPostgresTypeName");
+async function executePostgres(connectionInfo, query, params = []) {
+  const pg = await loadPostgresDriver();
+  if (!pg) {
+    throw new Error("PostgreSQL driver (pg) is not installed in this project. Install with: npm install pg");
+  }
+  const { Client } = pg;
+  const client = new Client({
+    host: connectionInfo.host,
+    port: connectionInfo.port,
+    database: connectionInfo.database,
+    user: connectionInfo.user,
+    password: connectionInfo.password,
+    connectionTimeoutMillis: 5e3,
+    statement_timeout: 3e4
+  });
+  try {
+    await client.connect();
+  } catch (cause) {
+    throw new ConnectionError(
+      `Failed to connect to PostgreSQL: ${cause instanceof Error ? cause.message : String(cause)}`,
+      cause
+    );
+  }
+  try {
+    const result = await client.query(query, params);
+    const columns = result.fields?.map((field) => ({
+      name: field.name,
+      type: getPostgresTypeName(field.dataTypeID)
+    })) || [];
+    return { rows: result.rows, columns };
+  } catch (cause) {
+    throw new QueryError(
+      `PostgreSQL query failed: ${cause instanceof Error ? cause.message : String(cause)}`,
+      cause
+    );
+  } finally {
+    await client.end();
+  }
+}
+__name(executePostgres, "executePostgres");
+
+// packages/connect/src/db/executors/mysql.ts
+function getMysqlTypeName(typeCode) {
+  const typeMap = {
+    0: "decimal",
+    1: "tinyint",
+    2: "smallint",
+    3: "int",
+    4: "float",
+    5: "double",
+    7: "timestamp",
+    8: "bigint",
+    9: "mediumint",
+    10: "date",
+    11: "time",
+    12: "datetime",
+    13: "year",
+    15: "varchar",
+    16: "bit",
+    245: "json",
+    246: "decimal",
+    252: "blob",
+    253: "varchar",
+    254: "char"
+  };
+  return typeMap[typeCode] || "unknown";
+}
+__name(getMysqlTypeName, "getMysqlTypeName");
+async function executeMysql(connectionInfo, query, params = []) {
+  const mysql = await loadMysqlDriver();
+  if (!mysql) {
+    throw new Error("MySQL driver (mysql2) is not installed in this project. Install with: npm install mysql2");
+  }
+  const mysqlDriver = mysql;
+  let connection;
+  try {
+    connection = await mysqlDriver.createConnection({
+      host: connectionInfo.host,
+      port: connectionInfo.port,
+      database: connectionInfo.database,
+      user: connectionInfo.user,
+      password: connectionInfo.password,
+      connectTimeout: 5e3
+    });
+  } catch (cause) {
+    throw new ConnectionError(
+      `Failed to connect to MySQL: ${cause instanceof Error ? cause.message : String(cause)}`,
+      cause
+    );
+  }
+  try {
+    const [rows, fields] = await connection.execute({ sql: query, timeout: 3e4 }, params);
+    const columns = fields?.map((field) => ({
+      name: field.name,
+      type: getMysqlTypeName(field.type)
+    })) || [];
+    return { rows: Array.isArray(rows) ? rows : [], columns };
+  } catch (cause) {
+    throw new QueryError(
+      `MySQL query failed: ${cause instanceof Error ? cause.message : String(cause)}`,
+      cause
+    );
+  } finally {
+    await connection.end();
+  }
+}
+__name(executeMysql, "executeMysql");
+
+// packages/connect/src/db/sqlite-pool.ts
+var import_promises = require("node:fs/promises");
+var import_node_fs = require("node:fs");
+var nodePath = __toESM(require("node:path"), 1);
+function logWarn(message, err) {
+  console.warn(`[connect:db] ${message}${err ? `: ${String(err)}` : ""}`);
+}
+__name(logWarn, "logWarn");
+var sqlJsInstance = null;
+function sqlConfig() {
+  const dir = typeof __dirname === "string" ? __dirname : "";
+  if (!dir) return {};
+  const candidates = [
+    nodePath.join(dir, "sql-wasm.wasm"),
+    nodePath.join(dir, "wasm", "sql-wasm.wasm")
+  ];
+  for (const c of candidates) {
+    if ((0, import_node_fs.existsSync)(c)) {
+      const dir2 = nodePath.dirname(c);
+      return { locateFile: /* @__PURE__ */ __name((file) => nodePath.join(dir2, file), "locateFile") };
+    }
+  }
+  return {};
+}
+__name(sqlConfig, "sqlConfig");
+async function getSqlJs() {
+  if (sqlJsInstance) return sqlJsInstance;
+  try {
+    const initSqlJs = (await import("sql.js")).default;
+    sqlJsInstance = await initSqlJs(sqlConfig());
+    return sqlJsInstance;
+  } catch (error2) {
+    throw new Error(
+      `SQLite driver (sql.js) failed to initialize: ${error2 instanceof Error ? error2.message : String(error2)}`
+    );
+  }
+}
+__name(getSqlJs, "getSqlJs");
+var SqliteConnectionPool = class {
+  static {
+    __name(this, "SqliteConnectionPool");
+  }
+  connections = /* @__PURE__ */ new Map();
+  waiters = /* @__PURE__ */ new Map();
+  maxConnectionsPerDb = 5;
+  idleTimeoutMs = 6e4;
+  cleanupInterval = null;
+  constructor() {
+    this.cleanupInterval = setInterval(() => this.cleanupIdleConnections(), 3e4);
+    this.cleanupInterval.unref?.();
+  }
+  getPoolKey(filepath, readonly2) {
+    return `${filepath}:${readonly2 ? "ro" : "rw"}`;
+  }
+  async acquire(options) {
+    const key = this.getPoolKey(options.filepath, options.readonly ?? true);
+    let poolConnections = this.connections.get(key);
+    if (!poolConnections) {
+      poolConnections = [];
+      this.connections.set(key, poolConnections);
+    }
+    const available = poolConnections.find((c) => !c.inUse && c.isOpen);
+    if (available) {
+      available.inUse = true;
+      available.lastUsed = Date.now();
+      return available;
+    }
+    if (poolConnections.length < this.maxConnectionsPerDb) {
+      const db = await this.createConnection(options);
+      const pooled = {
+        database: db,
+        filepath: options.filepath,
+        readonly: options.readonly ?? true,
+        lastUsed: Date.now(),
+        inUse: true,
+        isOpen: true
+      };
+      poolConnections.push(pooled);
+      return pooled;
+    }
+    const timeout = options.timeout ?? 5e3;
+    const conns = poolConnections;
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        const keyWaiters = this.waiters.get(key);
+        if (keyWaiters) {
+          const idx = keyWaiters.indexOf(waiter);
+          if (idx !== -1) keyWaiters.splice(idx, 1);
+        }
+        reject(new Error(`SQLite connection timeout after ${timeout}ms`));
+      }, timeout);
+      timer.unref?.();
+      const waiter = /* @__PURE__ */ __name((conn) => {
+        clearTimeout(timer);
+        resolve(conn);
+      }, "waiter");
+      const immediate = conns.find((c) => !c.inUse && c.isOpen);
+      if (immediate) {
+        clearTimeout(timer);
+        immediate.inUse = true;
+        immediate.lastUsed = Date.now();
+        resolve(immediate);
+        return;
+      }
+      if (!this.waiters.has(key)) this.waiters.set(key, []);
+      this.waiters.get(key).push(waiter);
+    });
+  }
+  release(connection) {
+    const key = this.getPoolKey(connection.filepath, connection.readonly);
+    const keyWaiters = this.waiters.get(key);
+    if (keyWaiters && keyWaiters.length > 0) {
+      const waiter = keyWaiters.shift();
+      connection.lastUsed = Date.now();
+      waiter(connection);
+      return;
+    }
+    connection.inUse = false;
+    connection.lastUsed = Date.now();
+  }
+  async saveToFile(connection) {
+    if (connection.filepath === ":memory:" || connection.readonly) return;
+    const data = connection.database.export();
+    await (0, import_promises.writeFile)(connection.filepath, Buffer.from(data));
+  }
+  async createConnection(options) {
+    const SQL = await getSqlJs();
+    let db;
+    if (options.filepath === ":memory:") {
+      db = new SQL.Database();
+    } else if ((0, import_node_fs.existsSync)(options.filepath)) {
+      const fileBuffer = await (0, import_promises.readFile)(options.filepath);
+      db = new SQL.Database(fileBuffer);
+    } else {
+      db = new SQL.Database();
+      if (!options.readonly) {
+        const data = db.export();
+        await (0, import_promises.writeFile)(options.filepath, Buffer.from(data));
+      }
+    }
+    try {
+      if (options.foreignKeys !== false) db.run("PRAGMA foreign_keys = ON");
+      db.run("PRAGMA busy_timeout = 5000");
+    } catch (err) {
+      logWarn("SQLite PRAGMA setup failed", err);
+    }
+    return db;
+  }
+  cleanupIdleConnections() {
+    const now = Date.now();
+    for (const [key, connections] of this.connections.entries()) {
+      const active = connections.filter((c) => {
+        const isIdle = !c.inUse && now - c.lastUsed > this.idleTimeoutMs;
+        if (isIdle && c.isOpen) {
+          try {
+            c.database.close();
+            c.isOpen = false;
+          } catch (err) {
+            logWarn("Failed to close idle SQLite connection", err);
+          }
+        }
+        return !isIdle;
+      });
+      if (active.length === 0) {
+        this.connections.delete(key);
+      } else {
+        this.connections.set(key, active);
+      }
+    }
+  }
+  shutdown() {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+    for (const connections of this.connections.values()) {
+      for (const conn of connections) {
+        if (conn.isOpen) {
+          try {
+            conn.database.close();
+            conn.isOpen = false;
+          } catch (err) {
+            logWarn("Failed to close SQLite connection during shutdown", err);
+          }
+        }
+      }
+    }
+    this.connections.clear();
+  }
+};
+var poolInstance = null;
+function getConnectionPool() {
+  if (!poolInstance) poolInstance = new SqliteConnectionPool();
+  return poolInstance;
+}
+__name(getConnectionPool, "getConnectionPool");
+async function withConnection(options, callback) {
+  const pool = getConnectionPool();
+  const connection = await pool.acquire(options);
+  try {
+    const result = await callback(connection.database);
+    if (!options.readonly) await pool.saveToFile(connection);
+    return result;
+  } finally {
+    pool.release(connection);
+  }
+}
+__name(withConnection, "withConnection");
+
+// packages/connect/src/db/executors/sqlite.ts
+function inferSqliteType(value) {
+  if (value === null) return "null";
+  if (typeof value === "number") return Number.isInteger(value) ? "integer" : "real";
+  if (typeof value === "string") return "text";
+  if (typeof value === "boolean") return "integer";
+  if (Buffer.isBuffer(value)) return "blob";
+  return "unknown";
+}
+__name(inferSqliteType, "inferSqliteType");
+async function executeSqlite(connectionInfo, query, params = [], readonly2 = true) {
+  if (!connectionInfo.filepath) {
+    throw new Error(
+      "SQLite connection requires a filepath. Provide a file path (sqlite:///path/to/db.sqlite) or :memory:."
+    );
+  }
+  const filepath = connectionInfo.filepath;
+  const connectionOptions = {
+    filepath,
+    readonly: readonly2,
+    foreignKeys: true,
+    walMode: !readonly2
+  };
+  try {
+    return await withConnection(connectionOptions, (db) => {
+      const isSelect = isReadOnlyQuery(query);
+      if (isSelect) {
+        const stmt = db.prepare(query);
+        if (params.length > 0) stmt.bind(params);
+        const rows = [];
+        const columnNames = stmt.getColumnNames();
+        while (stmt.step()) rows.push(stmt.getAsObject());
+        stmt.free();
+        const columns = [];
+        if (rows.length > 0) {
+          for (const [key, value] of Object.entries(rows[0])) {
+            columns.push({ name: key, type: inferSqliteType(value) });
+          }
+        } else if (columnNames.length > 0) {
+          for (const name of columnNames) columns.push({ name, type: "unknown" });
+        }
+        return { rows, columns };
+      }
+      if (params.length > 0) {
+        db.run(query, params);
+      } else {
+        db.run(query);
+      }
+      const changes = db.getRowsModified();
+      const rowidResult = db.exec("SELECT last_insert_rowid()");
+      const lastInsertRowid = rowidResult.length > 0 && rowidResult[0].values.length > 0 ? rowidResult[0].values[0][0] : 0;
+      return { rows: [], columns: [], changes, lastInsertRowid };
+    });
+  } catch (cause) {
+    if (cause instanceof ConnectionError || cause instanceof QueryError) throw cause;
+    throw new QueryError(
+      `SQLite query failed: ${cause instanceof Error ? cause.message : String(cause)}`,
+      cause
+    );
+  }
+}
+__name(executeSqlite, "executeSqlite");
+
+// packages/connect/src/tools/db-query.ts
+var dbQueryTool = {
+  name: "db_query",
+  description: "Run a SQL query under the connect trust boundary. Restricted mode requires a connection registered via the service tool; a bare database_url is open-mode only. Read-only by default \u2014 writes require write:true AND a target that permits them (a connection allow_writes opt-in, or open mode). Drivers load from the target project.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      connection: { type: "string", description: "Registered connection name." },
+      database_url: { type: "string", description: "Bare connection URL (open mode only)." },
+      query: { type: "string" },
+      params: { type: "array" },
+      limit: { type: "number", description: "Auto-LIMIT for SELECT (default 100)." },
+      format: { type: "string", enum: ["json", "table"] },
+      explain: { type: "boolean" },
+      write: { type: "boolean", description: "Opt-in to run a write statement." },
+      output: { type: "object", properties: { max_tokens: { type: "number" } } }
+    },
+    required: ["query"]
+  }
+};
+async function executeQuery(connectionInfo, sql, params, readonly2) {
+  switch (connectionInfo.type) {
+    case "postgresql":
+      return executePostgres(connectionInfo, sql, params);
+    case "mysql":
+      return executeMysql(connectionInfo, sql, params);
+    case "sqlite":
+      return executeSqlite(connectionInfo, sql, params, readonly2);
+    default:
+      throw new Error(
+        `Unsupported database type: ${connectionInfo.type}. Supported: postgresql, mysql, sqlite`
+      );
+  }
+}
+__name(executeQuery, "executeQuery");
+function resolveTarget(input, mode) {
+  if (input.connection) {
+    const conn = getConnection(input.connection);
+    if (!conn) {
+      return { error: `Connection "${input.connection}" is not registered. Register it via the service tool.` };
+    }
+    const url = conn.url_env ? process.env[conn.url_env] : conn.url;
+    if (!url) {
+      return {
+        error: conn.url_env ? `Connection "${input.connection}" reads its URL from env var ${conn.url_env}, which is not set.` : `Connection "${input.connection}" has no url.`
+      };
+    }
+    return { url, allowWrites: conn.allow_writes === true };
+  }
+  if (input.database_url) {
+    if (mode !== "open") {
+      return {
+        error: "A bare database_url is only permitted in open mode (human-only). Register the connection via the service tool, or open the trust mode out-of-band."
+      };
+    }
+    return { url: input.database_url, allowWrites: true };
+  }
+  return { error: "db_query requires a registered `connection` name or (in open mode) a `database_url`." };
+}
+__name(resolveTarget, "resolveTarget");
+function capRows(data, maxTokens) {
+  const render = /* @__PURE__ */ __name(() => estimatePayloadTokens(JSON.stringify(data)), "render");
+  if (render() <= maxTokens) return false;
+  let trimmed = false;
+  while (data.rows.length > 0 && render() > maxTokens) {
+    const drop = Math.max(1, Math.floor(data.rows.length * 0.1));
+    data.rows.splice(data.rows.length - drop, drop);
+    trimmed = true;
+  }
+  return trimmed;
+}
+__name(capRows, "capRows");
+async function handleDbQuery(args) {
+  const elapsed = startTimer();
+  const cfg = loadConfig();
+  const mode = cfg.mode;
+  const input = args ?? {};
+  const fail = /* @__PURE__ */ __name((msg) => toCallToolResult(errorEnvelope(msg, { mode, execution_ms: elapsed() })), "fail");
+  if (!input.query || typeof input.query !== "string") {
+    return fail("db_query requires a `query` string.");
+  }
+  const target = resolveTarget(input, mode);
+  if ("error" in target) return fail(target.error);
+  const connectionInfo = parseConnectionUrl(target.url);
+  if (connectionInfo.type === "unknown") {
+    return fail(
+      "Unable to parse the connection URL. Supported: postgresql://\u2026, mysql://\u2026, sqlite:///path or file:./db."
+    );
+  }
+  const wantsWrite = input.write === true;
+  const isWrite = isWriteOperation(input.query);
+  if (isWrite && !wantsWrite) {
+    return fail(
+      "This is a write statement and db_query is read-only by default. Pass write:true to opt in (and ensure the target permits writes)."
+    );
+  }
+  if (isWrite && wantsWrite && !target.allowWrites) {
+    return fail(
+      "Writes are not permitted on this target. Register the connection with allow_writes:true, or use open mode for a bare database_url."
+    );
+  }
+  const readonly2 = !isWrite;
+  const limit = input.limit ?? 100;
+  const format = input.format ?? "json";
+  const explain = input.explain === true;
+  const maxTokens = input.output?.max_tokens ?? cfg.max_tokens_default;
+  const outcome = await withBudget(cfg.budgets.db_query_ms, async () => {
+    let queryToExecute2 = input.query.trim();
+    let truncated2 = false;
+    if (limit > 0 && !hasLimitClause(queryToExecute2) && /^(SELECT|WITH)\b/i.test(queryToExecute2)) {
+      queryToExecute2 = addLimitClause(queryToExecute2, limit);
+      truncated2 = true;
+    }
+    let explainOutput2;
+    if (explain && !isWriteOperation(queryToExecute2)) {
+      try {
+        const explainPrefix = connectionInfo.type === "sqlite" ? "EXPLAIN QUERY PLAN" : "EXPLAIN";
+        const explainResult = await executeQuery(
+          connectionInfo,
+          `${explainPrefix} ${queryToExecute2}`,
+          input.params ?? [],
+          true
+        );
+        explainOutput2 = JSON.stringify(explainResult.rows, null, 2);
+      } catch (error2) {
+        explainOutput2 = `EXPLAIN failed: ${error2 instanceof Error ? error2.message : "Unknown error"}`;
+      }
+    }
+    const executionResult2 = await executeQuery(
+      connectionInfo,
+      queryToExecute2,
+      input.params ?? [],
+      readonly2
+    );
+    return { executionResult: executionResult2, queryToExecute: queryToExecute2, truncated: truncated2, explainOutput: explainOutput2 };
+  }).catch((error2) => {
+    const msg = error2 instanceof Error ? error2.message : String(error2);
+    return { error: enhanceDatabaseError(msg, connectionInfo.type) };
+  });
+  if ("error" in outcome) return fail(outcome.error);
+  const { value } = outcome;
+  const { executionResult, queryToExecute, truncated, explainOutput } = value;
+  if (format === "table") {
+    let outputText;
+    if (executionResult.changes !== void 0) {
+      outputText = `Query executed successfully.
+
+Rows affected: ${executionResult.changes}`;
+      if (executionResult.lastInsertRowid !== void 0 && executionResult.lastInsertRowid !== 0n) {
+        outputText += `
+Last insert row ID: ${executionResult.lastInsertRowid}`;
+      }
+    } else {
+      const tableOutput = formatQueryResult(executionResult.rows, executionResult.columns);
+      outputText = `${tableOutput}
+
+${executionResult.rows.length} row(s) returned`;
+      if (truncated) outputText += ` (limited to ${limit})`;
+    }
+    if (explainOutput) outputText += `
+
+EXPLAIN:
+${explainOutput}`;
+    const env2 = successEnvelope(
+      {
+        database_type: connectionInfo.type,
+        content: outputText,
+        query_executed: queryToExecute
+      },
+      {
+        mode,
+        execution_ms: elapsed(),
+        budget_exceeded: outcome.budget_exceeded || void 0
+      }
+    );
+    return toCallToolResult(env2);
+  }
+  const data = {
+    database_type: connectionInfo.type,
+    rows: executionResult.rows,
+    columns: executionResult.columns,
+    row_count: executionResult.rows.length,
+    query_executed: queryToExecute,
+    truncated
+  };
+  if (executionResult.changes !== void 0) data.changes = executionResult.changes;
+  if (executionResult.lastInsertRowid !== void 0) {
+    const rid = executionResult.lastInsertRowid;
+    data.last_insert_rowid = typeof rid === "bigint" ? Number(rid) : rid;
+  }
+  if (explainOutput) data.explain_output = explainOutput;
+  const capped = capRows(data, maxTokens);
+  const env = successEnvelope(data, {
+    mode,
+    execution_ms: elapsed(),
+    budget_exceeded: outcome.budget_exceeded || void 0,
+    truncated: capped || truncated || void 0,
+    effective_caps: capped ? { max_tokens: maxTokens } : void 0
+  });
+  return toCallToolResult(env);
+}
+__name(handleDbQuery, "handleDbQuery");
+
+// packages/connect/src/tools/index.ts
+var TOOLS = [
+  apiRequestTool,
+  serviceTool,
+  dbQueryTool
+];
+var HANDLERS = {
+  [apiRequestTool.name]: handleApiRequest,
+  [serviceTool.name]: handleService,
+  [dbQueryTool.name]: handleDbQuery
+};
 
 // packages/connect/src/index.ts
 var SERVER_NAME = "goodvibes-connect";
@@ -22346,16 +25103,17 @@ function createServer(onActivity) {
   );
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     onActivity?.();
-    return { tools: [] };
+    return { tools: TOOLS };
   });
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     onActivity?.();
+    const handler = HANDLERS[request.params.name];
+    if (handler) {
+      return handler(request.params.arguments ?? {});
+    }
     const { mode } = configForEnvelope(loadConfig());
     return toCallToolResult(
-      errorEnvelope(
-        `Unknown tool: ${request.params.name}. The goodvibes-connect alpha skeleton serves no tools yet.`,
-        { mode }
-      )
+      errorEnvelope(`Unknown tool: ${request.params.name}.`, { mode })
     );
   });
   return server;

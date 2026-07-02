@@ -15,6 +15,7 @@ import { ListToolsRequestSchema, CallToolRequestSchema } from '@modelcontextprot
 import { installProcessHygiene } from '@goodvibes/core/proc';
 import { errorEnvelope, toCallToolResult } from '@goodvibes/core/envelope';
 import { loadConfig, configForEnvelope } from '@goodvibes/core/config';
+import { TOOLS, HANDLERS } from './tools/index.js';
 
 export const SERVER_NAME = 'goodvibes-connect';
 export const SERVER_VERSION = '2.0.0-alpha.1';
@@ -28,17 +29,18 @@ export function createServer(onActivity?: () => void): Server {
 
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     onActivity?.();
-    return { tools: [] };
+    return { tools: TOOLS };
   });
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     onActivity?.();
+    const handler = HANDLERS[request.params.name];
+    if (handler) {
+      return handler(request.params.arguments ?? {});
+    }
     const { mode } = configForEnvelope(loadConfig());
     return toCallToolResult(
-      errorEnvelope(
-        `Unknown tool: ${request.params.name}. The goodvibes-connect alpha skeleton serves no tools yet.`,
-        { mode },
-      ),
+      errorEnvelope(`Unknown tool: ${request.params.name}.`, { mode }),
     );
   });
 

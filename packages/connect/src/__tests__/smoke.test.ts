@@ -1,6 +1,6 @@
 /**
- * Boot smoke test: initialize handshake + empty tools list, and the connect
- * envelope carries a mode stamp.
+ * Boot smoke test: initialize handshake, the three connect tools surface, and
+ * the connect envelope carries a mode stamp.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -9,7 +9,7 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { createServer, SERVER_NAME, SERVER_VERSION } from '../index.js';
 
 describe('goodvibes-connect skeleton', () => {
-  it('completes initialize and serves an empty tools list', async () => {
+  it('completes initialize and surfaces the three connect tools', async () => {
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
     const server = createServer();
     await server.connect(serverTransport);
@@ -19,7 +19,8 @@ describe('goodvibes-connect skeleton', () => {
 
     expect(client.getServerVersion()?.name).toBe(SERVER_NAME);
     expect(client.getServerVersion()?.version).toBe(SERVER_VERSION);
-    expect((await client.listTools()).tools).toEqual([]);
+    const names = (await client.listTools()).tools.map((t) => t.name).sort();
+    expect(names).toEqual(['api_request', 'db_query', 'service']);
 
     await client.close();
     await server.close();

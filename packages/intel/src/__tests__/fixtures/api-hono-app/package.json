@@ -1,0 +1,7 @@
+{
+  "name": "api-hono-fixture",
+  "version": "1.0.0",
+  "dependencies": {
+    "hono": "^4.5.0"
+  }
+}

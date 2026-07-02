@@ -30,22 +30,36 @@ async function tryCopy(resolveSpec, destName) {
   }
 }
 
+const SHARED = {
+  bundle: true,
+  platform: 'node',
+  target: 'node20',
+  format: 'cjs',
+  sourcemap: true,
+  minify: false,
+  keepNames: true,
+  external: ['ink', 'react', 'react-devtools-core', 'yoga-wasm-web', 'sql.js'],
+};
+
 async function build() {
   await mkdir(serverDir, { recursive: true });
 
+  // MCP server bundle (answers initialize + serves the 7 tools over stdio).
   await esbuild.build({
+    ...SHARED,
     entryPoints: [join(__dirname, 'src/index.ts')],
-    bundle: true,
-    platform: 'node',
-    target: 'node20',
-    format: 'cjs',
     outfile: join(serverDir, 'index.cjs'),
-    sourcemap: true,
-    minify: false,
-    keepNames: true,
-    external: ['ink', 'react', 'react-devtools-core', 'yoga-wasm-web', 'sql.js'],
   });
   console.log('Build completed: plugins/goodvibes-analytics/server/index.cjs');
+
+  // Mini-dashboard pane bundle, spawned by the `dashboard` tool via tmux.
+  // (The full interactive ink TUI is deferred in the alpha — no @types/react.)
+  await esbuild.build({
+    ...SHARED,
+    entryPoints: [join(__dirname, 'src/engine/mini.ts')],
+    outfile: join(serverDir, 'mini.cjs'),
+  });
+  console.log('Build completed: plugins/goodvibes-analytics/server/mini.cjs');
 
   await tryCopy('sql.js/dist/sql-wasm.wasm', 'sql-wasm.wasm');
 }

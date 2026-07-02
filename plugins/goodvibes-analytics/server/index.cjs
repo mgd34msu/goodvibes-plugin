@@ -6,6 +6,9 @@ var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
+var __esm = (fn, res) => function __init() {
+  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+};
 var __commonJS = (cb, mod) => function __require() {
   return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
 };
@@ -110,12 +113,12 @@ var require_code = __commonJS({
     exports2._ = _;
     var plus = new _Code("+");
     function str(strs, ...args) {
-      const expr = [safeStringify(strs[0])];
+      const expr = [safeStringify2(strs[0])];
       let i = 0;
       while (i < args.length) {
         expr.push(plus);
         addCodeArg(expr, args[i]);
-        expr.push(plus, safeStringify(strs[++i]));
+        expr.push(plus, safeStringify2(strs[++i]));
       }
       optimize(expr);
       return new _Code(expr);
@@ -172,19 +175,19 @@ var require_code = __commonJS({
     __name(strConcat, "strConcat");
     exports2.strConcat = strConcat;
     function interpolate(x) {
-      return typeof x == "number" || typeof x == "boolean" || x === null ? x : safeStringify(Array.isArray(x) ? x.join(",") : x);
+      return typeof x == "number" || typeof x == "boolean" || x === null ? x : safeStringify2(Array.isArray(x) ? x.join(",") : x);
     }
     __name(interpolate, "interpolate");
     function stringify(x) {
-      return new _Code(safeStringify(x));
+      return new _Code(safeStringify2(x));
     }
     __name(stringify, "stringify");
     exports2.stringify = stringify;
-    function safeStringify(x) {
+    function safeStringify2(x) {
       return JSON.stringify(x).replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
     }
-    __name(safeStringify, "safeStringify");
-    exports2.safeStringify = safeStringify;
+    __name(safeStringify2, "safeStringify");
+    exports2.safeStringify = safeStringify2;
     function getProperty(key) {
       return typeof key == "string" && exports2.IDENTIFIER.test(key) ? new _Code(`.${key}`) : _`[${key}]`;
     }
@@ -525,9 +528,9 @@ var require_codegen = __commonJS({
       static {
         __name(this, "Throw");
       }
-      constructor(error2) {
+      constructor(error51) {
         super();
-        this.error = error2;
+        this.error = error51;
       }
       render({ _n }) {
         return `throw ${this.error};` + _n;
@@ -806,9 +809,9 @@ var require_codegen = __commonJS({
       static {
         __name(this, "Catch");
       }
-      constructor(error2) {
+      constructor(error51) {
         super();
-        this.error = error2;
+        this.error = error51;
       }
       render(opts) {
         return `catch(${this.error})` + super.render(opts);
@@ -1005,9 +1008,9 @@ var require_codegen = __commonJS({
         this._blockNode(node);
         this.code(tryBody);
         if (catchCode) {
-          const error2 = this.name("e");
-          this._currNode = node.catch = new Catch(error2);
-          catchCode(error2);
+          const error51 = this.name("e");
+          this._currNode = node.catch = new Catch(error51);
+          catchCode(error51);
         }
         if (finallyCode) {
           this._currNode = node.finally = new Finally();
@@ -1016,8 +1019,8 @@ var require_codegen = __commonJS({
         return this._endBlockNode(Catch, Finally);
       }
       // `throw` statement
-      throw(error2) {
-        return this._leafNode(new Throw(error2));
+      throw(error51) {
+        return this._leafNode(new Throw(error51));
       }
       // start self-balancing block
       block(body, nodeCount) {
@@ -1172,10 +1175,10 @@ var require_util = __commonJS({
     var codegen_1 = require_codegen();
     var code_1 = require_code();
     function toHash(arr) {
-      const hash = {};
+      const hash2 = {};
       for (const item of arr)
-        hash[item] = true;
-      return hash;
+        hash2[item] = true;
+      return hash2;
     }
     __name(toHash, "toHash");
     exports2.toHash = toHash;
@@ -1401,10 +1404,10 @@ var require_errors = __commonJS({
     exports2.keyword$DataError = {
       message: /* @__PURE__ */ __name(({ keyword, schemaType }) => schemaType ? (0, codegen_1.str)`"${keyword}" keyword must be ${schemaType} ($data)` : (0, codegen_1.str)`"${keyword}" keyword is invalid ($data)`, "message")
     };
-    function reportError(cxt, error2 = exports2.keywordError, errorPaths, overrideAllErrors) {
+    function reportError(cxt, error51 = exports2.keywordError, errorPaths, overrideAllErrors) {
       const { it } = cxt;
       const { gen, compositeRule, allErrors } = it;
-      const errObj = errorObjectCode(cxt, error2, errorPaths);
+      const errObj = errorObjectCode(cxt, error51, errorPaths);
       if (overrideAllErrors !== null && overrideAllErrors !== void 0 ? overrideAllErrors : compositeRule || allErrors) {
         addError(gen, errObj);
       } else {
@@ -1413,10 +1416,10 @@ var require_errors = __commonJS({
     }
     __name(reportError, "reportError");
     exports2.reportError = reportError;
-    function reportExtraError(cxt, error2 = exports2.keywordError, errorPaths) {
+    function reportExtraError(cxt, error51 = exports2.keywordError, errorPaths) {
       const { it } = cxt;
       const { gen, compositeRule, allErrors } = it;
-      const errObj = errorObjectCode(cxt, error2, errorPaths);
+      const errObj = errorObjectCode(cxt, error51, errorPaths);
       addError(gen, errObj);
       if (!(compositeRule || allErrors)) {
         returnErrors(it, names_1.default.vErrors);
@@ -1472,20 +1475,20 @@ var require_errors = __commonJS({
       schema: new codegen_1.Name("schema"),
       parentSchema: new codegen_1.Name("parentSchema")
     };
-    function errorObjectCode(cxt, error2, errorPaths) {
+    function errorObjectCode(cxt, error51, errorPaths) {
       const { createErrors } = cxt.it;
       if (createErrors === false)
         return (0, codegen_1._)`{}`;
-      return errorObject(cxt, error2, errorPaths);
+      return errorObject(cxt, error51, errorPaths);
     }
     __name(errorObjectCode, "errorObjectCode");
-    function errorObject(cxt, error2, errorPaths = {}) {
+    function errorObject(cxt, error51, errorPaths = {}) {
       const { gen, it } = cxt;
       const keyValues = [
         errorInstancePath(it, errorPaths),
         errorSchemaPath(cxt, errorPaths)
       ];
-      extraErrorProps(cxt, error2, keyValues);
+      extraErrorProps(cxt, error51, keyValues);
       return gen.object(...keyValues);
     }
     __name(errorObject, "errorObject");
@@ -3233,13 +3236,13 @@ var require_compile = __commonJS({
     }
     __name(compileSchema, "compileSchema");
     exports2.compileSchema = compileSchema;
-    function resolveRef(root, baseId, ref) {
+    function resolveRef2(root, baseId, ref) {
       var _a3;
       ref = (0, resolve_1.resolveUrl)(this.opts.uriResolver, baseId, ref);
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve.call(this, root, ref);
+      let _sch = resolve7.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a3 = root.localRefs) === null || _a3 === void 0 ? void 0 : _a3[ref];
         const { schemaId } = this.opts;
@@ -3250,8 +3253,8 @@ var require_compile = __commonJS({
         return;
       return root.refs[ref] = inlineOrCompile.call(this, _sch);
     }
-    __name(resolveRef, "resolveRef");
-    exports2.resolveRef = resolveRef;
+    __name(resolveRef2, "resolveRef");
+    exports2.resolveRef = resolveRef2;
     function inlineOrCompile(sch) {
       if ((0, resolve_1.inlineRef)(sch.schema, this.opts.inlineRefs))
         return sch.schema;
@@ -3270,13 +3273,13 @@ var require_compile = __commonJS({
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
     __name(sameSchemaEnv, "sameSchemaEnv");
-    function resolve(root, ref) {
+    function resolve7(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
       return sch || this.schemas[ref] || resolveSchema.call(this, root, ref);
     }
-    __name(resolve, "resolve");
+    __name(resolve7, "resolve");
     function resolveSchema(root, ref) {
       const p = this.opts.uriResolver.parse(ref);
       const refPath = (0, resolve_1._getFullPath)(this.opts.uriResolver, p);
@@ -3407,9 +3410,9 @@ var require_utils = __commonJS({
     __name(consumeIsZone, "consumeIsZone");
     function consumeHextets(buffer, address, output) {
       if (buffer.length) {
-        const hex = stringArrayToHexStripped(buffer);
-        if (hex !== "") {
-          address.push(hex);
+        const hex3 = stringArrayToHexStripped(buffer);
+        if (hex3 !== "") {
+          address.push(hex3);
         } else {
           output.error = true;
           return false;
@@ -3475,13 +3478,13 @@ var require_utils = __commonJS({
       if (findToken(host, ":") < 2) {
         return { host, isIPV6: false };
       }
-      const ipv62 = getIPV6(host);
-      if (!ipv62.error) {
-        let newHost = ipv62.address;
-        let escapedHost = ipv62.address;
-        if (ipv62.zone) {
-          newHost += "%" + ipv62.zone;
-          escapedHost += "%25" + ipv62.zone;
+      const ipv63 = getIPV6(host);
+      if (!ipv63.error) {
+        let newHost = ipv63.address;
+        let escapedHost = ipv63.address;
+        if (ipv63.zone) {
+          newHost += "%" + ipv63.zone;
+          escapedHost += "%25" + ipv63.zone;
         }
         return { host: newHost, isIPV6: true, escapedHost };
       } else {
@@ -3497,8 +3500,8 @@ var require_utils = __commonJS({
       return ind;
     }
     __name(findToken, "findToken");
-    function removeDotSegments(path2) {
-      let input = path2;
+    function removeDotSegments(path11) {
+      let input = path11;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3589,9 +3592,9 @@ var require_utils = __commonJS({
       let output = "";
       for (let i = 0; i < input.length; i++) {
         if (input[i] === "%" && i + 2 < input.length) {
-          const hex = input.slice(i + 1, i + 3);
-          if (isHexPair(hex)) {
-            const normalizedHex = hex.toUpperCase();
+          const hex3 = input.slice(i + 1, i + 3);
+          if (isHexPair(hex3)) {
+            const normalizedHex = hex3.toUpperCase();
             const decoded = String.fromCharCode(parseInt(normalizedHex, 16));
             if (decodeUnreserved && isUnreserved(decoded)) {
               output += decoded;
@@ -3611,9 +3614,9 @@ var require_utils = __commonJS({
       let output = "";
       for (let i = 0; i < input.length; i++) {
         if (input[i] === "%" && i + 2 < input.length) {
-          const hex = input.slice(i + 1, i + 3);
-          if (isHexPair(hex)) {
-            const normalizedHex = hex.toUpperCase();
+          const hex3 = input.slice(i + 1, i + 3);
+          if (isHexPair(hex3)) {
+            const normalizedHex = hex3.toUpperCase();
             const decoded = String.fromCharCode(parseInt(normalizedHex, 16));
             if (decoded !== "." && isUnreserved(decoded)) {
               output += decoded;
@@ -3637,9 +3640,9 @@ var require_utils = __commonJS({
       let output = "";
       for (let i = 0; i < input.length; i++) {
         if (input[i] === "%" && i + 2 < input.length) {
-          const hex = input.slice(i + 1, i + 3);
-          if (isHexPair(hex)) {
-            output += "%" + hex.toUpperCase();
+          const hex3 = input.slice(i + 1, i + 3);
+          if (isHexPair(hex3)) {
+            output += "%" + hex3.toUpperCase();
             i += 2;
             continue;
           }
@@ -3761,8 +3764,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path2, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path2 && path2 !== "/" ? path2 : void 0;
+        const [path11, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path11 && path11 !== "/" ? path11 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -3928,13 +3931,13 @@ var require_fast_uri = __commonJS({
       return uri;
     }
     __name(normalize, "normalize");
-    function resolve(baseURI, relativeURI, options) {
+    function resolve7(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const resolved = resolveComponent(parse3(baseURI, schemelessOptions), parse3(relativeURI, schemelessOptions), schemelessOptions, true);
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
-    __name(resolve, "resolve");
+    __name(resolve7, "resolve");
     function resolveComponent(base, relative, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
@@ -4196,7 +4199,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve,
+      resolve: resolve7,
       resolveComponent,
       equal,
       serialize,
@@ -4364,19 +4367,19 @@ var require_core = __commonJS({
         this.addKeyword("$async");
       }
       _addDefaultMetaSchema() {
-        const { $data, meta: meta2, schemaId } = this.opts;
+        const { $data, meta: meta3, schemaId } = this.opts;
         let _dataRefSchema = $dataRefSchema;
         if (schemaId === "id") {
           _dataRefSchema = { ...$dataRefSchema };
           _dataRefSchema.id = _dataRefSchema.$id;
           delete _dataRefSchema.$id;
         }
-        if (meta2 && $data)
+        if (meta3 && $data)
           this.addMetaSchema(_dataRefSchema, _dataRefSchema[schemaId], false);
       }
       defaultMeta() {
-        const { meta: meta2, schemaId } = this.opts;
-        return this.opts.defaultMeta = typeof meta2 == "object" ? meta2[schemaId] || meta2 : void 0;
+        const { meta: meta3, schemaId } = this.opts;
+        return this.opts.defaultMeta = typeof meta3 == "object" ? meta3[schemaId] || meta3 : void 0;
       }
       validate(schemaKeyRef, data) {
         let v;
@@ -4396,12 +4399,12 @@ var require_core = __commonJS({
         const sch = this._addSchema(schema, _meta);
         return sch.validate || this._compileSchemaEnv(sch);
       }
-      compileAsync(schema, meta2) {
+      compileAsync(schema, meta3) {
         if (typeof this.opts.loadSchema != "function") {
           throw new Error("options.loadSchema should be a function");
         }
         const { loadSchema } = this.opts;
-        return runCompileAsync.call(this, schema, meta2);
+        return runCompileAsync.call(this, schema, meta3);
         async function runCompileAsync(_schema, _meta) {
           await loadMetaSchema.call(this, _schema.$schema);
           const sch = this._addSchema(_schema, _meta);
@@ -4437,7 +4440,7 @@ var require_core = __commonJS({
           if (!this.refs[ref])
             await loadMetaSchema.call(this, _schema.$schema);
           if (!this.refs[ref])
-            this.addSchema(_schema, ref, meta2);
+            this.addSchema(_schema, ref, meta3);
         }
         __name(loadMissingSchema, "loadMissingSchema");
         async function _loadSchema(ref) {
@@ -4621,7 +4624,7 @@ var require_core = __commonJS({
       errorsText(errors = this.errors, { separator = ", ", dataVar = "data" } = {}) {
         if (!errors || errors.length === 0)
           return "No errors";
-        return errors.map((e) => `${dataVar}${e.instancePath} ${e.message}`).reduce((text, msg) => text + separator + msg);
+        return errors.map((e) => `${dataVar}${e.instancePath} ${e.message}`).reduce((text2, msg) => text2 + separator + msg);
       }
       $dataMetaSchema(metaSchema, keywordsJsonPointers) {
         const rules = this.RULES.all;
@@ -4656,7 +4659,7 @@ var require_core = __commonJS({
           }
         }
       }
-      _addSchema(schema, meta2, baseId, validateSchema = this.opts.validateSchema, addSchema = this.opts.addUsedSchema) {
+      _addSchema(schema, meta3, baseId, validateSchema = this.opts.validateSchema, addSchema = this.opts.addUsedSchema) {
         let id;
         const { schemaId } = this.opts;
         if (typeof schema == "object") {
@@ -4672,7 +4675,7 @@ var require_core = __commonJS({
           return sch;
         baseId = (0, resolve_1.normalizeId)(id || baseId);
         const localRefs = resolve_1.getSchemaRefs.call(this, schema, baseId);
-        sch = new compile_1.SchemaEnv({ schema, schemaId, meta: meta2, baseId, localRefs });
+        sch = new compile_1.SchemaEnv({ schema, schemaId, meta: meta3, baseId, localRefs });
         this._cache.set(sch.schema, sch);
         if (addSchema && !baseId.startsWith("#")) {
           if (baseId)
@@ -5032,7 +5035,7 @@ var require_limitNumber = __commonJS({
       exclusiveMaximum: { okStr: "<", ok: ops.LT, fail: ops.GTE },
       exclusiveMinimum: { okStr: ">", ok: ops.GT, fail: ops.LTE }
     };
-    var error2 = {
+    var error51 = {
       message: /* @__PURE__ */ __name(({ keyword, schemaCode }) => (0, codegen_1.str)`must be ${KWDs[keyword].okStr} ${schemaCode}`, "message"),
       params: /* @__PURE__ */ __name(({ keyword, schemaCode }) => (0, codegen_1._)`{comparison: ${KWDs[keyword].okStr}, limit: ${schemaCode}}`, "params")
     };
@@ -5041,7 +5044,7 @@ var require_limitNumber = __commonJS({
       type: "number",
       schemaType: "number",
       $data: true,
-      error: error2,
+      error: error51,
       code(cxt) {
         const { keyword, data, schemaCode } = cxt;
         cxt.fail$data((0, codegen_1._)`${data} ${KWDs[keyword].fail} ${schemaCode} || isNaN(${data})`);
@@ -5057,7 +5060,7 @@ var require_multipleOf = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen();
-    var error2 = {
+    var error51 = {
       message: /* @__PURE__ */ __name(({ schemaCode }) => (0, codegen_1.str)`must be multiple of ${schemaCode}`, "message"),
       params: /* @__PURE__ */ __name(({ schemaCode }) => (0, codegen_1._)`{multipleOf: ${schemaCode}}`, "params")
     };
@@ -5066,7 +5069,7 @@ var require_multipleOf = __commonJS({
       type: "number",
       schemaType: "number",
       $data: true,
-      error: error2,
+      error: error51,
       code(cxt) {
         const { gen, data, schemaCode, it } = cxt;
         const prec = it.opts.multipleOfPrecision;
@@ -5114,7 +5117,7 @@ var require_limitLength = __commonJS({
     var codegen_1 = require_codegen();
     var util_1 = require_util();
     var ucs2length_1 = require_ucs2length();
-    var error2 = {
+    var error51 = {
       message({ keyword, schemaCode }) {
         const comp = keyword === "maxLength" ? "more" : "fewer";
         return (0, codegen_1.str)`must NOT have ${comp} than ${schemaCode} characters`;
@@ -5126,7 +5129,7 @@ var require_limitLength = __commonJS({
       type: "string",
       schemaType: "number",
       $data: true,
-      error: error2,
+      error: error51,
       code(cxt) {
         const { keyword, data, schemaCode, it } = cxt;
         const op = keyword === "maxLength" ? codegen_1.operators.GT : codegen_1.operators.LT;
@@ -5146,7 +5149,7 @@ var require_pattern = __commonJS({
     var code_1 = require_code2();
     var util_1 = require_util();
     var codegen_1 = require_codegen();
-    var error2 = {
+    var error51 = {
       message: /* @__PURE__ */ __name(({ schemaCode }) => (0, codegen_1.str)`must match pattern "${schemaCode}"`, "message"),
       params: /* @__PURE__ */ __name(({ schemaCode }) => (0, codegen_1._)`{pattern: ${schemaCode}}`, "params")
     };
@@ -5155,7 +5158,7 @@ var require_pattern = __commonJS({
       type: "string",
       schemaType: "string",
       $data: true,
-      error: error2,
+      error: error51,
       code(cxt) {
         const { gen, data, $data, schema, schemaCode, it } = cxt;
         const u = it.opts.unicodeRegExp ? "u" : "";
@@ -5181,7 +5184,7 @@ var require_limitProperties = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen();
-    var error2 = {
+    var error51 = {
       message({ keyword, schemaCode }) {
         const comp = keyword === "maxProperties" ? "more" : "fewer";
         return (0, codegen_1.str)`must NOT have ${comp} than ${schemaCode} properties`;
@@ -5193,7 +5196,7 @@ var require_limitProperties = __commonJS({
       type: "object",
       schemaType: "number",
       $data: true,
-      error: error2,
+      error: error51,
       code(cxt) {
         const { keyword, data, schemaCode } = cxt;
         const op = keyword === "maxProperties" ? codegen_1.operators.GT : codegen_1.operators.LT;
@@ -5212,7 +5215,7 @@ var require_required = __commonJS({
     var code_1 = require_code2();
     var codegen_1 = require_codegen();
     var util_1 = require_util();
-    var error2 = {
+    var error51 = {
       message: /* @__PURE__ */ __name(({ params: { missingProperty } }) => (0, codegen_1.str)`must have required property '${missingProperty}'`, "message"),
       params: /* @__PURE__ */ __name(({ params: { missingProperty } }) => (0, codegen_1._)`{missingProperty: ${missingProperty}}`, "params")
     };
@@ -5221,7 +5224,7 @@ var require_required = __commonJS({
       type: "object",
       schemaType: "array",
       $data: true,
-      error: error2,
+      error: error51,
       code(cxt) {
         const { gen, schema, schemaCode, data, $data, it } = cxt;
         const { opts } = it;
@@ -5296,7 +5299,7 @@ var require_limitItems = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen();
-    var error2 = {
+    var error51 = {
       message({ keyword, schemaCode }) {
         const comp = keyword === "maxItems" ? "more" : "fewer";
         return (0, codegen_1.str)`must NOT have ${comp} than ${schemaCode} items`;
@@ -5308,7 +5311,7 @@ var require_limitItems = __commonJS({
       type: "array",
       schemaType: "number",
       $data: true,
-      error: error2,
+      error: error51,
       code(cxt) {
         const { keyword, data, schemaCode } = cxt;
         const op = keyword === "maxItems" ? codegen_1.operators.GT : codegen_1.operators.LT;
@@ -5339,7 +5342,7 @@ var require_uniqueItems = __commonJS({
     var codegen_1 = require_codegen();
     var util_1 = require_util();
     var equal_1 = require_equal();
-    var error2 = {
+    var error51 = {
       message: /* @__PURE__ */ __name(({ params: { i, j } }) => (0, codegen_1.str)`must NOT have duplicate items (items ## ${j} and ${i} are identical)`, "message"),
       params: /* @__PURE__ */ __name(({ params: { i, j } }) => (0, codegen_1._)`{i: ${i}, j: ${j}}`, "params")
     };
@@ -5348,7 +5351,7 @@ var require_uniqueItems = __commonJS({
       type: "array",
       schemaType: "boolean",
       $data: true,
-      error: error2,
+      error: error51,
       code(cxt) {
         const { gen, data, $data, schema, parentSchema, schemaCode, it } = cxt;
         if (!$data && !schema)
@@ -5409,14 +5412,14 @@ var require_const = __commonJS({
     var codegen_1 = require_codegen();
     var util_1 = require_util();
     var equal_1 = require_equal();
-    var error2 = {
+    var error51 = {
       message: "must be equal to constant",
       params: /* @__PURE__ */ __name(({ schemaCode }) => (0, codegen_1._)`{allowedValue: ${schemaCode}}`, "params")
     };
     var def = {
       keyword: "const",
       $data: true,
-      error: error2,
+      error: error51,
       code(cxt) {
         const { gen, data, $data, schemaCode, schema } = cxt;
         if ($data || schema && typeof schema == "object") {
@@ -5438,7 +5441,7 @@ var require_enum = __commonJS({
     var codegen_1 = require_codegen();
     var util_1 = require_util();
     var equal_1 = require_equal();
-    var error2 = {
+    var error51 = {
       message: "must be equal to one of the allowed values",
       params: /* @__PURE__ */ __name(({ schemaCode }) => (0, codegen_1._)`{allowedValues: ${schemaCode}}`, "params")
     };
@@ -5446,7 +5449,7 @@ var require_enum = __commonJS({
       keyword: "enum",
       schemaType: "array",
       $data: true,
-      error: error2,
+      error: error51,
       code(cxt) {
         const { gen, data, $data, schema, schemaCode, it } = cxt;
         if (!$data && schema.length === 0)
@@ -5527,7 +5530,7 @@ var require_additionalItems = __commonJS({
     exports2.validateAdditionalItems = void 0;
     var codegen_1 = require_codegen();
     var util_1 = require_util();
-    var error2 = {
+    var error51 = {
       message: /* @__PURE__ */ __name(({ params: { len } }) => (0, codegen_1.str)`must NOT have more than ${len} items`, "message"),
       params: /* @__PURE__ */ __name(({ params: { len } }) => (0, codegen_1._)`{limit: ${len}}`, "params")
     };
@@ -5536,7 +5539,7 @@ var require_additionalItems = __commonJS({
       type: "array",
       schemaType: ["boolean", "object"],
       before: "uniqueItems",
-      error: error2,
+      error: error51,
       code(cxt) {
         const { parentSchema, it } = cxt;
         const { items } = parentSchema;
@@ -5659,7 +5662,7 @@ var require_items2020 = __commonJS({
     var util_1 = require_util();
     var code_1 = require_code2();
     var additionalItems_1 = require_additionalItems();
-    var error2 = {
+    var error51 = {
       message: /* @__PURE__ */ __name(({ params: { len } }) => (0, codegen_1.str)`must NOT have more than ${len} items`, "message"),
       params: /* @__PURE__ */ __name(({ params: { len } }) => (0, codegen_1._)`{limit: ${len}}`, "params")
     };
@@ -5668,7 +5671,7 @@ var require_items2020 = __commonJS({
       type: "array",
       schemaType: ["object", "boolean"],
       before: "uniqueItems",
-      error: error2,
+      error: error51,
       code(cxt) {
         const { schema, parentSchema, it } = cxt;
         const { prefixItems } = parentSchema;
@@ -5692,7 +5695,7 @@ var require_contains = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen();
     var util_1 = require_util();
-    var error2 = {
+    var error51 = {
       message: /* @__PURE__ */ __name(({ params: { min, max } }) => max === void 0 ? (0, codegen_1.str)`must contain at least ${min} valid item(s)` : (0, codegen_1.str)`must contain at least ${min} and no more than ${max} valid item(s)`, "message"),
       params: /* @__PURE__ */ __name(({ params: { min, max } }) => max === void 0 ? (0, codegen_1._)`{minContains: ${min}}` : (0, codegen_1._)`{minContains: ${min}, maxContains: ${max}}`, "params")
     };
@@ -5702,7 +5705,7 @@ var require_contains = __commonJS({
       schemaType: ["object", "boolean"],
       before: "uniqueItems",
       trackErrors: true,
-      error: error2,
+      error: error51,
       code(cxt) {
         const { gen, schema, parentSchema, data, it } = cxt;
         let min;
@@ -5886,7 +5889,7 @@ var require_propertyNames = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen();
     var util_1 = require_util();
-    var error2 = {
+    var error51 = {
       message: "property name must be valid",
       params: /* @__PURE__ */ __name(({ params }) => (0, codegen_1._)`{propertyName: ${params.propertyName}}`, "params")
     };
@@ -5894,7 +5897,7 @@ var require_propertyNames = __commonJS({
       keyword: "propertyNames",
       type: "object",
       schemaType: ["object", "boolean"],
-      error: error2,
+      error: error51,
       code(cxt) {
         const { gen, schema, data, it } = cxt;
         if ((0, util_1.alwaysValidSchema)(it, schema))
@@ -5931,7 +5934,7 @@ var require_additionalProperties = __commonJS({
     var codegen_1 = require_codegen();
     var names_1 = require_names();
     var util_1 = require_util();
-    var error2 = {
+    var error51 = {
       message: "must NOT have additional properties",
       params: /* @__PURE__ */ __name(({ params }) => (0, codegen_1._)`{additionalProperty: ${params.additionalProperty}}`, "params")
     };
@@ -5941,7 +5944,7 @@ var require_additionalProperties = __commonJS({
       schemaType: ["boolean", "object"],
       allowUndefined: true,
       trackErrors: true,
-      error: error2,
+      error: error51,
       code(cxt) {
         const { gen, schema, parentSchema, data, errsCount, it } = cxt;
         if (!errsCount)
@@ -6225,7 +6228,7 @@ var require_oneOf = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen();
     var util_1 = require_util();
-    var error2 = {
+    var error51 = {
       message: "must match exactly one schema in oneOf",
       params: /* @__PURE__ */ __name(({ params }) => (0, codegen_1._)`{passingSchemas: ${params.passing}}`, "params")
     };
@@ -6233,7 +6236,7 @@ var require_oneOf = __commonJS({
       keyword: "oneOf",
       schemaType: "array",
       trackErrors: true,
-      error: error2,
+      error: error51,
       code(cxt) {
         const { gen, schema, parentSchema, it } = cxt;
         if (!Array.isArray(schema))
@@ -6311,7 +6314,7 @@ var require_if = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen();
     var util_1 = require_util();
-    var error2 = {
+    var error51 = {
       message: /* @__PURE__ */ __name(({ params }) => (0, codegen_1.str)`must match "${params.ifClause}" schema`, "message"),
       params: /* @__PURE__ */ __name(({ params }) => (0, codegen_1._)`{failingKeyword: ${params.ifClause}}`, "params")
     };
@@ -6319,7 +6322,7 @@ var require_if = __commonJS({
       keyword: "if",
       schemaType: ["object", "boolean"],
       trackErrors: true,
-      error: error2,
+      error: error51,
       code(cxt) {
         const { gen, parentSchema, it } = cxt;
         if (parentSchema.then === void 0 && parentSchema.else === void 0) {
@@ -6449,7 +6452,7 @@ var require_format = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen();
-    var error2 = {
+    var error51 = {
       message: /* @__PURE__ */ __name(({ schemaCode }) => (0, codegen_1.str)`must match format "${schemaCode}"`, "message"),
       params: /* @__PURE__ */ __name(({ schemaCode }) => (0, codegen_1._)`{format: ${schemaCode}}`, "params")
     };
@@ -6458,7 +6461,7 @@ var require_format = __commonJS({
       type: ["number", "string"],
       schemaType: "string",
       $data: true,
-      error: error2,
+      error: error51,
       code(cxt, ruleType) {
         const { gen, data, $data, schema, schemaCode, it } = cxt;
         const { opts, errSchemaPath, schemaEnv, self } = it;
@@ -6621,7 +6624,7 @@ var require_discriminator = __commonJS({
     var compile_1 = require_compile();
     var ref_error_1 = require_ref_error();
     var util_1 = require_util();
-    var error2 = {
+    var error51 = {
       message: /* @__PURE__ */ __name(({ params: { discrError, tagName } }) => discrError === types_1.DiscrError.Tag ? `tag "${tagName}" must be string` : `value of tag "${tagName}" must be in oneOf`, "message"),
       params: /* @__PURE__ */ __name(({ params: { discrError, tag, tagName } }) => (0, codegen_1._)`{error: ${discrError}, tag: ${tagName}, tagValue: ${tag}}`, "params")
     };
@@ -6629,7 +6632,7 @@ var require_discriminator = __commonJS({
       keyword: "discriminator",
       type: "object",
       schemaType: "object",
-      error: error2,
+      error: error51,
       code(cxt) {
         const { gen, data, schema, parentSchema, it } = cxt;
         const { oneOf } = parentSchema;
@@ -6964,7 +6967,7 @@ var require_formats = __commonJS({
     __name(fmtDef, "fmtDef");
     exports2.fullFormats = {
       // date: http://tools.ietf.org/html/rfc3339#section-5.6
-      date: fmtDef(date3, compareDate),
+      date: fmtDef(date5, compareDate),
       // date-time: http://tools.ietf.org/html/rfc3339#section-5.6
       time: fmtDef(getTime(true), compareTime),
       "date-time": fmtDef(getDateTime(true), compareDateTime),
@@ -7031,7 +7034,7 @@ var require_formats = __commonJS({
     __name(isLeapYear, "isLeapYear");
     var DATE = /^(\d\d\d\d)-(\d\d)-(\d\d)$/;
     var DAYS = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    function date3(str) {
+    function date5(str) {
       const matches = DATE.exec(str);
       if (!matches)
         return false;
@@ -7040,7 +7043,7 @@ var require_formats = __commonJS({
       const day = +matches[3];
       return month >= 1 && month <= 12 && day >= 1 && day <= (month === 2 && isLeapYear(year) ? 29 : DAYS[month]);
     }
-    __name(date3, "date");
+    __name(date5, "date");
     function compareDate(d1, d2) {
       if (!(d1 && d2))
         return void 0;
@@ -7105,7 +7108,7 @@ var require_formats = __commonJS({
       const time3 = getTime(strictTimeZone);
       return /* @__PURE__ */ __name(function date_time(str) {
         const dateTime = str.split(DATE_TIME_SEPARATOR);
-        return dateTime.length === 2 && date3(dateTime[0]) && time3(dateTime[1]);
+        return dateTime.length === 2 && date5(dateTime[0]) && time3(dateTime[1]);
       }, "date_time");
     }
     __name(getDateTime, "getDateTime");
@@ -7250,12 +7253,12 @@ var require_code3 = __commonJS({
     exports2._ = _;
     var plus = new _Code("+");
     function str(strs, ...args) {
-      const expr = [safeStringify(strs[0])];
+      const expr = [safeStringify2(strs[0])];
       let i = 0;
       while (i < args.length) {
         expr.push(plus);
         addCodeArg(expr, args[i]);
-        expr.push(plus, safeStringify(strs[++i]));
+        expr.push(plus, safeStringify2(strs[++i]));
       }
       optimize(expr);
       return new _Code(expr);
@@ -7312,19 +7315,19 @@ var require_code3 = __commonJS({
     __name(strConcat, "strConcat");
     exports2.strConcat = strConcat;
     function interpolate(x) {
-      return typeof x == "number" || typeof x == "boolean" || x === null ? x : safeStringify(Array.isArray(x) ? x.join(",") : x);
+      return typeof x == "number" || typeof x == "boolean" || x === null ? x : safeStringify2(Array.isArray(x) ? x.join(",") : x);
     }
     __name(interpolate, "interpolate");
     function stringify(x) {
-      return new _Code(safeStringify(x));
+      return new _Code(safeStringify2(x));
     }
     __name(stringify, "stringify");
     exports2.stringify = stringify;
-    function safeStringify(x) {
+    function safeStringify2(x) {
       return JSON.stringify(x).replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
     }
-    __name(safeStringify, "safeStringify");
-    exports2.safeStringify = safeStringify;
+    __name(safeStringify2, "safeStringify");
+    exports2.safeStringify = safeStringify2;
     function getProperty(key) {
       return typeof key == "string" && exports2.IDENTIFIER.test(key) ? new _Code(`.${key}`) : _`[${key}]`;
     }
@@ -7665,9 +7668,9 @@ var require_codegen2 = __commonJS({
       static {
         __name(this, "Throw");
       }
-      constructor(error2) {
+      constructor(error51) {
         super();
-        this.error = error2;
+        this.error = error51;
       }
       render({ _n }) {
         return `throw ${this.error};` + _n;
@@ -7946,9 +7949,9 @@ var require_codegen2 = __commonJS({
       static {
         __name(this, "Catch");
       }
-      constructor(error2) {
+      constructor(error51) {
         super();
-        this.error = error2;
+        this.error = error51;
       }
       render(opts) {
         return `catch(${this.error})` + super.render(opts);
@@ -8145,9 +8148,9 @@ var require_codegen2 = __commonJS({
         this._blockNode(node);
         this.code(tryBody);
         if (catchCode) {
-          const error2 = this.name("e");
-          this._currNode = node.catch = new Catch(error2);
-          catchCode(error2);
+          const error51 = this.name("e");
+          this._currNode = node.catch = new Catch(error51);
+          catchCode(error51);
         }
         if (finallyCode) {
           this._currNode = node.finally = new Finally();
@@ -8156,8 +8159,8 @@ var require_codegen2 = __commonJS({
         return this._endBlockNode(Catch, Finally);
       }
       // `throw` statement
-      throw(error2) {
-        return this._leafNode(new Throw(error2));
+      throw(error51) {
+        return this._leafNode(new Throw(error51));
       }
       // start self-balancing block
       block(body, nodeCount) {
@@ -8312,10 +8315,10 @@ var require_util2 = __commonJS({
     var codegen_1 = require_codegen2();
     var code_1 = require_code3();
     function toHash(arr) {
-      const hash = {};
+      const hash2 = {};
       for (const item of arr)
-        hash[item] = true;
-      return hash;
+        hash2[item] = true;
+      return hash2;
     }
     __name(toHash, "toHash");
     exports2.toHash = toHash;
@@ -8541,10 +8544,10 @@ var require_errors2 = __commonJS({
     exports2.keyword$DataError = {
       message: /* @__PURE__ */ __name(({ keyword, schemaType }) => schemaType ? (0, codegen_1.str)`"${keyword}" keyword must be ${schemaType} ($data)` : (0, codegen_1.str)`"${keyword}" keyword is invalid ($data)`, "message")
     };
-    function reportError(cxt, error2 = exports2.keywordError, errorPaths, overrideAllErrors) {
+    function reportError(cxt, error51 = exports2.keywordError, errorPaths, overrideAllErrors) {
       const { it } = cxt;
       const { gen, compositeRule, allErrors } = it;
-      const errObj = errorObjectCode(cxt, error2, errorPaths);
+      const errObj = errorObjectCode(cxt, error51, errorPaths);
       if (overrideAllErrors !== null && overrideAllErrors !== void 0 ? overrideAllErrors : compositeRule || allErrors) {
         addError(gen, errObj);
       } else {
@@ -8553,10 +8556,10 @@ var require_errors2 = __commonJS({
     }
     __name(reportError, "reportError");
     exports2.reportError = reportError;
-    function reportExtraError(cxt, error2 = exports2.keywordError, errorPaths) {
+    function reportExtraError(cxt, error51 = exports2.keywordError, errorPaths) {
       const { it } = cxt;
       const { gen, compositeRule, allErrors } = it;
-      const errObj = errorObjectCode(cxt, error2, errorPaths);
+      const errObj = errorObjectCode(cxt, error51, errorPaths);
       addError(gen, errObj);
       if (!(compositeRule || allErrors)) {
         returnErrors(it, names_1.default.vErrors);
@@ -8612,20 +8615,20 @@ var require_errors2 = __commonJS({
       schema: new codegen_1.Name("schema"),
       parentSchema: new codegen_1.Name("parentSchema")
     };
-    function errorObjectCode(cxt, error2, errorPaths) {
+    function errorObjectCode(cxt, error51, errorPaths) {
       const { createErrors } = cxt.it;
       if (createErrors === false)
         return (0, codegen_1._)`{}`;
-      return errorObject(cxt, error2, errorPaths);
+      return errorObject(cxt, error51, errorPaths);
     }
     __name(errorObjectCode, "errorObjectCode");
-    function errorObject(cxt, error2, errorPaths = {}) {
+    function errorObject(cxt, error51, errorPaths = {}) {
       const { gen, it } = cxt;
       const keyValues = [
         errorInstancePath(it, errorPaths),
         errorSchemaPath(cxt, errorPaths)
       ];
-      extraErrorProps(cxt, error2, keyValues);
+      extraErrorProps(cxt, error51, keyValues);
       return gen.object(...keyValues);
     }
     __name(errorObject, "errorObject");
@@ -10338,13 +10341,13 @@ var require_compile2 = __commonJS({
     }
     __name(compileSchema, "compileSchema");
     exports2.compileSchema = compileSchema;
-    function resolveRef(root, baseId, ref) {
+    function resolveRef2(root, baseId, ref) {
       var _a3;
       ref = (0, resolve_1.resolveUrl)(this.opts.uriResolver, baseId, ref);
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve.call(this, root, ref);
+      let _sch = resolve7.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a3 = root.localRefs) === null || _a3 === void 0 ? void 0 : _a3[ref];
         const { schemaId } = this.opts;
@@ -10355,8 +10358,8 @@ var require_compile2 = __commonJS({
         return;
       return root.refs[ref] = inlineOrCompile.call(this, _sch);
     }
-    __name(resolveRef, "resolveRef");
-    exports2.resolveRef = resolveRef;
+    __name(resolveRef2, "resolveRef");
+    exports2.resolveRef = resolveRef2;
     function inlineOrCompile(sch) {
       if ((0, resolve_1.inlineRef)(sch.schema, this.opts.inlineRefs))
         return sch.schema;
@@ -10375,13 +10378,13 @@ var require_compile2 = __commonJS({
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
     __name(sameSchemaEnv, "sameSchemaEnv");
-    function resolve(root, ref) {
+    function resolve7(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
       return sch || this.schemas[ref] || resolveSchema.call(this, root, ref);
     }
-    __name(resolve, "resolve");
+    __name(resolve7, "resolve");
     function resolveSchema(root, ref) {
       const p = this.opts.uriResolver.parse(ref);
       const refPath = (0, resolve_1._getFullPath)(this.opts.uriResolver, p);
@@ -10626,19 +10629,19 @@ var require_core3 = __commonJS({
         this.addKeyword("$async");
       }
       _addDefaultMetaSchema() {
-        const { $data, meta: meta2, schemaId } = this.opts;
+        const { $data, meta: meta3, schemaId } = this.opts;
         let _dataRefSchema = $dataRefSchema;
         if (schemaId === "id") {
           _dataRefSchema = { ...$dataRefSchema };
           _dataRefSchema.id = _dataRefSchema.$id;
           delete _dataRefSchema.$id;
         }
-        if (meta2 && $data)
+        if (meta3 && $data)
           this.addMetaSchema(_dataRefSchema, _dataRefSchema[schemaId], false);
       }
       defaultMeta() {
-        const { meta: meta2, schemaId } = this.opts;
-        return this.opts.defaultMeta = typeof meta2 == "object" ? meta2[schemaId] || meta2 : void 0;
+        const { meta: meta3, schemaId } = this.opts;
+        return this.opts.defaultMeta = typeof meta3 == "object" ? meta3[schemaId] || meta3 : void 0;
       }
       validate(schemaKeyRef, data) {
         let v;
@@ -10658,12 +10661,12 @@ var require_core3 = __commonJS({
         const sch = this._addSchema(schema, _meta);
         return sch.validate || this._compileSchemaEnv(sch);
       }
-      compileAsync(schema, meta2) {
+      compileAsync(schema, meta3) {
         if (typeof this.opts.loadSchema != "function") {
           throw new Error("options.loadSchema should be a function");
         }
         const { loadSchema } = this.opts;
-        return runCompileAsync.call(this, schema, meta2);
+        return runCompileAsync.call(this, schema, meta3);
         async function runCompileAsync(_schema, _meta) {
           await loadMetaSchema.call(this, _schema.$schema);
           const sch = this._addSchema(_schema, _meta);
@@ -10699,7 +10702,7 @@ var require_core3 = __commonJS({
           if (!this.refs[ref])
             await loadMetaSchema.call(this, _schema.$schema);
           if (!this.refs[ref])
-            this.addSchema(_schema, ref, meta2);
+            this.addSchema(_schema, ref, meta3);
         }
         __name(loadMissingSchema, "loadMissingSchema");
         async function _loadSchema(ref) {
@@ -10883,7 +10886,7 @@ var require_core3 = __commonJS({
       errorsText(errors = this.errors, { separator = ", ", dataVar = "data" } = {}) {
         if (!errors || errors.length === 0)
           return "No errors";
-        return errors.map((e) => `${dataVar}${e.instancePath} ${e.message}`).reduce((text, msg) => text + separator + msg);
+        return errors.map((e) => `${dataVar}${e.instancePath} ${e.message}`).reduce((text2, msg) => text2 + separator + msg);
       }
       $dataMetaSchema(metaSchema, keywordsJsonPointers) {
         const rules = this.RULES.all;
@@ -10918,7 +10921,7 @@ var require_core3 = __commonJS({
           }
         }
       }
-      _addSchema(schema, meta2, baseId, validateSchema = this.opts.validateSchema, addSchema = this.opts.addUsedSchema) {
+      _addSchema(schema, meta3, baseId, validateSchema = this.opts.validateSchema, addSchema = this.opts.addUsedSchema) {
         let id;
         const { schemaId } = this.opts;
         if (typeof schema == "object") {
@@ -10934,7 +10937,7 @@ var require_core3 = __commonJS({
           return sch;
         baseId = (0, resolve_1.normalizeId)(id || baseId);
         const localRefs = resolve_1.getSchemaRefs.call(this, schema, baseId);
-        sch = new compile_1.SchemaEnv({ schema, schemaId, meta: meta2, baseId, localRefs });
+        sch = new compile_1.SchemaEnv({ schema, schemaId, meta: meta3, baseId, localRefs });
         this._cache.set(sch.schema, sch);
         if (addSchema && !baseId.startsWith("#")) {
           if (baseId)
@@ -11294,7 +11297,7 @@ var require_limitNumber2 = __commonJS({
       exclusiveMaximum: { okStr: "<", ok: ops.LT, fail: ops.GTE },
       exclusiveMinimum: { okStr: ">", ok: ops.GT, fail: ops.LTE }
     };
-    var error2 = {
+    var error51 = {
       message: /* @__PURE__ */ __name(({ keyword, schemaCode }) => (0, codegen_1.str)`must be ${KWDs[keyword].okStr} ${schemaCode}`, "message"),
       params: /* @__PURE__ */ __name(({ keyword, schemaCode }) => (0, codegen_1._)`{comparison: ${KWDs[keyword].okStr}, limit: ${schemaCode}}`, "params")
     };
@@ -11303,7 +11306,7 @@ var require_limitNumber2 = __commonJS({
       type: "number",
       schemaType: "number",
       $data: true,
-      error: error2,
+      error: error51,
       code(cxt) {
         const { keyword, data, schemaCode } = cxt;
         cxt.fail$data((0, codegen_1._)`${data} ${KWDs[keyword].fail} ${schemaCode} || isNaN(${data})`);
@@ -11319,7 +11322,7 @@ var require_multipleOf2 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen2();
-    var error2 = {
+    var error51 = {
       message: /* @__PURE__ */ __name(({ schemaCode }) => (0, codegen_1.str)`must be multiple of ${schemaCode}`, "message"),
       params: /* @__PURE__ */ __name(({ schemaCode }) => (0, codegen_1._)`{multipleOf: ${schemaCode}}`, "params")
     };
@@ -11328,7 +11331,7 @@ var require_multipleOf2 = __commonJS({
       type: "number",
       schemaType: "number",
       $data: true,
-      error: error2,
+      error: error51,
       code(cxt) {
         const { gen, data, schemaCode, it } = cxt;
         const prec = it.opts.multipleOfPrecision;
@@ -11376,7 +11379,7 @@ var require_limitLength2 = __commonJS({
     var codegen_1 = require_codegen2();
     var util_1 = require_util2();
     var ucs2length_1 = require_ucs2length2();
-    var error2 = {
+    var error51 = {
       message({ keyword, schemaCode }) {
         const comp = keyword === "maxLength" ? "more" : "fewer";
         return (0, codegen_1.str)`must NOT have ${comp} than ${schemaCode} characters`;
@@ -11388,7 +11391,7 @@ var require_limitLength2 = __commonJS({
       type: "string",
       schemaType: "number",
       $data: true,
-      error: error2,
+      error: error51,
       code(cxt) {
         const { keyword, data, schemaCode, it } = cxt;
         const op = keyword === "maxLength" ? codegen_1.operators.GT : codegen_1.operators.LT;
@@ -11408,7 +11411,7 @@ var require_pattern2 = __commonJS({
     var code_1 = require_code4();
     var util_1 = require_util2();
     var codegen_1 = require_codegen2();
-    var error2 = {
+    var error51 = {
       message: /* @__PURE__ */ __name(({ schemaCode }) => (0, codegen_1.str)`must match pattern "${schemaCode}"`, "message"),
       params: /* @__PURE__ */ __name(({ schemaCode }) => (0, codegen_1._)`{pattern: ${schemaCode}}`, "params")
     };
@@ -11417,7 +11420,7 @@ var require_pattern2 = __commonJS({
       type: "string",
       schemaType: "string",
       $data: true,
-      error: error2,
+      error: error51,
       code(cxt) {
         const { gen, data, $data, schema, schemaCode, it } = cxt;
         const u = it.opts.unicodeRegExp ? "u" : "";
@@ -11443,7 +11446,7 @@ var require_limitProperties2 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen2();
-    var error2 = {
+    var error51 = {
       message({ keyword, schemaCode }) {
         const comp = keyword === "maxProperties" ? "more" : "fewer";
         return (0, codegen_1.str)`must NOT have ${comp} than ${schemaCode} properties`;
@@ -11455,7 +11458,7 @@ var require_limitProperties2 = __commonJS({
       type: "object",
       schemaType: "number",
       $data: true,
-      error: error2,
+      error: error51,
       code(cxt) {
         const { keyword, data, schemaCode } = cxt;
         const op = keyword === "maxProperties" ? codegen_1.operators.GT : codegen_1.operators.LT;
@@ -11474,7 +11477,7 @@ var require_required2 = __commonJS({
     var code_1 = require_code4();
     var codegen_1 = require_codegen2();
     var util_1 = require_util2();
-    var error2 = {
+    var error51 = {
       message: /* @__PURE__ */ __name(({ params: { missingProperty } }) => (0, codegen_1.str)`must have required property '${missingProperty}'`, "message"),
       params: /* @__PURE__ */ __name(({ params: { missingProperty } }) => (0, codegen_1._)`{missingProperty: ${missingProperty}}`, "params")
     };
@@ -11483,7 +11486,7 @@ var require_required2 = __commonJS({
       type: "object",
       schemaType: "array",
       $data: true,
-      error: error2,
+      error: error51,
       code(cxt) {
         const { gen, schema, schemaCode, data, $data, it } = cxt;
         const { opts } = it;
@@ -11558,7 +11561,7 @@ var require_limitItems2 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen2();
-    var error2 = {
+    var error51 = {
       message({ keyword, schemaCode }) {
         const comp = keyword === "maxItems" ? "more" : "fewer";
         return (0, codegen_1.str)`must NOT have ${comp} than ${schemaCode} items`;
@@ -11570,7 +11573,7 @@ var require_limitItems2 = __commonJS({
       type: "array",
       schemaType: "number",
       $data: true,
-      error: error2,
+      error: error51,
       code(cxt) {
         const { keyword, data, schemaCode } = cxt;
         const op = keyword === "maxItems" ? codegen_1.operators.GT : codegen_1.operators.LT;
@@ -11601,7 +11604,7 @@ var require_uniqueItems2 = __commonJS({
     var codegen_1 = require_codegen2();
     var util_1 = require_util2();
     var equal_1 = require_equal2();
-    var error2 = {
+    var error51 = {
       message: /* @__PURE__ */ __name(({ params: { i, j } }) => (0, codegen_1.str)`must NOT have duplicate items (items ## ${j} and ${i} are identical)`, "message"),
       params: /* @__PURE__ */ __name(({ params: { i, j } }) => (0, codegen_1._)`{i: ${i}, j: ${j}}`, "params")
     };
@@ -11610,7 +11613,7 @@ var require_uniqueItems2 = __commonJS({
       type: "array",
       schemaType: "boolean",
       $data: true,
-      error: error2,
+      error: error51,
       code(cxt) {
         const { gen, data, $data, schema, parentSchema, schemaCode, it } = cxt;
         if (!$data && !schema)
@@ -11671,14 +11674,14 @@ var require_const2 = __commonJS({
     var codegen_1 = require_codegen2();
     var util_1 = require_util2();
     var equal_1 = require_equal2();
-    var error2 = {
+    var error51 = {
       message: "must be equal to constant",
       params: /* @__PURE__ */ __name(({ schemaCode }) => (0, codegen_1._)`{allowedValue: ${schemaCode}}`, "params")
     };
     var def = {
       keyword: "const",
       $data: true,
-      error: error2,
+      error: error51,
       code(cxt) {
         const { gen, data, $data, schemaCode, schema } = cxt;
         if ($data || schema && typeof schema == "object") {
@@ -11700,7 +11703,7 @@ var require_enum2 = __commonJS({
     var codegen_1 = require_codegen2();
     var util_1 = require_util2();
     var equal_1 = require_equal2();
-    var error2 = {
+    var error51 = {
       message: "must be equal to one of the allowed values",
       params: /* @__PURE__ */ __name(({ schemaCode }) => (0, codegen_1._)`{allowedValues: ${schemaCode}}`, "params")
     };
@@ -11708,7 +11711,7 @@ var require_enum2 = __commonJS({
       keyword: "enum",
       schemaType: "array",
       $data: true,
-      error: error2,
+      error: error51,
       code(cxt) {
         const { gen, data, $data, schema, schemaCode, it } = cxt;
         if (!$data && schema.length === 0)
@@ -11789,7 +11792,7 @@ var require_additionalItems2 = __commonJS({
     exports2.validateAdditionalItems = void 0;
     var codegen_1 = require_codegen2();
     var util_1 = require_util2();
-    var error2 = {
+    var error51 = {
       message: /* @__PURE__ */ __name(({ params: { len } }) => (0, codegen_1.str)`must NOT have more than ${len} items`, "message"),
       params: /* @__PURE__ */ __name(({ params: { len } }) => (0, codegen_1._)`{limit: ${len}}`, "params")
     };
@@ -11798,7 +11801,7 @@ var require_additionalItems2 = __commonJS({
       type: "array",
       schemaType: ["boolean", "object"],
       before: "uniqueItems",
-      error: error2,
+      error: error51,
       code(cxt) {
         const { parentSchema, it } = cxt;
         const { items } = parentSchema;
@@ -11921,7 +11924,7 @@ var require_items20202 = __commonJS({
     var util_1 = require_util2();
     var code_1 = require_code4();
     var additionalItems_1 = require_additionalItems2();
-    var error2 = {
+    var error51 = {
       message: /* @__PURE__ */ __name(({ params: { len } }) => (0, codegen_1.str)`must NOT have more than ${len} items`, "message"),
       params: /* @__PURE__ */ __name(({ params: { len } }) => (0, codegen_1._)`{limit: ${len}}`, "params")
     };
@@ -11930,7 +11933,7 @@ var require_items20202 = __commonJS({
       type: "array",
       schemaType: ["object", "boolean"],
       before: "uniqueItems",
-      error: error2,
+      error: error51,
       code(cxt) {
         const { schema, parentSchema, it } = cxt;
         const { prefixItems } = parentSchema;
@@ -11954,7 +11957,7 @@ var require_contains2 = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen2();
     var util_1 = require_util2();
-    var error2 = {
+    var error51 = {
       message: /* @__PURE__ */ __name(({ params: { min, max } }) => max === void 0 ? (0, codegen_1.str)`must contain at least ${min} valid item(s)` : (0, codegen_1.str)`must contain at least ${min} and no more than ${max} valid item(s)`, "message"),
       params: /* @__PURE__ */ __name(({ params: { min, max } }) => max === void 0 ? (0, codegen_1._)`{minContains: ${min}}` : (0, codegen_1._)`{minContains: ${min}, maxContains: ${max}}`, "params")
     };
@@ -11964,7 +11967,7 @@ var require_contains2 = __commonJS({
       schemaType: ["object", "boolean"],
       before: "uniqueItems",
       trackErrors: true,
-      error: error2,
+      error: error51,
       code(cxt) {
         const { gen, schema, parentSchema, data, it } = cxt;
         let min;
@@ -12148,7 +12151,7 @@ var require_propertyNames2 = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen2();
     var util_1 = require_util2();
-    var error2 = {
+    var error51 = {
       message: "property name must be valid",
       params: /* @__PURE__ */ __name(({ params }) => (0, codegen_1._)`{propertyName: ${params.propertyName}}`, "params")
     };
@@ -12156,7 +12159,7 @@ var require_propertyNames2 = __commonJS({
       keyword: "propertyNames",
       type: "object",
       schemaType: ["object", "boolean"],
-      error: error2,
+      error: error51,
       code(cxt) {
         const { gen, schema, data, it } = cxt;
         if ((0, util_1.alwaysValidSchema)(it, schema))
@@ -12193,7 +12196,7 @@ var require_additionalProperties2 = __commonJS({
     var codegen_1 = require_codegen2();
     var names_1 = require_names2();
     var util_1 = require_util2();
-    var error2 = {
+    var error51 = {
       message: "must NOT have additional properties",
       params: /* @__PURE__ */ __name(({ params }) => (0, codegen_1._)`{additionalProperty: ${params.additionalProperty}}`, "params")
     };
@@ -12203,7 +12206,7 @@ var require_additionalProperties2 = __commonJS({
       schemaType: ["boolean", "object"],
       allowUndefined: true,
       trackErrors: true,
-      error: error2,
+      error: error51,
       code(cxt) {
         const { gen, schema, parentSchema, data, errsCount, it } = cxt;
         if (!errsCount)
@@ -12487,7 +12490,7 @@ var require_oneOf2 = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen2();
     var util_1 = require_util2();
-    var error2 = {
+    var error51 = {
       message: "must match exactly one schema in oneOf",
       params: /* @__PURE__ */ __name(({ params }) => (0, codegen_1._)`{passingSchemas: ${params.passing}}`, "params")
     };
@@ -12495,7 +12498,7 @@ var require_oneOf2 = __commonJS({
       keyword: "oneOf",
       schemaType: "array",
       trackErrors: true,
-      error: error2,
+      error: error51,
       code(cxt) {
         const { gen, schema, parentSchema, it } = cxt;
         if (!Array.isArray(schema))
@@ -12573,7 +12576,7 @@ var require_if2 = __commonJS({
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen2();
     var util_1 = require_util2();
-    var error2 = {
+    var error51 = {
       message: /* @__PURE__ */ __name(({ params }) => (0, codegen_1.str)`must match "${params.ifClause}" schema`, "message"),
       params: /* @__PURE__ */ __name(({ params }) => (0, codegen_1._)`{failingKeyword: ${params.ifClause}}`, "params")
     };
@@ -12581,7 +12584,7 @@ var require_if2 = __commonJS({
       keyword: "if",
       schemaType: ["object", "boolean"],
       trackErrors: true,
-      error: error2,
+      error: error51,
       code(cxt) {
         const { gen, parentSchema, it } = cxt;
         if (parentSchema.then === void 0 && parentSchema.else === void 0) {
@@ -12711,7 +12714,7 @@ var require_format3 = __commonJS({
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var codegen_1 = require_codegen2();
-    var error2 = {
+    var error51 = {
       message: /* @__PURE__ */ __name(({ schemaCode }) => (0, codegen_1.str)`must match format "${schemaCode}"`, "message"),
       params: /* @__PURE__ */ __name(({ schemaCode }) => (0, codegen_1._)`{format: ${schemaCode}}`, "params")
     };
@@ -12720,7 +12723,7 @@ var require_format3 = __commonJS({
       type: ["number", "string"],
       schemaType: "string",
       $data: true,
-      error: error2,
+      error: error51,
       code(cxt, ruleType) {
         const { gen, data, $data, schema, schemaCode, it } = cxt;
         const { opts, errSchemaPath, schemaEnv, self } = it;
@@ -12883,7 +12886,7 @@ var require_discriminator2 = __commonJS({
     var compile_1 = require_compile2();
     var ref_error_1 = require_ref_error2();
     var util_1 = require_util2();
-    var error2 = {
+    var error51 = {
       message: /* @__PURE__ */ __name(({ params: { discrError, tagName } }) => discrError === types_1.DiscrError.Tag ? `tag "${tagName}" must be string` : `value of tag "${tagName}" must be in oneOf`, "message"),
       params: /* @__PURE__ */ __name(({ params: { discrError, tag, tagName } }) => (0, codegen_1._)`{error: ${discrError}, tag: ${tagName}, tagValue: ${tag}}`, "params")
     };
@@ -12891,7 +12894,7 @@ var require_discriminator2 = __commonJS({
       keyword: "discriminator",
       type: "object",
       schemaType: "object",
-      error: error2,
+      error: error51,
       code(cxt) {
         const { gen, data, schema, parentSchema, it } = cxt;
         const { oneOf } = parentSchema;
@@ -13229,7 +13232,7 @@ var require_limit = __commonJS({
       formatExclusiveMaximum: { okStr: "<", ok: ops.LT, fail: ops.GTE },
       formatExclusiveMinimum: { okStr: ">", ok: ops.GT, fail: ops.LTE }
     };
-    var error2 = {
+    var error51 = {
       message: /* @__PURE__ */ __name(({ keyword, schemaCode }) => (0, codegen_1.str)`should be ${KWDs[keyword].okStr} ${schemaCode}`, "message"),
       params: /* @__PURE__ */ __name(({ keyword, schemaCode }) => (0, codegen_1._)`{comparison: ${KWDs[keyword].okStr}, limit: ${schemaCode}}`, "params")
     };
@@ -13238,7 +13241,7 @@ var require_limit = __commonJS({
       type: "string",
       schemaType: "string",
       $data: true,
-      error: error2,
+      error: error51,
       code(cxt) {
         const { gen, data, schemaCode, keyword, it } = cxt;
         const { opts, self } = it;
@@ -13318,12 +13321,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs2, exportName) {
+    function addFormats(ajv, list, fs6, exportName) {
       var _a3;
       var _b;
       (_a3 = (_b = ajv.opts.code).formats) !== null && _a3 !== void 0 ? _a3 : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs2[f]);
+        ajv.addFormat(f, fs6[f]);
     }
     __name(addFormats, "addFormats");
     module2.exports = exports2 = formatsPlugin;
@@ -13332,18 +13335,4901 @@ var require_dist = __commonJS({
   }
 });
 
+// packages/core/src/shared/tokens.ts
+function estimatePayloadTokens(payload) {
+  return Math.ceil(payload.length / PAYLOAD_CHARS_PER_TOKEN);
+}
+var PAYLOAD_CHARS_PER_TOKEN;
+var init_tokens = __esm({
+  "packages/core/src/shared/tokens.ts"() {
+    "use strict";
+    PAYLOAD_CHARS_PER_TOKEN = 3.5;
+    __name(estimatePayloadTokens, "estimatePayloadTokens");
+  }
+});
+
+// packages/core/src/config/index.ts
+function getStatePath(cwd, ...segments) {
+  return path.join(cwd, ...V2_STATE_SEGMENTS, ...segments);
+}
+function statePath(...segments) {
+  return getStatePath(process.cwd(), ...segments);
+}
+function projectConfigPath(cwd = process.cwd()) {
+  return getStatePath(cwd, "config.json");
+}
+function userConfigPath() {
+  return path.join(os.homedir(), ".claude", ".goodvibes", "config.json");
+}
+function readJsonIfPresent(file2) {
+  try {
+    return JSON.parse(fs.readFileSync(file2, "utf-8"));
+  } catch {
+    return {};
+  }
+}
+function mergeBudgets(base, override) {
+  if (!override || typeof override !== "object") return base;
+  const o = override;
+  const pick2 = /* @__PURE__ */ __name((k) => typeof o[k] === "number" && Number.isFinite(o[k]) && o[k] > 0 ? o[k] : base[k], "pick");
+  return {
+    analyzer_ms: pick2("analyzer_ms"),
+    search_ms: pick2("search_ms"),
+    http_default_ms: pick2("http_default_ms"),
+    http_max_ms: pick2("http_max_ms"),
+    db_query_ms: pick2("db_query_ms"),
+    analytics_ms: pick2("analytics_ms")
+  };
+}
+function loadConfig(cwd = process.cwd()) {
+  const projFile = projectConfigPath(cwd);
+  const userFile = userConfigPath();
+  const cacheKey = `${userFile}::${projFile}`;
+  if (cached2 && cached2.key === cacheKey) return cached2.value;
+  const user = readJsonIfPresent(userFile);
+  const project = readJsonIfPresent(projFile);
+  const merged = { ...DEFAULT_CONFIG, ...user, ...project };
+  const num = /* @__PURE__ */ __name((k, d) => typeof merged[k] === "number" && Number.isFinite(merged[k]) && merged[k] > 0 ? merged[k] : d, "num");
+  const mode = merged.mode === "open" ? "open" : "restricted";
+  const value = {
+    mode,
+    dangerously_persist_across_sessions: merged.dangerously_persist_across_sessions === true,
+    idle_exit_minutes: num("idle_exit_minutes", DEFAULT_CONFIG.idle_exit_minutes),
+    ppid_poll_ms: num("ppid_poll_ms", DEFAULT_CONFIG.ppid_poll_ms),
+    telemetry_enabled: merged.telemetry_enabled !== false,
+    cache_max_mb: num("cache_max_mb", DEFAULT_CONFIG.cache_max_mb),
+    max_tokens_default: num("max_tokens_default", DEFAULT_CONFIG.max_tokens_default),
+    budgets: mergeBudgets(DEFAULT_CONFIG.budgets, merged.budgets)
+  };
+  cached2 = { key: cacheKey, value };
+  return value;
+}
+var fs, os, path, DEFAULT_CONFIG, V2_STATE_SEGMENTS, cached2;
+var init_config = __esm({
+  "packages/core/src/config/index.ts"() {
+    "use strict";
+    fs = __toESM(require("fs"), 1);
+    os = __toESM(require("os"), 1);
+    path = __toESM(require("path"), 1);
+    DEFAULT_CONFIG = Object.freeze({
+      mode: "restricted",
+      dangerously_persist_across_sessions: false,
+      idle_exit_minutes: 30,
+      ppid_poll_ms: 5e3,
+      telemetry_enabled: true,
+      cache_max_mb: 200,
+      max_tokens_default: 4e3,
+      budgets: Object.freeze({
+        analyzer_ms: 2e4,
+        search_ms: 15e3,
+        http_default_ms: 3e4,
+        http_max_ms: 12e4,
+        db_query_ms: 3e4,
+        analytics_ms: 2e4
+      })
+    });
+    V2_STATE_SEGMENTS = [".goodvibes", "v2"];
+    __name(getStatePath, "getStatePath");
+    __name(statePath, "statePath");
+    __name(projectConfigPath, "projectConfigPath");
+    __name(userConfigPath, "userConfigPath");
+    __name(readJsonIfPresent, "readJsonIfPresent");
+    __name(mergeBudgets, "mergeBudgets");
+    cached2 = null;
+    __name(loadConfig, "loadConfig");
+  }
+});
+
+// packages/analytics/src/engine/types.ts
+function toolResponse(text2, isError = false) {
+  const response = { content: [{ type: "text", text: text2 }] };
+  if (isError) response.isError = true;
+  return response;
+}
+var DEFAULT_CONFIG2;
+var init_types = __esm({
+  "packages/analytics/src/engine/types.ts"() {
+    "use strict";
+    DEFAULT_CONFIG2 = {
+      enabled: true,
+      auto_start_mini: true,
+      auto_start_full: false,
+      auto_start_dashboard: false,
+      refresh_rate_ms: 1e3,
+      full_tui_refresh_rate_ms: 5e3,
+      dashboard_refresh_rate_ms: 5e3,
+      cost_per_1k_input_tokens: 3e-3,
+      cost_per_1k_output_tokens: 0.015,
+      budget: null,
+      budget_warn_thresholds: [0.5, 0.8, 1],
+      mini_budget_bar: false,
+      anomaly_detection: true,
+      auto_report_on_shutdown: true,
+      webhook_url: null,
+      webhook_events: ["session_end"],
+      global_db_path: "~/.claude/.goodvibes/analytics/analytics.db",
+      jsonl_base_path: "~/.claude/projects",
+      tmux: {
+        mini_pane_size: 5,
+        mini_position: "bottom",
+        full_pane_size: "60%",
+        dashboard_pane_size: "60%",
+        full_position: "right",
+        dashboard_position: "right"
+      }
+    };
+    __name(toolResponse, "toolResponse");
+  }
+});
+
+// packages/core/src/logging/index.ts
+function formatLine(level, message, data) {
+  const prefix = `[${(/* @__PURE__ */ new Date()).toISOString()}] [${level.toUpperCase()}]`;
+  const body = data !== void 0 ? `${message} ${safeStringify(data)}` : message;
+  return `${prefix} ${body}
+`;
+}
+function safeStringify(data) {
+  try {
+    return JSON.stringify(data);
+  } catch {
+    return String(data);
+  }
+}
+function createLogger(options = {}) {
+  const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
+  const keep = options.keep ?? DEFAULT_KEEP;
+  const mirror = options.stderr ?? true;
+  const resolveDir = /* @__PURE__ */ __name(() => options.dir ?? statePath("logs"), "resolveDir");
+  function rotateIfNeeded(file2) {
+    let size = 0;
+    try {
+      size = (0, import_fs.statSync)(file2).size;
+    } catch {
+      return;
+    }
+    if (size < maxBytes) return;
+    for (let i = keep; i >= 1; i--) {
+      const from = i === 1 ? file2 : `${file2}.${i - 1}`;
+      const to = `${file2}.${i}`;
+      try {
+        (0, import_fs.renameSync)(from, to);
+      } catch {
+      }
+    }
+  }
+  __name(rotateIfNeeded, "rotateIfNeeded");
+  function write(fileName, line) {
+    try {
+      const dir = resolveDir();
+      (0, import_fs.mkdirSync)(dir, { recursive: true });
+      const file2 = path2.join(dir, fileName);
+      rotateIfNeeded(file2);
+      (0, import_fs.appendFileSync)(file2, line);
+    } catch {
+    }
+  }
+  __name(write, "write");
+  function emit(level, message, data) {
+    const line = formatLine(level, message, data);
+    if (level === "debug") {
+      write("debug.log", line);
+    } else {
+      write("activity.log", line);
+      if (mirror) process.stderr.write(line);
+    }
+  }
+  __name(emit, "emit");
+  return {
+    debug: /* @__PURE__ */ __name((message, data) => emit("debug", message, data), "debug"),
+    info: /* @__PURE__ */ __name((message, data) => emit("info", message, data), "info"),
+    warn: /* @__PURE__ */ __name((message, data) => emit("warn", message, data), "warn"),
+    error: /* @__PURE__ */ __name((message, data) => emit("error", message, data), "error"),
+    tool: /* @__PURE__ */ __name((name, args) => emit("tool", `Calling ${name}`, args), "tool")
+  };
+}
+var import_fs, path2, DEFAULT_MAX_BYTES, DEFAULT_KEEP;
+var init_logging = __esm({
+  "packages/core/src/logging/index.ts"() {
+    "use strict";
+    import_fs = require("fs");
+    path2 = __toESM(require("path"), 1);
+    init_config();
+    init_tokens();
+    DEFAULT_MAX_BYTES = 1024 * 1024;
+    DEFAULT_KEEP = 3;
+    __name(formatLine, "formatLine");
+    __name(safeStringify, "safeStringify");
+    __name(createLogger, "createLogger");
+  }
+});
+
+// packages/analytics/src/engine/runtime.ts
+function atomicWriteFileSync(filePath, data) {
+  const tmp = `${filePath}.${process.pid}.${(0, import_node_crypto.randomBytes)(4).toString("hex")}.tmp`;
+  (0, import_node_fs.writeFileSync)(tmp, data);
+  try {
+    (0, import_node_fs.renameSync)(tmp, filePath);
+  } catch (err) {
+    try {
+      (0, import_node_fs.unlinkSync)(tmp);
+    } catch {
+    }
+    throw err;
+  }
+}
+function atomicWriteJson(filePath, value) {
+  atomicWriteFileSync(filePath, JSON.stringify(value, null, 2));
+}
+function engineLogger() {
+  return engineLoggerSingleton ??= createLogger();
+}
+var import_node_fs, import_node_crypto, engineLoggerSingleton;
+var init_runtime = __esm({
+  "packages/analytics/src/engine/runtime.ts"() {
+    "use strict";
+    import_node_fs = require("node:fs");
+    import_node_crypto = require("node:crypto");
+    init_logging();
+    __name(atomicWriteFileSync, "atomicWriteFileSync");
+    __name(atomicWriteJson, "atomicWriteJson");
+    engineLoggerSingleton = null;
+    __name(engineLogger, "engineLogger");
+  }
+});
+
+// packages/analytics/src/engine/config.ts
+function priced(name, inputPrice, outputPrice) {
+  return {
+    name,
+    inputPrice,
+    outputPrice,
+    cacheWrite5Min: inputPrice * CACHE_WRITE_5MIN_MULT,
+    cacheWrite1Hour: inputPrice * CACHE_WRITE_1HOUR_MULT,
+    cacheHits: inputPrice * CACHE_HIT_MULT
+  };
+}
+function loadModelPricing() {
+  try {
+    if ((0, import_node_fs2.existsSync)(MODEL_PRICING_CACHE_PATH)) {
+      const content = (0, import_node_fs2.readFileSync)(MODEL_PRICING_CACHE_PATH, "utf-8");
+      const cache = JSON.parse(content);
+      if (cache.models && typeof cache.models === "object") {
+        return cache.models;
+      }
+    }
+  } catch {
+  }
+  return { ...FALLBACK_MODEL_PRICING };
+}
+function getModelRates(modelId, pricingMap) {
+  if (pricingMap[modelId]) return pricingMap[modelId];
+  const normalisedId = modelId.replace(/-/g, ".");
+  const dotKey = Object.keys(pricingMap).find(
+    (k) => k.replace(/-/g, ".") === normalisedId
+  );
+  if (dotKey) return pricingMap[dotKey];
+  const normalizedId = modelId.replace(/\./g, "-");
+  const prefixKey = Object.keys(pricingMap).find((k) => {
+    const normalizedKey = k.replace(/\./g, "-");
+    return normalizedId.startsWith(normalizedKey);
+  });
+  if (prefixKey) return pricingMap[prefixKey];
+  const opusKey = "claude-opus-4-5";
+  const opusPricing = pricingMap[opusKey];
+  if (opusPricing) return opusPricing;
+  return {
+    inputPrice: DEFAULT_CONFIG2.cost_per_1k_input_tokens * 1e3,
+    outputPrice: DEFAULT_CONFIG2.cost_per_1k_output_tokens * 1e3,
+    cacheWrite5Min: DEFAULT_CONFIG2.cost_per_1k_input_tokens * 1e3 * 1.25,
+    cacheWrite1Hour: DEFAULT_CONFIG2.cost_per_1k_input_tokens * 1e3 * 2,
+    cacheHits: DEFAULT_CONFIG2.cost_per_1k_input_tokens * 1e3 * 0.1
+  };
+}
+function tryLoadFile(filePath) {
+  if (!(0, import_node_fs2.existsSync)(filePath)) return null;
+  try {
+    const raw = (0, import_node_fs2.readFileSync)(filePath, "utf-8");
+    const parsed = JSON.parse(raw);
+    if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return { ...DEFAULT_CONFIG2, ...parsed };
+    }
+    return { ...DEFAULT_CONFIG2 };
+  } catch (err) {
+    console.warn(
+      `[analytics] Config load failed for ${filePath}, using defaults:`,
+      err instanceof Error ? err.message : String(err)
+    );
+    return null;
+  }
+}
+function loadConfig2(goodvibesDir) {
+  const globalConfig2 = tryLoadFile(GLOBAL_CONFIG_PATH);
+  if (globalConfig2) return globalConfig2;
+  const projectConfig = tryLoadFile((0, import_node_path.join)(goodvibesDir, "analytics.json"));
+  if (projectConfig) return projectConfig;
+  return { ...DEFAULT_CONFIG2 };
+}
+var import_node_fs2, import_node_path, import_node_os, MODEL_PRICING_CACHE_PATH, CACHE_WRITE_5MIN_MULT, CACHE_WRITE_1HOUR_MULT, CACHE_HIT_MULT, FALLBACK_MODEL_PRICING, GLOBAL_CONFIG_PATH;
+var init_config2 = __esm({
+  "packages/analytics/src/engine/config.ts"() {
+    "use strict";
+    import_node_fs2 = require("node:fs");
+    import_node_path = require("node:path");
+    import_node_os = require("node:os");
+    init_types();
+    init_runtime();
+    MODEL_PRICING_CACHE_PATH = (0, import_node_path.join)((0, import_node_os.homedir)(), ".claude", "model-pricing.json");
+    CACHE_WRITE_5MIN_MULT = 1.25;
+    CACHE_WRITE_1HOUR_MULT = 2;
+    CACHE_HIT_MULT = 0.1;
+    __name(priced, "priced");
+    FALLBACK_MODEL_PRICING = {
+      "claude-fable-5": priced("Claude Fable 5", 10, 50),
+      "claude-mythos-5": priced("Claude Mythos 5", 10, 50),
+      "claude-opus-4-8": priced("Claude Opus 4.8", 5, 25),
+      "claude-opus-4-7": priced("Claude Opus 4.7", 5, 25),
+      "claude-opus-4-6": priced("Claude Opus 4.6", 5, 25),
+      "claude-opus-4-5": priced("Claude Opus 4.5", 5, 25),
+      "claude-sonnet-5": priced("Claude Sonnet 5", 3, 15),
+      "claude-sonnet-4-6": priced("Claude Sonnet 4.6", 3, 15),
+      "claude-sonnet-4-5": priced("Claude Sonnet 4.5", 3, 15),
+      "claude-haiku-4-5": priced("Claude Haiku 4.5", 1, 5)
+    };
+    __name(loadModelPricing, "loadModelPricing");
+    __name(getModelRates, "getModelRates");
+    GLOBAL_CONFIG_PATH = (0, import_node_path.join)(
+      (0, import_node_os.homedir)(),
+      ".claude",
+      ".goodvibes",
+      "analytics",
+      "analytics.json"
+    );
+    __name(tryLoadFile, "tryLoadFile");
+    __name(loadConfig2, "loadConfig");
+  }
+});
+
+// packages/analytics/src/engine/data/jsonl-reader.ts
+function calculateTieredInputCost(tokens, baseRatePerMtok) {
+  if (tokens <= TIER_BOUNDARY) {
+    return tokens / 1e6 * baseRatePerMtok;
+  }
+  const tier1Cost = TIER_BOUNDARY / 1e6 * baseRatePerMtok;
+  const tier2Cost = (tokens - TIER_BOUNDARY) / 1e6 * (baseRatePerMtok * 2);
+  return tier1Cost + tier2Cost;
+}
+async function findActiveJsonlFile(projectDir) {
+  let entries;
+  try {
+    entries = await (0, import_promises.readdir)(projectDir);
+  } catch {
+    return null;
+  }
+  const jsonlFiles = entries.filter((e) => e.endsWith(".jsonl"));
+  if (jsonlFiles.length === 0) return null;
+  let latestPath = null;
+  let latestMtime = 0;
+  for (const file2 of jsonlFiles) {
+    const fullPath = (0, import_node_path2.join)(projectDir, file2);
+    try {
+      const s = (0, import_node_fs5.statSync)(fullPath);
+      if (s.mtimeMs > latestMtime) {
+        latestMtime = s.mtimeMs;
+        latestPath = fullPath;
+      }
+    } catch {
+    }
+  }
+  return latestPath;
+}
+function sessionIdFromPath(jsonlPath) {
+  return (0, import_node_path2.basename)(jsonlPath, ".jsonl");
+}
+function resolveProjectsBaseDir() {
+  const envDir = process.env["CLAUDE_PROJECTS_DIR"];
+  if (envDir !== void 0 && envDir !== "") return envDir;
+  return (0, import_node_path2.join)((0, import_node_os2.homedir)(), ".claude", "projects");
+}
+var import_node_fs5, import_promises, import_node_readline, import_node_os2, import_node_path2, TIER_BOUNDARY, JSONLReader;
+var init_jsonl_reader = __esm({
+  "packages/analytics/src/engine/data/jsonl-reader.ts"() {
+    "use strict";
+    import_node_fs5 = require("node:fs");
+    import_promises = require("node:fs/promises");
+    import_node_readline = require("node:readline");
+    import_node_os2 = require("node:os");
+    import_node_path2 = require("node:path");
+    TIER_BOUNDARY = 2e5;
+    __name(calculateTieredInputCost, "calculateTieredInputCost");
+    JSONLReader = class {
+      static {
+        __name(this, "JSONLReader");
+      }
+      costPer1kInput;
+      costPer1kOutput;
+      pricingMap;
+      /**
+       * @param config - Pricing config for cost calculation.
+       * @param config.cost_per_1k_input_tokens  - USD cost per 1,000 input tokens (fallback).
+       * @param config.cost_per_1k_output_tokens - USD cost per 1,000 output tokens (fallback).
+       * @param pricingMap - Optional model pricing map for dynamic per-model pricing ($/MTok).
+       *                     When provided, takes precedence over flat cost_per_1k_* rates.
+       */
+      constructor(config2, pricingMap) {
+        this.costPer1kInput = config2.cost_per_1k_input_tokens;
+        this.costPer1kOutput = config2.cost_per_1k_output_tokens;
+        this.pricingMap = pricingMap ?? null;
+      }
+      /** Get pricing info for a model from the pricing map, or null if not available. */
+      getPricingForModel(modelId) {
+        if (!this.pricingMap || !modelId) return null;
+        if (this.pricingMap[modelId]) return this.pricingMap[modelId];
+        const normId = modelId.replace(/-/g, ".");
+        const dotKey = Object.keys(this.pricingMap).find(
+          (k) => k.replace(/-/g, ".") === normId
+        );
+        if (dotKey) return this.pricingMap[dotKey];
+        const prefixKey = Object.keys(this.pricingMap).find(
+          (k) => modelId.startsWith(k)
+        );
+        if (prefixKey) return this.pricingMap[prefixKey];
+        return null;
+      }
+      // -------------------------------------------------------------------------
+      // Core parsing
+      // -------------------------------------------------------------------------
+      /**
+       * Parse a JSONL file from an optional byte offset.
+       *
+       * Uses readline for memory-efficient line-by-line reading. The byte offset
+       * enables incremental / tail-style reads: persist `result.newOffset` and
+       * pass it as `fromOffset` on the next call to read only new content.
+       *
+       * @param filePath   - Absolute path to the JSONL file.
+       * @param fromOffset - Byte offset to start reading from (default: 0).
+       * @returns Parsed records, new byte offset, and parse statistics.
+       */
+      async parseFile(filePath, fromOffset = 0) {
+        const errors = [];
+        const records = [];
+        let linesParsed = 0;
+        let linesSkipped = 0;
+        let byteOffset = fromOffset;
+        let fileSize;
+        try {
+          const fileStat = await (0, import_promises.stat)(filePath);
+          fileSize = fileStat.size;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return {
+            records,
+            newOffset: fromOffset,
+            linesParsed: 0,
+            linesSkipped: 0,
+            errors: [`Failed to stat file "${filePath}": ${message}`]
+          };
+        }
+        if (fromOffset >= fileSize) {
+          return { records, newOffset: fromOffset, linesParsed: 0, linesSkipped: 0, errors };
+        }
+        const stream = (0, import_node_fs5.createReadStream)(filePath, { start: fromOffset, encoding: "utf8" });
+        const rl = (0, import_node_readline.createInterface)({ input: stream, crlfDelay: Infinity });
+        let bytesConsumed = 0;
+        let lastValidOffset = fromOffset;
+        for await (const line of rl) {
+          const lineByteLength = Buffer.byteLength(line, "utf8") + 1;
+          const trimmed = line.trim();
+          if (trimmed === "") {
+            bytesConsumed += lineByteLength;
+            linesSkipped++;
+            continue;
+          }
+          linesParsed++;
+          const detail = this.parseLineDetailed(trimmed);
+          bytesConsumed += lineByteLength;
+          lastValidOffset = fromOffset + bytesConsumed;
+          if (detail.kind === "record") {
+            records.push(detail.record);
+          } else if (detail.kind === "error") {
+            errors.push(`Skipped malformed line at ~offset ${fromOffset + bytesConsumed - lineByteLength}: ${trimmed.slice(0, 80)}...`);
+            linesSkipped++;
+          } else {
+            linesSkipped++;
+          }
+        }
+        byteOffset = lastValidOffset;
+        return {
+          records,
+          newOffset: byteOffset,
+          linesParsed,
+          linesSkipped,
+          errors
+        };
+      }
+      /**
+       * Parse an array of pre-split text lines.
+       *
+       * Useful for testing or when the caller has already split content.
+       * Skips empty lines silently.
+       *
+       * @param lines - Array of raw text lines (not yet JSON.parse'd).
+       * @returns Successfully parsed records (malformed lines silently dropped).
+       */
+      parseLines(lines) {
+        const records = [];
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed === "") continue;
+          const record2 = this.parseLine(trimmed);
+          if (record2 !== null) records.push(record2);
+        }
+        return records;
+      }
+      /**
+       * Parse a single JSON line into a JSONLRecord.
+       *
+       * Returns null on any parse failure (invalid JSON, missing type field,
+       * or unrecognised type value) — never throws.
+       *
+       * @param line - Single trimmed line of text from a JSONL file.
+       * @returns Parsed record, or null if the line is malformed or unrecognised.
+       */
+      /**
+       * Parse result: 'record' = recognized, 'skipped' = valid JSON but unknown type,
+       * 'error' = invalid JSON or not an object.
+       */
+      parseLine(line) {
+        const result = this.parseLineDetailed(line);
+        return result.kind === "record" ? result.record : null;
+      }
+      /** Detailed parse with discrimination between unrecognized and malformed. */
+      parseLineDetailed(line) {
+        try {
+          const parsed = JSON.parse(line);
+          if (typeof parsed !== "object" || parsed === null) return { kind: "error" };
+          const record2 = parsed;
+          const type = record2["type"];
+          if (type === "assistant") return { kind: "record", record: record2 };
+          if (type === "user") return { kind: "record", record: record2 };
+          if (type === "progress") return { kind: "record", record: record2 };
+          if (type === "file-history-snapshot") return { kind: "record", record: record2 };
+          return { kind: "skipped" };
+        } catch {
+          return { kind: "error" };
+        }
+      }
+      // -------------------------------------------------------------------------
+      // Extraction: ApiCallRecord
+      // -------------------------------------------------------------------------
+      /**
+       * Extract API call records from assistant JSONL records.
+       *
+       * Each assistant record represents one Claude API response. Token counts
+       * and cost are extracted from message.usage. Cost is calculated from
+       * configured rates (cost_usd is NOT present in the JSONL format).
+       *
+       * Cache tokens are costed at reduced rates:
+       *   - cache_read:  10% of input token cost (reading from cache is cheap)
+       *   - cache_write: 25% of input token cost (writing to cache has a premium)
+       *
+       * @param records - Parsed JSONL records to scan.
+       * @returns One ApiCallRecord per assistant record with usage data.
+       */
+      extractApiCalls(records) {
+        const results = [];
+        for (const record2 of records) {
+          if (record2.type !== "assistant") continue;
+          const assistant = record2;
+          const usage = assistant.message?.usage;
+          if (usage === void 0) continue;
+          const modelId = assistant.message?.model;
+          const inputTokens = usage.input_tokens ?? 0;
+          const outputTokens = usage.output_tokens ?? 0;
+          const cacheReadTokens = usage.cache_read_input_tokens ?? 0;
+          const cache5mTokens = usage.cache_creation?.ephemeral_5m_input_tokens ?? 0;
+          const cache1hTokens = usage.cache_creation?.ephemeral_1h_input_tokens ?? 0;
+          const cacheWriteTokens = cache5mTokens > 0 || cache1hTokens > 0 ? cache5mTokens + cache1hTokens : usage.cache_creation_input_tokens ?? 0;
+          if (inputTokens === 0 && outputTokens === 0 && cacheReadTokens === 0 && cacheWriteTokens === 0) continue;
+          let totalCost;
+          const modelPricing = this.getPricingForModel(modelId);
+          if (modelPricing) {
+            const inputCost = calculateTieredInputCost(inputTokens, modelPricing.inputPrice);
+            const outputCost = outputTokens / 1e6 * modelPricing.outputPrice;
+            let cacheWriteCost;
+            if (cache5mTokens > 0 || cache1hTokens > 0) {
+              cacheWriteCost = cache5mTokens / 1e6 * modelPricing.cacheWrite5Min + cache1hTokens / 1e6 * modelPricing.cacheWrite1Hour;
+            } else {
+              cacheWriteCost = cacheWriteTokens / 1e6 * modelPricing.cacheWrite5Min;
+            }
+            const cacheReadCost = cacheReadTokens / 1e6 * modelPricing.cacheHits;
+            totalCost = inputCost + outputCost + cacheWriteCost + cacheReadCost;
+          } else {
+            const inputCost = inputTokens / 1e3 * this.costPer1kInput;
+            const outputCost = outputTokens / 1e3 * this.costPer1kOutput;
+            const cacheReadCost = cacheReadTokens / 1e3 * this.costPer1kInput * 0.1;
+            const cacheWriteCost = cacheWriteTokens / 1e3 * this.costPer1kInput * 0.25;
+            totalCost = inputCost + outputCost + cacheReadCost + cacheWriteCost;
+          }
+          results.push({
+            session_id: assistant.sessionId ?? "",
+            timestamp: assistant.timestamp ?? (/* @__PURE__ */ new Date()).toISOString(),
+            model: modelId,
+            input_tokens: inputTokens,
+            output_tokens: outputTokens,
+            cache_read_tokens: cacheReadTokens,
+            cache_write_tokens: cacheWriteTokens,
+            cost_usd: totalCost,
+            duration_ms: 0,
+            // Not available in JSONL; may be filled in by progress record correlation.
+            stop_reason: assistant.message?.stop_reason
+          });
+        }
+        return results;
+      }
+      // -------------------------------------------------------------------------
+      // Extraction: ToolCallInfo
+      // -------------------------------------------------------------------------
+      /**
+       * Extract tool call information by correlating assistant tool_use blocks
+       * with their corresponding user tool_result blocks.
+       *
+       * Correlation is by tool_use_id (present in both the tool_use block and
+       * the tool_result block).
+       *
+       * @param records - Parsed JSONL records to scan.
+       * @returns One ToolCallInfo per tool_use block found in assistant records.
+       */
+      extractToolCalls(records) {
+        const results = [];
+        const resultMap = /* @__PURE__ */ new Map();
+        for (const record2 of records) {
+          if (record2.type !== "user") continue;
+          const user = record2;
+          const content = user.message?.content;
+          if (!Array.isArray(content)) continue;
+          for (const block of content) {
+            const b = block;
+            if (b?.type === "tool_result" && b.tool_use_id !== void 0) {
+              resultMap.set(b.tool_use_id, b);
+            }
+          }
+        }
+        for (const record2 of records) {
+          if (record2.type !== "assistant") continue;
+          const assistant = record2;
+          const content = assistant.message?.content;
+          if (!Array.isArray(content)) continue;
+          for (const block of content) {
+            const b = block;
+            if (b?.type !== "tool_use") continue;
+            if (b.id === void 0 || b.name === void 0) continue;
+            const result = resultMap.get(b.id);
+            results.push({
+              id: b.id,
+              name: b.name,
+              input: b.input ?? {},
+              sessionId: assistant.sessionId ?? "",
+              timestamp: assistant.timestamp ?? (/* @__PURE__ */ new Date()).toISOString(),
+              assistantRecordUuid: assistant.uuid ?? "",
+              resultContent: result?.content,
+              isError: result?.is_error
+            });
+          }
+        }
+        return results;
+      }
+      // -------------------------------------------------------------------------
+      // Extraction: AgentActivityInfo
+      // -------------------------------------------------------------------------
+      /**
+       * Infer agent activity from JSONL records.
+       *
+       * Agent spawns are NOT explicit record types. They are inferred from assistant
+       * records containing tool_use blocks with name === 'Task'. Completion is
+       * inferred by the presence of a tool_result block for the Task tool_use_id.
+       *
+       * @param records - Parsed JSONL records to scan.
+       * @returns One AgentActivityInfo per Task tool_use block found.
+       */
+      extractAgentActivity(records) {
+        const taskCalls = this.extractToolCalls(records).filter((tc) => tc.name === "Task");
+        const resultTimestamps = /* @__PURE__ */ new Map();
+        for (const record2 of records) {
+          if (record2.type !== "user") continue;
+          const user = record2;
+          const content = user.message?.content;
+          if (!Array.isArray(content)) continue;
+          for (const block of content) {
+            const b = block;
+            if (b?.type === "tool_result" && b.tool_use_id !== void 0 && record2.timestamp) {
+              resultTimestamps.set(b.tool_use_id, record2.timestamp);
+            }
+          }
+        }
+        return taskCalls.map((tc) => ({
+          agentId: tc.id,
+          parentSessionId: tc.sessionId,
+          spawnedAt: tc.timestamp,
+          completedAt: resultTimestamps.get(tc.id),
+          taskInput: tc.input,
+          completed: tc.resultContent !== void 0,
+          exitStatus: tc.isError === true ? "error" : tc.resultContent !== void 0 ? "success" : void 0
+        }));
+      }
+      // -------------------------------------------------------------------------
+      // Extraction: SessionInfo
+      // -------------------------------------------------------------------------
+      /**
+       * Extract session-level summary information from a set of JSONL records.
+       *
+       * Uses the first record for session ID, cwd, and git branch.
+       * Scans all records to find the earliest and latest timestamps.
+       * Model comes from the first assistant record.
+       *
+       * @param records - All parsed records for a session.
+       * @returns Session summary, or a stub with empty strings if no records are provided.
+       */
+      extractSessionInfo(records) {
+        if (records.length === 0) {
+          return {
+            sessionId: "",
+            model: "unknown",
+            startedAt: (/* @__PURE__ */ new Date()).toISOString(),
+            lastActivityAt: (/* @__PURE__ */ new Date()).toISOString(),
+            cwd: "",
+            gitBranch: "",
+            version: ""
+          };
+        }
+        const first = records[0];
+        let model = "unknown";
+        let startedAt = first.timestamp ?? (/* @__PURE__ */ new Date()).toISOString();
+        let lastActivityAt = startedAt;
+        for (const record2 of records) {
+          if (record2.timestamp !== void 0 && record2.timestamp < startedAt) {
+            startedAt = record2.timestamp;
+          }
+          if (record2.timestamp !== void 0 && record2.timestamp > lastActivityAt) {
+            lastActivityAt = record2.timestamp;
+          }
+          if (model === "unknown" && record2.type === "assistant") {
+            const assistantRecord = record2;
+            const m = assistantRecord.message?.model;
+            if (m !== void 0 && m !== "") model = m;
+          }
+        }
+        return {
+          sessionId: first.sessionId ?? "",
+          model,
+          startedAt,
+          lastActivityAt,
+          cwd: first.cwd ?? "",
+          gitBranch: first.gitBranch ?? "",
+          version: first.version ?? ""
+        };
+      }
+      // -------------------------------------------------------------------------
+      // Extraction: PrecisionToolTiming
+      // -------------------------------------------------------------------------
+      /**
+       * Extract precision tool timing data from JSONL progress records.
+       *
+       * Only 'completed' progress records contain elapsedTimeMs — 'started'
+       * records are ignored since we only need the total duration.
+       *
+       * @param records - Parsed JSONL records to scan.
+       * @returns One PrecisionToolTiming per completed progress event.
+       */
+      extractPrecisionToolTimings(records) {
+        const results = [];
+        for (const record2 of records) {
+          if (record2.type !== "progress") continue;
+          const progress = record2;
+          const data = progress.data;
+          if (data?.status !== "completed") continue;
+          if (data.elapsedTimeMs === void 0) continue;
+          if (progress.toolUseID === void 0) continue;
+          results.push({
+            toolUseId: progress.toolUseID,
+            serverName: data.serverName ?? "",
+            toolName: data.toolName ?? "",
+            elapsedTimeMs: data.elapsedTimeMs,
+            sessionId: progress.sessionId ?? "",
+            timestamp: progress.timestamp ?? (/* @__PURE__ */ new Date()).toISOString()
+          });
+        }
+        return results;
+      }
+      // -------------------------------------------------------------------------
+      // Cost calculation helper
+      // -------------------------------------------------------------------------
+      /**
+       * Calculate the USD cost for a given token breakdown.
+       *
+       * Uses configured per-1k rates with reduced rates for cache operations:
+       *   - Input tokens:       full input rate
+       *   - Output tokens:      full output rate
+       *   - Cache read tokens:  10% of input rate
+       *   - Cache write tokens: 25% of input rate
+       *
+       * @param usage - Token counts to calculate cost for.
+       * @returns Total estimated cost in USD.
+       */
+      calculateCost(usage) {
+        const inputTokens = usage.input_tokens ?? 0;
+        const outputTokens = usage.output_tokens ?? 0;
+        const cacheReadTokens = usage.cache_read_tokens ?? 0;
+        const cacheWriteTokens = usage.cache_write_tokens ?? 0;
+        const modelPricing = this.getPricingForModel(usage.model);
+        if (modelPricing) {
+          const inputCost2 = calculateTieredInputCost(inputTokens, modelPricing.inputPrice);
+          const outputCost2 = outputTokens / 1e6 * modelPricing.outputPrice;
+          const cacheReadCost2 = cacheReadTokens / 1e6 * modelPricing.cacheHits;
+          const cacheWriteCost2 = cacheWriteTokens / 1e6 * modelPricing.cacheWrite5Min;
+          return inputCost2 + outputCost2 + cacheReadCost2 + cacheWriteCost2;
+        }
+        const inputCost = inputTokens / 1e3 * this.costPer1kInput;
+        const outputCost = outputTokens / 1e3 * this.costPer1kOutput;
+        const cacheReadCost = cacheReadTokens / 1e3 * this.costPer1kInput * 0.1;
+        const cacheWriteCost = cacheWriteTokens / 1e3 * this.costPer1kInput * 0.25;
+        return inputCost + outputCost + cacheReadCost + cacheWriteCost;
+      }
+    };
+    __name(findActiveJsonlFile, "findActiveJsonlFile");
+    __name(sessionIdFromPath, "sessionIdFromPath");
+    __name(resolveProjectsBaseDir, "resolveProjectsBaseDir");
+  }
+});
+
+// packages/analytics/src/engine/data/db-schema.ts
+function getSchemaVersion(db) {
+  try {
+    const result = db.exec(
+      "SELECT MAX(version) AS v FROM schema_version"
+    );
+    const row = result[0]?.values[0];
+    if (!row || row[0] === null || row[0] === void 0) return 0;
+    const v = Number(row[0]);
+    return isNaN(v) ? 0 : v;
+  } catch {
+    return 0;
+  }
+}
+function applyMigrations(db, fromVersion) {
+  for (let v = fromVersion + 1; v <= SCHEMA_VERSION; v++) {
+    const sql = MIGRATIONS.get(v);
+    if (!sql) {
+      db.run(
+        `INSERT OR IGNORE INTO schema_version (version, description) VALUES (?, 'baseline')`,
+        [v]
+      );
+      continue;
+    }
+    db.run(`SAVEPOINT migration_v${v}`);
+    try {
+      db.run(sql);
+      db.run(
+        "INSERT OR IGNORE INTO schema_version (version, description) VALUES (?, ?)",
+        [v, `migration from v${v - 1} to v${v}`]
+      );
+      db.run(`RELEASE SAVEPOINT migration_v${v}`);
+    } catch (err) {
+      db.run(`ROLLBACK TO SAVEPOINT migration_v${v}`);
+      throw new Error(
+        `Schema migration to v${v} failed: ${err instanceof Error ? err.message : String(err)}`
+      );
+    }
+  }
+}
+var SCHEMA_VERSION, SCHEMA_SQL, MIGRATIONS;
+var init_db_schema = __esm({
+  "packages/analytics/src/engine/data/db-schema.ts"() {
+    "use strict";
+    SCHEMA_VERSION = 1;
+    SCHEMA_SQL = `
+-- Sessions: one row per Claude session, all projects
+CREATE TABLE IF NOT EXISTS sessions (
+  session_id                TEXT PRIMARY KEY,
+  project_hash              TEXT NOT NULL,
+  project_path              TEXT,
+  started_at                TEXT NOT NULL,
+  ended_at                  TEXT,
+  model                     TEXT DEFAULT 'unknown',
+  total_input_tokens        INTEGER DEFAULT 0,
+  total_output_tokens       INTEGER DEFAULT 0,
+  total_cache_read_tokens   INTEGER DEFAULT 0,
+  total_cache_write_tokens  INTEGER DEFAULT 0,
+  total_cost_usd            REAL DEFAULT 0,
+  total_api_calls           INTEGER DEFAULT 0,
+  total_tool_calls          INTEGER DEFAULT 0,
+  total_native_tool_calls   INTEGER DEFAULT 0,
+  total_precision_tool_calls INTEGER DEFAULT 0,
+  total_agent_spawns        INTEGER DEFAULT 0,
+  status                    TEXT DEFAULT 'active'
+);
+CREATE INDEX IF NOT EXISTS idx_sessions_project ON sessions(project_hash);
+CREATE INDEX IF NOT EXISTS idx_sessions_started ON sessions(started_at);
+CREATE INDEX IF NOT EXISTS idx_sessions_status  ON sessions(status);
+
+-- Tags: many-to-many session \u2194 tag relationship
+CREATE TABLE IF NOT EXISTS tags (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id  TEXT NOT NULL REFERENCES sessions(session_id) ON DELETE CASCADE,
+  tag         TEXT NOT NULL,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  source      TEXT NOT NULL DEFAULT 'manual',
+  UNIQUE(session_id, tag)
+);
+CREATE INDEX IF NOT EXISTS idx_tags_tag     ON tags(tag);
+CREATE INDEX IF NOT EXISTS idx_tags_session ON tags(session_id);
+
+-- Tool summaries: per-session per-tool aggregates
+CREATE TABLE IF NOT EXISTS tool_summaries (
+  id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id           TEXT    NOT NULL REFERENCES sessions(session_id) ON DELETE CASCADE,
+  tool_name            TEXT    NOT NULL,
+  call_count           INTEGER DEFAULT 0,
+  success_count        INTEGER DEFAULT 0,
+  error_count          INTEGER DEFAULT 0,
+  total_duration_ms    INTEGER DEFAULT 0,
+  total_input_tokens   INTEGER DEFAULT 0,
+  total_output_tokens  INTEGER DEFAULT 0,
+  UNIQUE(session_id, tool_name)
+);
+CREATE INDEX IF NOT EXISTS idx_tool_summaries_session ON tool_summaries(session_id);
+
+-- API calls: individual records for trend analysis and cost breakdown
+CREATE TABLE IF NOT EXISTS api_calls (
+  id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id          TEXT    NOT NULL REFERENCES sessions(session_id) ON DELETE CASCADE,
+  timestamp           TEXT    NOT NULL,
+  model               TEXT,
+  input_tokens        INTEGER DEFAULT 0,
+  output_tokens       INTEGER DEFAULT 0,
+  cache_read_tokens   INTEGER DEFAULT 0,
+  cache_write_tokens  INTEGER DEFAULT 0,
+  cost_usd            REAL    DEFAULT 0,
+  duration_ms         INTEGER DEFAULT 0,
+  stop_reason         TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_api_calls_session   ON api_calls(session_id);
+CREATE INDEX IF NOT EXISTS idx_api_calls_timestamp ON api_calls(timestamp);
+
+-- Agent activity: spawned subagents with timing and token usage
+CREATE TABLE IF NOT EXISTS agents (
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_id        TEXT NOT NULL REFERENCES sessions(session_id) ON DELETE CASCADE,
+  agent_id          TEXT NOT NULL,
+  agent_type        TEXT,
+  parent_session_id TEXT,
+  model             TEXT,
+  spawned_at        TEXT NOT NULL,
+  completed_at      TEXT,
+  total_tokens      INTEGER DEFAULT 0,
+  duration_ms       INTEGER DEFAULT 0,
+  exit_code         INTEGER,
+  UNIQUE(session_id, agent_id)
+);
+CREATE INDEX IF NOT EXISTS idx_agents_session ON agents(session_id);
+
+-- Sync state: tracks which JSONL files have been processed
+CREATE TABLE IF NOT EXISTS sync_state (
+  jsonl_path      TEXT PRIMARY KEY,
+  session_id      TEXT NOT NULL,
+  last_offset     INTEGER DEFAULT 0,
+  last_synced_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Schema version tracking for future migrations
+CREATE TABLE IF NOT EXISTS schema_version (
+  version     INTEGER PRIMARY KEY,
+  applied_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  description TEXT
+);
+`;
+    MIGRATIONS = /* @__PURE__ */ new Map();
+    __name(getSchemaVersion, "getSchemaVersion");
+    __name(applyMigrations, "applyMigrations");
+  }
+});
+
+// packages/analytics/src/engine/data/global-db.ts
+function rowsToObjects(result) {
+  if (!result.length) return [];
+  const { columns, values } = result[0];
+  return values.map((row) => {
+    const obj = {};
+    columns.forEach((col, i) => {
+      obj[col] = row[i] ?? null;
+    });
+    return obj;
+  });
+}
+function rowToSession(row, tags) {
+  return {
+    session_id: String(row["session_id"] ?? ""),
+    project_hash: String(row["project_hash"] ?? ""),
+    project_path: row["project_path"] != null ? String(row["project_path"]) : void 0,
+    started_at: String(row["started_at"] ?? ""),
+    ended_at: row["ended_at"] != null ? String(row["ended_at"]) : void 0,
+    model: String(row["model"] ?? "unknown"),
+    total_input_tokens: Number(row["total_input_tokens"] ?? 0),
+    total_output_tokens: Number(row["total_output_tokens"] ?? 0),
+    total_cache_read_tokens: Number(row["total_cache_read_tokens"] ?? 0),
+    total_cache_write_tokens: Number(row["total_cache_write_tokens"] ?? 0),
+    total_cost_usd: Number(row["total_cost_usd"] ?? 0),
+    total_api_calls: Number(row["total_api_calls"] ?? 0),
+    total_tool_calls: Number(row["total_tool_calls"] ?? 0),
+    total_native_tool_calls: Number(row["total_native_tool_calls"] ?? 0),
+    total_precision_tool_calls: Number(row["total_precision_tool_calls"] ?? 0),
+    total_agent_spawns: Number(row["total_agent_spawns"] ?? 0),
+    tags,
+    status: String(row["status"] ?? "active")
+  };
+}
+function rowToApiCall(row) {
+  return {
+    session_id: String(row["session_id"] ?? ""),
+    timestamp: String(row["timestamp"] ?? ""),
+    model: row["model"] != null ? String(row["model"]) : void 0,
+    input_tokens: Number(row["input_tokens"] ?? 0),
+    output_tokens: Number(row["output_tokens"] ?? 0),
+    cache_read_tokens: Number(row["cache_read_tokens"] ?? 0),
+    cache_write_tokens: Number(row["cache_write_tokens"] ?? 0),
+    cost_usd: Number(row["cost_usd"] ?? 0),
+    duration_ms: Number(row["duration_ms"] ?? 0),
+    stop_reason: row["stop_reason"] != null ? String(row["stop_reason"]) : void 0
+  };
+}
+function rowToToolSummary(row) {
+  return {
+    session_id: String(row["session_id"] ?? ""),
+    tool_name: String(row["tool_name"] ?? ""),
+    call_count: Number(row["call_count"] ?? 0),
+    success_count: Number(row["success_count"] ?? 0),
+    error_count: Number(row["error_count"] ?? 0),
+    total_duration_ms: Number(row["total_duration_ms"] ?? 0),
+    total_input_tokens: Number(row["total_input_tokens"] ?? 0),
+    total_output_tokens: Number(row["total_output_tokens"] ?? 0)
+  };
+}
+function rowToAgent(row) {
+  return {
+    session_id: String(row["session_id"] ?? ""),
+    agent_id: String(row["agent_id"] ?? ""),
+    agent_type: row["agent_type"] != null ? String(row["agent_type"]) : void 0,
+    parent_session_id: row["parent_session_id"] != null ? String(row["parent_session_id"]) : void 0,
+    model: row["model"] != null ? String(row["model"]) : void 0,
+    spawned_at: String(row["spawned_at"] ?? ""),
+    completed_at: row["completed_at"] != null ? String(row["completed_at"]) : void 0,
+    total_tokens: Number(row["total_tokens"] ?? 0),
+    duration_ms: Number(row["duration_ms"] ?? 0),
+    exit_code: row["exit_code"] != null ? Number(row["exit_code"]) : void 0
+  };
+}
+var import_node_fs10, import_node_path7, SAVE_DEBOUNCE_MS, GlobalDB;
+var init_global_db = __esm({
+  "packages/analytics/src/engine/data/global-db.ts"() {
+    "use strict";
+    import_node_fs10 = require("node:fs");
+    import_node_path7 = require("node:path");
+    init_runtime();
+    init_db_schema();
+    SAVE_DEBOUNCE_MS = 500;
+    __name(rowsToObjects, "rowsToObjects");
+    __name(rowToSession, "rowToSession");
+    __name(rowToApiCall, "rowToApiCall");
+    __name(rowToToolSummary, "rowToToolSummary");
+    __name(rowToAgent, "rowToAgent");
+    GlobalDB = class {
+      static {
+        __name(this, "GlobalDB");
+      }
+      dbPath;
+      db = null;
+      SQL = null;
+      saveTimer = null;
+      /**
+       * @param dbPath - Absolute path to the SQLite database file.
+       */
+      constructor(dbPath) {
+        this.dbPath = dbPath;
+      }
+      // ───────────────────────────────────────────────────────────────────────────
+      // Lifecycle
+      // ───────────────────────────────────────────────────────────────────────────
+      /**
+       * Initialize the database: load sql.js WASM, open or create the DB file,
+       * apply the schema and any pending migrations, and enable WAL mode.
+       *
+       * Must be called before any other method.
+       *
+       * @throws {Error} If sql.js WASM cannot be loaded or schema application fails.
+       */
+      async initialize() {
+        const initSqlJs2 = await this.loadSqlJs();
+        const wasmPath = this.resolveWasmPath();
+        this.SQL = await initSqlJs2({ locateFile: /* @__PURE__ */ __name(() => wasmPath, "locateFile") });
+        if ((0, import_node_fs10.existsSync)(this.dbPath)) {
+          const buffer = (0, import_node_fs10.readFileSync)(this.dbPath);
+          this.db = new this.SQL.Database(buffer);
+        } else {
+          this.db = new this.SQL.Database();
+        }
+        this.db.run("PRAGMA journal_mode=WAL;");
+        this.db.run("PRAGMA synchronous=NORMAL;");
+        this.db.run("PRAGMA foreign_keys=ON;");
+        this.db.run(SCHEMA_SQL);
+        const currentVersion = getSchemaVersion(this.db);
+        if (currentVersion < SCHEMA_VERSION) {
+          applyMigrations(this.db, currentVersion);
+        }
+        this.saveToDisk();
+      }
+      /**
+       * Flush the in-memory database to disk and close it.
+       * Cancels any pending debounced save. Safe to call multiple times.
+       */
+      close() {
+        if (this.saveTimer) {
+          clearTimeout(this.saveTimer);
+          this.saveTimer = null;
+        }
+        if (this.db) {
+          this.saveToDisk();
+          this.db.close();
+          this.db = null;
+        }
+      }
+      /**
+       * Return the active Database handle.
+       *
+       * @throws {Error} If `initialize()` has not been called.
+       */
+      getDb() {
+        if (!this.db) {
+          throw new Error("GlobalDB: not initialized. Call initialize() first.");
+        }
+        return this.db;
+      }
+      /**
+       * Write the in-memory database to disk immediately.
+       *
+       * sql.js keeps the entire database in memory and exports a Uint8Array for
+       * persistence. This method performs a synchronous file write.
+       *
+       * Called automatically (debounced) after each write operation.
+       */
+      saveToDisk() {
+        if (!this.db) return;
+        try {
+          const data = this.db.export();
+          atomicWriteFileSync(this.dbPath, Buffer.from(data));
+          engineLogger().debug("GlobalDB saved to disk", { path: this.dbPath, bytes: data.byteLength });
+        } catch (err) {
+          engineLogger().error("GlobalDB saveToDisk failed", {
+            error: err instanceof Error ? err.message : String(err)
+          });
+        }
+      }
+      // ───────────────────────────────────────────────────────────────────────────
+      // Session CRUD
+      // ───────────────────────────────────────────────────────────────────────────
+      /**
+       * Insert or update a session record.
+       *
+       * Uses `INSERT OR REPLACE` semantics so callers can pass partial updates;
+       * fields absent from `session` fall back to their SQL DEFAULT values on
+       * insert, or remain unchanged via a coalesce on replace.
+       *
+       * @param session - Session fields to persist. `session_id` is required.
+       */
+      upsertSession(session) {
+        const db = this.getDb();
+        const s = session;
+        db.run(
+          `INSERT INTO sessions (
+        session_id, project_hash, project_path, started_at, ended_at,
+        model, total_input_tokens, total_output_tokens,
+        total_cache_read_tokens, total_cache_write_tokens,
+        total_cost_usd, total_api_calls, total_tool_calls,
+        total_native_tool_calls, total_precision_tool_calls,
+        total_agent_spawns, status
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      ON CONFLICT(session_id) DO UPDATE SET
+        project_hash              = COALESCE(excluded.project_hash, project_hash),
+        project_path              = COALESCE(excluded.project_path, project_path),
+        started_at                = COALESCE(excluded.started_at, started_at),
+        ended_at                  = COALESCE(excluded.ended_at, ended_at),
+        model                     = COALESCE(excluded.model, model),
+        total_input_tokens        = COALESCE(excluded.total_input_tokens, total_input_tokens),
+        total_output_tokens       = COALESCE(excluded.total_output_tokens, total_output_tokens),
+        total_cache_read_tokens   = COALESCE(excluded.total_cache_read_tokens, total_cache_read_tokens),
+        total_cache_write_tokens  = COALESCE(excluded.total_cache_write_tokens, total_cache_write_tokens),
+        total_cost_usd            = COALESCE(excluded.total_cost_usd, total_cost_usd),
+        total_api_calls           = COALESCE(excluded.total_api_calls, total_api_calls),
+        total_tool_calls          = COALESCE(excluded.total_tool_calls, total_tool_calls),
+        total_native_tool_calls   = COALESCE(excluded.total_native_tool_calls, total_native_tool_calls),
+        total_precision_tool_calls = COALESCE(excluded.total_precision_tool_calls, total_precision_tool_calls),
+        total_agent_spawns        = COALESCE(excluded.total_agent_spawns, total_agent_spawns),
+        status                    = COALESCE(excluded.status, status)`,
+          [
+            s.session_id,
+            s.project_hash ?? null,
+            s.project_path ?? null,
+            s.started_at ?? (/* @__PURE__ */ new Date()).toISOString(),
+            s.ended_at ?? null,
+            s.model ?? "unknown",
+            s.total_input_tokens ?? 0,
+            s.total_output_tokens ?? 0,
+            s.total_cache_read_tokens ?? 0,
+            s.total_cache_write_tokens ?? 0,
+            s.total_cost_usd ?? 0,
+            s.total_api_calls ?? 0,
+            s.total_tool_calls ?? 0,
+            s.total_native_tool_calls ?? 0,
+            s.total_precision_tool_calls ?? 0,
+            s.total_agent_spawns ?? 0,
+            s.status ?? "active"
+          ]
+        );
+        this.scheduleSave();
+      }
+      /**
+       * Retrieve a session by ID, with its tags joined.
+       *
+       * @param sessionId - The session identifier.
+       * @returns The session, or null if not found.
+       */
+      getSession(sessionId) {
+        const db = this.getDb();
+        const rows = rowsToObjects(db.exec("SELECT * FROM sessions WHERE session_id = ?", [sessionId]));
+        if (!rows.length) return null;
+        const tags = this.getTagsForSession(sessionId).map((t) => t.tag);
+        return rowToSession(rows[0], tags);
+      }
+      /**
+       * List all sessions for a project, ordered by start time descending.
+       *
+       * @param projectHash - Hash identifying the project.
+       * @returns Array of GlobalSession objects with tags.
+       */
+      getSessionsByProject(projectHash) {
+        const db = this.getDb();
+        const rows = rowsToObjects(
+          db.exec("SELECT * FROM sessions WHERE project_hash = ? ORDER BY started_at DESC", [projectHash])
+        );
+        const sessionIds = rows.map((row) => String(row["session_id"] ?? ""));
+        const tagsMap = this._batchGetTags(sessionIds);
+        return rows.map((row) => {
+          const sid = String(row["session_id"] ?? "");
+          return rowToSession(row, tagsMap.get(sid) ?? []);
+        });
+      }
+      /**
+       * List sessions that have ALL of the specified tags.
+       *
+       * @param tags - Tag strings that must all be present.
+       * @returns Array of matching GlobalSession objects.
+       */
+      getSessionsByTags(tags) {
+        if (tags.length === 0) return [];
+        const db = this.getDb();
+        const placeholders = tags.map(() => "?").join(",");
+        const rows = rowsToObjects(
+          db.exec(
+            `SELECT s.* FROM sessions s
+         INNER JOIN tags t ON t.session_id = s.session_id
+         WHERE t.tag IN (${placeholders})
+         GROUP BY s.session_id
+         HAVING COUNT(DISTINCT t.tag) = ?
+         ORDER BY s.started_at DESC`,
+            [...tags, tags.length]
+          )
+        );
+        const sessionIds = rows.map((row) => String(row["session_id"] ?? ""));
+        const tagsMap = this._batchGetTags(sessionIds);
+        return rows.map((row) => {
+          const sid = String(row["session_id"] ?? "");
+          return rowToSession(row, tagsMap.get(sid) ?? []);
+        });
+      }
+      /**
+       * List all sessions with optional filtering and pagination.
+       *
+       * @param options.limit  - Max rows to return (default: 100).
+       * @param options.offset - Rows to skip for pagination (default: 0).
+       * @param options.status - Filter by session status (e.g. 'active', 'completed').
+       * @returns Array of GlobalSession objects.
+       */
+      getAllSessions(options) {
+        const db = this.getDb();
+        const limit = options?.limit ?? 100;
+        const offset = options?.offset ?? 0;
+        const status = options?.status;
+        const params = [];
+        let where = "";
+        if (status) {
+          where = "WHERE status = ?";
+          params.push(status);
+        }
+        params.push(limit, offset);
+        const rows = rowsToObjects(
+          db.exec(
+            `SELECT * FROM sessions ${where} ORDER BY started_at DESC LIMIT ? OFFSET ?`,
+            params
+          )
+        );
+        const sessionIds = rows.map((row) => String(row["session_id"] ?? ""));
+        const tagsMap = this._batchGetTags(sessionIds);
+        return rows.map((row) => {
+          const sid = String(row["session_id"] ?? "");
+          return rowToSession(row, tagsMap.get(sid) ?? []);
+        });
+      }
+      /**
+       * Update the status field of a session.
+       *
+       * @param sessionId - Session to update.
+       * @param status    - New status value ('active' | 'completed' | 'archived').
+       */
+      updateSessionStatus(sessionId, status) {
+        const db = this.getDb();
+        db.run("UPDATE sessions SET status = ? WHERE session_id = ?", [status, sessionId]);
+        this.scheduleSave();
+      }
+      // ───────────────────────────────────────────────────────────────────────────
+      // API Call Recording
+      // ───────────────────────────────────────────────────────────────────────────
+      /**
+       * Insert a single API call record.
+       *
+       * @param call - API call data to persist.
+       */
+      insertApiCall(call) {
+        const db = this.getDb();
+        db.run(
+          `INSERT INTO api_calls (
+        session_id, timestamp, model, input_tokens, output_tokens,
+        cache_read_tokens, cache_write_tokens, cost_usd, duration_ms, stop_reason
+      ) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+          [
+            call.session_id,
+            call.timestamp,
+            call.model ?? null,
+            call.input_tokens,
+            call.output_tokens,
+            call.cache_read_tokens,
+            call.cache_write_tokens,
+            call.cost_usd,
+            call.duration_ms,
+            call.stop_reason ?? null
+          ]
+        );
+        this.scheduleSave();
+      }
+      /**
+       * Retrieve all API calls for a session, ordered by timestamp ascending.
+       *
+       * @param sessionId - Session identifier.
+       * @returns Array of ApiCallRecord objects.
+       */
+      getApiCalls(sessionId) {
+        const db = this.getDb();
+        const rows = rowsToObjects(
+          db.exec("SELECT * FROM api_calls WHERE session_id = ? ORDER BY timestamp ASC", [sessionId])
+        );
+        return rows.map(rowToApiCall);
+      }
+      // ───────────────────────────────────────────────────────────────────────────
+      // Tool Summary CRUD
+      // ───────────────────────────────────────────────────────────────────────────
+      /**
+       * Insert or update a tool summary record.
+       *
+       * On conflict (same session + tool), all numeric counters are added to
+       * the existing row (accumulate pattern).
+       *
+       * @param summary - Tool summary data to persist or accumulate.
+       */
+      upsertToolSummary(summary) {
+        const db = this.getDb();
+        db.run(
+          `INSERT INTO tool_summaries (
+        session_id, tool_name, call_count, success_count, error_count,
+        total_duration_ms, total_input_tokens, total_output_tokens
+      ) VALUES (?,?,?,?,?,?,?,?)
+      ON CONFLICT(session_id, tool_name) DO UPDATE SET
+        call_count          = call_count + excluded.call_count,
+        success_count       = success_count + excluded.success_count,
+        error_count         = error_count + excluded.error_count,
+        total_duration_ms   = total_duration_ms + excluded.total_duration_ms,
+        total_input_tokens  = total_input_tokens + excluded.total_input_tokens,
+        total_output_tokens = total_output_tokens + excluded.total_output_tokens`,
+          [
+            summary.session_id,
+            summary.tool_name,
+            summary.call_count,
+            summary.success_count,
+            summary.error_count,
+            summary.total_duration_ms,
+            summary.total_input_tokens,
+            summary.total_output_tokens
+          ]
+        );
+        this.scheduleSave();
+      }
+      /**
+       * Retrieve all tool summaries for a session.
+       *
+       * @param sessionId - Session identifier.
+       * @returns Array of ToolSummaryRecord objects.
+       */
+      getToolSummaries(sessionId) {
+        const db = this.getDb();
+        const rows = rowsToObjects(
+          db.exec("SELECT * FROM tool_summaries WHERE session_id = ?", [sessionId])
+        );
+        return rows.map(rowToToolSummary);
+      }
+      // ───────────────────────────────────────────────────────────────────────────
+      // Agent CRUD
+      // ───────────────────────────────────────────────────────────────────────────
+      /**
+       * Insert or update an agent record.
+       *
+       * @param agent - Agent data to persist.
+       */
+      upsertAgent(agent) {
+        const db = this.getDb();
+        db.run(
+          `INSERT INTO agents (
+        session_id, agent_id, agent_type, parent_session_id, model,
+        spawned_at, completed_at, total_tokens, duration_ms, exit_code
+      ) VALUES (?,?,?,?,?,?,?,?,?,?)
+      ON CONFLICT(session_id, agent_id) DO UPDATE SET
+        agent_type        = COALESCE(excluded.agent_type, agent_type),
+        parent_session_id = COALESCE(excluded.parent_session_id, parent_session_id),
+        model             = COALESCE(excluded.model, model),
+        completed_at      = COALESCE(excluded.completed_at, completed_at),
+        total_tokens      = COALESCE(excluded.total_tokens, total_tokens),
+        duration_ms       = COALESCE(excluded.duration_ms, duration_ms),
+        exit_code         = COALESCE(excluded.exit_code, exit_code)`,
+          [
+            agent.session_id,
+            agent.agent_id,
+            agent.agent_type ?? null,
+            agent.parent_session_id ?? null,
+            agent.model ?? null,
+            agent.spawned_at,
+            agent.completed_at ?? null,
+            agent.total_tokens,
+            agent.duration_ms,
+            agent.exit_code ?? null
+          ]
+        );
+        this.scheduleSave();
+      }
+      /**
+       * Retrieve all agent records for a session.
+       *
+       * @param sessionId - Session identifier.
+       * @returns Array of AgentRecord objects.
+       */
+      getAgents(sessionId) {
+        const db = this.getDb();
+        const rows = rowsToObjects(
+          db.exec("SELECT * FROM agents WHERE session_id = ?", [sessionId])
+        );
+        return rows.map(rowToAgent);
+      }
+      // ───────────────────────────────────────────────────────────────────────────
+      // Tag CRUD
+      // ───────────────────────────────────────────────────────────────────────────
+      /**
+       * Add a tag to a session. Silently ignores duplicate tags.
+       *
+       * @param sessionId - Session to tag.
+       * @param tag       - Tag string to add.
+       * @param source    - Origin of the tag ('manual' | 'auto'). Defaults to 'manual'.
+       */
+      addTag(sessionId, tag, source = "manual") {
+        const db = this.getDb();
+        db.run(
+          `INSERT OR IGNORE INTO tags (session_id, tag, source) VALUES (?, ?, ?)`,
+          [sessionId, tag, source]
+        );
+        this.scheduleSave();
+      }
+      /**
+       * Remove a tag from a session.
+       *
+       * @param sessionId - Session to remove the tag from.
+       * @param tag       - Tag string to remove.
+       */
+      removeTag(sessionId, tag) {
+        const db = this.getDb();
+        db.run("DELETE FROM tags WHERE session_id = ? AND tag = ?", [sessionId, tag]);
+        this.scheduleSave();
+      }
+      /**
+       * Retrieve all tags for a session, ordered by creation time.
+       *
+       * @param sessionId - Session identifier.
+       * @returns Array of TagEntry objects.
+       */
+      getTagsForSession(sessionId) {
+        const db = this.getDb();
+        const rows = rowsToObjects(
+          db.exec(
+            "SELECT tag, session_id, created_at, source FROM tags WHERE session_id = ? ORDER BY created_at ASC",
+            [sessionId]
+          )
+        );
+        return rows.map((row) => ({
+          tag: String(row["tag"] ?? ""),
+          session_id: String(row["session_id"] ?? ""),
+          created_at: String(row["created_at"] ?? ""),
+          source: String(row["source"] ?? "manual")
+        }));
+      }
+      /**
+       * Retrieve all session IDs associated with a tag.
+       *
+       * @param tag - Tag string to look up.
+       * @returns Array of session_id strings.
+       */
+      getSessionsByTag(tag) {
+        const db = this.getDb();
+        const rows = rowsToObjects(
+          db.exec("SELECT session_id FROM tags WHERE tag = ?", [tag])
+        );
+        return rows.map((row) => String(row["session_id"] ?? ""));
+      }
+      /**
+       * List all unique tags with their usage counts, ordered by count descending.
+       *
+       * @returns Array of `{ tag, count }` objects.
+       */
+      getAllTags() {
+        const db = this.getDb();
+        const rows = rowsToObjects(
+          db.exec("SELECT tag, COUNT(*) AS count FROM tags GROUP BY tag ORDER BY count DESC")
+        );
+        return rows.map((row) => ({
+          tag: String(row["tag"] ?? ""),
+          count: Number(row["count"] ?? 0)
+        }));
+      }
+      // ───────────────────────────────────────────────────────────────────────────
+      // Sync State
+      // ───────────────────────────────────────────────────────────────────────────
+      /**
+       * Retrieve sync state for a JSONL file path.
+       *
+       * @param jsonlPath - Absolute path to the JSONL file being tracked.
+       * @returns SyncStateRecord, or null if not yet tracked.
+       */
+      getSyncState(jsonlPath) {
+        const db = this.getDb();
+        const rows = rowsToObjects(
+          db.exec("SELECT * FROM sync_state WHERE jsonl_path = ?", [jsonlPath])
+        );
+        if (!rows.length) return null;
+        const row = rows[0];
+        return {
+          jsonl_path: String(row["jsonl_path"] ?? ""),
+          session_id: String(row["session_id"] ?? ""),
+          last_offset: Number(row["last_offset"] ?? 0),
+          last_synced_at: String(row["last_synced_at"] ?? "")
+        };
+      }
+      /**
+       * Insert or update sync state for a JSONL file.
+       *
+       * @param state - Sync state record to persist.
+       */
+      upsertSyncState(state) {
+        const db = this.getDb();
+        db.run(
+          `INSERT INTO sync_state (jsonl_path, session_id, last_offset, last_synced_at)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(jsonl_path) DO UPDATE SET
+         session_id     = excluded.session_id,
+         last_offset    = excluded.last_offset,
+         last_synced_at = excluded.last_synced_at`,
+          [state.jsonl_path, state.session_id, state.last_offset, state.last_synced_at]
+        );
+        this.scheduleSave();
+      }
+      // ───────────────────────────────────────────────────────────────────────────
+      // Batch Operations
+      // ───────────────────────────────────────────────────────────────────────────
+      /**
+       * Bulk-insert API call records inside a single transaction.
+       *
+       * Significantly faster than individual `insertApiCall` calls for large
+       * batches (e.g. initial JSONL sync).
+       *
+       * @param calls - Array of API call records to insert.
+       */
+      batchInsertApiCalls(calls) {
+        if (calls.length === 0) return;
+        const db = this.getDb();
+        db.run("BEGIN");
+        try {
+          for (const call of calls) {
+            db.run(
+              `INSERT INTO api_calls (
+            session_id, timestamp, model, input_tokens, output_tokens,
+            cache_read_tokens, cache_write_tokens, cost_usd, duration_ms, stop_reason
+          ) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+              [
+                call.session_id,
+                call.timestamp,
+                call.model ?? null,
+                call.input_tokens,
+                call.output_tokens,
+                call.cache_read_tokens,
+                call.cache_write_tokens,
+                call.cost_usd,
+                call.duration_ms,
+                call.stop_reason ?? null
+              ]
+            );
+          }
+          db.run("COMMIT");
+        } catch (err) {
+          db.run("ROLLBACK");
+          throw err;
+        }
+        this.scheduleSave();
+      }
+      /**
+       * Bulk-upsert session records inside a single transaction.
+       *
+       * @param sessions - Array of partial session objects to upsert.
+       */
+      batchUpsertSessions(sessions) {
+        if (sessions.length === 0) return;
+        const db = this.getDb();
+        db.run("BEGIN");
+        try {
+          for (const session of sessions) {
+            const s = session;
+            db.run(
+              `INSERT INTO sessions (
+            session_id, project_hash, project_path, started_at, ended_at,
+            model, total_input_tokens, total_output_tokens,
+            total_cache_read_tokens, total_cache_write_tokens,
+            total_cost_usd, total_api_calls, total_tool_calls,
+            total_native_tool_calls, total_precision_tool_calls,
+            total_agent_spawns, status
+          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+          ON CONFLICT(session_id) DO UPDATE SET
+            project_hash              = COALESCE(excluded.project_hash, project_hash),
+            project_path              = COALESCE(excluded.project_path, project_path),
+            started_at                = COALESCE(excluded.started_at, started_at),
+            ended_at                  = COALESCE(excluded.ended_at, ended_at),
+            model                     = COALESCE(excluded.model, model),
+            total_input_tokens        = COALESCE(excluded.total_input_tokens, total_input_tokens),
+            total_output_tokens       = COALESCE(excluded.total_output_tokens, total_output_tokens),
+            total_cache_read_tokens   = COALESCE(excluded.total_cache_read_tokens, total_cache_read_tokens),
+            total_cache_write_tokens  = COALESCE(excluded.total_cache_write_tokens, total_cache_write_tokens),
+            total_cost_usd            = COALESCE(excluded.total_cost_usd, total_cost_usd),
+            total_api_calls           = COALESCE(excluded.total_api_calls, total_api_calls),
+            total_tool_calls          = COALESCE(excluded.total_tool_calls, total_tool_calls),
+            total_native_tool_calls   = COALESCE(excluded.total_native_tool_calls, total_native_tool_calls),
+            total_precision_tool_calls = COALESCE(excluded.total_precision_tool_calls, total_precision_tool_calls),
+            total_agent_spawns        = COALESCE(excluded.total_agent_spawns, total_agent_spawns),
+            status                    = COALESCE(excluded.status, status)`,
+              [
+                s.session_id,
+                s.project_hash ?? null,
+                s.project_path ?? null,
+                s.started_at ?? (/* @__PURE__ */ new Date()).toISOString(),
+                s.ended_at ?? null,
+                s.model ?? "unknown",
+                s.total_input_tokens ?? 0,
+                s.total_output_tokens ?? 0,
+                s.total_cache_read_tokens ?? 0,
+                s.total_cache_write_tokens ?? 0,
+                s.total_cost_usd ?? 0,
+                s.total_api_calls ?? 0,
+                s.total_tool_calls ?? 0,
+                s.total_native_tool_calls ?? 0,
+                s.total_precision_tool_calls ?? 0,
+                s.total_agent_spawns ?? 0,
+                s.status ?? "active"
+              ]
+            );
+          }
+          db.run("COMMIT");
+        } catch (err) {
+          db.run("ROLLBACK");
+          throw err;
+        }
+        this.scheduleSave();
+      }
+      // ───────────────────────────────────────────────────────────────────────────
+      // Aggregate Queries
+      // ───────────────────────────────────────────────────────────────────────────
+      /**
+       * Sum total cost for all sessions belonging to a project.
+       *
+       * @param projectHash - Project identifier hash.
+       * @returns Total cost in USD as a number.
+       */
+      getTotalCostByProject(projectHash) {
+        const db = this.getDb();
+        const rows = rowsToObjects(
+          db.exec(
+            "SELECT COALESCE(SUM(total_cost_usd), 0) AS total FROM sessions WHERE project_hash = ?",
+            [projectHash]
+          )
+        );
+        return Number(rows[0]?.["total"] ?? 0);
+      }
+      /**
+       * Sum total cost across all projects.
+       *
+       * @returns Total cost in USD as a number.
+       */
+      getTotalCostAllProjects() {
+        const db = this.getDb();
+        const rows = rowsToObjects(
+          db.exec("SELECT COALESCE(SUM(total_cost_usd), 0) AS total FROM sessions")
+        );
+        return Number(rows[0]?.["total"] ?? 0);
+      }
+      /**
+       * Count the number of sessions for a project.
+       *
+       * @param projectHash - Project identifier hash.
+       * @returns Session count.
+       */
+      getSessionCountByProject(projectHash) {
+        const db = this.getDb();
+        const rows = rowsToObjects(
+          db.exec(
+            "SELECT COUNT(*) AS cnt FROM sessions WHERE project_hash = ?",
+            [projectHash]
+          )
+        );
+        return Number(rows[0]?.["cnt"] ?? 0);
+      }
+      // ───────────────────────────────────────────────────────────────────────────
+      // Private Helpers
+      // ───────────────────────────────────────────────────────────────────────────
+      /**
+       * Batch-fetch tags for multiple sessions in a single query, eliminating N+1.
+       *
+       * @param sessionIds - Array of session IDs to fetch tags for.
+       * @returns Map of session_id to array of tag strings.
+       */
+      _batchGetTags(sessionIds) {
+        const result = /* @__PURE__ */ new Map();
+        if (sessionIds.length === 0) return result;
+        const db = this.getDb();
+        const placeholders = sessionIds.map(() => "?").join(",");
+        const rows = rowsToObjects(
+          db.exec(
+            `SELECT session_id, tag FROM tags WHERE session_id IN (${placeholders}) ORDER BY created_at ASC`,
+            sessionIds
+          )
+        );
+        for (const row of rows) {
+          const sid = String(row["session_id"] ?? "");
+          const tag = String(row["tag"] ?? "");
+          const existing = result.get(sid);
+          if (existing) {
+            existing.push(tag);
+          } else {
+            result.set(sid, [tag]);
+          }
+        }
+        return result;
+      }
+      /**
+       * Schedule a debounced disk save.
+       *
+       * Multiple writes within `SAVE_DEBOUNCE_MS` will be coalesced into a
+       * single disk write, reducing I/O pressure during bulk operations.
+       */
+      scheduleSave() {
+        if (this.saveTimer) clearTimeout(this.saveTimer);
+        this.saveTimer = setTimeout(() => {
+          this.saveTimer = null;
+          this.saveToDisk();
+        }, SAVE_DEBOUNCE_MS);
+        this.saveTimer.unref?.();
+      }
+      /**
+       * Dynamically load the sql.js module.
+       *
+       * Handles both ESM (import()) and CJS (require()) environments by trying
+       * dynamic import first, then falling back to require().
+       *
+       * @returns The initSqlJs function.
+       */
+      async loadSqlJs() {
+        try {
+          const mod = await import("sql.js");
+          return mod.default;
+        } catch {
+          const mod = require("sql.js");
+          const initFn = mod.default ?? mod;
+          return initFn;
+        }
+      }
+      /**
+       * Resolve the path to the sql-wasm.wasm file.
+       *
+       * Search order:
+       *   1. Adjacent to this file in the dist/ directory (bundled plugin installs).
+       *   2. node_modules/sql.js/dist/ (development installs).
+       *
+       * @returns Absolute path to sql-wasm.wasm.
+       */
+      resolveWasmPath() {
+        let baseDir;
+        try {
+          baseDir = __dirname;
+        } catch {
+          baseDir = process.cwd();
+        }
+        const distWasm = (0, import_node_path7.resolve)((0, import_node_path7.join)(baseDir, "sql-wasm.wasm"));
+        if ((0, import_node_fs10.existsSync)(distWasm)) return distWasm;
+        const nodeWasm = (0, import_node_path7.resolve)((0, import_node_path7.join)(baseDir, "..", "..", "..", "node_modules", "sql.js", "dist", "sql-wasm.wasm"));
+        if ((0, import_node_fs10.existsSync)(nodeWasm)) return nodeWasm;
+        return (0, import_node_path7.resolve)((0, import_node_path7.join)(baseDir, "sql-wasm.wasm"));
+      }
+    };
+  }
+});
+
+// packages/analytics/src/engine/data/db-init.ts
+function ensureGlobalAnalyticsDir() {
+  if (!(0, import_node_fs11.existsSync)(ANALYTICS_DIR)) {
+    (0, import_node_fs11.mkdirSync)(ANALYTICS_DIR, { recursive: true });
+  }
+  return ANALYTICS_DIR;
+}
+function getGlobalDbPath() {
+  return (0, import_node_path8.resolve)((0, import_node_path8.join)(ANALYTICS_DIR, DB_FILENAME));
+}
+async function initializeGlobalDb(dbPath) {
+  if (dbPath) {
+    ensureGlobalAnalyticsDir();
+    const db = new GlobalDB(dbPath);
+    await db.initialize();
+    return db;
+  }
+  if (_singleton) return _singleton;
+  if (_singletonPromise) return _singletonPromise;
+  _singletonPromise = (async () => {
+    ensureGlobalAnalyticsDir();
+    const resolvedPath = getGlobalDbPath();
+    const db = new GlobalDB(resolvedPath);
+    await db.initialize();
+    _singleton = db;
+    _singletonPromise = null;
+    return db;
+  })();
+  return _singletonPromise;
+}
+var import_node_fs11, import_node_path8, import_node_os4, GOODVIBES_BASE, ANALYTICS_DIR, DB_FILENAME, _singleton, _singletonPromise;
+var init_db_init = __esm({
+  "packages/analytics/src/engine/data/db-init.ts"() {
+    "use strict";
+    import_node_fs11 = require("node:fs");
+    import_node_path8 = require("node:path");
+    import_node_os4 = require("node:os");
+    init_global_db();
+    GOODVIBES_BASE = (0, import_node_path8.join)((0, import_node_os4.homedir)(), ".claude", ".goodvibes");
+    ANALYTICS_DIR = (0, import_node_path8.join)(GOODVIBES_BASE, "analytics", "v2");
+    DB_FILENAME = "analytics.db";
+    _singleton = null;
+    _singletonPromise = null;
+    __name(ensureGlobalAnalyticsDir, "ensureGlobalAnalyticsDir");
+    __name(getGlobalDbPath, "getGlobalDbPath");
+    __name(initializeGlobalDb, "initializeGlobalDb");
+  }
+});
+
+// packages/analytics/src/engine/tmux/detect.ts
+function detectTmux(force = false) {
+  if (_cachedDetection !== null && !force) {
+    return _cachedDetection;
+  }
+  const inSession = Boolean(process.env["TMUX"]);
+  let available = false;
+  let version2 = null;
+  let sessionName = null;
+  try {
+    (0, import_node_child_process.execSync)("command -v tmux", { stdio: "pipe" });
+    available = true;
+  } catch {
+  }
+  if (available) {
+    try {
+      const raw = (0, import_node_child_process.execSync)("tmux -V", { stdio: "pipe", encoding: "utf-8" });
+      version2 = raw.trim();
+    } catch {
+    }
+  }
+  if (inSession) {
+    try {
+      const raw = (0, import_node_child_process.execSync)("tmux display-message -p '#S'", {
+        stdio: "pipe",
+        encoding: "utf-8"
+      });
+      const name = raw.trim();
+      if (name.length > 0) {
+        sessionName = name;
+      }
+    } catch {
+    }
+  }
+  _cachedDetection = { available, inSession, version: version2, sessionName };
+  return _cachedDetection;
+}
+function getFallbackMode() {
+  const { available, inSession } = detectTmux();
+  if (inSession) {
+    return "none";
+  }
+  if (available) {
+    return "file";
+  }
+  if (process.stdout.isTTY) {
+    return "terminal";
+  }
+  return "none";
+}
+var import_node_child_process, _cachedDetection;
+var init_detect = __esm({
+  "packages/analytics/src/engine/tmux/detect.ts"() {
+    "use strict";
+    import_node_child_process = require("node:child_process");
+    _cachedDetection = null;
+    __name(detectTmux, "detectTmux");
+    __name(getFallbackMode, "getFallbackMode");
+  }
+});
+
+// packages/analytics/src/engine/tmux/manager.ts
+function _positionFlags(position) {
+  switch (position) {
+    case "bottom":
+      return ["-v"];
+    case "top":
+      return ["-v", "-b"];
+    case "right":
+      return ["-h"];
+    case "left":
+      return ["-h", "-b"];
+    default: {
+      const _exhaustive = position;
+      throw new Error(`Unknown position: ${_exhaustive}`);
+    }
+  }
+}
+var import_node_child_process2, TmuxManager;
+var init_manager = __esm({
+  "packages/analytics/src/engine/tmux/manager.ts"() {
+    "use strict";
+    import_node_child_process2 = require("node:child_process");
+    init_detect();
+    __name(_positionFlags, "_positionFlags");
+    TmuxManager = class {
+      static {
+        __name(this, "TmuxManager");
+      }
+      config;
+      panes;
+      /**
+       * Create a new TmuxManager.
+       *
+       * @param config - The tmux configuration section from AnalyticsConfig.
+       */
+      constructor(config2) {
+        this.config = config2;
+        this.panes = /* @__PURE__ */ new Map();
+      }
+      /**
+       * Create a new tmux pane for the given target slot and start the supplied
+       * command inside it.
+       *
+       * If the slot already has a live pane, it is closed before the new one is
+       * opened. Returns a PaneInfo describing the newly created pane, or throws
+       * if tmux is unavailable or pane creation fails.
+       *
+       * @param target  - Which slot to use: `'mini'` (status bar) or `'full'` (dashboard).
+       * @param command - Shell command to run inside the pane.
+       * @returns PaneInfo for the created pane.
+       * @throws Error when tmux is not available or pane creation fails.
+       */
+      createPane(target, command) {
+        const detection = detectTmux();
+        if (!detection.inSession) {
+          throw new Error(
+            "TmuxManager.createPane: cannot create a pane outside of a tmux session."
+          );
+        }
+        if (this.isPaneAlive(target)) {
+          this.closePane(target);
+        }
+        const isMini = target === "mini";
+        const position = isMini ? this.config.mini_position : this.config.dashboard_position ?? this.config.full_position;
+        const size = isMini ? this.config.mini_pane_size : this.config.dashboard_pane_size ?? this.config.full_pane_size;
+        const dirFlags = _positionFlags(position);
+        const sizeStr = String(size);
+        if (!/^\d+%?$/.test(sizeStr)) {
+          throw new Error(
+            `TmuxManager.createPane: invalid size value "${sizeStr}". Must match /^\\d+%?$/.`
+          );
+        }
+        try {
+          const raw = (0, import_node_child_process2.execFileSync)("tmux", [
+            "split-window",
+            ...dirFlags,
+            "-l",
+            sizeStr,
+            "-P",
+            "-F",
+            "#{pane_id} #{pane_pid}",
+            command
+          ], { stdio: "pipe", encoding: "utf-8" }).trim();
+          const parts = raw.split(/\s+/);
+          const rawId = parts[0] ?? "";
+          const rawPid = parts[1] ?? "";
+          if (!/^%\d+$/.test(rawId)) {
+            throw new Error(
+              `TmuxManager.createPane: unexpected pane ID format "${rawId}". Expected /^%\\d+$/.`
+            );
+          }
+          const pid = parseInt(rawPid, 10);
+          if (Number.isNaN(pid)) {
+            throw new Error(
+              `TmuxManager.createPane: tmux returned non-numeric PID "${rawPid}" for pane ${rawId}.`
+            );
+          }
+          try {
+            (0, import_node_child_process2.execFileSync)("tmux", ["select-pane", "-t", "{last}"], { stdio: "pipe" });
+          } catch {
+          }
+          const paneInfo = { paneId: rawId, target, pid };
+          this.panes.set(target, paneInfo);
+          return paneInfo;
+        } catch (err) {
+          try {
+            (0, import_node_child_process2.execFileSync)("tmux", ["kill-pane", "-t", "{last}"], { stdio: "pipe" });
+          } catch {
+          }
+          throw err;
+        }
+      }
+      /**
+       * Close the pane for the given target slot.
+       *
+       * If the pane is no longer alive (e.g. the process exited) the internal
+       * state is cleaned up without running `tmux kill-pane`. Failures during
+       * teardown are logged but not re-thrown.
+       *
+       * @param target - Which slot to close: `'mini'` or `'full'`.
+       */
+      closePane(target) {
+        const info = this.panes.get(target);
+        if (!info) return;
+        try {
+          (0, import_node_child_process2.execFileSync)("tmux", ["kill-pane", "-t", info.paneId], { stdio: "pipe" });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          process.stderr.write(
+            `[TmuxManager] warn: kill-pane ${info.paneId} failed: ${message}
+`
+          );
+        }
+        this.panes.delete(target);
+      }
+      /**
+       * Close all managed panes.
+       *
+       * Equivalent to calling `closePane` for every active slot. Useful during
+       * daemon shutdown to ensure no orphaned panes are left behind.
+       */
+      closeAll() {
+        for (const target of ["mini", "full"]) {
+          this.closePane(target);
+        }
+      }
+      /**
+       * Check whether the pane for a given target slot is still alive.
+       *
+       * The check is performed by listing all current panes in the session and
+       * testing whether the tracked pane ID is present. Returns `false` when
+       * there is no tracked pane or when the tmux command fails.
+       *
+       * @param target - Which slot to check: `'mini'` or `'full'`.
+       * @returns `true` when the pane exists and is alive, otherwise `false`.
+       */
+      isPaneAlive(target) {
+        const info = this.panes.get(target);
+        if (!info) return false;
+        try {
+          const raw = (0, import_node_child_process2.execFileSync)(
+            "tmux",
+            ["list-panes", "-F", "#{pane_id}"],
+            { stdio: "pipe", encoding: "utf-8" }
+          );
+          const ids = raw.split("\n").map((l) => l.trim()).filter(Boolean);
+          return ids.includes(info.paneId);
+        } catch {
+          return false;
+        }
+      }
+      /**
+       * Resize the pane for a given target slot.
+       *
+       * Uses `tmux resize-pane` with the `-x` flag for horizontal splits and
+       * `-y` for vertical splits. If the pane is no longer alive the internal
+       * state is cleaned up and the method returns early without error.
+       * Failures are logged but never propagate.
+       *
+       * @param target - Which slot to resize: `'mini'` or `'full'`.
+       * @param size   - New size in lines/columns (number) or a percentage string (e.g. `'40%'`).
+       */
+      resizePane(target, size) {
+        const info = this.panes.get(target);
+        if (!info) return;
+        if (!this.isPaneAlive(target)) {
+          this.panes.delete(target);
+          return;
+        }
+        const sizeStr = String(size);
+        if (!/^\d+%?$/.test(sizeStr)) {
+          process.stderr.write(
+            `[TmuxManager] warn: resize-pane skipped \u2014 invalid size "${sizeStr}". Must match /^\\d+%?$/.
+`
+          );
+          return;
+        }
+        const position = target === "mini" ? this.config.mini_position : this.config.dashboard_position ?? this.config.full_position;
+        const flag = position === "top" || position === "bottom" ? "-y" : "-x";
+        try {
+          (0, import_node_child_process2.execFileSync)(
+            "tmux",
+            ["resize-pane", "-t", info.paneId, flag, sizeStr],
+            { stdio: "pipe" }
+          );
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          process.stderr.write(
+            `[TmuxManager] warn: resize-pane ${info.paneId} failed: ${message}
+`
+          );
+        }
+      }
+      /**
+       * Return a snapshot of the currently tracked panes.
+       *
+       * Note that a pane listed here may no longer be alive if its process has
+       * exited since the last `isPaneAlive` check. Call `isPaneAlive` to confirm.
+       *
+       * @returns An object with `mini` and `full` slots, each holding a `PaneInfo`
+       *          or `null` when no pane is tracked for that slot.
+       */
+      getStatus() {
+        return {
+          mini: this.panes.get("mini") ?? null,
+          full: this.panes.get("full") ?? null
+        };
+      }
+    };
+  }
+});
+
+// packages/analytics/src/engine/handlers/types.ts
+function text(msg) {
+  return { content: [{ type: "text", text: msg }] };
+}
+var init_types2 = __esm({
+  "packages/analytics/src/engine/handlers/types.ts"() {
+    "use strict";
+    __name(text, "text");
+  }
+});
+
+// packages/analytics/src/engine/handlers/dashboard.ts
+function persistPaneState(sessionId) {
+  try {
+    const goodvibesDir = (0, import_node_path9.resolve)(process.env["GOODVIBES_DIR"] ?? ".goodvibes");
+    const stateFile = (0, import_node_path9.join)(goodvibesDir, "active-panes.json");
+    let allState = {};
+    try {
+      const raw = fs2.readFileSync(stateFile, "utf-8");
+      allState = JSON.parse(raw);
+    } catch {
+    }
+    const status = getManager().getStatus();
+    const mini = status.mini !== null ? { paneId: status.mini.paneId, pid: status.mini.pid } : null;
+    const full = status.full !== null ? { paneId: status.full.paneId, pid: status.full.pid } : null;
+    if (mini === null && full === null) {
+      delete allState[sessionId];
+    } else {
+      allState[sessionId] = { mini, full };
+    }
+    atomicWriteJson(stateFile, allState);
+  } catch {
+  }
+}
+function getManager() {
+  if (_manager === null) {
+    _manager = new TmuxManager(DEFAULT_CONFIG2.tmux);
+  }
+  return _manager;
+}
+function normalizeTarget(target) {
+  if (target === "dashboard") return "full";
+  return target;
+}
+function buildCommand(target) {
+  let distDir;
+  if (typeof __dirname !== "undefined") {
+    distDir = __dirname;
+  } else {
+    const pluginRoot = process.env.PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || "";
+    distDir = (0, import_node_path9.join)(pluginRoot, "tools", "implementations", "analytics-engine", "dist");
+  }
+  const ext = target === "full" ? "mjs" : "cjs";
+  const absGoodvibesDir = (0, import_node_path9.resolve)(process.env["GOODVIBES_DIR"] ?? ".goodvibes");
+  if (/[\x00-\x1f\x7f]/.test(absGoodvibesDir)) {
+    throw new Error("GOODVIBES_DIR contains invalid control characters");
+  }
+  const safeDir = absGoodvibesDir.replace(/["\`$]/g, "$&");
+  return `GOODVIBES_DIR="${safeDir}" node "${(0, import_node_path9.join)(distDir, `${target}.${ext}`)}"`;
+}
+function handleStart(input, sessionId) {
+  const detection = detectTmux();
+  if (!detection.inSession) {
+    const fallback = getFallbackMode();
+    const reason = !detection.available ? "tmux is not available on PATH" : "not running inside a tmux session";
+    let fallbackMsg;
+    if (fallback === "file") {
+      fallbackMsg = "Analytics data is being written to disk; use analytics_query to read it.";
+    } else if (fallback === "terminal") {
+      fallbackMsg = "Use analytics_query to query metrics directly in the terminal.";
+    } else {
+      fallbackMsg = "Dashboard display is not available in this environment.";
+    }
+    return text(
+      `Cannot start dashboard pane: ${reason}.
+Fallback mode: ${fallback}.
+` + fallbackMsg
+    );
+  }
+  const manager = getManager();
+  const targets = resolveTargets(input.target);
+  const lines = [];
+  for (const target of targets) {
+    try {
+      if (manager.isPaneAlive(target)) {
+        manager.closePane(target);
+        lines.push(`Stopped ${target} dashboard (toggled off).`);
+        persistPaneState(sessionId);
+        continue;
+      }
+      const paneInfo = manager.createPane(target, buildCommand(target));
+      if (input.options?.pane_size != null) {
+        manager.resizePane(target, input.options.pane_size);
+      }
+      lines.push(
+        `Started ${target} dashboard in pane ${paneInfo.paneId} (PID ${paneInfo.pid}).`
+      );
+      persistPaneState(sessionId);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      lines.push(`Failed to toggle ${target} dashboard: ${message}`);
+    }
+  }
+  return text(lines.join("\n"));
+}
+function handleStop(input, sessionId) {
+  const manager = getManager();
+  const targets = resolveTargets(input.target);
+  const lines = [];
+  for (const target of targets) {
+    const wasAlive = manager.isPaneAlive(target);
+    manager.closePane(target);
+    if (wasAlive) {
+      lines.push(`Stopped ${target} dashboard.`);
+    } else {
+      lines.push(`${target} dashboard was not running.`);
+    }
+  }
+  persistPaneState(sessionId);
+  return text(lines.join("\n"));
+}
+function handleStatus() {
+  const detection = detectTmux();
+  if (!detection.inSession) {
+    const fallback = getFallbackMode();
+    return text(
+      `tmux status: not in a session (fallback mode: ${fallback}).
+Dashboard panes are only available inside a tmux session.`
+    );
+  }
+  const manager = getManager();
+  const status = manager.getStatus();
+  const lines = [
+    `tmux session: ${detection.sessionName ?? "unknown"} (${detection.version ?? "version unknown"})`
+  ];
+  for (const target of ["mini", "full"]) {
+    const info = status[target];
+    if (info === null) {
+      lines.push(`${target}: not running`);
+    } else {
+      const alive = manager.isPaneAlive(target);
+      lines.push(
+        `${target}: pane ${info.paneId}, PID ${info.pid} \u2014 ${alive ? "alive" : "dead (process exited)"}`
+      );
+    }
+  }
+  return text(lines.join("\n"));
+}
+function resolveTargets(target) {
+  switch (target) {
+    case "mini":
+      return ["mini"];
+    case "full":
+      return ["full"];
+    case "dashboard":
+      return ["full"];
+    // backward-compat safety (already normalized above)
+    case "both":
+      return ["mini", "full"];
+    default: {
+      const _exhaustive = target;
+      return [_exhaustive];
+    }
+  }
+}
+var fs2, import_node_path9, _manager, handleDashboard;
+var init_dashboard = __esm({
+  "packages/analytics/src/engine/handlers/dashboard.ts"() {
+    "use strict";
+    fs2 = __toESM(require("node:fs"), 1);
+    import_node_path9 = require("node:path");
+    init_runtime();
+    init_manager();
+    init_detect();
+    init_types();
+    init_types2();
+    __name(persistPaneState, "persistPaneState");
+    _manager = null;
+    __name(getManager, "getManager");
+    __name(normalizeTarget, "normalizeTarget");
+    __name(buildCommand, "buildCommand");
+    handleDashboard = /* @__PURE__ */ __name(async (aggregator, input) => {
+      try {
+        const normalizedInput = {
+          ...input,
+          target: normalizeTarget(input.target)
+        };
+        const sessionId = aggregator.getState().session_id;
+        switch (normalizedInput.action) {
+          case "start":
+            return handleStart(normalizedInput, sessionId);
+          case "stop":
+            return handleStop(normalizedInput, sessionId);
+          case "status":
+            return handleStatus();
+          default: {
+            const _exhaustive = normalizedInput.action;
+            return text(`Unknown action: ${_exhaustive}`);
+          }
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return text(`analytics_dashboard error: ${message}`);
+      }
+    }, "handleDashboard");
+    __name(handleStart, "handleStart");
+    __name(handleStop, "handleStop");
+    __name(handleStatus, "handleStatus");
+    __name(resolveTargets, "resolveTargets");
+  }
+});
+
+// packages/analytics/src/engine/tui/mini/format.ts
+function formatNumber(n) {
+  if (!isFinite(n)) return "0";
+  const abs = Math.abs(n);
+  const sign = n < 0 ? "-" : "";
+  if (abs >= 1e9) return `${sign}${(abs / 1e9).toFixed(1)}B`;
+  if (abs >= 1e6) return `${sign}${(abs / 1e6).toFixed(1)}M`;
+  if (abs >= 1e3) return `${sign}${(abs / 1e3).toFixed(1)}k`;
+  return `${sign}${Math.round(abs)}`;
+}
+function formatDuration(ms) {
+  if (!isFinite(ms) || ms < 0) return "0ms";
+  if (ms < 1e3) return `${Math.round(ms)}ms`;
+  const totalSeconds = Math.floor(ms / 1e3);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor(totalSeconds % 3600 / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
+}
+function formatPercent(ratio) {
+  if (!Number.isFinite(ratio)) return "0.0%";
+  return `${(ratio * 100).toFixed(1)}%`;
+}
+function formatDollars(amount) {
+  if (!isFinite(amount)) return "$0.00";
+  if (amount < 0) return `-$${Math.abs(amount).toFixed(4)}`;
+  if (amount < 1) return `$${amount.toFixed(4)}`;
+  return `$${amount.toFixed(2)}`;
+}
+function formatBar(value, max, width) {
+  if (!isFinite(value) || !isFinite(max) || width <= 0) {
+    return EMPTY_CHAR.repeat(Math.max(0, width));
+  }
+  if (max <= 0) return EMPTY_CHAR.repeat(width);
+  const ratio = Math.max(0, Math.min(1, value / max));
+  const filled = Math.round(ratio * width);
+  return FILL_CHAR.repeat(filled) + EMPTY_CHAR.repeat(width - filled);
+}
+function formatUptime(ms) {
+  if (!isFinite(ms) || ms < 0) return "0s";
+  const totalSeconds = Math.floor(ms / 1e3);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor(totalSeconds % 3600 / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
+}
+var FILL_CHAR, EMPTY_CHAR, ansi, BOX_CHARS;
+var init_format = __esm({
+  "packages/analytics/src/engine/tui/mini/format.ts"() {
+    "use strict";
+    __name(formatNumber, "formatNumber");
+    __name(formatDuration, "formatDuration");
+    __name(formatPercent, "formatPercent");
+    __name(formatDollars, "formatDollars");
+    FILL_CHAR = "\u2588";
+    EMPTY_CHAR = "\u2591";
+    __name(formatBar, "formatBar");
+    __name(formatUptime, "formatUptime");
+    ansi = {
+      reset: "\x1B[0m",
+      bold: "\x1B[1m",
+      dim: "\x1B[2m",
+      green: "\x1B[32m",
+      yellow: "\x1B[33m",
+      red: "\x1B[31m",
+      cyan: "\x1B[36m",
+      white: "\x1B[37m",
+      bgGreen: "\x1B[42m",
+      bgYellow: "\x1B[43m",
+      bgRed: "\x1B[41m",
+      box: {
+        topLeft: "\u250C",
+        // ┌
+        topRight: "\u2510",
+        // ┐
+        bottomLeft: "\u2514",
+        // └
+        bottomRight: "\u2518",
+        // ┘
+        horizontal: "\u2500",
+        // ─
+        vertical: "\u2502",
+        // │
+        teeRight: "\u251C",
+        // ├
+        teeLeft: "\u2524"
+        // ┤
+      }
+    };
+    BOX_CHARS = ansi.box;
+  }
+});
+
+// packages/analytics/src/engine/handlers/query.ts
+function buildDataScopeNote(aggregator, input) {
+  try {
+    const db = aggregator.getGlobalDb();
+    if (!db) return null;
+    const tags = input.filters?.tags ?? [];
+    const lines = [];
+    if (input.data_scope === "all_projects") {
+      const sessions = db.getAllSessions();
+      const totalCost = db.getTotalCostAllProjects();
+      lines.push(
+        "=== Cross-Project Summary (GlobalDB) ===",
+        `Sessions: ${sessions.length}`,
+        `Total cost (all projects): ${formatDollars(totalCost)}`
+      );
+    } else if (input.data_scope === "tagged" && tags.length > 0) {
+      const sessions = db.getSessionsByTags(tags);
+      lines.push(
+        `=== Tagged Sessions (${tags.join(", ")}) ===`,
+        `Sessions matching tags: ${sessions.length}`
+      );
+    } else if (input.data_scope === "current_project") {
+      const state = aggregator.getState();
+      const projectHash = deriveProjectHash(db, state.session_id);
+      if (projectHash) {
+        const sessions = db.getSessionsByProject(projectHash);
+        lines.push(
+          "=== Current Project (GlobalDB) ===",
+          `Sessions for this project: ${sessions.length}`
+        );
+      }
+    }
+    return lines.length > 0 ? lines.join("\n") : null;
+  } catch {
+    return null;
+  }
+}
+function deriveProjectHash(db, sessionId) {
+  try {
+    const session = db.getSession(sessionId);
+    return session?.project_hash ?? null;
+  } catch {
+    return null;
+  }
+}
+function filterByTimeRange(events, timeRange) {
+  if (timeRange === "session") return events;
+  const cutoffMs = TIME_RANGE_MS[timeRange];
+  const cutoff = Date.now() - cutoffMs;
+  return events.filter((e) => {
+    const ts = new Date(e.timestamp).getTime();
+    return Number.isFinite(ts) && ts >= cutoff;
+  });
+}
+function applyActivityFilters(events, filters) {
+  if (!filters) return events;
+  return events.filter((e) => {
+    if (filters.tool && e.tool !== filters.tool) return false;
+    if (filters.status) {
+      const status = typeof e.details["status"] === "string" ? e.details["status"] : void 0;
+      if (status !== filters.status) return false;
+    }
+    if (filters.agent && e.agent_id !== filters.agent) return false;
+    return true;
+  });
+}
+function filterToolsBreakdown(breakdown, toolFilter) {
+  if (!toolFilter) return breakdown;
+  const result = {};
+  for (const [key, value] of Object.entries(breakdown)) {
+    if (key === toolFilter || key.startsWith(toolFilter)) {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+function buildResponse(state, activity, toolsBreakdown, input) {
+  const { scope, format, group_by } = input;
+  const header = buildHeader(state, input);
+  const body = buildBody(state, activity, toolsBreakdown, scope, format, group_by);
+  if (format === "minimal") {
+    return body;
+  }
+  return [header, body].filter(Boolean).join("\n\n");
+}
+function buildHeader(state, input) {
+  const rangeLabel = {
+    session: "full session",
+    last_5m: "last 5 minutes",
+    last_30m: "last 30 minutes",
+    last_1h: "last 1 hour"
+  };
+  return `Session: ${state.session_id} | Uptime: ${formatUptime(state.uptime_ms)} | Range: ${rangeLabel[input.time_range]} | Health: ${state.health_status}`;
+}
+function buildBody(state, activity, toolsBreakdown, scope, format, group_by) {
+  if (scope === "all") {
+    const sections = [
+      renderTokens(state, format),
+      renderCache(state, format),
+      renderCost(state, format),
+      renderCommands(state, format),
+      renderAgents(state, format),
+      renderFiles(state, format),
+      renderHealth(state, format),
+      renderProject(state, format)
+    ];
+    if (format === "verbose") {
+      sections.push(renderToolsBreakdown(toolsBreakdown, group_by));
+      sections.push(renderActivity(activity));
+    }
+    return sections.filter(Boolean).join("\n\n");
+  }
+  switch (scope) {
+    case "tokens":
+      return renderTokens(state, format);
+    case "cache":
+      return renderCache(state, format);
+    case "cost":
+      return renderCost(state, format);
+    case "commands":
+      return renderCommands(state, format);
+    case "agents":
+      return renderAgents(state, format);
+    case "files":
+      return renderFiles(state, format);
+    case "health":
+      return renderHealth(state, format);
+    case "project":
+      return renderProject(state, format);
+    default: {
+      const _exhaustive = scope;
+      return `Unknown scope: ${_exhaustive}`;
+    }
+  }
+}
+function renderTokens(state, format) {
+  const { tokens } = state.metrics;
+  if (format === "minimal") {
+    return `precision-tokens: in=${formatNumber(tokens.input)} out=${formatNumber(tokens.output)} saved=${formatNumber(tokens.saved)} eff=${formatPercent(tokens.efficiency)} | api: in=${formatNumber(tokens.api_input)} out=${formatNumber(tokens.api_output)} cache-read=${formatNumber(tokens.cache_read)}`;
+  }
+  const lines = [
+    "=== Precision Token Metrics ===",
+    `Input:      ${formatNumber(tokens.input)}`,
+    `Output:     ${formatNumber(tokens.output)}`,
+    `Total:      ${formatNumber(tokens.total)}`,
+    `Saved:      ${formatNumber(tokens.saved)}`,
+    `Efficiency: ${formatPercent(tokens.efficiency)}`,
+    "",
+    "--- API Token Usage ---",
+    `API Input:   ${formatNumber(tokens.api_input)}`,
+    `API Output:  ${formatNumber(tokens.api_output)}`,
+    `Cache Read:  ${formatNumber(tokens.cache_read)}`,
+    `Cache Write: ${formatNumber(tokens.cache_write)}`
+  ];
+  if (format === "verbose") {
+    lines.push(`Raw input:  ${tokens.input}`);
+    lines.push(`Raw output: ${tokens.output}`);
+    lines.push(`Raw saved:  ${tokens.saved}`);
+  }
+  return lines.join("\n");
+}
+function renderCache(state, format) {
+  const { cache } = state.metrics;
+  if (format === "minimal") {
+    return `precision-cache: hit_rate=${formatPercent(cache.hit_rate)} hits=${formatNumber(cache.hits)} misses=${formatNumber(cache.misses)}`;
+  }
+  const lines = [
+    "=== Precision Cache ===",
+    `Hit rate: ${formatPercent(cache.hit_rate)}`,
+    `Hits:     ${formatNumber(cache.hits)}`,
+    `Misses:   ${formatNumber(cache.misses)}`
+  ];
+  if (format === "verbose") {
+    lines.push(`Memory peak: ${cache.memory_peak_mb} MB`);
+    lines.push(`Evictions:   ${cache.evictions}`);
+  }
+  return lines.join("\n");
+}
+function renderCost(state, format) {
+  const { cost } = state.metrics;
+  if (format === "minimal") {
+    return `cost: total=${formatDollars(cost.total)} saved=${formatDollars(cost.saved)}`;
+  }
+  const lines = [
+    "=== Cost ===",
+    `Input:  ${formatDollars(cost.input)}`,
+    `Output: ${formatDollars(cost.output)}`,
+    `Total:  ${formatDollars(cost.total)}`,
+    `Saved:  ${formatDollars(cost.saved)}`
+  ];
+  return lines.join("\n");
+}
+function renderCommands(state, format) {
+  const { tools } = state.metrics;
+  if (format === "minimal") {
+    return `tools: total=${tools.total} success=${formatPercent(tools.success_rate)} failures=${tools.failures}`;
+  }
+  const lines = [
+    "=== Tools ===",
+    `Total:       ${tools.total}`,
+    `Success rate: ${formatPercent(tools.success_rate)}`,
+    `Failures:    ${tools.failures}`,
+    `Avg duration: ${formatDuration(tools.avg_duration_ms)}`
+  ];
+  if (format === "verbose" && tools.slowest !== null) {
+    lines.push(`Slowest: ${tools.slowest.tool} (${formatDuration(tools.slowest.duration_ms)})`);
+  }
+  return lines.join("\n");
+}
+function renderAgents(state, format) {
+  const { agents } = state.metrics;
+  if (format === "minimal") {
+    return `agents: spawned=${agents.spawned} active=${agents.active} completed=${agents.completed}`;
+  }
+  const lines = [
+    "=== Agents ===",
+    `Spawned:        ${agents.spawned}`,
+    `Active:         ${agents.active}`,
+    `Completed:      ${agents.completed}`,
+    `Max concurrent: ${agents.max_concurrent}`
+  ];
+  if (format === "verbose") {
+    lines.push(`Total tokens: ${formatNumber(agents.total_tokens)}`);
+    if (state.agent_profiles.length > 0) {
+      lines.push("");
+      lines.push("Agent profiles:");
+      for (const p of state.agent_profiles) {
+        lines.push(
+          `  ${p.agent_id} (${p.agent_type}): ${formatNumber(p.tokens_in + p.tokens_out)} tokens | ${p.tool_calls} calls | ${formatPercent(p.success_rate)} success | ${p.status}`
+        );
+      }
+    }
+  }
+  return lines.join("\n");
+}
+function renderFiles(state, format) {
+  const { files } = state.metrics;
+  if (format === "minimal") {
+    return `files: read=${files.unique_read} modified=${files.modified} created=${files.created} conflicts=${files.conflicts}`;
+  }
+  const lines = [
+    "=== Files ===",
+    `Unique read: ${files.unique_read}`,
+    `Modified:    ${files.modified}`,
+    `Created:     ${files.created}`,
+    `Conflicts:   ${files.conflicts}`
+  ];
+  if (format === "verbose" && state.file_hotspots.length > 0) {
+    lines.push("");
+    lines.push("Hotspots:");
+    for (const h of state.file_hotspots.slice(0, 10)) {
+      lines.push(`  ${h.path}: r=${h.reads} w=${h.writes} c=${h.conflicts}`);
+    }
+  }
+  return lines.join("\n");
+}
+function renderHealth(state, format) {
+  const { health_status, anomalies } = state;
+  if (format === "minimal") {
+    return `health: ${health_status} anomalies=${anomalies.length}`;
+  }
+  const statusEmoji = health_status === "healthy" ? "OK" : health_status === "warning" ? "WARN" : "ALERT";
+  const lines = [
+    "=== Health ===",
+    `Status:   ${statusEmoji} (${health_status})`,
+    `Anomalies: ${anomalies.length}`
+  ];
+  if (format === "verbose" && anomalies.length > 0) {
+    lines.push("");
+    for (const a of anomalies) {
+      lines.push(`  [${a.severity.toUpperCase()}] ${a.type}: ${a.message} (${a.timestamp})`);
+    }
+  } else if (format === "standard" && anomalies.length > 0) {
+    lines.push("");
+    for (const a of anomalies.slice(0, 5)) {
+      lines.push(`  [${a.severity}] ${a.type}: ${a.message}`);
+    }
+  }
+  return lines.join("\n");
+}
+function renderProject(state, format) {
+  if (format === "minimal") {
+    return `project: session=${state.session_id} uptime=${formatUptime(state.uptime_ms)}`;
+  }
+  const lines = [
+    "=== Project ===",
+    `Session ID: ${state.session_id}`,
+    `Started at: ${state.started_at}`,
+    `Uptime:     ${formatUptime(state.uptime_ms)}`
+  ];
+  return lines.join("\n");
+}
+function renderToolsBreakdown(breakdown, group_by) {
+  const entries = Object.entries(breakdown);
+  if (entries.length === 0) return "=== Tools Breakdown ===\n  (no data yet)";
+  const lines = ["=== Tools Breakdown ==="];
+  if (group_by === "tool" || !group_by) {
+    const sorted = [...entries].sort(([, a], [, b]) => b.calls - a.calls);
+    for (const [tool, bd] of sorted) {
+      lines.push(
+        `  ${tool.padEnd(20)} calls=${String(bd.calls).padStart(5)} avg=${formatDuration(bd.avg_ms).padStart(7)} success=${formatPercent(bd.success_rate)} in=${formatNumber(bd.tokens_in)} out=${formatNumber(bd.tokens_out)}` + (bd.cache_hit_rate !== void 0 ? ` cache=${formatPercent(bd.cache_hit_rate)}` : "")
+      );
+    }
+  } else {
+    lines.push(`  (group_by='${group_by}' requires activity-level data; showing tool summary)`);
+    for (const [tool, bd] of entries) {
+      lines.push(`  ${tool}: ${bd.calls} calls`);
+    }
+  }
+  return lines.join("\n");
+}
+function renderActivity(activity) {
+  if (activity.length === 0) return "=== Recent Activity ===\n  (no events in range)";
+  const lines = [`=== Recent Activity (${activity.length} events) ===`];
+  for (const e of activity.slice(0, 20)) {
+    const duration3 = e.duration_ms !== void 0 ? ` ${formatDuration(e.duration_ms)}` : "";
+    const cache = e.cache_hit === true ? " [cache]" : "";
+    const tokens = e.tokens !== void 0 ? ` ${formatNumber(e.tokens)}t` : "";
+    lines.push(`  ${e.timestamp} ${e.tool}${duration3}${cache}${tokens} \u2014 ${e.description}`);
+  }
+  if (activity.length > 20) {
+    lines.push(`  ... and ${activity.length - 20} more`);
+  }
+  return lines.join("\n");
+}
+var handleQuery, TIME_RANGE_MS;
+var init_query = __esm({
+  "packages/analytics/src/engine/handlers/query.ts"() {
+    "use strict";
+    init_format();
+    init_types2();
+    handleQuery = /* @__PURE__ */ __name(async (aggregator, input) => {
+      try {
+        const state = aggregator.getState();
+        const filteredActivity = filterByTimeRange(state.recent_activity, input.time_range);
+        const activity = applyActivityFilters(filteredActivity, input.filters);
+        const toolsBreakdown = filterToolsBreakdown(
+          state.tools_breakdown,
+          input.filters?.tool
+        );
+        const sessionResult = buildResponse(state, activity, toolsBreakdown, input);
+        if (input.data_scope && input.data_scope !== "current_session") {
+          const scopeNote = buildDataScopeNote(aggregator, input);
+          if (scopeNote) {
+            return text(`${scopeNote}
+
+--- Current Session ---
+${sessionResult}`);
+          }
+        }
+        return text(sessionResult);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return text(`analytics_query error: ${message}`);
+      }
+    }, "handleQuery");
+    __name(buildDataScopeNote, "buildDataScopeNote");
+    __name(deriveProjectHash, "deriveProjectHash");
+    TIME_RANGE_MS = {
+      last_5m: 5 * 60 * 1e3,
+      last_30m: 30 * 60 * 1e3,
+      last_1h: 60 * 60 * 1e3
+    };
+    __name(filterByTimeRange, "filterByTimeRange");
+    __name(applyActivityFilters, "applyActivityFilters");
+    __name(filterToolsBreakdown, "filterToolsBreakdown");
+    __name(buildResponse, "buildResponse");
+    __name(buildHeader, "buildHeader");
+    __name(buildBody, "buildBody");
+    __name(renderTokens, "renderTokens");
+    __name(renderCache, "renderCache");
+    __name(renderCost, "renderCost");
+    __name(renderCommands, "renderCommands");
+    __name(renderAgents, "renderAgents");
+    __name(renderFiles, "renderFiles");
+    __name(renderHealth, "renderHealth");
+    __name(renderProject, "renderProject");
+    __name(renderToolsBreakdown, "renderToolsBreakdown");
+    __name(renderActivity, "renderActivity");
+  }
+});
+
+// packages/analytics/src/engine/handlers/budget.ts
+function handleSet(aggregator, input) {
+  const amount = input.amount;
+  if (amount === void 0) {
+    return text("Budget amount is required for the set action.");
+  }
+  const unit = input.unit;
+  aggregator.setBudget(amount, unit);
+  const state = aggregator.getState();
+  const currentUsed = unit === "dollars" ? state.metrics.cost.total : state.metrics.tokens.total;
+  const remaining = Math.max(0, amount - currentUsed);
+  const percentage = amount > 0 ? currentUsed / amount : 0;
+  const lines = [
+    "Budget set.",
+    "",
+    formatBudgetSummary({
+      amount,
+      unit,
+      used: currentUsed,
+      remaining,
+      percentage,
+      warn_thresholds: [...DEFAULT_WARN_THRESHOLDS],
+      current_threshold: null
+    })
+  ];
+  if (input.warn_at !== void 0 && input.warn_at.length > 0) {
+    lines.push(
+      `
+Warn thresholds: ${input.warn_at.map((t) => formatPercent(t)).join(", ")}`
+    );
+    lines.push(
+      "(Note: warn_at thresholds are configured in analytics_config; budget was set using the default thresholds.)"
+    );
+  }
+  return text(lines.join("\n"));
+}
+function handleCheck(aggregator) {
+  const state = aggregator.getState();
+  const budget = state.budget;
+  if (budget === null) {
+    const cost = state.metrics.cost.total;
+    const tokens = state.metrics.tokens.total;
+    return text(
+      `No budget configured.
+
+Current usage (no limit):
+  Cost:   ${formatDollars(cost)}
+  Tokens: ${formatNumber(tokens)}
+
+Use analytics_budget with action="set" to configure a budget.`
+    );
+  }
+  return text(formatBudgetSummary(budget));
+}
+function handleClear(aggregator) {
+  const stateBefore = aggregator.getState();
+  const b = stateBefore.budget;
+  aggregator.clearBudget();
+  if (b === null) {
+    return text("No budget was configured.");
+  }
+  return text(
+    `Budget cleared.
+
+Previous budget: ${formatBudgetAmount(b.amount, b.unit)}
+Usage at clear:  ${formatBudgetUsed(b.used, b.unit)} (${formatPercent(b.percentage)})`
+  );
+}
+function formatBudgetSummary(budget) {
+  const BAR_WIDTH = 20;
+  const bar = formatBar(budget.used, budget.amount, BAR_WIDTH);
+  const pct = formatPercent(budget.percentage);
+  const statusLabel = resolveStatusLabel(budget.percentage);
+  const lines = [
+    "=== Budget Status ===",
+    `Limit:     ${formatBudgetAmount(budget.amount, budget.unit)}`,
+    `Used:      ${formatBudgetUsed(budget.used, budget.unit)} (${pct})`,
+    `Remaining: ${formatBudgetUsed(budget.remaining, budget.unit)}`,
+    `Status:    ${statusLabel}`,
+    `Progress:  [${bar}]`
+  ];
+  if (budget.warn_thresholds.length > 0) {
+    lines.push(
+      `Thresholds: ${budget.warn_thresholds.map((t) => formatPercent(t)).join(" | ")}`
+    );
+  }
+  if (budget.current_threshold !== null) {
+    lines.push(
+      `Reached threshold: ${formatPercent(budget.current_threshold)}`
+    );
+  }
+  return lines.join("\n");
+}
+function formatBudgetAmount(amount, unit) {
+  return unit === "dollars" ? formatDollars(amount) : `${formatNumber(amount)} tokens`;
+}
+function formatBudgetUsed(used, unit) {
+  return unit === "dollars" ? formatDollars(used) : `${formatNumber(used)} tokens`;
+}
+function resolveStatusLabel(ratio) {
+  if (ratio >= DEFAULT_WARN_THRESHOLDS[2]) return "exceeded";
+  if (ratio >= DEFAULT_WARN_THRESHOLDS[1]) return "warning";
+  if (ratio >= DEFAULT_WARN_THRESHOLDS[0]) return "on-track";
+  return "under";
+}
+var DEFAULT_WARN_THRESHOLDS, handleBudget;
+var init_budget = __esm({
+  "packages/analytics/src/engine/handlers/budget.ts"() {
+    "use strict";
+    init_format();
+    init_types2();
+    DEFAULT_WARN_THRESHOLDS = [0.5, 0.8, 1];
+    handleBudget = /* @__PURE__ */ __name(async (aggregator, input) => {
+      try {
+        switch (input.action) {
+          case "set":
+            return handleSet(aggregator, input);
+          case "check":
+            return handleCheck(aggregator);
+          case "clear":
+            return handleClear(aggregator);
+          default: {
+            const _exhaustive = input.action;
+            return text(`Unknown action: ${_exhaustive}`);
+          }
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return text(`analytics_budget error: ${message}`);
+      }
+    }, "handleBudget");
+    __name(handleSet, "handleSet");
+    __name(handleCheck, "handleCheck");
+    __name(handleClear, "handleClear");
+    __name(formatBudgetSummary, "formatBudgetSummary");
+    __name(formatBudgetAmount, "formatBudgetAmount");
+    __name(formatBudgetUsed, "formatBudgetUsed");
+    __name(resolveStatusLabel, "resolveStatusLabel");
+  }
+});
+
+// packages/analytics/src/engine/data/tag-store.ts
+function resolveJsonlPath(sessionId, jsonlBase = (0, import_node_path10.join)((0, import_node_os5.homedir)(), ".claude", "projects")) {
+  const targetFile = `${sessionId}.jsonl`;
+  if (!(0, import_node_fs12.existsSync)(jsonlBase)) return null;
+  try {
+    const projectDirs = (0, import_node_fs12.readdirSync)(jsonlBase).filter((entry) => {
+      try {
+        return (0, import_node_fs12.statSync)((0, import_node_path10.join)(jsonlBase, entry)).isDirectory();
+      } catch {
+        return false;
+      }
+    });
+    for (const projectDir of projectDirs) {
+      const candidate = (0, import_node_path10.resolve)((0, import_node_path10.join)(jsonlBase, projectDir, targetFile));
+      if ((0, import_node_fs12.existsSync)(candidate)) {
+        return candidate;
+      }
+    }
+  } catch {
+  }
+  return null;
+}
+var import_node_fs12, import_node_path10, import_node_os5, SCAN_HEAD_LINES, SCAN_TAIL_LINES, DOMAIN_PATTERNS, FRAMEWORK_PATTERNS, ACTIVITY_PATTERNS, TagStore;
+var init_tag_store = __esm({
+  "packages/analytics/src/engine/data/tag-store.ts"() {
+    "use strict";
+    import_node_fs12 = require("node:fs");
+    import_node_path10 = require("node:path");
+    import_node_os5 = require("node:os");
+    SCAN_HEAD_LINES = 200;
+    SCAN_TAIL_LINES = 100;
+    DOMAIN_PATTERNS = [
+      {
+        tag: "authentication",
+        patterns: [/\bauth\b/i, /\blogin\b/i, /\boauth\b/i, /\bjwt\b/i, /\bpassport\b/i, /\bsession\b.*\bstore\b/i],
+        confidence: "high"
+      },
+      {
+        tag: "payments",
+        patterns: [/\bstripe\b/i, /\bpayment\b/i, /\bcheckout\b/i, /\blemon.?squeezy\b/i, /\bpaddle\b/i, /\binvoice\b/i, /\bsubscription\b/i],
+        confidence: "high"
+      },
+      {
+        tag: "analytics",
+        patterns: [/\banalytics\b/i, /\bdashboard\b/i, /\bmetrics\b/i, /\btelemetry\b/i, /\btracking\b/i],
+        confidence: "high"
+      },
+      {
+        tag: "devops",
+        patterns: [/\bdocker\b/i, /\bkubernetes\b/i, /\bci\b/i, /\bpipeline\b/i, /\.github\/workflows/i, /\bdeploy\b/i, /\bterraform\b/i, /\bhelm\b/i],
+        confidence: "high"
+      },
+      {
+        tag: "testing",
+        patterns: [/\.spec\./i, /\.test\./i, /\bvitest\b/i, /\bjest\b/i, /\bplaywright\b/i, /\bcypress\b/i, /\bcoverage\b/i],
+        confidence: "high"
+      },
+      {
+        tag: "database",
+        patterns: [/\bprisma\b/i, /\bdrizzle\b/i, /\bmigration\b/i, /\/prisma\//i, /\bschema\.prisma\b/i, /\bsqlite\b/i, /\bpostgres\b/i, /\bmysql\b/i],
+        confidence: "high"
+      },
+      {
+        tag: "multi-tenant",
+        patterns: [/\bmulti.?tenant\b/i, /\btenant\b/i, /\borganization\b.*\bslug\b/i, /\bworkspace\b.*\bmember\b/i],
+        confidence: "medium"
+      },
+      {
+        tag: "revops",
+        patterns: [/\brevenue\b/i, /\bbilling\b/i, /\bmrr\b/i, /\bchurn\b/i, /\bltv\b/i],
+        confidence: "medium"
+      },
+      {
+        tag: "api",
+        patterns: [/\btrpc\b/i, /\bgraphql\b/i, /\/api\//i, /\brest\b.*\bendpoint\b/i, /\bwebhook\b/i],
+        confidence: "high"
+      },
+      {
+        tag: "infrastructure",
+        patterns: [/\bnginx\b/i, /\btraefik\b/i, /\.env\b/i, /\bconfig\b.*\bfile\b/i, /\bsecret\b/i],
+        confidence: "low"
+      }
+    ];
+    FRAMEWORK_PATTERNS = [
+      { tag: "react", patterns: [/\.tsx$/i, /\breact\b/i, /\bnext\.js\b/i, /\.jsx$/i] },
+      { tag: "vue", patterns: [/\.vue$/i, /\bvue\b/i, /\bnuxt\b/i] },
+      { tag: "typescript", patterns: [/\.ts$/i, /\btypescript\b/i, /tsconfig/i] },
+      { tag: "nextjs", patterns: [/\bnext\.config\b/i, /\/app\/.*page\.tsx/i, /next\.js/i] },
+      { tag: "prisma", patterns: [/\.prisma$/i, /prisma\/schema/i, /\bprisma\b/i] },
+      { tag: "tailwind", patterns: [/\btailwind\b/i, /tailwind\.config/i, /\bcn\b.*\bclsx\b/i] }
+    ];
+    ACTIVITY_PATTERNS = [
+      { tag: "feature-development", toolPatterns: [/precision_write|precision_edit/i], minCount: 10 },
+      { tag: "refactoring", toolPatterns: [/precision_edit/i], minCount: 20 },
+      { tag: "infrastructure", toolPatterns: [/precision_exec/i], minCount: 15 }
+    ];
+    TagStore = class {
+      constructor(db) {
+        this.db = db;
+      }
+      static {
+        __name(this, "TagStore");
+      }
+      // ─────────────────────────────────────────────────────────────────────────
+      // Core CRUD
+      // ─────────────────────────────────────────────────────────────────────────
+      /**
+       * Add a single tag to a session.
+       *
+       * Silently ignores duplicate (sessionId, tag) pairs.
+       *
+       * @param sessionId - Target session identifier.
+       * @param tag       - Tag string to add (trimmed, lowercased).
+       * @param source    - Origin of the tag. Defaults to 'manual'.
+       */
+      addTag(sessionId, tag, source = "manual") {
+        const normalized = tag.trim().toLowerCase();
+        if (!normalized) return;
+        this.db.addTag(sessionId, normalized, source);
+      }
+      /**
+       * Add multiple tags to a session in a single operation.
+       *
+       * Duplicates are silently ignored. Empty strings are skipped.
+       *
+       * @param sessionId - Target session identifier.
+       * @param tags      - Array of tag strings to add.
+       * @param source    - Origin of the tags. Defaults to 'manual'.
+       */
+      addTags(sessionId, tags, source = "manual") {
+        for (const tag of tags) {
+          this.addTag(sessionId, tag, source);
+        }
+      }
+      /**
+       * Remove a tag from a session.
+       *
+       * No-op if the tag does not exist on the session.
+       *
+       * @param sessionId - Target session identifier.
+       * @param tag       - Tag string to remove.
+       */
+      removeTag(sessionId, tag) {
+        const normalized = tag.trim().toLowerCase();
+        if (!normalized) return;
+        this.db.removeTag(sessionId, normalized);
+      }
+      /**
+       * Retrieve all tags for a session, ordered by creation time.
+       *
+       * @param sessionId - Session identifier.
+       * @returns Array of TagEntry objects.
+       */
+      getTagsForSession(sessionId) {
+        return this.db.getTagsForSession(sessionId);
+      }
+      /**
+       * Retrieve all session IDs that have the given tag.
+       *
+       * @param tag - Tag string to look up.
+       * @returns Array of session ID strings.
+       */
+      getSessionsByTag(tag) {
+        const normalized = tag.trim().toLowerCase();
+        return this.db.getSessionsByTag(normalized);
+      }
+      /**
+       * List all unique tags with their usage counts across all sessions.
+       *
+       * @returns Array of `{ tag, count, sessions }` objects, sorted by count descending.
+       */
+      getAllTags() {
+        const rows = this.db.getAllTags();
+        return rows.map((row) => ({
+          tag: row.tag,
+          count: row.count,
+          sessions: this.db.getSessionsByTag(row.tag)
+        }));
+      }
+      // ─────────────────────────────────────────────────────────────────────────
+      // Auto-tagging heuristics
+      // ─────────────────────────────────────────────────────────────────────────
+      /**
+       * Suggest descriptive domain tags for a session by analyzing its JSONL file.
+       *
+       * Uses a local heuristic approach:
+       * 1. Reads the first N and last M lines of the JSONL file for efficiency.
+       * 2. Scans for framework/language signals in file paths and tool inputs.
+       * 3. Infers domain from keywords (auth, payments, analytics, etc.).
+       * 4. Detects activity type from tool usage patterns (write-heavy = feature dev).
+       *
+       * Returns deduplicated, sorted suggestions with confidence levels.
+       * Does NOT apply tags automatically — callers confirm before persisting.
+       *
+       * Note: For higher-quality inference on complex or ambiguous sessions,
+       * consider using precision_agent with LLM-based analysis. This heuristic
+       * approach is intentionally fast and local.
+       *
+       * @param sessionId  - Session identifier (used for deduplication against existing tags).
+       * @param jsonlPath  - Absolute path to the Claude session JSONL file.
+       * @returns Array of `{ tag, confidence }` suggestion objects, sorted by confidence.
+       */
+      suggestTags(sessionId, jsonlPath) {
+        const existing = new Set(
+          this.db.getTagsForSession(sessionId).map((t) => t.tag)
+        );
+        const corpus = this._readJsonlCorpus(jsonlPath);
+        if (!corpus) {
+          return [];
+        }
+        const { headText, tailText, toolCounts } = corpus;
+        const fullText = `${headText}
+${tailText}`;
+        const suggestions = /* @__PURE__ */ new Map();
+        for (const { tag, patterns } of FRAMEWORK_PATTERNS) {
+          if (existing.has(tag)) continue;
+          const matchedPattern = patterns.find((p) => p.test(fullText));
+          if (matchedPattern) {
+            suggestions.set(tag, { confidence: "high", reason: `file paths match ${matchedPattern.source}` });
+          }
+        }
+        for (const { tag, patterns, confidence } of DOMAIN_PATTERNS) {
+          if (existing.has(tag)) continue;
+          const matchedPattern = patterns.find((p) => p.test(fullText));
+          if (matchedPattern) {
+            const existingEntry = suggestions.get(tag);
+            if (!existingEntry || this._confidenceRank(confidence) > this._confidenceRank(existingEntry.confidence)) {
+              suggestions.set(tag, { confidence, reason: `keyword match: ${matchedPattern.source}` });
+            }
+          }
+        }
+        for (const { tag, toolPatterns, minCount } of ACTIVITY_PATTERNS) {
+          if (existing.has(tag)) continue;
+          const totalMatchCount = toolPatterns.reduce((sum, p) => {
+            for (const [toolName, count] of toolCounts) {
+              if (p.test(toolName)) sum += count;
+            }
+            return sum;
+          }, 0);
+          if (totalMatchCount >= minCount) {
+            suggestions.set(tag, {
+              confidence: "medium",
+              reason: `${totalMatchCount} matching tool calls`
+            });
+          }
+        }
+        const sorted = [...suggestions.entries()].map(([tag, meta3]) => ({ tag, ...meta3 })).sort((a, b) => {
+          const rankDiff = this._confidenceRank(b.confidence) - this._confidenceRank(a.confidence);
+          return rankDiff !== 0 ? rankDiff : a.tag.localeCompare(b.tag);
+        });
+        return sorted;
+      }
+      // ─────────────────────────────────────────────────────────────────────────
+      // Private helpers
+      // ─────────────────────────────────────────────────────────────────────────
+      /**
+       * Read and parse a JSONL file, returning a text corpus from head + tail.
+       *
+       * Extracts file paths and tool names from tool_use events for pattern matching.
+       * Returns null if the file does not exist or cannot be read.
+       *
+       * @param jsonlPath - Absolute path to the JSONL file.
+       */
+      _readJsonlCorpus(jsonlPath) {
+        if (!(0, import_node_fs12.existsSync)(jsonlPath)) return null;
+        let rawContent;
+        try {
+          rawContent = (0, import_node_fs12.readFileSync)(jsonlPath, "utf-8");
+        } catch {
+          return null;
+        }
+        const lines = rawContent.split("\n").filter(Boolean);
+        const headLines = lines.slice(0, SCAN_HEAD_LINES);
+        const tailLines = lines.slice(-SCAN_TAIL_LINES);
+        const sampleLines = [.../* @__PURE__ */ new Set([...headLines, ...tailLines])];
+        const toolCounts = /* @__PURE__ */ new Map();
+        for (const line of sampleLines) {
+          let parsed;
+          try {
+            parsed = JSON.parse(line);
+          } catch {
+            continue;
+          }
+          const type = parsed["type"];
+          if (type === "tool_use" || type === "tool_result") {
+            const toolName = String(parsed["name"] ?? parsed["tool_name"] ?? "");
+            if (toolName) {
+              toolCounts.set(toolName, (toolCounts.get(toolName) ?? 0) + 1);
+            }
+          }
+        }
+        return {
+          headText: headLines.join("\n"),
+          tailText: tailLines.join("\n"),
+          toolCounts
+        };
+      }
+      /**
+       * Map confidence level to a numeric rank for sorting.
+       *
+       * @param confidence - Confidence string.
+       * @returns Numeric rank (higher = better).
+       */
+      _confidenceRank(confidence) {
+        switch (confidence) {
+          case "high":
+            return 3;
+          case "medium":
+            return 2;
+          case "low":
+            return 1;
+        }
+      }
+    };
+    __name(resolveJsonlPath, "resolveJsonlPath");
+  }
+});
+
+// packages/analytics/src/engine/handlers/tag.ts
+async function getTagStore() {
+  if (_tagStore) return _tagStore;
+  if (!_initPromise) {
+    _initPromise = initializeGlobalDb().then((db) => {
+      _globalDb = db;
+      _tagStore = new TagStore(db);
+      _initPromise = null;
+      return db;
+    }).catch((err) => {
+      _initPromise = null;
+      throw err;
+    });
+  }
+  await _initPromise;
+  if (!_tagStore) throw new Error("TagStore initialization failed");
+  return _tagStore;
+}
+async function handleTag(aggregator, input, _goodvibesDir) {
+  try {
+    const store = await getTagStore();
+    const state = aggregator.getState();
+    const sessionId = state.session_id;
+    switch (input.action) {
+      case "add":
+        return handleAdd(store, sessionId, input.value);
+      case "remove":
+        return handleRemove(store, sessionId, input.value);
+      case "list":
+        return handleList(store, sessionId, input.scope ?? "session");
+      case "auto":
+        return handleAuto(store, sessionId);
+      default: {
+        const _exhaustive = input.action;
+        return text(`analytics_tag: unknown action "${String(_exhaustive)}"`);
+      }
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return text(`analytics_tag error: ${message}`);
+  }
+}
+function handleAdd(store, sessionId, tagValue) {
+  store.addTag(sessionId, tagValue, "manual");
+  const currentTags = store.getTagsForSession(sessionId);
+  const tagList = currentTags.length > 0 ? currentTags.map((t) => `  - ${t.tag}`).join("\n") : "  (none)";
+  return text(
+    `Tag added: "${tagValue.trim().toLowerCase()}"
+
+Current tags for session ${sessionId}:
+${tagList}`
+  );
+}
+function handleRemove(store, sessionId, tagValue) {
+  store.removeTag(sessionId, tagValue);
+  const remaining = store.getTagsForSession(sessionId);
+  const tagList = remaining.length > 0 ? remaining.map((t) => `  - ${t.tag}`).join("\n") : "  (none)";
+  return text(
+    `Tag removed: "${tagValue.trim().toLowerCase()}"
+
+Remaining tags for session ${sessionId}:
+${tagList}`
+  );
+}
+function handleList(store, sessionId, scope) {
+  if (scope === "all") {
+    const allTags = store.getAllTags();
+    if (allTags.length === 0) {
+      return text("No tags found across any sessions.");
+    }
+    const lines2 = allTags.map(
+      (t) => `  ${t.tag.padEnd(24)} (${t.count} session${t.count === 1 ? "" : "s"})`
+    );
+    return text(`All tags (${allTags.length} unique):
+${lines2.join("\n")}`);
+  }
+  const tags = store.getTagsForSession(sessionId);
+  if (tags.length === 0) {
+    return text(
+      `No tags on session ${sessionId}.
+
+Add tags with: analytics_tag { action: "add", value: "<tag>" }`
+    );
+  }
+  const lines = tags.map((t) => `  - ${t.tag}  [${t.source}]`);
+  return text(
+    `Tags for session ${sessionId} (${tags.length}):
+${lines.join("\n")}`
+  );
+}
+function handleAuto(store, sessionId) {
+  const jsonlPath = resolveJsonlPath(sessionId);
+  if (!jsonlPath) {
+    return text(
+      `Could not locate JSONL file for session ${sessionId}.
+
+Expected location: ~/.claude/projects/<project-hash>/${sessionId}.jsonl
+Ensure the session file exists before using auto-tagging.`
+    );
+  }
+  const suggestions = store.suggestTags(sessionId, jsonlPath);
+  if (suggestions.length === 0) {
+    return text(
+      `No tag suggestions found for session ${sessionId}.
+
+The session may be too short, or its content may not match known patterns.
+For higher-quality inference on complex sessions, precision_agent LLM analysis
+can provide better suggestions (not implemented in this heuristic layer).`
+    );
+  }
+  const lines = suggestions.map(
+    (s) => `  - ${s.tag.padEnd(24)} (${s.confidence} confidence: ${s.reason})`
+  );
+  const applyHints = suggestions.map((s) => `analytics_tag { action: "add", value: "${s.tag}" }`).join("\n");
+  return text(
+    `Suggested tags for session ${sessionId}:
+${lines.join("\n")}
+
+Apply with:
+${applyHints}`
+  );
+}
+var _globalDb, _tagStore, _initPromise;
+var init_tag = __esm({
+  "packages/analytics/src/engine/handlers/tag.ts"() {
+    "use strict";
+    init_types2();
+    init_tag_store();
+    init_db_init();
+    _globalDb = null;
+    _tagStore = null;
+    _initPromise = null;
+    __name(getTagStore, "getTagStore");
+    __name(handleTag, "handleTag");
+    __name(handleAdd, "handleAdd");
+    __name(handleRemove, "handleRemove");
+    __name(handleList, "handleList");
+    __name(handleAuto, "handleAuto");
+  }
+});
+
+// packages/analytics/src/engine/data/historical-store.ts
+function _emptyMetrics() {
+  return {
+    tokens: { input: 0, output: 0, total: 0, saved: 0, efficiency: 0, api_input: 0, api_output: 0, cache_read: 0, cache_write: 0 },
+    cache: { hit_rate: 0, hits: 0, misses: 0, memory_peak_mb: 0, evictions: 0 },
+    cost: { input: 0, output: 0, total: 0, saved: 0 },
+    tools: {
+      total: 0,
+      success_rate: 0,
+      avg_duration_ms: 0,
+      total_duration_ms: 0,
+      failures: 0,
+      slowest: null
+    },
+    agents: { spawned: 0, max_concurrent: 0, total_tokens: 0, active: 0, completed: 0 },
+    files: { unique_read: 0, modified: 0, created: 0, conflicts: 0 }
+  };
+}
+function _flattenMetrics(m) {
+  return {
+    "tokens.input": m.tokens.input,
+    "tokens.output": m.tokens.output,
+    "tokens.total": m.tokens.total,
+    "tokens.saved": m.tokens.saved,
+    "tokens.efficiency": m.tokens.efficiency,
+    "tokens.api_input": m.tokens.api_input,
+    "tokens.api_output": m.tokens.api_output,
+    "tokens.cache_read": m.tokens.cache_read,
+    "tokens.cache_write": m.tokens.cache_write,
+    "cache.hit_rate": m.cache.hit_rate,
+    "cache.hits": m.cache.hits,
+    "cache.misses": m.cache.misses,
+    "cache.memory_peak_mb": m.cache.memory_peak_mb,
+    "cache.evictions": m.cache.evictions,
+    "cost.input": m.cost.input,
+    "cost.output": m.cost.output,
+    "cost.total": m.cost.total,
+    "cost.saved": m.cost.saved,
+    "tools.total": m.tools.total,
+    "tools.success_rate": m.tools.success_rate,
+    "tools.avg_duration_ms": m.tools.avg_duration_ms,
+    "tools.total_duration_ms": m.tools.total_duration_ms,
+    "tools.failures": m.tools.failures,
+    "agents.spawned": m.agents.spawned,
+    "agents.max_concurrent": m.agents.max_concurrent,
+    "agents.total_tokens": m.agents.total_tokens,
+    "agents.active": m.agents.active,
+    "agents.completed": m.agents.completed,
+    "files.unique_read": m.files.unique_read,
+    "files.modified": m.files.modified,
+    "files.created": m.files.created,
+    "files.conflicts": m.files.conflicts
+  };
+}
+var import_node_fs13, path6, DEFAULT_MAX_SESSIONS, HistoricalStore;
+var init_historical_store = __esm({
+  "packages/analytics/src/engine/data/historical-store.ts"() {
+    "use strict";
+    import_node_fs13 = require("node:fs");
+    path6 = __toESM(require("node:path"), 1);
+    DEFAULT_MAX_SESSIONS = 10;
+    HistoricalStore = class {
+      static {
+        __name(this, "HistoricalStore");
+      }
+      sessionsDir;
+      maxSessions;
+      constructor(goodvibesDir, maxSessions) {
+        this.sessionsDir = path6.join(goodvibesDir, "analytics", "sessions");
+        this.maxSessions = maxSessions ?? DEFAULT_MAX_SESSIONS;
+      }
+      /** Ensure the sessions directory exists, creating it if necessary. */
+      ensureDir() {
+        if (!(0, import_node_fs13.existsSync)(this.sessionsDir)) {
+          (0, import_node_fs13.mkdirSync)(this.sessionsDir, { recursive: true });
+        }
+      }
+      /**
+       * Persist a session archive to disk using an atomic write (write to a temp
+       * file in the same directory, then rename) to avoid partial writes.
+       * Prunes old sessions after saving.
+       */
+      save(archive) {
+        this.ensureDir();
+        const filePath = path6.join(this.sessionsDir, `${archive.session_id}.json`);
+        const content = JSON.stringify(archive, null, 2);
+        const tmpPath = path6.join(this.sessionsDir, `.tmp-${archive.session_id}-${Date.now()}.json`);
+        (0, import_node_fs13.writeFileSync)(tmpPath, content, "utf-8");
+        (0, import_node_fs13.renameSync)(tmpPath, filePath);
+        this.prune();
+      }
+      /**
+       * Load a session archive by session ID.
+       * Returns null if the file does not exist or cannot be parsed.
+       */
+      load(sessionId) {
+        const filePath = path6.join(this.sessionsDir, `${sessionId}.json`);
+        return this._readFile(filePath);
+      }
+      /**
+       * List all stored session archives, sorted newest first.
+       */
+      list() {
+        if (!(0, import_node_fs13.existsSync)(this.sessionsDir)) {
+          return [];
+        }
+        let files;
+        try {
+          files = (0, import_node_fs13.readdirSync)(this.sessionsDir).filter((f) => f.endsWith(".json") && !f.startsWith(".tmp-"));
+        } catch {
+          return [];
+        }
+        const archives = [];
+        for (const file2 of files) {
+          const archive = this._readFile(path6.join(this.sessionsDir, file2));
+          if (archive !== null) {
+            archives.push(archive);
+          }
+        }
+        archives.sort(
+          (a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime()
+        );
+        return archives;
+      }
+      /**
+       * Return up to n most recent session archives.
+       */
+      getRecent(n) {
+        return this.list().slice(0, n);
+      }
+      /**
+       * Remove oldest sessions beyond maxSessions.
+       * Returns the number of sessions pruned.
+       * Call this explicitly when needed (e.g. on session-start startup).
+       */
+      prune() {
+        if (!(0, import_node_fs13.existsSync)(this.sessionsDir)) {
+          return 0;
+        }
+        const archives = this.list();
+        if (archives.length <= this.maxSessions) {
+          return 0;
+        }
+        const toRemove = archives.slice(this.maxSessions);
+        let pruned = 0;
+        for (const archive of toRemove) {
+          const filePath = path6.join(this.sessionsDir, `${archive.session_id}.json`);
+          try {
+            (0, import_node_fs13.unlinkSync)(filePath);
+            pruned++;
+          } catch {
+          }
+        }
+        return pruned;
+      }
+      /**
+       * Compute the average metrics across a set of sessions.
+       * Uses all stored sessions when sessions is not provided.
+       */
+      computeAverages(sessions) {
+        const src = sessions ?? this.list();
+        if (src.length === 0) {
+          return _emptyMetrics();
+        }
+        const avg = _emptyMetrics();
+        const n = src.length;
+        for (const s of src) {
+          const m = s.metrics;
+          avg.tokens.input += m.tokens.input;
+          avg.tokens.output += m.tokens.output;
+          avg.tokens.total += m.tokens.total;
+          avg.tokens.saved += m.tokens.saved;
+          avg.tokens.efficiency += m.tokens.efficiency;
+          avg.tokens.api_input += m.tokens.api_input;
+          avg.tokens.api_output += m.tokens.api_output;
+          avg.tokens.cache_read += m.tokens.cache_read;
+          avg.tokens.cache_write += m.tokens.cache_write;
+          avg.cache.hit_rate += m.cache.hit_rate;
+          avg.cache.hits += m.cache.hits;
+          avg.cache.misses += m.cache.misses;
+          avg.cache.memory_peak_mb += m.cache.memory_peak_mb;
+          avg.cache.evictions += m.cache.evictions;
+          avg.cost.input += m.cost.input;
+          avg.cost.output += m.cost.output;
+          avg.cost.total += m.cost.total;
+          avg.cost.saved += m.cost.saved;
+          avg.tools.total += m.tools.total;
+          avg.tools.success_rate += m.tools.success_rate;
+          avg.tools.avg_duration_ms += m.tools.avg_duration_ms;
+          avg.tools.total_duration_ms += m.tools.total_duration_ms;
+          avg.tools.failures += m.tools.failures;
+          avg.agents.spawned += m.agents.spawned;
+          avg.agents.max_concurrent += m.agents.max_concurrent;
+          avg.agents.total_tokens += m.agents.total_tokens;
+          avg.agents.active += m.agents.active;
+          avg.agents.completed += m.agents.completed;
+          avg.files.unique_read += m.files.unique_read;
+          avg.files.modified += m.files.modified;
+          avg.files.created += m.files.created;
+          avg.files.conflicts += m.files.conflicts;
+        }
+        avg.tokens.input /= n;
+        avg.tokens.output /= n;
+        avg.tokens.total /= n;
+        avg.tokens.saved /= n;
+        avg.tokens.efficiency /= n;
+        avg.tokens.api_input /= n;
+        avg.tokens.api_output /= n;
+        avg.tokens.cache_read /= n;
+        avg.tokens.cache_write /= n;
+        avg.cache.hit_rate /= n;
+        avg.cache.hits /= n;
+        avg.cache.misses /= n;
+        avg.cache.memory_peak_mb /= n;
+        avg.cache.evictions /= n;
+        avg.cost.input /= n;
+        avg.cost.output /= n;
+        avg.cost.total /= n;
+        avg.cost.saved /= n;
+        avg.tools.total /= n;
+        avg.tools.success_rate /= n;
+        avg.tools.avg_duration_ms /= n;
+        avg.tools.total_duration_ms /= n;
+        avg.tools.failures /= n;
+        avg.agents.spawned /= n;
+        avg.agents.max_concurrent /= n;
+        avg.agents.total_tokens /= n;
+        avg.agents.active /= n;
+        avg.agents.completed /= n;
+        avg.files.unique_read /= n;
+        avg.files.modified /= n;
+        avg.files.created /= n;
+        avg.files.conflicts /= n;
+        return avg;
+      }
+      /**
+       * Compare current session metrics against historical averages.
+       * Returns deltas, direction indicators, and the sessions used for averaging.
+       */
+      compare(current, sessions) {
+        const src = sessions ?? this.list();
+        const average2 = this.computeAverages(src);
+        const deltas = {};
+        const flatCurrent = _flattenMetrics(current);
+        const flatAverage = _flattenMetrics(average2);
+        for (const key of Object.keys(flatCurrent)) {
+          const cur = flatCurrent[key];
+          const avg = flatAverage[key];
+          if (avg === 0) {
+            deltas[key] = { value: cur - avg, percentage: 0, direction: "stable" };
+            continue;
+          }
+          const pct = (cur - avg) / Math.abs(avg);
+          const direction = Math.abs(pct) < 0.01 ? "stable" : pct > 0 ? "up" : "down";
+          deltas[key] = {
+            value: cur - avg,
+            percentage: pct * 100,
+            direction
+          };
+        }
+        return { current, average: average2, deltas, sessions: src };
+      }
+      /** Returns true when no sessions are stored. */
+      isEmpty() {
+        return this.list().length === 0;
+      }
+      /**
+       * Add or update the tag on a stored session.
+       * Writes directly to avoid triggering prune via save().
+       * Returns false when the session does not exist.
+       */
+      tagSession(sessionId, tag) {
+        const archive = this.load(sessionId);
+        if (!archive) return false;
+        archive.tag = tag;
+        archive.tags = archive.tags ? [.../* @__PURE__ */ new Set([...archive.tags, tag])] : [tag];
+        this._writeArchive(sessionId, archive);
+        return true;
+      }
+      /**
+       * Rename a stored session.
+       * Writes directly to avoid triggering prune via save().
+       * Returns false when the session does not exist.
+       */
+      renameSession(sessionId, name) {
+        const archive = this.load(sessionId);
+        if (!archive) return false;
+        archive.name = name;
+        this._writeArchive(sessionId, archive);
+        return true;
+      }
+      // --- Private helpers ---
+      /**
+       * Write an archive directly to disk without pruning.
+       * Used by tagSession/renameSession to avoid unintended side effects.
+       */
+      _writeArchive(sessionId, archive) {
+        this.ensureDir();
+        const filePath = path6.join(this.sessionsDir, `${sessionId}.json`);
+        const tmpPath = path6.join(this.sessionsDir, `.tmp-${sessionId}-${Date.now()}.json`);
+        (0, import_node_fs13.writeFileSync)(tmpPath, JSON.stringify(archive, null, 2), "utf-8");
+        (0, import_node_fs13.renameSync)(tmpPath, filePath);
+      }
+      _readFile(filePath) {
+        try {
+          const raw = (0, import_node_fs13.readFileSync)(filePath, "utf-8");
+          const parsed = JSON.parse(raw);
+          if (!parsed || typeof parsed.session_id !== "string" || typeof parsed.started_at !== "string") {
+            return null;
+          }
+          return parsed;
+        } catch {
+          return null;
+        }
+      }
+    };
+    __name(_emptyMetrics, "_emptyMetrics");
+    __name(_flattenMetrics, "_flattenMetrics");
+  }
+});
+
+// packages/analytics/src/engine/handlers/export.ts
+function extractSections(state, sections) {
+  const result = {};
+  if (sections.includes("tokens")) {
+    result["tokens"] = state.metrics.tokens;
+  }
+  if (sections.includes("cache")) {
+    result["cache"] = state.metrics.cache;
+  }
+  if (sections.includes("commands")) {
+    result["commands"] = state.metrics.tools;
+  }
+  if (sections.includes("agents")) {
+    result["agents"] = state.metrics.agents;
+  }
+  if (sections.includes("files")) {
+    result["files"] = state.metrics.files;
+  }
+  if (sections.includes("cost")) {
+    result["cost"] = state.metrics.cost;
+  }
+  if (sections.includes("timeline")) {
+    result["timeline"] = {
+      session_id: state.session_id,
+      started_at: state.started_at,
+      uptime_ms: state.uptime_ms,
+      recent_activity: state.recent_activity
+    };
+  }
+  return result;
+}
+function extractArchiveSections(archive, sections) {
+  const result = {};
+  const m = archive.metrics;
+  if (sections.includes("tokens")) result["tokens"] = m.tokens;
+  if (sections.includes("cache")) result["cache"] = m.cache;
+  if (sections.includes("commands")) result["commands"] = m.tools;
+  if (sections.includes("agents")) result["agents"] = m.agents;
+  if (sections.includes("files")) result["files"] = m.files;
+  if (sections.includes("cost")) result["cost"] = m.cost;
+  if (sections.includes("timeline")) {
+    result["timeline"] = {
+      session_id: archive.session_id,
+      tags: archive.tags,
+      tag: archive.tags?.[0] ?? null,
+      name: archive.name,
+      started_at: archive.started_at,
+      ended_at: archive.ended_at,
+      duration_minutes: archive.duration_minutes
+    };
+  }
+  return result;
+}
+function renderJson(data) {
+  return JSON.stringify(data, null, 2);
+}
+function renderCsv(data) {
+  const rows = ["section,value"];
+  function flattenInto(prefix, obj) {
+    if (obj === null || obj === void 0) {
+      rows.push(`${prefix},`);
+      return;
+    }
+    if (typeof obj !== "object" || Array.isArray(obj)) {
+      const cell = JSON.stringify(obj).replace(/"/g, '""');
+      rows.push(`${prefix},"${cell}"`);
+      return;
+    }
+    for (const [k, v] of Object.entries(obj)) {
+      flattenInto(prefix ? `${prefix}.${k}` : k, v);
+    }
+  }
+  __name(flattenInto, "flattenInto");
+  if (typeof data === "object" && !Array.isArray(data)) {
+    for (const [section, value] of Object.entries(data)) {
+      flattenInto(section, value);
+    }
+  } else {
+    flattenInto("data", data);
+  }
+  return rows.join("\n");
+}
+function renderMarkdown(data, title) {
+  const lines = [`# ${title}`, ""];
+  function renderSection(sectionName, obj) {
+    lines.push(`## ${sectionName}`, "");
+    if (typeof obj !== "object" || obj === null || Array.isArray(obj)) {
+      lines.push(`| key | value |`, `| --- | --- |`, `| ${sectionName} | ${JSON.stringify(obj)} |`, "");
+      return;
+    }
+    lines.push("| metric | value |", "| --- | --- |");
+    for (const [k, v] of Object.entries(obj)) {
+      const cell = typeof v === "object" ? JSON.stringify(v) : String(v ?? "");
+      lines.push(`| ${k} | ${cell} |`);
+    }
+    lines.push("");
+  }
+  __name(renderSection, "renderSection");
+  for (const [section, value] of Object.entries(data)) {
+    renderSection(section, value);
+  }
+  return lines.join("\n");
+}
+async function handleExport(aggregator, input, goodvibesDir) {
+  const store = new HistoricalStore(goodvibesDir);
+  try {
+    const rawSections = input.sections;
+    const sections = Array.isArray(rawSections) && rawSections.length > 0 ? rawSections.filter((s) => ALL_SECTIONS.includes(s)) : ALL_SECTIONS;
+    let data;
+    let title;
+    if (input.scope === "current") {
+      const state = aggregator.getState();
+      data = extractSections(state, sections);
+      title = `Session Export \u2014 ${state.session_id}`;
+    } else if (input.scope === "historical" || input.scope === "all_projects") {
+      const allArchives = store.list();
+      const tags = input.tags ?? [];
+      const archives = tags.length > 0 ? allArchives.filter(
+        (a) => tags.some((t) => Array.isArray(a.tags) && a.tags.includes(t))
+      ) : allArchives;
+      if (archives.length === 0) {
+        const tagNote = tags.length > 0 ? ` matching tags [${tags.join(", ")}]` : "";
+        return text(`No historical sessions found${tagNote}.`);
+      }
+      const entries = {};
+      for (const archive of archives) {
+        entries[archive.session_id] = extractArchiveSections(archive, sections);
+      }
+      data = entries;
+      title = `Historical Export \u2014 ${archives.length} sessions`;
+    } else {
+      const sessionId = input.scope.replace(/^session:/, "");
+      const archive = store.load(sessionId);
+      if (!archive) {
+        return text(`Session not found: ${sessionId}`);
+      }
+      data = extractArchiveSections(archive, sections);
+      title = `Session Export \u2014 ${archive.tags?.[0] ?? archive.name ?? sessionId}`;
+    }
+    let rendered;
+    switch (input.format) {
+      case "json":
+        rendered = renderJson(data);
+        break;
+      case "csv":
+        rendered = renderCsv(data);
+        break;
+      case "markdown":
+        rendered = renderMarkdown(data, title);
+        break;
+      default: {
+        const _exhaustive = input.format;
+        rendered = renderJson(data);
+        void _exhaustive;
+      }
+    }
+    if (input.output_path) {
+      const absPath = path7.resolve(input.output_path);
+      await fs3.promises.mkdir(path7.dirname(absPath), { recursive: true });
+      await fs3.promises.writeFile(absPath, rendered, "utf-8");
+      return text(
+        `Export written to: ${absPath}
+
+Format: ${input.format}  Scope: ${input.scope}  Sections: ${sections.join(", ")}`
+      );
+    }
+    return text(rendered);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return text(`analytics_export error: ${message}`);
+  }
+}
+var fs3, path7, ALL_SECTIONS;
+var init_export = __esm({
+  "packages/analytics/src/engine/handlers/export.ts"() {
+    "use strict";
+    fs3 = __toESM(require("node:fs"), 1);
+    path7 = __toESM(require("node:path"), 1);
+    init_historical_store();
+    init_types2();
+    ALL_SECTIONS = ["tokens", "cache", "commands", "agents", "files", "cost", "timeline"];
+    __name(extractSections, "extractSections");
+    __name(extractArchiveSections, "extractArchiveSections");
+    __name(renderJson, "renderJson");
+    __name(renderCsv, "renderCsv");
+    __name(renderMarkdown, "renderMarkdown");
+    __name(handleExport, "handleExport");
+  }
+});
+
+// packages/analytics/src/engine/handlers/config.ts
+function getByPath(obj, keyPath) {
+  const segments = keyPath.split(".");
+  let current = obj;
+  for (const segment of segments) {
+    if (current === null || typeof current !== "object" || Array.isArray(current)) {
+      return void 0;
+    }
+    current = current[segment];
+  }
+  return current;
+}
+function setByPath(obj, keyPath, value) {
+  const segments = keyPath.split(".");
+  let current = obj;
+  for (let i = 0; i < segments.length - 1; i++) {
+    const segment = segments[i];
+    if (current[segment] === null || current[segment] === void 0 || typeof current[segment] !== "object" || Array.isArray(current[segment])) {
+      current[segment] = {};
+    }
+    current = current[segment];
+  }
+  const lastSegment = segments[segments.length - 1];
+  current[lastSegment] = value;
+}
+async function persistConfig(goodvibesDir, config2) {
+  const configPath = path8.join(goodvibesDir, CONFIG_FILENAME);
+  await fs4.promises.mkdir(goodvibesDir, { recursive: true });
+  await fs4.promises.writeFile(configPath, JSON.stringify(config2, null, 2), "utf-8");
+}
+async function handleConfig(aggregator, input, goodvibesDir) {
+  try {
+    const config2 = aggregator.getConfig();
+    const configObj = config2;
+    if (input.action === "reload") {
+      try {
+        const newConfig = loadConfig2(goodvibesDir);
+        aggregator.reloadConfig(newConfig);
+        return text(
+          `Config hot-reloaded from disk and applied to the running aggregator.
+
+Loaded from: ${goodvibesDir}/analytics.json (or global config if present).`
+        );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return text(`Config reload failed: ${message}`);
+      }
+    }
+    if (input.action === "get") {
+      if (input.key) {
+        const resolvedKey2 = resolveKeyAlias(input.key);
+        const value = getByPath(configObj, resolvedKey2);
+        if (value === void 0) {
+          return text(
+            `Config key not found: "${input.key}"${resolvedKey2 !== input.key ? ` (resolved alias: "${resolvedKey2}")` : ""}.`
+          );
+        }
+        return text(`${resolvedKey2} = ${JSON.stringify(value, null, 2)}`);
+      }
+      return text(JSON.stringify(config2, null, 2));
+    }
+    if (!input.key) {
+      return text('analytics_config set: "key" is required.');
+    }
+    if (input.value === void 0) {
+      return text('analytics_config set: "value" is required.');
+    }
+    const resolvedKey = resolveKeyAlias(input.key);
+    const existing = getByPath(configObj, resolvedKey);
+    if (existing === void 0) {
+      return text(
+        `Config key not found: "${input.key}"${resolvedKey !== input.key ? ` (alias for "${resolvedKey}")` : ""}. Use "get" (no key) to list all valid keys.`
+      );
+    }
+    const updated = JSON.parse(JSON.stringify(config2));
+    setByPath(updated, resolvedKey, input.value);
+    await persistConfig(goodvibesDir, updated);
+    return text(
+      `Config updated: ${resolvedKey} = ${JSON.stringify(input.value)}
+
+Persisted to ${path8.join(goodvibesDir, CONFIG_FILENAME)}.
+Use action="reload" to apply changes to the running engine without restarting.`
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return text(`analytics_config error: ${message}`);
+  }
+}
+function resolveKeyAlias(key) {
+  return KEY_ALIASES[key] ?? key;
+}
+var fs4, path8, CONFIG_FILENAME, KEY_ALIASES;
+var init_config3 = __esm({
+  "packages/analytics/src/engine/handlers/config.ts"() {
+    "use strict";
+    fs4 = __toESM(require("node:fs"), 1);
+    path8 = __toESM(require("node:path"), 1);
+    init_types2();
+    init_config2();
+    CONFIG_FILENAME = "analytics.json";
+    __name(getByPath, "getByPath");
+    __name(setByPath, "setByPath");
+    __name(persistConfig, "persistConfig");
+    __name(handleConfig, "handleConfig");
+    KEY_ALIASES = {
+      // 'full' -> 'dashboard' renames
+      "auto_start_full": "auto_start_dashboard",
+      "full_tui_refresh_rate_ms": "dashboard_refresh_rate_ms",
+      "tmux.full_pane_size": "tmux.dashboard_pane_size",
+      "tmux.full_position": "tmux.dashboard_position"
+    };
+    __name(resolveKeyAlias, "resolveKeyAlias");
+  }
+});
+
+// packages/analytics/src/engine/data/jsonl-scanner.ts
+var fs5, path9, import_node_os6, JSONLScanner;
+var init_jsonl_scanner = __esm({
+  "packages/analytics/src/engine/data/jsonl-scanner.ts"() {
+    "use strict";
+    fs5 = __toESM(require("node:fs"), 1);
+    path9 = __toESM(require("node:path"), 1);
+    import_node_os6 = require("node:os");
+    init_jsonl_reader();
+    JSONLScanner = class {
+      static {
+        __name(this, "JSONLScanner");
+      }
+      projectsBaseDir;
+      /**
+       * @param projectsBaseDir - Base directory for Claude projects.
+       *   Defaults to the resolved value from `resolveProjectsBaseDir()`
+       *   (~/.claude/projects on most systems).
+       */
+      constructor(projectsBaseDir) {
+        this.projectsBaseDir = projectsBaseDir ?? resolveProjectsBaseDir();
+      }
+      // ───────────────────────────────────────────────────────────────────────────
+      // Public API
+      // ───────────────────────────────────────────────────────────────────────────
+      /**
+       * Scan a single project directory for JSONL files.
+       *
+       * @param projectDir - Absolute path to a project directory
+       *   (e.g. `~/.claude/projects/<hash>`).
+       * @returns ScanResult with files found in that directory.
+       */
+      scanProjectDir(projectDir) {
+        const expanded = this.expandTilde(projectDir);
+        const projectHash = path9.basename(expanded);
+        const files = [];
+        let projectErrors = 0;
+        try {
+          const entries = fs5.readdirSync(expanded, { withFileTypes: true });
+          for (const entry of entries) {
+            if (!entry.isFile() || !entry.name.endsWith(".jsonl")) continue;
+            const filePath = path9.join(expanded, entry.name);
+            const info = this.buildFileInfo(projectHash, entry.name, filePath);
+            if (info) files.push(info);
+          }
+        } catch {
+          projectErrors = 1;
+        }
+        return { files, projectsScanned: projectErrors === 0 ? 1 : 0, projectErrors };
+      }
+      /**
+       * Scan ALL project directories under the configured base directory.
+       *
+       * Iterates over all subdirectories of `~/.claude/projects/` and scans
+       * each for JSONL files.
+       *
+       * @returns ScanResult aggregating all files found.
+       */
+      scanAllProjects() {
+        const expanded = this.expandTilde(this.projectsBaseDir);
+        const allFiles = [];
+        let projectsScanned = 0;
+        let projectErrors = 0;
+        let projectDirs;
+        try {
+          const entries = fs5.readdirSync(expanded, { withFileTypes: true });
+          projectDirs = entries.filter((e) => e.isDirectory()).map((e) => path9.join(expanded, e.name));
+        } catch {
+          return { files: [], projectsScanned: 0, projectErrors: 1 };
+        }
+        for (const projectDir of projectDirs) {
+          const result = this.scanProjectDir(projectDir);
+          allFiles.push(...result.files);
+          projectsScanned += result.projectsScanned;
+          projectErrors += result.projectErrors;
+        }
+        return { files: allFiles, projectsScanned, projectErrors };
+      }
+      /**
+       * Find the project directory containing JSONL files for a given session ID.
+       *
+       * Searches all project directories for a file whose name matches
+       * `<sessionId>.jsonl` or starts with `<sessionId>`.
+       *
+       * @param sessionId - The session identifier to locate.
+       * @returns Absolute path to the project directory, or null if not found.
+       */
+      findProjectDirForSession(sessionId) {
+        const expanded = this.expandTilde(this.projectsBaseDir);
+        let projectDirs;
+        try {
+          const entries = fs5.readdirSync(expanded, { withFileTypes: true });
+          projectDirs = entries.filter((e) => e.isDirectory()).map((e) => path9.join(expanded, e.name));
+        } catch {
+          return null;
+        }
+        for (const dir of projectDirs) {
+          try {
+            const files = fs5.readdirSync(dir);
+            const match = files.some(
+              (f) => f === `${sessionId}.jsonl` || f.startsWith(sessionId)
+            );
+            if (match) return dir;
+          } catch {
+          }
+        }
+        return null;
+      }
+      // ───────────────────────────────────────────────────────────────────────────
+      // Private helpers
+      // ───────────────────────────────────────────────────────────────────────────
+      /**
+       * Construct a JsonlFileInfo for a given file within a project directory.
+       *
+       * Returns null if the file cannot be stat'd (e.g. a dangling symlink).
+       */
+      buildFileInfo(projectHash, filename, filePath) {
+        let sizeBytes;
+        try {
+          sizeBytes = fs5.statSync(filePath).size;
+        } catch {
+          return null;
+        }
+        const sessionId = filename.replace(/\.jsonl$/, "");
+        const { isSubagent, parentSessionId } = this.parseSessionIdMeta(sessionId);
+        return { projectHash, sessionId, filePath, sizeBytes, isSubagent, parentSessionId };
+      }
+      /**
+       * Determine whether a session ID belongs to a subagent and extract the
+       * parent session ID if possible.
+       *
+       * Claude subagent JSONL files can follow naming patterns such as:
+       *   - `<parent-uuid>.<suffix>` (dot-separated parent reference)
+       *   - Standard UUID sessions are NOT subagents
+       *
+       * Without a definitive naming spec, we apply a conservative heuristic:
+       * a session ID containing a dot separator after a UUID-length prefix is
+       * treated as a potential subagent file.
+       *
+       * @param sessionId - The session ID (filename without extension).
+       * @returns isSubagent flag and optional parentSessionId.
+       */
+      parseSessionIdMeta(sessionId) {
+        const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (UUID_RE.test(sessionId)) {
+          return { isSubagent: false, parentSessionId: null };
+        }
+        const dotIdx = sessionId.indexOf(".");
+        if (dotIdx > 0) {
+          const prefix = sessionId.slice(0, dotIdx);
+          if (UUID_RE.test(prefix)) {
+            return { isSubagent: true, parentSessionId: prefix };
+          }
+        }
+        return { isSubagent: false, parentSessionId: null };
+      }
+      /**
+       * Expand a leading tilde in a path to the home directory.
+       */
+      expandTilde(inputPath) {
+        if (inputPath.startsWith("~/") || inputPath === "~") {
+          return path9.join((0, import_node_os6.homedir)(), inputPath.slice(2));
+        }
+        return inputPath;
+      }
+    };
+  }
+});
+
+// packages/analytics/src/engine/data/sync-engine.ts
+var path10, TWO_HOURS_MS, SyncEngine;
+var init_sync_engine = __esm({
+  "packages/analytics/src/engine/data/sync-engine.ts"() {
+    "use strict";
+    path10 = __toESM(require("node:path"), 1);
+    init_jsonl_reader();
+    init_jsonl_scanner();
+    TWO_HOURS_MS = 2 * 60 * 60 * 1e3;
+    SyncEngine = class {
+      static {
+        __name(this, "SyncEngine");
+      }
+      db;
+      reader;
+      scanner;
+      /**
+       * @param db     - Initialized GlobalDB instance for data persistence.
+       * @param config - Pricing config for API call cost calculation.
+       * @param scanner - Optional custom JSONLScanner (defaults to standard scanner).
+       */
+      constructor(db, config2, scanner) {
+        this.db = db;
+        this.reader = new JSONLReader({
+          cost_per_1k_input_tokens: config2.costPer1kInputTokens,
+          cost_per_1k_output_tokens: config2.costPer1kOutputTokens
+        });
+        this.scanner = scanner ?? new JSONLScanner();
+      }
+      // ───────────────────────────────────────────────────────────────────────────
+      // Public API
+      // ───────────────────────────────────────────────────────────────────────────
+      /**
+       * Sync JSONL files for a specific project directory.
+       *
+       * Scans the given directory for `.jsonl` files and incrementally
+       * processes any new content since the last sync.
+       *
+       * @param projectDir - Absolute path to a single project directory
+       *   (e.g. `~/.claude/projects/<hash>`).
+       * @returns Progress summary for the sync operation.
+       */
+      async syncCurrentProject(projectDir) {
+        const scanResult = this.scanner.scanProjectDir(projectDir);
+        return this.processFiles(scanResult.files, scanResult.projectsScanned);
+      }
+      /**
+       * Sync JSONL files across ALL Claude project directories.
+       *
+       * Iterates over all subdirectories of `~/.claude/projects/` and
+       * incrementally processes any new JSONL content.
+       *
+       * @returns Progress summary aggregated across all projects.
+       */
+      async syncAllProjects() {
+        const scanResult = this.scanner.scanAllProjects();
+        return this.processFiles(scanResult.files, scanResult.projectsScanned);
+      }
+      // ───────────────────────────────────────────────────────────────────────────
+      // Private implementation
+      // ───────────────────────────────────────────────────────────────────────────
+      /**
+       * Process a list of JSONL files and return aggregated progress.
+       */
+      async processFiles(files, projectsScanned) {
+        const progress = {
+          sessionsProcessed: 0,
+          recordsProcessed: 0,
+          bytesProcessed: 0,
+          filesSkipped: 0,
+          errors: [],
+          projectsScanned
+        };
+        for (const fileInfo of files) {
+          const result = await this.syncSingleFile(
+            fileInfo.filePath,
+            fileInfo.projectHash,
+            fileInfo.isSubagent,
+            fileInfo.parentSessionId
+          );
+          switch (result.status) {
+            case "synced":
+              progress.sessionsProcessed++;
+              progress.recordsProcessed += result.newRecords;
+              progress.bytesProcessed += result.bytesProcessed;
+              break;
+            case "skipped":
+              progress.filesSkipped++;
+              break;
+            case "error":
+              progress.errors.push({
+                filePath: result.filePath,
+                sessionId: result.sessionId,
+                message: result.errorMessage ?? "unknown error"
+              });
+              break;
+          }
+        }
+        this.db.saveToDisk();
+        return progress;
+      }
+      /**
+       * Incrementally sync a single JSONL file into GlobalDB.
+       *
+       * Algorithm:
+       * 1. Look up prior sync state (last processed byte offset).
+       * 2. Parse new records from the offset forward.
+       * 3. If no new records and already processed, return 'skipped'.
+       * 4. Extract API calls and session metadata from new records.
+       * 5. Upsert the session record (accumulates totals).
+       * 6. Batch-insert new API call records in a transaction.
+       * 7. For subagent sessions, link to parent if known.
+       * 8. Update sync_state with the new byte offset.
+       */
+      async syncSingleFile(filePath, projectHash, isSubagent, parentSessionId) {
+        const sessionId = sessionIdFromPath(filePath);
+        try {
+          const syncState = this.db.getSyncState(filePath);
+          const fromOffset = syncState?.last_offset ?? 0;
+          const parseResult = await this.reader.parseFile(filePath, fromOffset);
+          const newRecordCount = parseResult.records.length;
+          if (newRecordCount === 0) {
+            return { filePath, sessionId, status: "skipped", newRecords: 0, bytesProcessed: 0 };
+          }
+          const bytesProcessed = parseResult.newOffset - fromOffset;
+          const apiCalls = this.reader.extractApiCalls(parseResult.records);
+          const sessionInfo = this.reader.extractSessionInfo(parseResult.records);
+          let totalInputTokens = 0;
+          let totalOutputTokens = 0;
+          let totalCacheReadTokens = 0;
+          let totalCacheWriteTokens = 0;
+          let totalCostUsd = 0;
+          for (const call of apiCalls) {
+            totalInputTokens += call.input_tokens;
+            totalOutputTokens += call.output_tokens;
+            totalCacheReadTokens += call.cache_read_tokens;
+            totalCacheWriteTokens += call.cache_write_tokens;
+            totalCostUsd += call.cost_usd;
+          }
+          const lastActivityAt = sessionInfo.lastActivityAt;
+          const ageMs = Date.now() - new Date(lastActivityAt).getTime();
+          const isCompleted = ageMs > TWO_HOURS_MS;
+          const session = {
+            session_id: sessionId,
+            project_hash: projectHash,
+            started_at: sessionInfo.startedAt,
+            model: sessionInfo.model,
+            total_input_tokens: totalInputTokens,
+            total_output_tokens: totalOutputTokens,
+            total_cache_read_tokens: totalCacheReadTokens,
+            total_cache_write_tokens: totalCacheWriteTokens,
+            total_cost_usd: totalCostUsd,
+            total_api_calls: apiCalls.length,
+            // Tool call counts not extractable from JSONL alone; zeroed for initial sync
+            total_tool_calls: 0,
+            total_native_tool_calls: 0,
+            total_precision_tool_calls: 0,
+            total_agent_spawns: 0,
+            tags: [],
+            status: isCompleted ? "completed" : "active",
+            ...isCompleted ? { ended_at: lastActivityAt } : {}
+          };
+          this.db.upsertSession(session);
+          if (apiCalls.length > 0) {
+            this.db.batchInsertApiCalls(apiCalls);
+          }
+          if (isSubagent && parentSessionId) {
+            const agentId = path10.basename(filePath, ".jsonl");
+            this.db.upsertAgent({
+              session_id: parentSessionId,
+              agent_id: agentId,
+              agent_type: "subagent",
+              parent_session_id: parentSessionId,
+              model: sessionInfo.model,
+              spawned_at: sessionInfo.startedAt,
+              completed_at: isCompleted ? lastActivityAt : void 0,
+              total_tokens: totalInputTokens + totalOutputTokens,
+              duration_ms: 0
+            });
+          }
+          this.db.upsertSyncState({
+            jsonl_path: filePath,
+            session_id: sessionId,
+            last_offset: parseResult.newOffset,
+            last_synced_at: (/* @__PURE__ */ new Date()).toISOString()
+          });
+          return { filePath, sessionId, status: "synced", newRecords: newRecordCount, bytesProcessed };
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          return { filePath, sessionId, status: "error", newRecords: 0, bytesProcessed: 0, errorMessage };
+        }
+      }
+    };
+  }
+});
+
+// packages/analytics/src/engine/handlers/sync.ts
+function buildSyncReport(scope, progress) {
+  const lines = [
+    "=== Analytics Sync Complete ===",
+    `Scope:              ${scope === "all" ? "all projects" : "current project"}`,
+    `Projects scanned:   ${progress.projectsScanned}`,
+    `Sessions processed: ${progress.sessionsProcessed}`,
+    `Records processed:  ${progress.recordsProcessed}`,
+    `Files skipped:      ${progress.filesSkipped} (already up to date)`,
+    `Error count:        ${progress.errors.length}`
+  ];
+  if (progress.errors.length > 0) {
+    lines.push("");
+    lines.push("Errors:");
+    for (const err of progress.errors) {
+      lines.push(`  ${err.sessionId}: ${err.message}`);
+    }
+  }
+  return lines.join("\n");
+}
+var handleSync;
+var init_sync = __esm({
+  "packages/analytics/src/engine/handlers/sync.ts"() {
+    "use strict";
+    init_db_init();
+    init_sync_engine();
+    init_jsonl_scanner();
+    init_types2();
+    handleSync = /* @__PURE__ */ __name(async (aggregator, input, _goodvibesDir) => {
+      try {
+        const db = await initializeGlobalDb();
+        const config2 = aggregator.getConfig();
+        const engine = new SyncEngine(db, {
+          costPer1kInputTokens: config2.cost_per_1k_input_tokens,
+          costPer1kOutputTokens: config2.cost_per_1k_output_tokens
+        });
+        let progress;
+        if (input.scope === "current") {
+          const state = aggregator.getState();
+          const currentSessionId = state.session_id;
+          if (!currentSessionId) {
+            return text(
+              "No active session detected. Cannot determine current project directory."
+            );
+          }
+          const scanner = new JSONLScanner();
+          const projectDir = scanner.findProjectDirForSession(currentSessionId);
+          if (!projectDir) {
+            return text(
+              `No JSONL directory found for session ${currentSessionId}.
+Use scope="all" to scan all projects.`
+            );
+          }
+          progress = await engine.syncCurrentProject(projectDir);
+        } else {
+          progress = await engine.syncAllProjects();
+        }
+        return text(buildSyncReport(input.scope, progress));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return text(`analytics_sync error: ${message}`);
+      }
+    }, "handleSync");
+    __name(buildSyncReport, "buildSyncReport");
+  }
+});
+
+// packages/analytics/src/engine/handlers/index.ts
+var handlers_exports = {};
+__export(handlers_exports, {
+  HANDLER_REGISTRY: () => HANDLER_REGISTRY,
+  handleBudget: () => handleBudget,
+  handleConfig: () => handleConfig,
+  handleDashboard: () => handleDashboard,
+  handleExport: () => handleExport,
+  handleQuery: () => handleQuery,
+  handleSync: () => handleSync,
+  handleTag: () => handleTag
+});
+var HANDLER_REGISTRY;
+var init_handlers = __esm({
+  "packages/analytics/src/engine/handlers/index.ts"() {
+    "use strict";
+    init_dashboard();
+    init_query();
+    init_budget();
+    init_tag();
+    init_export();
+    init_config3();
+    init_sync();
+    HANDLER_REGISTRY = {
+      analytics_dashboard: handleDashboard,
+      analytics_query: handleQuery,
+      analytics_budget: handleBudget,
+      analytics_tag: handleTag,
+      analytics_export: handleExport,
+      analytics_config: handleConfig,
+      analytics_sync: handleSync
+    };
+  }
+});
+
 // packages/analytics/src/index.ts
 var index_exports = {};
 __export(index_exports, {
   SERVER_NAME: () => SERVER_NAME,
   SERVER_VERSION: () => SERVER_VERSION,
+  TOOL_MODULES: () => TOOL_MODULES,
   createServer: () => createServer,
   main: () => main
 });
 module.exports = __toCommonJS(index_exports);
 
+// node_modules/zod/v4/core/index.js
+var core_exports2 = {};
+__export(core_exports2, {
+  $ZodAny: () => $ZodAny,
+  $ZodArray: () => $ZodArray,
+  $ZodAsyncError: () => $ZodAsyncError,
+  $ZodBase64: () => $ZodBase64,
+  $ZodBase64URL: () => $ZodBase64URL,
+  $ZodBigInt: () => $ZodBigInt,
+  $ZodBigIntFormat: () => $ZodBigIntFormat,
+  $ZodBoolean: () => $ZodBoolean,
+  $ZodCIDRv4: () => $ZodCIDRv4,
+  $ZodCIDRv6: () => $ZodCIDRv6,
+  $ZodCUID: () => $ZodCUID,
+  $ZodCUID2: () => $ZodCUID2,
+  $ZodCatch: () => $ZodCatch,
+  $ZodCheck: () => $ZodCheck,
+  $ZodCheckBigIntFormat: () => $ZodCheckBigIntFormat,
+  $ZodCheckEndsWith: () => $ZodCheckEndsWith,
+  $ZodCheckGreaterThan: () => $ZodCheckGreaterThan,
+  $ZodCheckIncludes: () => $ZodCheckIncludes,
+  $ZodCheckLengthEquals: () => $ZodCheckLengthEquals,
+  $ZodCheckLessThan: () => $ZodCheckLessThan,
+  $ZodCheckLowerCase: () => $ZodCheckLowerCase,
+  $ZodCheckMaxLength: () => $ZodCheckMaxLength,
+  $ZodCheckMaxSize: () => $ZodCheckMaxSize,
+  $ZodCheckMimeType: () => $ZodCheckMimeType,
+  $ZodCheckMinLength: () => $ZodCheckMinLength,
+  $ZodCheckMinSize: () => $ZodCheckMinSize,
+  $ZodCheckMultipleOf: () => $ZodCheckMultipleOf,
+  $ZodCheckNumberFormat: () => $ZodCheckNumberFormat,
+  $ZodCheckOverwrite: () => $ZodCheckOverwrite,
+  $ZodCheckProperty: () => $ZodCheckProperty,
+  $ZodCheckRegex: () => $ZodCheckRegex,
+  $ZodCheckSizeEquals: () => $ZodCheckSizeEquals,
+  $ZodCheckStartsWith: () => $ZodCheckStartsWith,
+  $ZodCheckStringFormat: () => $ZodCheckStringFormat,
+  $ZodCheckUpperCase: () => $ZodCheckUpperCase,
+  $ZodCodec: () => $ZodCodec,
+  $ZodCustom: () => $ZodCustom,
+  $ZodCustomStringFormat: () => $ZodCustomStringFormat,
+  $ZodDate: () => $ZodDate,
+  $ZodDefault: () => $ZodDefault,
+  $ZodDiscriminatedUnion: () => $ZodDiscriminatedUnion,
+  $ZodE164: () => $ZodE164,
+  $ZodEmail: () => $ZodEmail,
+  $ZodEmoji: () => $ZodEmoji,
+  $ZodEncodeError: () => $ZodEncodeError,
+  $ZodEnum: () => $ZodEnum,
+  $ZodError: () => $ZodError,
+  $ZodExactOptional: () => $ZodExactOptional,
+  $ZodFile: () => $ZodFile,
+  $ZodFunction: () => $ZodFunction,
+  $ZodGUID: () => $ZodGUID,
+  $ZodIPv4: () => $ZodIPv4,
+  $ZodIPv6: () => $ZodIPv6,
+  $ZodISODate: () => $ZodISODate,
+  $ZodISODateTime: () => $ZodISODateTime,
+  $ZodISODuration: () => $ZodISODuration,
+  $ZodISOTime: () => $ZodISOTime,
+  $ZodIntersection: () => $ZodIntersection,
+  $ZodJWT: () => $ZodJWT,
+  $ZodKSUID: () => $ZodKSUID,
+  $ZodLazy: () => $ZodLazy,
+  $ZodLiteral: () => $ZodLiteral,
+  $ZodMAC: () => $ZodMAC,
+  $ZodMap: () => $ZodMap,
+  $ZodNaN: () => $ZodNaN,
+  $ZodNanoID: () => $ZodNanoID,
+  $ZodNever: () => $ZodNever,
+  $ZodNonOptional: () => $ZodNonOptional,
+  $ZodNull: () => $ZodNull,
+  $ZodNullable: () => $ZodNullable,
+  $ZodNumber: () => $ZodNumber,
+  $ZodNumberFormat: () => $ZodNumberFormat,
+  $ZodObject: () => $ZodObject,
+  $ZodObjectJIT: () => $ZodObjectJIT,
+  $ZodOptional: () => $ZodOptional,
+  $ZodPipe: () => $ZodPipe,
+  $ZodPrefault: () => $ZodPrefault,
+  $ZodPreprocess: () => $ZodPreprocess,
+  $ZodPromise: () => $ZodPromise,
+  $ZodReadonly: () => $ZodReadonly,
+  $ZodRealError: () => $ZodRealError,
+  $ZodRecord: () => $ZodRecord,
+  $ZodRegistry: () => $ZodRegistry,
+  $ZodSet: () => $ZodSet,
+  $ZodString: () => $ZodString,
+  $ZodStringFormat: () => $ZodStringFormat,
+  $ZodSuccess: () => $ZodSuccess,
+  $ZodSymbol: () => $ZodSymbol,
+  $ZodTemplateLiteral: () => $ZodTemplateLiteral,
+  $ZodTransform: () => $ZodTransform,
+  $ZodTuple: () => $ZodTuple,
+  $ZodType: () => $ZodType,
+  $ZodULID: () => $ZodULID,
+  $ZodURL: () => $ZodURL,
+  $ZodUUID: () => $ZodUUID,
+  $ZodUndefined: () => $ZodUndefined,
+  $ZodUnion: () => $ZodUnion,
+  $ZodUnknown: () => $ZodUnknown,
+  $ZodVoid: () => $ZodVoid,
+  $ZodXID: () => $ZodXID,
+  $ZodXor: () => $ZodXor,
+  $brand: () => $brand,
+  $constructor: () => $constructor,
+  $input: () => $input,
+  $output: () => $output,
+  Doc: () => Doc,
+  JSONSchema: () => json_schema_exports,
+  JSONSchemaGenerator: () => JSONSchemaGenerator,
+  NEVER: () => NEVER,
+  TimePrecision: () => TimePrecision,
+  _any: () => _any,
+  _array: () => _array,
+  _base64: () => _base64,
+  _base64url: () => _base64url,
+  _bigint: () => _bigint,
+  _boolean: () => _boolean,
+  _catch: () => _catch,
+  _check: () => _check,
+  _cidrv4: () => _cidrv4,
+  _cidrv6: () => _cidrv6,
+  _coercedBigint: () => _coercedBigint,
+  _coercedBoolean: () => _coercedBoolean,
+  _coercedDate: () => _coercedDate,
+  _coercedNumber: () => _coercedNumber,
+  _coercedString: () => _coercedString,
+  _cuid: () => _cuid,
+  _cuid2: () => _cuid2,
+  _custom: () => _custom,
+  _date: () => _date,
+  _decode: () => _decode,
+  _decodeAsync: () => _decodeAsync,
+  _default: () => _default,
+  _discriminatedUnion: () => _discriminatedUnion,
+  _e164: () => _e164,
+  _email: () => _email,
+  _emoji: () => _emoji2,
+  _encode: () => _encode,
+  _encodeAsync: () => _encodeAsync,
+  _endsWith: () => _endsWith,
+  _enum: () => _enum,
+  _file: () => _file,
+  _float32: () => _float32,
+  _float64: () => _float64,
+  _gt: () => _gt,
+  _gte: () => _gte,
+  _guid: () => _guid,
+  _includes: () => _includes,
+  _int: () => _int,
+  _int32: () => _int32,
+  _int64: () => _int64,
+  _intersection: () => _intersection,
+  _ipv4: () => _ipv4,
+  _ipv6: () => _ipv6,
+  _isoDate: () => _isoDate,
+  _isoDateTime: () => _isoDateTime,
+  _isoDuration: () => _isoDuration,
+  _isoTime: () => _isoTime,
+  _jwt: () => _jwt,
+  _ksuid: () => _ksuid,
+  _lazy: () => _lazy,
+  _length: () => _length,
+  _literal: () => _literal,
+  _lowercase: () => _lowercase,
+  _lt: () => _lt,
+  _lte: () => _lte,
+  _mac: () => _mac,
+  _map: () => _map,
+  _max: () => _lte,
+  _maxLength: () => _maxLength,
+  _maxSize: () => _maxSize,
+  _mime: () => _mime,
+  _min: () => _gte,
+  _minLength: () => _minLength,
+  _minSize: () => _minSize,
+  _multipleOf: () => _multipleOf,
+  _nan: () => _nan,
+  _nanoid: () => _nanoid,
+  _nativeEnum: () => _nativeEnum,
+  _negative: () => _negative,
+  _never: () => _never,
+  _nonnegative: () => _nonnegative,
+  _nonoptional: () => _nonoptional,
+  _nonpositive: () => _nonpositive,
+  _normalize: () => _normalize,
+  _null: () => _null2,
+  _nullable: () => _nullable,
+  _number: () => _number,
+  _optional: () => _optional,
+  _overwrite: () => _overwrite,
+  _parse: () => _parse,
+  _parseAsync: () => _parseAsync,
+  _pipe: () => _pipe,
+  _positive: () => _positive,
+  _promise: () => _promise,
+  _property: () => _property,
+  _readonly: () => _readonly,
+  _record: () => _record,
+  _refine: () => _refine,
+  _regex: () => _regex,
+  _safeDecode: () => _safeDecode,
+  _safeDecodeAsync: () => _safeDecodeAsync,
+  _safeEncode: () => _safeEncode,
+  _safeEncodeAsync: () => _safeEncodeAsync,
+  _safeParse: () => _safeParse,
+  _safeParseAsync: () => _safeParseAsync,
+  _set: () => _set,
+  _size: () => _size,
+  _slugify: () => _slugify,
+  _startsWith: () => _startsWith,
+  _string: () => _string,
+  _stringFormat: () => _stringFormat,
+  _stringbool: () => _stringbool,
+  _success: () => _success,
+  _superRefine: () => _superRefine,
+  _symbol: () => _symbol,
+  _templateLiteral: () => _templateLiteral,
+  _toLowerCase: () => _toLowerCase,
+  _toUpperCase: () => _toUpperCase,
+  _transform: () => _transform,
+  _trim: () => _trim,
+  _tuple: () => _tuple,
+  _uint32: () => _uint32,
+  _uint64: () => _uint64,
+  _ulid: () => _ulid,
+  _undefined: () => _undefined2,
+  _union: () => _union,
+  _unknown: () => _unknown,
+  _uppercase: () => _uppercase,
+  _url: () => _url,
+  _uuid: () => _uuid,
+  _uuidv4: () => _uuidv4,
+  _uuidv6: () => _uuidv6,
+  _uuidv7: () => _uuidv7,
+  _void: () => _void,
+  _xid: () => _xid,
+  _xor: () => _xor,
+  clone: () => clone,
+  config: () => config,
+  createStandardJSONSchemaMethod: () => createStandardJSONSchemaMethod,
+  createToJSONSchemaMethod: () => createToJSONSchemaMethod,
+  decode: () => decode,
+  decodeAsync: () => decodeAsync,
+  describe: () => describe,
+  encode: () => encode,
+  encodeAsync: () => encodeAsync,
+  extractDefs: () => extractDefs,
+  finalize: () => finalize,
+  flattenError: () => flattenError,
+  formatError: () => formatError,
+  globalConfig: () => globalConfig,
+  globalRegistry: () => globalRegistry,
+  initializeContext: () => initializeContext,
+  isValidBase64: () => isValidBase64,
+  isValidBase64URL: () => isValidBase64URL,
+  isValidJWT: () => isValidJWT,
+  locales: () => locales_exports,
+  meta: () => meta,
+  parse: () => parse,
+  parseAsync: () => parseAsync,
+  prettifyError: () => prettifyError,
+  process: () => process2,
+  regexes: () => regexes_exports,
+  registry: () => registry,
+  safeDecode: () => safeDecode,
+  safeDecodeAsync: () => safeDecodeAsync,
+  safeEncode: () => safeEncode,
+  safeEncodeAsync: () => safeEncodeAsync,
+  safeParse: () => safeParse,
+  safeParseAsync: () => safeParseAsync,
+  toDotPath: () => toDotPath,
+  toJSONSchema: () => toJSONSchema,
+  treeifyError: () => treeifyError,
+  util: () => util_exports,
+  version: () => version
+});
+
 // node_modules/zod/v4/core/core.js
 var _a;
+var NEVER = /* @__PURE__ */ Object.freeze({
+  status: "aborted"
+});
 // @__NO_SIDE_EFFECTS__
 function $constructor(name, initializer3, params) {
   function init(inst, def) {
@@ -13402,6 +18288,7 @@ function $constructor(name, initializer3, params) {
   return _;
 }
 __name($constructor, "$constructor");
+var $brand = /* @__PURE__ */ Symbol("zod_brand");
 var $ZodAsyncError = class extends Error {
   static {
     __name(this, "$ZodAsyncError");
@@ -13530,10 +18417,10 @@ function jsonStringifyReplacer(_, value) {
 }
 __name(jsonStringifyReplacer, "jsonStringifyReplacer");
 function cached(getter) {
-  const set = false;
+  const set2 = false;
   return {
     get value() {
-      if (!set) {
+      if (!set2) {
         const value = getter();
         Object.defineProperty(this, "value", { value });
         return value;
@@ -13612,16 +18499,16 @@ function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
 __name(cloneDef, "cloneDef");
-function getElementAtPath(obj, path2) {
-  if (!path2)
+function getElementAtPath(obj, path11) {
+  if (!path11)
     return obj;
-  return path2.reduce((acc, key) => acc?.[key], obj);
+  return path11.reduce((acc, key) => acc?.[key], obj);
 }
 __name(getElementAtPath, "getElementAtPath");
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
-  const promises = keys.map((key) => promisesObj[key]);
-  return Promise.all(promises).then((results) => {
+  const promises3 = keys.map((key) => promisesObj[key]);
+  return Promise.all(promises3).then((results) => {
     const resolvedObj = {};
     for (let i = 0; i < keys.length; i++) {
       resolvedObj[keys[i]] = results[i];
@@ -14048,11 +18935,11 @@ function explicitlyAborted(x, startIndex = 0) {
   return false;
 }
 __name(explicitlyAborted, "explicitlyAborted");
-function prefixIssues(path2, issues) {
+function prefixIssues(path11, issues) {
   return issues.map((iss) => {
     var _a3;
     (_a3 = iss).path ?? (_a3.path = []);
-    iss.path.unshift(path2);
+    iss.path.unshift(path11);
     return iss;
   });
 }
@@ -14131,8 +19018,8 @@ function cleanEnum(obj) {
   }).map((el) => el[1]);
 }
 __name(cleanEnum, "cleanEnum");
-function base64ToUint8Array(base642) {
-  const binaryString = atob(base642);
+function base64ToUint8Array(base643) {
+  const binaryString = atob(base643);
   const bytes = new Uint8Array(binaryString.length);
   for (let i = 0; i < binaryString.length; i++) {
     bytes[i] = binaryString.charCodeAt(i);
@@ -14148,18 +19035,18 @@ function uint8ArrayToBase64(bytes) {
   return btoa(binaryString);
 }
 __name(uint8ArrayToBase64, "uint8ArrayToBase64");
-function base64urlToUint8Array(base64url2) {
-  const base642 = base64url2.replace(/-/g, "+").replace(/_/g, "/");
-  const padding = "=".repeat((4 - base642.length % 4) % 4);
-  return base64ToUint8Array(base642 + padding);
+function base64urlToUint8Array(base64url3) {
+  const base643 = base64url3.replace(/-/g, "+").replace(/_/g, "/");
+  const padding = "=".repeat((4 - base643.length % 4) % 4);
+  return base64ToUint8Array(base643 + padding);
 }
 __name(base64urlToUint8Array, "base64urlToUint8Array");
 function uint8ArrayToBase64url(bytes) {
   return uint8ArrayToBase64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 __name(uint8ArrayToBase64url, "uint8ArrayToBase64url");
-function hexToUint8Array(hex) {
-  const cleanHex = hex.replace(/^0x/, "");
+function hexToUint8Array(hex3) {
+  const cleanHex = hex3.replace(/^0x/, "");
   if (cleanHex.length % 2 !== 0) {
     throw new Error("Invalid hex string length");
   }
@@ -14201,10 +19088,10 @@ var initializer = /* @__PURE__ */ __name((inst, def) => {
 }, "initializer");
 var $ZodError = $constructor("$ZodError", initializer);
 var $ZodRealError = $constructor("$ZodError", initializer, { Parent: Error });
-function flattenError(error2, mapper = (issue2) => issue2.message) {
+function flattenError(error51, mapper = (issue2) => issue2.message) {
   const fieldErrors = {};
   const formErrors = [];
-  for (const sub of error2.issues) {
+  for (const sub of error51.issues) {
     if (sub.path.length > 0) {
       fieldErrors[sub.path[0]] = fieldErrors[sub.path[0]] || [];
       fieldErrors[sub.path[0]].push(mapper(sub));
@@ -14215,18 +19102,18 @@ function flattenError(error2, mapper = (issue2) => issue2.message) {
   return { formErrors, fieldErrors };
 }
 __name(flattenError, "flattenError");
-function formatError(error2, mapper = (issue2) => issue2.message) {
+function formatError(error51, mapper = (issue2) => issue2.message) {
   const fieldErrors = { _errors: [] };
-  const processError = /* @__PURE__ */ __name((error3, path2 = []) => {
-    for (const issue2 of error3.issues) {
+  const processError = /* @__PURE__ */ __name((error52, path11 = []) => {
+    for (const issue2 of error52.issues) {
       if (issue2.code === "invalid_union" && issue2.errors.length) {
-        issue2.errors.map((issues) => processError({ issues }, [...path2, ...issue2.path]));
+        issue2.errors.map((issues) => processError({ issues }, [...path11, ...issue2.path]));
       } else if (issue2.code === "invalid_key") {
-        processError({ issues: issue2.issues }, [...path2, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
       } else if (issue2.code === "invalid_element") {
-        processError({ issues: issue2.issues }, [...path2, ...issue2.path]);
+        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
       } else {
-        const fullpath = [...path2, ...issue2.path];
+        const fullpath = [...path11, ...issue2.path];
         if (fullpath.length === 0) {
           fieldErrors._errors.push(mapper(issue2));
         } else {
@@ -14248,10 +19135,83 @@ function formatError(error2, mapper = (issue2) => issue2.message) {
       }
     }
   }, "processError");
-  processError(error2);
+  processError(error51);
   return fieldErrors;
 }
 __name(formatError, "formatError");
+function treeifyError(error51, mapper = (issue2) => issue2.message) {
+  const result = { errors: [] };
+  const processError = /* @__PURE__ */ __name((error52, path11 = []) => {
+    var _a3, _b;
+    for (const issue2 of error52.issues) {
+      if (issue2.code === "invalid_union" && issue2.errors.length) {
+        issue2.errors.map((issues) => processError({ issues }, [...path11, ...issue2.path]));
+      } else if (issue2.code === "invalid_key") {
+        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
+      } else if (issue2.code === "invalid_element") {
+        processError({ issues: issue2.issues }, [...path11, ...issue2.path]);
+      } else {
+        const fullpath = [...path11, ...issue2.path];
+        if (fullpath.length === 0) {
+          result.errors.push(mapper(issue2));
+          continue;
+        }
+        let curr = result;
+        let i = 0;
+        while (i < fullpath.length) {
+          const el = fullpath[i];
+          const terminal = i === fullpath.length - 1;
+          if (typeof el === "string") {
+            curr.properties ?? (curr.properties = {});
+            (_a3 = curr.properties)[el] ?? (_a3[el] = { errors: [] });
+            curr = curr.properties[el];
+          } else {
+            curr.items ?? (curr.items = []);
+            (_b = curr.items)[el] ?? (_b[el] = { errors: [] });
+            curr = curr.items[el];
+          }
+          if (terminal) {
+            curr.errors.push(mapper(issue2));
+          }
+          i++;
+        }
+      }
+    }
+  }, "processError");
+  processError(error51);
+  return result;
+}
+__name(treeifyError, "treeifyError");
+function toDotPath(_path) {
+  const segs = [];
+  const path11 = _path.map((seg) => typeof seg === "object" ? seg.key : seg);
+  for (const seg of path11) {
+    if (typeof seg === "number")
+      segs.push(`[${seg}]`);
+    else if (typeof seg === "symbol")
+      segs.push(`[${JSON.stringify(String(seg))}]`);
+    else if (/[^\w$]/.test(seg))
+      segs.push(`[${JSON.stringify(seg)}]`);
+    else {
+      if (segs.length)
+        segs.push(".");
+      segs.push(seg);
+    }
+  }
+  return segs.join("");
+}
+__name(toDotPath, "toDotPath");
+function prettifyError(error51) {
+  const lines = [];
+  const issues = [...error51.issues].sort((a, b) => (a.path ?? []).length - (b.path ?? []).length);
+  for (const issue2 of issues) {
+    lines.push(`\u2716 ${issue2.message}`);
+    if (issue2.path?.length)
+      lines.push(`  \u2192 at ${toDotPath(issue2.path)}`);
+  }
+  return lines.join("\n");
+}
+__name(prettifyError, "prettifyError");
 
 // node_modules/zod/v4/core/parse.js
 var _parse = /* @__PURE__ */ __name((_Err) => (schema, value, _ctx, _params) => {
@@ -14267,6 +19227,7 @@ var _parse = /* @__PURE__ */ __name((_Err) => (schema, value, _ctx, _params) => 
   }
   return result.value;
 }, "_parse");
+var parse = /* @__PURE__ */ _parse($ZodRealError);
 var _parseAsync = /* @__PURE__ */ __name((_Err) => async (schema, value, _ctx, params) => {
   const ctx = _ctx ? { ..._ctx, async: true } : { async: true };
   let result = schema._zod.run({ value, issues: [] }, ctx);
@@ -14279,6 +19240,7 @@ var _parseAsync = /* @__PURE__ */ __name((_Err) => async (schema, value, _ctx, p
   }
   return result.value;
 }, "_parseAsync");
+var parseAsync = /* @__PURE__ */ _parseAsync($ZodRealError);
 var _safeParse = /* @__PURE__ */ __name((_Err) => (schema, value, _ctx) => {
   const ctx = _ctx ? { ..._ctx, async: false } : { async: false };
   const result = schema._zod.run({ value, issues: [] }, ctx);
@@ -14306,32 +19268,102 @@ var _encode = /* @__PURE__ */ __name((_Err) => (schema, value, _ctx) => {
   const ctx = _ctx ? { ..._ctx, direction: "backward" } : { direction: "backward" };
   return _parse(_Err)(schema, value, ctx);
 }, "_encode");
+var encode = /* @__PURE__ */ _encode($ZodRealError);
 var _decode = /* @__PURE__ */ __name((_Err) => (schema, value, _ctx) => {
   return _parse(_Err)(schema, value, _ctx);
 }, "_decode");
+var decode = /* @__PURE__ */ _decode($ZodRealError);
 var _encodeAsync = /* @__PURE__ */ __name((_Err) => async (schema, value, _ctx) => {
   const ctx = _ctx ? { ..._ctx, direction: "backward" } : { direction: "backward" };
   return _parseAsync(_Err)(schema, value, ctx);
 }, "_encodeAsync");
+var encodeAsync = /* @__PURE__ */ _encodeAsync($ZodRealError);
 var _decodeAsync = /* @__PURE__ */ __name((_Err) => async (schema, value, _ctx) => {
   return _parseAsync(_Err)(schema, value, _ctx);
 }, "_decodeAsync");
+var decodeAsync = /* @__PURE__ */ _decodeAsync($ZodRealError);
 var _safeEncode = /* @__PURE__ */ __name((_Err) => (schema, value, _ctx) => {
   const ctx = _ctx ? { ..._ctx, direction: "backward" } : { direction: "backward" };
   return _safeParse(_Err)(schema, value, ctx);
 }, "_safeEncode");
+var safeEncode = /* @__PURE__ */ _safeEncode($ZodRealError);
 var _safeDecode = /* @__PURE__ */ __name((_Err) => (schema, value, _ctx) => {
   return _safeParse(_Err)(schema, value, _ctx);
 }, "_safeDecode");
+var safeDecode = /* @__PURE__ */ _safeDecode($ZodRealError);
 var _safeEncodeAsync = /* @__PURE__ */ __name((_Err) => async (schema, value, _ctx) => {
   const ctx = _ctx ? { ..._ctx, direction: "backward" } : { direction: "backward" };
   return _safeParseAsync(_Err)(schema, value, ctx);
 }, "_safeEncodeAsync");
+var safeEncodeAsync = /* @__PURE__ */ _safeEncodeAsync($ZodRealError);
 var _safeDecodeAsync = /* @__PURE__ */ __name((_Err) => async (schema, value, _ctx) => {
   return _safeParseAsync(_Err)(schema, value, _ctx);
 }, "_safeDecodeAsync");
+var safeDecodeAsync = /* @__PURE__ */ _safeDecodeAsync($ZodRealError);
 
 // node_modules/zod/v4/core/regexes.js
+var regexes_exports = {};
+__export(regexes_exports, {
+  base64: () => base64,
+  base64url: () => base64url,
+  bigint: () => bigint,
+  boolean: () => boolean,
+  browserEmail: () => browserEmail,
+  cidrv4: () => cidrv4,
+  cidrv6: () => cidrv6,
+  cuid: () => cuid,
+  cuid2: () => cuid2,
+  date: () => date,
+  datetime: () => datetime,
+  domain: () => domain,
+  duration: () => duration,
+  e164: () => e164,
+  email: () => email,
+  emoji: () => emoji,
+  extendedDuration: () => extendedDuration,
+  guid: () => guid,
+  hex: () => hex,
+  hostname: () => hostname,
+  html5Email: () => html5Email,
+  httpProtocol: () => httpProtocol,
+  idnEmail: () => idnEmail,
+  integer: () => integer,
+  ipv4: () => ipv4,
+  ipv6: () => ipv6,
+  ksuid: () => ksuid,
+  lowercase: () => lowercase,
+  mac: () => mac,
+  md5_base64: () => md5_base64,
+  md5_base64url: () => md5_base64url,
+  md5_hex: () => md5_hex,
+  nanoid: () => nanoid,
+  null: () => _null,
+  number: () => number,
+  rfc5322Email: () => rfc5322Email,
+  sha1_base64: () => sha1_base64,
+  sha1_base64url: () => sha1_base64url,
+  sha1_hex: () => sha1_hex,
+  sha256_base64: () => sha256_base64,
+  sha256_base64url: () => sha256_base64url,
+  sha256_hex: () => sha256_hex,
+  sha384_base64: () => sha384_base64,
+  sha384_base64url: () => sha384_base64url,
+  sha384_hex: () => sha384_hex,
+  sha512_base64: () => sha512_base64,
+  sha512_base64url: () => sha512_base64url,
+  sha512_hex: () => sha512_hex,
+  string: () => string,
+  time: () => time,
+  ulid: () => ulid,
+  undefined: () => _undefined,
+  unicodeEmail: () => unicodeEmail,
+  uppercase: () => uppercase,
+  uuid: () => uuid,
+  uuid4: () => uuid4,
+  uuid6: () => uuid6,
+  uuid7: () => uuid7,
+  xid: () => xid
+});
 var cuid = /^[cC][0-9a-z]{6,}$/;
 var cuid2 = /^[0-9a-z]+$/;
 var ulid = /^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$/;
@@ -14339,13 +19371,22 @@ var xid = /^[0-9a-vA-V]{20}$/;
 var ksuid = /^[A-Za-z0-9]{27}$/;
 var nanoid = /^[a-zA-Z0-9_-]{21}$/;
 var duration = /^P(?:(\d+W)|(?!.*W)(?=\d|T\d)(\d+Y)?(\d+M)?(\d+D)?(T(?=\d)(\d+H)?(\d+M)?(\d+([.,]\d+)?S)?)?)$/;
+var extendedDuration = /^[-+]?P(?!$)(?:(?:[-+]?\d+Y)|(?:[-+]?\d+[.,]\d+Y$))?(?:(?:[-+]?\d+M)|(?:[-+]?\d+[.,]\d+M$))?(?:(?:[-+]?\d+W)|(?:[-+]?\d+[.,]\d+W$))?(?:(?:[-+]?\d+D)|(?:[-+]?\d+[.,]\d+D$))?(?:T(?=[\d+-])(?:(?:[-+]?\d+H)|(?:[-+]?\d+[.,]\d+H$))?(?:(?:[-+]?\d+M)|(?:[-+]?\d+[.,]\d+M$))?(?:[-+]?\d+(?:[.,]\d+)?S)?)??$/;
 var guid = /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/;
 var uuid = /* @__PURE__ */ __name((version2) => {
   if (!version2)
     return /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
   return new RegExp(`^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-${version2}[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$`);
 }, "uuid");
+var uuid4 = /* @__PURE__ */ uuid(4);
+var uuid6 = /* @__PURE__ */ uuid(6);
+var uuid7 = /* @__PURE__ */ uuid(7);
 var email = /^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$/;
+var html5Email = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+var rfc5322Email = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+var unicodeEmail = /^[^\s@"]{1,64}@[^\s@]{1,255}$/u;
+var idnEmail = unicodeEmail;
+var browserEmail = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
 var _emoji = `^(\\p{Extended_Pictographic}|\\p{Emoji_Component})+$`;
 function emoji() {
   return new RegExp(_emoji, "u");
@@ -14353,10 +19394,16 @@ function emoji() {
 __name(emoji, "emoji");
 var ipv4 = /^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$/;
 var ipv6 = /^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:))$/;
+var mac = /* @__PURE__ */ __name((delimiter) => {
+  const escapedDelim = escapeRegex(delimiter ?? ":");
+  return new RegExp(`^(?:[0-9A-F]{2}${escapedDelim}){5}[0-9A-F]{2}$|^(?:[0-9a-f]{2}${escapedDelim}){5}[0-9a-f]{2}$`);
+}, "mac");
 var cidrv4 = /^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\/([0-9]|[1-2][0-9]|3[0-2])$/;
 var cidrv6 = /^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|::|([0-9a-fA-F]{1,4})?::([0-9a-fA-F]{1,4}:?){0,6})\/(12[0-8]|1[01][0-9]|[1-9]?[0-9])$/;
 var base64 = /^$|^(?:[0-9a-zA-Z+/]{4})*(?:(?:[0-9a-zA-Z+/]{2}==)|(?:[0-9a-zA-Z+/]{3}=))?$/;
 var base64url = /^[A-Za-z0-9_-]*$/;
+var hostname = /^(?=.{1,253}\.?$)[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[-0-9a-zA-Z]{0,61}[0-9a-zA-Z])?)*\.?$/;
+var domain = /^([a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
 var httpProtocol = /^https?$/;
 var e164 = /^\+[1-9]\d{6,14}$/;
 var dateSource = `(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))`;
@@ -14386,12 +19433,38 @@ var string = /* @__PURE__ */ __name((params) => {
   const regex = params ? `[\\s\\S]{${params?.minimum ?? 0},${params?.maximum ?? ""}}` : `[\\s\\S]*`;
   return new RegExp(`^${regex}$`);
 }, "string");
+var bigint = /^-?\d+n?$/;
 var integer = /^-?\d+$/;
 var number = /^-?\d+(?:\.\d+)?$/;
 var boolean = /^(?:true|false)$/i;
 var _null = /^null$/i;
+var _undefined = /^undefined$/i;
 var lowercase = /^[^A-Z]*$/;
 var uppercase = /^[^a-z]*$/;
+var hex = /^[0-9a-fA-F]*$/;
+function fixedBase64(bodyLength, padding) {
+  return new RegExp(`^[A-Za-z0-9+/]{${bodyLength}}${padding}$`);
+}
+__name(fixedBase64, "fixedBase64");
+function fixedBase64url(length) {
+  return new RegExp(`^[A-Za-z0-9_-]{${length}}$`);
+}
+__name(fixedBase64url, "fixedBase64url");
+var md5_hex = /^[0-9a-fA-F]{32}$/;
+var md5_base64 = /* @__PURE__ */ fixedBase64(22, "==");
+var md5_base64url = /* @__PURE__ */ fixedBase64url(22);
+var sha1_hex = /^[0-9a-fA-F]{40}$/;
+var sha1_base64 = /* @__PURE__ */ fixedBase64(27, "=");
+var sha1_base64url = /* @__PURE__ */ fixedBase64url(27);
+var sha256_hex = /^[0-9a-fA-F]{64}$/;
+var sha256_base64 = /* @__PURE__ */ fixedBase64(43, "=");
+var sha256_base64url = /* @__PURE__ */ fixedBase64url(43);
+var sha384_hex = /^[0-9a-fA-F]{96}$/;
+var sha384_base64 = /* @__PURE__ */ fixedBase64(64, "");
+var sha384_base64url = /* @__PURE__ */ fixedBase64url(64);
+var sha512_hex = /^[0-9a-fA-F]{128}$/;
+var sha512_base64 = /* @__PURE__ */ fixedBase64(86, "==");
+var sha512_base64url = /* @__PURE__ */ fixedBase64url(86);
 
 // node_modules/zod/v4/core/checks.js
 var $ZodCheck = /* @__PURE__ */ $constructor("$ZodCheck", (inst, def) => {
@@ -14560,6 +19633,127 @@ var $ZodCheckNumberFormat = /* @__PURE__ */ $constructor("$ZodCheckNumberFormat"
         continue: !def.abort
       });
     }
+  };
+});
+var $ZodCheckBigIntFormat = /* @__PURE__ */ $constructor("$ZodCheckBigIntFormat", (inst, def) => {
+  $ZodCheck.init(inst, def);
+  const [minimum, maximum] = BIGINT_FORMAT_RANGES[def.format];
+  inst._zod.onattach.push((inst2) => {
+    const bag = inst2._zod.bag;
+    bag.format = def.format;
+    bag.minimum = minimum;
+    bag.maximum = maximum;
+  });
+  inst._zod.check = (payload) => {
+    const input = payload.value;
+    if (input < minimum) {
+      payload.issues.push({
+        origin: "bigint",
+        input,
+        code: "too_small",
+        minimum,
+        inclusive: true,
+        inst,
+        continue: !def.abort
+      });
+    }
+    if (input > maximum) {
+      payload.issues.push({
+        origin: "bigint",
+        input,
+        code: "too_big",
+        maximum,
+        inclusive: true,
+        inst,
+        continue: !def.abort
+      });
+    }
+  };
+});
+var $ZodCheckMaxSize = /* @__PURE__ */ $constructor("$ZodCheckMaxSize", (inst, def) => {
+  var _a3;
+  $ZodCheck.init(inst, def);
+  (_a3 = inst._zod.def).when ?? (_a3.when = (payload) => {
+    const val = payload.value;
+    return !nullish(val) && val.size !== void 0;
+  });
+  inst._zod.onattach.push((inst2) => {
+    const curr = inst2._zod.bag.maximum ?? Number.POSITIVE_INFINITY;
+    if (def.maximum < curr)
+      inst2._zod.bag.maximum = def.maximum;
+  });
+  inst._zod.check = (payload) => {
+    const input = payload.value;
+    const size = input.size;
+    if (size <= def.maximum)
+      return;
+    payload.issues.push({
+      origin: getSizableOrigin(input),
+      code: "too_big",
+      maximum: def.maximum,
+      inclusive: true,
+      input,
+      inst,
+      continue: !def.abort
+    });
+  };
+});
+var $ZodCheckMinSize = /* @__PURE__ */ $constructor("$ZodCheckMinSize", (inst, def) => {
+  var _a3;
+  $ZodCheck.init(inst, def);
+  (_a3 = inst._zod.def).when ?? (_a3.when = (payload) => {
+    const val = payload.value;
+    return !nullish(val) && val.size !== void 0;
+  });
+  inst._zod.onattach.push((inst2) => {
+    const curr = inst2._zod.bag.minimum ?? Number.NEGATIVE_INFINITY;
+    if (def.minimum > curr)
+      inst2._zod.bag.minimum = def.minimum;
+  });
+  inst._zod.check = (payload) => {
+    const input = payload.value;
+    const size = input.size;
+    if (size >= def.minimum)
+      return;
+    payload.issues.push({
+      origin: getSizableOrigin(input),
+      code: "too_small",
+      minimum: def.minimum,
+      inclusive: true,
+      input,
+      inst,
+      continue: !def.abort
+    });
+  };
+});
+var $ZodCheckSizeEquals = /* @__PURE__ */ $constructor("$ZodCheckSizeEquals", (inst, def) => {
+  var _a3;
+  $ZodCheck.init(inst, def);
+  (_a3 = inst._zod.def).when ?? (_a3.when = (payload) => {
+    const val = payload.value;
+    return !nullish(val) && val.size !== void 0;
+  });
+  inst._zod.onattach.push((inst2) => {
+    const bag = inst2._zod.bag;
+    bag.minimum = def.size;
+    bag.maximum = def.size;
+    bag.size = def.size;
+  });
+  inst._zod.check = (payload) => {
+    const input = payload.value;
+    const size = input.size;
+    if (size === def.size)
+      return;
+    const tooBig = size > def.size;
+    payload.issues.push({
+      origin: getSizableOrigin(input),
+      ...tooBig ? { code: "too_big", maximum: def.size } : { code: "too_small", minimum: def.size },
+      inclusive: true,
+      exact: true,
+      input: payload.value,
+      inst,
+      continue: !def.abort
+    });
   };
 });
 var $ZodCheckMaxLength = /* @__PURE__ */ $constructor("$ZodCheckMaxLength", (inst, def) => {
@@ -14771,6 +19965,44 @@ var $ZodCheckEndsWith = /* @__PURE__ */ $constructor("$ZodCheckEndsWith", (inst,
       format: "ends_with",
       suffix: def.suffix,
       input: payload.value,
+      inst,
+      continue: !def.abort
+    });
+  };
+});
+function handleCheckPropertyResult(result, payload, property) {
+  if (result.issues.length) {
+    payload.issues.push(...prefixIssues(property, result.issues));
+  }
+}
+__name(handleCheckPropertyResult, "handleCheckPropertyResult");
+var $ZodCheckProperty = /* @__PURE__ */ $constructor("$ZodCheckProperty", (inst, def) => {
+  $ZodCheck.init(inst, def);
+  inst._zod.check = (payload) => {
+    const result = def.schema._zod.run({
+      value: payload.value[def.property],
+      issues: []
+    }, {});
+    if (result instanceof Promise) {
+      return result.then((result2) => handleCheckPropertyResult(result2, payload, def.property));
+    }
+    handleCheckPropertyResult(result, payload, def.property);
+    return;
+  };
+});
+var $ZodCheckMimeType = /* @__PURE__ */ $constructor("$ZodCheckMimeType", (inst, def) => {
+  $ZodCheck.init(inst, def);
+  const mimeSet = new Set(def.mime);
+  inst._zod.onattach.push((inst2) => {
+    inst2._zod.bag.mime = def.mime;
+  });
+  inst._zod.check = (payload) => {
+    if (mimeSet.has(payload.value.type))
+      return;
+    payload.issues.push({
+      code: "invalid_value",
+      values: def.mime,
+      input: payload.value.type,
       inst,
       continue: !def.abort
     });
@@ -15011,10 +20243,10 @@ var $ZodURL = /* @__PURE__ */ $constructor("$ZodURL", (inst, def) => {
           return;
         }
       }
-      const url = new URL(trimmed);
+      const url2 = new URL(trimmed);
       if (def.hostname) {
         def.hostname.lastIndex = 0;
-        if (!def.hostname.test(url.hostname)) {
+        if (!def.hostname.test(url2.hostname)) {
           payload.issues.push({
             code: "invalid_format",
             format: "url",
@@ -15028,7 +20260,7 @@ var $ZodURL = /* @__PURE__ */ $constructor("$ZodURL", (inst, def) => {
       }
       if (def.protocol) {
         def.protocol.lastIndex = 0;
-        if (!def.protocol.test(url.protocol.endsWith(":") ? url.protocol.slice(0, -1) : url.protocol)) {
+        if (!def.protocol.test(url2.protocol.endsWith(":") ? url2.protocol.slice(0, -1) : url2.protocol)) {
           payload.issues.push({
             code: "invalid_format",
             format: "url",
@@ -15041,7 +20273,7 @@ var $ZodURL = /* @__PURE__ */ $constructor("$ZodURL", (inst, def) => {
         }
       }
       if (def.normalize) {
-        payload.value = url.href;
+        payload.value = url2.href;
       } else {
         payload.value = trimmed;
       }
@@ -15124,6 +20356,11 @@ var $ZodIPv6 = /* @__PURE__ */ $constructor("$ZodIPv6", (inst, def) => {
     }
   };
 });
+var $ZodMAC = /* @__PURE__ */ $constructor("$ZodMAC", (inst, def) => {
+  def.pattern ?? (def.pattern = mac(def.delimiter));
+  $ZodStringFormat.init(inst, def);
+  inst._zod.bag.format = `mac`;
+});
 var $ZodCIDRv4 = /* @__PURE__ */ $constructor("$ZodCIDRv4", (inst, def) => {
   def.pattern ?? (def.pattern = cidrv4);
   $ZodStringFormat.init(inst, def);
@@ -15190,8 +20427,8 @@ var $ZodBase64 = /* @__PURE__ */ $constructor("$ZodBase64", (inst, def) => {
 function isValidBase64URL(data) {
   if (!base64url.test(data))
     return false;
-  const base642 = data.replace(/[-_]/g, (c) => c === "-" ? "+" : "/");
-  const padded = base642.padEnd(Math.ceil(base642.length / 4) * 4, "=");
+  const base643 = data.replace(/[-_]/g, (c) => c === "-" ? "+" : "/");
+  const padded = base643.padEnd(Math.ceil(base643.length / 4) * 4, "=");
   return isValidBase64(padded);
 }
 __name(isValidBase64URL, "isValidBase64URL");
@@ -15250,6 +20487,20 @@ var $ZodJWT = /* @__PURE__ */ $constructor("$ZodJWT", (inst, def) => {
     });
   };
 });
+var $ZodCustomStringFormat = /* @__PURE__ */ $constructor("$ZodCustomStringFormat", (inst, def) => {
+  $ZodStringFormat.init(inst, def);
+  inst._zod.check = (payload) => {
+    if (def.fn(payload.value))
+      return;
+    payload.issues.push({
+      code: "invalid_format",
+      format: def.format,
+      input: payload.value,
+      inst,
+      continue: !def.abort
+    });
+  };
+});
 var $ZodNumber = /* @__PURE__ */ $constructor("$ZodNumber", (inst, def) => {
   $ZodType.init(inst, def);
   inst._zod.pattern = inst._zod.bag.pattern ?? number;
@@ -15299,6 +20550,62 @@ var $ZodBoolean = /* @__PURE__ */ $constructor("$ZodBoolean", (inst, def) => {
     return payload;
   };
 });
+var $ZodBigInt = /* @__PURE__ */ $constructor("$ZodBigInt", (inst, def) => {
+  $ZodType.init(inst, def);
+  inst._zod.pattern = bigint;
+  inst._zod.parse = (payload, _ctx) => {
+    if (def.coerce)
+      try {
+        payload.value = BigInt(payload.value);
+      } catch (_) {
+      }
+    if (typeof payload.value === "bigint")
+      return payload;
+    payload.issues.push({
+      expected: "bigint",
+      code: "invalid_type",
+      input: payload.value,
+      inst
+    });
+    return payload;
+  };
+});
+var $ZodBigIntFormat = /* @__PURE__ */ $constructor("$ZodBigIntFormat", (inst, def) => {
+  $ZodCheckBigIntFormat.init(inst, def);
+  $ZodBigInt.init(inst, def);
+});
+var $ZodSymbol = /* @__PURE__ */ $constructor("$ZodSymbol", (inst, def) => {
+  $ZodType.init(inst, def);
+  inst._zod.parse = (payload, _ctx) => {
+    const input = payload.value;
+    if (typeof input === "symbol")
+      return payload;
+    payload.issues.push({
+      expected: "symbol",
+      code: "invalid_type",
+      input,
+      inst
+    });
+    return payload;
+  };
+});
+var $ZodUndefined = /* @__PURE__ */ $constructor("$ZodUndefined", (inst, def) => {
+  $ZodType.init(inst, def);
+  inst._zod.pattern = _undefined;
+  inst._zod.values = /* @__PURE__ */ new Set([void 0]);
+  inst._zod.parse = (payload, _ctx) => {
+    const input = payload.value;
+    if (typeof input === "undefined")
+      return payload;
+    payload.issues.push({
+      expected: "undefined",
+      code: "invalid_type",
+      input,
+      inst
+    });
+    return payload;
+  };
+});
 var $ZodNull = /* @__PURE__ */ $constructor("$ZodNull", (inst, def) => {
   $ZodType.init(inst, def);
   inst._zod.pattern = _null;
@@ -15316,6 +20623,10 @@ var $ZodNull = /* @__PURE__ */ $constructor("$ZodNull", (inst, def) => {
     return payload;
   };
 });
+var $ZodAny = /* @__PURE__ */ $constructor("$ZodAny", (inst, def) => {
+  $ZodType.init(inst, def);
+  inst._zod.parse = (payload) => payload;
+});
 var $ZodUnknown = /* @__PURE__ */ $constructor("$ZodUnknown", (inst, def) => {
   $ZodType.init(inst, def);
   inst._zod.parse = (payload) => payload;
@@ -15327,6 +20638,45 @@ var $ZodNever = /* @__PURE__ */ $constructor("$ZodNever", (inst, def) => {
       expected: "never",
       code: "invalid_type",
       input: payload.value,
+      inst
+    });
+    return payload;
+  };
+});
+var $ZodVoid = /* @__PURE__ */ $constructor("$ZodVoid", (inst, def) => {
+  $ZodType.init(inst, def);
+  inst._zod.parse = (payload, _ctx) => {
+    const input = payload.value;
+    if (typeof input === "undefined")
+      return payload;
+    payload.issues.push({
+      expected: "void",
+      code: "invalid_type",
+      input,
+      inst
+    });
+    return payload;
+  };
+});
+var $ZodDate = /* @__PURE__ */ $constructor("$ZodDate", (inst, def) => {
+  $ZodType.init(inst, def);
+  inst._zod.parse = (payload, _ctx) => {
+    if (def.coerce) {
+      try {
+        payload.value = new Date(payload.value);
+      } catch (_err) {
+      }
+    }
+    const input = payload.value;
+    const isDate = input instanceof Date;
+    const isValidDate = isDate && !Number.isNaN(input.getTime());
+    if (isValidDate)
+      return payload;
+    payload.issues.push({
+      expected: "date",
+      code: "invalid_type",
+      input,
+      ...isDate ? { received: "Invalid Date" } : {},
       inst
     });
     return payload;
@@ -15712,6 +21062,60 @@ var $ZodUnion = /* @__PURE__ */ $constructor("$ZodUnion", (inst, def) => {
     });
   };
 });
+function handleExclusiveUnionResults(results, final, inst, ctx) {
+  const successes = results.filter((r) => r.issues.length === 0);
+  if (successes.length === 1) {
+    final.value = successes[0].value;
+    return final;
+  }
+  if (successes.length === 0) {
+    final.issues.push({
+      code: "invalid_union",
+      input: final.value,
+      inst,
+      errors: results.map((result) => result.issues.map((iss) => finalizeIssue(iss, ctx, config())))
+    });
+  } else {
+    final.issues.push({
+      code: "invalid_union",
+      input: final.value,
+      inst,
+      errors: [],
+      inclusive: false
+    });
+  }
+  return final;
+}
+__name(handleExclusiveUnionResults, "handleExclusiveUnionResults");
+var $ZodXor = /* @__PURE__ */ $constructor("$ZodXor", (inst, def) => {
+  $ZodUnion.init(inst, def);
+  def.inclusive = false;
+  const first = def.options.length === 1 ? def.options[0]._zod.run : null;
+  inst._zod.parse = (payload, ctx) => {
+    if (first) {
+      return first(payload, ctx);
+    }
+    let async = false;
+    const results = [];
+    for (const option of def.options) {
+      const result = option._zod.run({
+        value: payload.value,
+        issues: []
+      }, ctx);
+      if (result instanceof Promise) {
+        results.push(result);
+        async = true;
+      } else {
+        results.push(result);
+      }
+    }
+    if (!async)
+      return handleExclusiveUnionResults(results, payload, inst, ctx);
+    return Promise.all(results).then((results2) => {
+      return handleExclusiveUnionResults(results2, payload, inst, ctx);
+    });
+  };
+});
 var $ZodDiscriminatedUnion = /* @__PURE__ */ $constructor("$ZodDiscriminatedUnion", (inst, def) => {
   def.inclusive = false;
   $ZodUnion.init(inst, def);
@@ -15734,19 +21138,19 @@ var $ZodDiscriminatedUnion = /* @__PURE__ */ $constructor("$ZodDiscriminatedUnio
   });
   const disc = cached(() => {
     const opts = def.options;
-    const map = /* @__PURE__ */ new Map();
+    const map2 = /* @__PURE__ */ new Map();
     for (const o of opts) {
       const values = o._zod.propValues?.[def.discriminator];
       if (!values || values.size === 0)
         throw new Error(`Invalid discriminated union option at index "${def.options.indexOf(o)}"`);
       for (const v of values) {
-        if (map.has(v)) {
+        if (map2.has(v)) {
           throw new Error(`Duplicate discriminator value "${String(v)}"`);
         }
-        map.set(v, o);
+        map2.set(v, o);
       }
     }
-    return map;
+    return map2;
   });
   inst._zod.parse = (payload, ctx) => {
     const input = payload.value;
@@ -15879,6 +21283,115 @@ function handleIntersectionResults(result, left, right) {
   return result;
 }
 __name(handleIntersectionResults, "handleIntersectionResults");
+var $ZodTuple = /* @__PURE__ */ $constructor("$ZodTuple", (inst, def) => {
+  $ZodType.init(inst, def);
+  const items = def.items;
+  inst._zod.parse = (payload, ctx) => {
+    const input = payload.value;
+    if (!Array.isArray(input)) {
+      payload.issues.push({
+        input,
+        inst,
+        expected: "tuple",
+        code: "invalid_type"
+      });
+      return payload;
+    }
+    payload.value = [];
+    const proms = [];
+    const optinStart = getTupleOptStart(items, "optin");
+    const optoutStart = getTupleOptStart(items, "optout");
+    if (!def.rest) {
+      if (input.length < optinStart) {
+        payload.issues.push({
+          code: "too_small",
+          minimum: optinStart,
+          inclusive: true,
+          input,
+          inst,
+          origin: "array"
+        });
+        return payload;
+      }
+      if (input.length > items.length) {
+        payload.issues.push({
+          code: "too_big",
+          maximum: items.length,
+          inclusive: true,
+          input,
+          inst,
+          origin: "array"
+        });
+      }
+    }
+    const itemResults = new Array(items.length);
+    for (let i = 0; i < items.length; i++) {
+      const r = items[i]._zod.run({ value: input[i], issues: [] }, ctx);
+      if (r instanceof Promise) {
+        proms.push(r.then((rr) => {
+          itemResults[i] = rr;
+        }));
+      } else {
+        itemResults[i] = r;
+      }
+    }
+    if (def.rest) {
+      let i = items.length - 1;
+      const rest = input.slice(items.length);
+      for (const el of rest) {
+        i++;
+        const result = def.rest._zod.run({ value: el, issues: [] }, ctx);
+        if (result instanceof Promise) {
+          proms.push(result.then((r) => handleTupleResult(r, payload, i)));
+        } else {
+          handleTupleResult(result, payload, i);
+        }
+      }
+    }
+    if (proms.length) {
+      return Promise.all(proms).then(() => handleTupleResults(itemResults, payload, items, input, optoutStart));
+    }
+    return handleTupleResults(itemResults, payload, items, input, optoutStart);
+  };
+});
+function getTupleOptStart(items, key) {
+  for (let i = items.length - 1; i >= 0; i--) {
+    if (items[i]._zod[key] !== "optional")
+      return i + 1;
+  }
+  return 0;
+}
+__name(getTupleOptStart, "getTupleOptStart");
+function handleTupleResult(result, final, index) {
+  if (result.issues.length) {
+    final.issues.push(...prefixIssues(index, result.issues));
+  }
+  final.value[index] = result.value;
+}
+__name(handleTupleResult, "handleTupleResult");
+function handleTupleResults(itemResults, final, items, input, optoutStart) {
+  for (let i = 0; i < items.length; i++) {
+    const r = itemResults[i];
+    const isPresent = i < input.length;
+    if (r.issues.length) {
+      if (!isPresent && i >= optoutStart) {
+        final.value.length = i;
+        break;
+      }
+      final.issues.push(...prefixIssues(i, r.issues));
+    }
+    final.value[i] = r.value;
+  }
+  for (let i = final.value.length - 1; i >= input.length; i--) {
+    if (items[i]._zod.optout === "optional" && final.value[i] === void 0) {
+      final.value.length = i;
+    } else {
+      break;
+    }
+  }
+  return final;
+}
+__name(handleTupleResults, "handleTupleResults");
 var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
   $ZodType.init(inst, def);
   inst._zod.parse = (payload, ctx) => {
@@ -16005,6 +21518,102 @@ var $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
     return payload;
   };
 });
+var $ZodMap = /* @__PURE__ */ $constructor("$ZodMap", (inst, def) => {
+  $ZodType.init(inst, def);
+  inst._zod.parse = (payload, ctx) => {
+    const input = payload.value;
+    if (!(input instanceof Map)) {
+      payload.issues.push({
+        expected: "map",
+        code: "invalid_type",
+        input,
+        inst
+      });
+      return payload;
+    }
+    const proms = [];
+    payload.value = /* @__PURE__ */ new Map();
+    for (const [key, value] of input) {
+      const keyResult = def.keyType._zod.run({ value: key, issues: [] }, ctx);
+      const valueResult = def.valueType._zod.run({ value, issues: [] }, ctx);
+      if (keyResult instanceof Promise || valueResult instanceof Promise) {
+        proms.push(Promise.all([keyResult, valueResult]).then(([keyResult2, valueResult2]) => {
+          handleMapResult(keyResult2, valueResult2, payload, key, input, inst, ctx);
+        }));
+      } else {
+        handleMapResult(keyResult, valueResult, payload, key, input, inst, ctx);
+      }
+    }
+    if (proms.length)
+      return Promise.all(proms).then(() => payload);
+    return payload;
+  };
+});
+function handleMapResult(keyResult, valueResult, final, key, input, inst, ctx) {
+  if (keyResult.issues.length) {
+    if (propertyKeyTypes.has(typeof key)) {
+      final.issues.push(...prefixIssues(key, keyResult.issues));
+    } else {
+      final.issues.push({
+        code: "invalid_key",
+        origin: "map",
+        input,
+        inst,
+        issues: keyResult.issues.map((iss) => finalizeIssue(iss, ctx, config()))
+      });
+    }
+  }
+  if (valueResult.issues.length) {
+    if (propertyKeyTypes.has(typeof key)) {
+      final.issues.push(...prefixIssues(key, valueResult.issues));
+    } else {
+      final.issues.push({
+        origin: "map",
+        code: "invalid_element",
+        input,
+        inst,
+        key,
+        issues: valueResult.issues.map((iss) => finalizeIssue(iss, ctx, config()))
+      });
+    }
+  }
+  final.value.set(keyResult.value, valueResult.value);
+}
+__name(handleMapResult, "handleMapResult");
+var $ZodSet = /* @__PURE__ */ $constructor("$ZodSet", (inst, def) => {
+  $ZodType.init(inst, def);
+  inst._zod.parse = (payload, ctx) => {
+    const input = payload.value;
+    if (!(input instanceof Set)) {
+      payload.issues.push({
+        input,
+        inst,
+        expected: "set",
+        code: "invalid_type"
+      });
+      return payload;
+    }
+    const proms = [];
+    payload.value = /* @__PURE__ */ new Set();
+    for (const item of input) {
+      const result = def.valueType._zod.run({ value: item, issues: [] }, ctx);
+      if (result instanceof Promise) {
+        proms.push(result.then((result2) => handleSetResult(result2, payload)));
+      } else
+        handleSetResult(result, payload);
+    }
+    if (proms.length)
+      return Promise.all(proms).then(() => payload);
+    return payload;
+  };
+});
+function handleSetResult(result, final) {
+  if (result.issues.length) {
+    final.issues.push(...result.issues);
+  }
+  final.value.add(result.value);
+}
+__name(handleSetResult, "handleSetResult");
 var $ZodEnum = /* @__PURE__ */ $constructor("$ZodEnum", (inst, def) => {
   $ZodType.init(inst, def);
   const values = getEnumValues(def.entries);
@@ -16041,6 +21650,21 @@ var $ZodLiteral = /* @__PURE__ */ $constructor("$ZodLiteral", (inst, def) => {
     payload.issues.push({
       code: "invalid_value",
       values: def.values,
+      input,
+      inst
+    });
+    return payload;
+  };
+});
+var $ZodFile = /* @__PURE__ */ $constructor("$ZodFile", (inst, def) => {
+  $ZodType.init(inst, def);
+  inst._zod.parse = (payload, _ctx) => {
+    const input = payload.value;
+    if (input instanceof File)
+      return payload;
+    payload.issues.push({
+      expected: "file",
+      code: "invalid_type",
       input,
       inst
     });
@@ -16194,6 +21818,23 @@ function handleNonOptionalResult(payload, inst) {
   return payload;
 }
 __name(handleNonOptionalResult, "handleNonOptionalResult");
+var $ZodSuccess = /* @__PURE__ */ $constructor("$ZodSuccess", (inst, def) => {
+  $ZodType.init(inst, def);
+  inst._zod.parse = (payload, ctx) => {
+    if (ctx.direction === "backward") {
+      throw new $ZodEncodeError("ZodSuccess");
+    }
+    const result = def.innerType._zod.run(payload, ctx);
+    if (result instanceof Promise) {
+      return result.then((result2) => {
+        payload.value = result2.issues.length === 0;
+        return payload;
+      });
+    }
+    payload.value = result.issues.length === 0;
+    return payload;
+  };
+});
 var $ZodCatch = /* @__PURE__ */ $constructor("$ZodCatch", (inst, def) => {
   $ZodType.init(inst, def);
   inst._zod.optin = "optional";
@@ -16236,6 +21877,21 @@ var $ZodCatch = /* @__PURE__ */ $constructor("$ZodCatch", (inst, def) => {
     return payload;
   };
 });
+var $ZodNaN = /* @__PURE__ */ $constructor("$ZodNaN", (inst, def) => {
+  $ZodType.init(inst, def);
+  inst._zod.parse = (payload, _ctx) => {
+    if (typeof payload.value !== "number" || !Number.isNaN(payload.value)) {
+      payload.issues.push({
+        input: payload.value,
+        inst,
+        expected: "nan",
+        code: "invalid_type"
+      });
+      return payload;
+    }
+    return payload;
+  };
+});
 var $ZodPipe = /* @__PURE__ */ $constructor("$ZodPipe", (inst, def) => {
   $ZodType.init(inst, def);
   defineLazy(inst._zod, "values", () => def.in._zod.values);
@@ -16265,6 +21921,58 @@ function handlePipeResult(left, next, ctx) {
   return next._zod.run({ value: left.value, issues: left.issues, fallback: left.fallback }, ctx);
 }
 __name(handlePipeResult, "handlePipeResult");
+var $ZodCodec = /* @__PURE__ */ $constructor("$ZodCodec", (inst, def) => {
+  $ZodType.init(inst, def);
+  defineLazy(inst._zod, "values", () => def.in._zod.values);
+  defineLazy(inst._zod, "optin", () => def.in._zod.optin);
+  defineLazy(inst._zod, "optout", () => def.out._zod.optout);
+  defineLazy(inst._zod, "propValues", () => def.in._zod.propValues);
+  inst._zod.parse = (payload, ctx) => {
+    const direction = ctx.direction || "forward";
+    if (direction === "forward") {
+      const left = def.in._zod.run(payload, ctx);
+      if (left instanceof Promise) {
+        return left.then((left2) => handleCodecAResult(left2, def, ctx));
+      }
+      return handleCodecAResult(left, def, ctx);
+    } else {
+      const right = def.out._zod.run(payload, ctx);
+      if (right instanceof Promise) {
+        return right.then((right2) => handleCodecAResult(right2, def, ctx));
+      }
+      return handleCodecAResult(right, def, ctx);
+    }
+  };
+});
+function handleCodecAResult(result, def, ctx) {
+  if (result.issues.length) {
+    result.aborted = true;
+    return result;
+  }
+  const direction = ctx.direction || "forward";
+  if (direction === "forward") {
+    const transformed = def.transform(result.value, result);
+    if (transformed instanceof Promise) {
+      return transformed.then((value) => handleCodecTxResult(result, value, def.out, ctx));
+    }
+    return handleCodecTxResult(result, transformed, def.out, ctx);
+  } else {
+    const transformed = def.reverseTransform(result.value, result);
+    if (transformed instanceof Promise) {
+      return transformed.then((value) => handleCodecTxResult(result, value, def.in, ctx));
+    }
+    return handleCodecTxResult(result, transformed, def.in, ctx);
+  }
+}
+__name(handleCodecAResult, "handleCodecAResult");
+function handleCodecTxResult(left, value, nextSchema, ctx) {
+  if (left.issues.length) {
+    left.aborted = true;
+    return left;
+  }
+  return nextSchema._zod.run({ value, issues: left.issues }, ctx);
+}
+__name(handleCodecTxResult, "handleCodecTxResult");
 var $ZodPreprocess = /* @__PURE__ */ $constructor("$ZodPreprocess", (inst, def) => {
   $ZodPipe.init(inst, def);
 });
@@ -16290,6 +21998,151 @@ function handleReadonlyResult(payload) {
   return payload;
 }
 __name(handleReadonlyResult, "handleReadonlyResult");
+var $ZodTemplateLiteral = /* @__PURE__ */ $constructor("$ZodTemplateLiteral", (inst, def) => {
+  $ZodType.init(inst, def);
+  const regexParts = [];
+  for (const part of def.parts) {
+    if (typeof part === "object" && part !== null) {
+      if (!part._zod.pattern) {
+        throw new Error(`Invalid template literal part, no pattern found: ${[...part._zod.traits].shift()}`);
+      }
+      const source = part._zod.pattern instanceof RegExp ? part._zod.pattern.source : part._zod.pattern;
+      if (!source)
+        throw new Error(`Invalid template literal part: ${part._zod.traits}`);
+      const start = source.startsWith("^") ? 1 : 0;
+      const end = source.endsWith("$") ? source.length - 1 : source.length;
+      regexParts.push(source.slice(start, end));
+    } else if (part === null || primitiveTypes.has(typeof part)) {
+      regexParts.push(escapeRegex(`${part}`));
+    } else {
+      throw new Error(`Invalid template literal part: ${part}`);
+    }
+  }
+  inst._zod.pattern = new RegExp(`^${regexParts.join("")}$`);
+  inst._zod.parse = (payload, _ctx) => {
+    if (typeof payload.value !== "string") {
+      payload.issues.push({
+        input: payload.value,
+        inst,
+        expected: "string",
+        code: "invalid_type"
+      });
+      return payload;
+    }
+    inst._zod.pattern.lastIndex = 0;
+    if (!inst._zod.pattern.test(payload.value)) {
+      payload.issues.push({
+        input: payload.value,
+        inst,
+        code: "invalid_format",
+        format: def.format ?? "template_literal",
+        pattern: inst._zod.pattern.source
+      });
+      return payload;
+    }
+    return payload;
+  };
+});
+var $ZodFunction = /* @__PURE__ */ $constructor("$ZodFunction", (inst, def) => {
+  $ZodType.init(inst, def);
+  inst._def = def;
+  inst._zod.def = def;
+  inst.implement = (func) => {
+    if (typeof func !== "function") {
+      throw new Error("implement() must be called with a function");
+    }
+    return function(...args) {
+      const parsedArgs = inst._def.input ? parse(inst._def.input, args) : args;
+      const result = Reflect.apply(func, this, parsedArgs);
+      if (inst._def.output) {
+        return parse(inst._def.output, result);
+      }
+      return result;
+    };
+  };
+  inst.implementAsync = (func) => {
+    if (typeof func !== "function") {
+      throw new Error("implementAsync() must be called with a function");
+    }
+    return async function(...args) {
+      const parsedArgs = inst._def.input ? await parseAsync(inst._def.input, args) : args;
+      const result = await Reflect.apply(func, this, parsedArgs);
+      if (inst._def.output) {
+        return await parseAsync(inst._def.output, result);
+      }
+      return result;
+    };
+  };
+  inst._zod.parse = (payload, _ctx) => {
+    if (typeof payload.value !== "function") {
+      payload.issues.push({
+        code: "invalid_type",
+        expected: "function",
+        input: payload.value,
+        inst
+      });
+      return payload;
+    }
+    const hasPromiseOutput = inst._def.output && inst._def.output._zod.def.type === "promise";
+    if (hasPromiseOutput) {
+      payload.value = inst.implementAsync(payload.value);
+    } else {
+      payload.value = inst.implement(payload.value);
+    }
+    return payload;
+  };
+  inst.input = (...args) => {
+    const F = inst.constructor;
+    if (Array.isArray(args[0])) {
+      return new F({
+        type: "function",
+        input: new $ZodTuple({
+          type: "tuple",
+          items: args[0],
+          rest: args[1]
+        }),
+        output: inst._def.output
+      });
+    }
+    return new F({
+      type: "function",
+      input: args[0],
+      output: inst._def.output
+    });
+  };
+  inst.output = (output) => {
+    const F = inst.constructor;
+    return new F({
+      type: "function",
+      input: inst._def.input,
+      output
+    });
+  };
+  return inst;
+});
+var $ZodPromise = /* @__PURE__ */ $constructor("$ZodPromise", (inst, def) => {
+  $ZodType.init(inst, def);
+  inst._zod.parse = (payload, ctx) => {
+    return Promise.resolve(payload.value).then((inner) => def.innerType._zod.run({ value: inner, issues: [] }, ctx));
+  };
+});
+var $ZodLazy = /* @__PURE__ */ $constructor("$ZodLazy", (inst, def) => {
+  $ZodType.init(inst, def);
+  defineLazy(inst._zod, "innerType", () => {
+    const d = def;
+    if (!d._cachedInner)
+      d._cachedInner = def.getter();
+    return d._cachedInner;
+  });
+  defineLazy(inst._zod, "pattern", () => inst._zod.innerType?._zod?.pattern);
+  defineLazy(inst._zod, "propValues", () => inst._zod.innerType?._zod?.propValues);
+  defineLazy(inst._zod, "optin", () => inst._zod.innerType?._zod?.optin ?? void 0);
+  defineLazy(inst._zod, "optout", () => inst._zod.innerType?._zod?.optout ?? void 0);
+  inst._zod.parse = (payload, ctx) => {
+    const inner = inst._zod.innerType;
+    return inner._zod.run(payload, ctx);
+  };
+});
 var $ZodCustom = /* @__PURE__ */ $constructor("$ZodCustom", (inst, def) => {
   $ZodCheck.init(inst, def);
   $ZodType.init(inst, def);
@@ -16325,8 +22178,1131 @@ function handleRefineResult(result, payload, input, inst) {
 }
 __name(handleRefineResult, "handleRefineResult");
 
-// node_modules/zod/v4/locales/en.js
+// node_modules/zod/v4/locales/index.js
+var locales_exports = {};
+__export(locales_exports, {
+  ar: () => ar_default,
+  az: () => az_default,
+  be: () => be_default,
+  bg: () => bg_default,
+  ca: () => ca_default,
+  cs: () => cs_default,
+  da: () => da_default,
+  de: () => de_default,
+  el: () => el_default,
+  en: () => en_default,
+  eo: () => eo_default,
+  es: () => es_default,
+  fa: () => fa_default,
+  fi: () => fi_default,
+  fr: () => fr_default,
+  frCA: () => fr_CA_default,
+  he: () => he_default,
+  hr: () => hr_default,
+  hu: () => hu_default,
+  hy: () => hy_default,
+  id: () => id_default,
+  is: () => is_default,
+  it: () => it_default,
+  ja: () => ja_default,
+  ka: () => ka_default,
+  kh: () => kh_default,
+  km: () => km_default,
+  ko: () => ko_default,
+  lt: () => lt_default,
+  mk: () => mk_default,
+  ms: () => ms_default,
+  nl: () => nl_default,
+  no: () => no_default,
+  ota: () => ota_default,
+  pl: () => pl_default,
+  ps: () => ps_default,
+  pt: () => pt_default,
+  ro: () => ro_default,
+  ru: () => ru_default,
+  sl: () => sl_default,
+  sv: () => sv_default,
+  ta: () => ta_default,
+  th: () => th_default,
+  tr: () => tr_default,
+  ua: () => ua_default,
+  uk: () => uk_default,
+  ur: () => ur_default,
+  uz: () => uz_default,
+  vi: () => vi_default,
+  yo: () => yo_default,
+  zhCN: () => zh_CN_default,
+  zhTW: () => zh_TW_default
+});
+
+// node_modules/zod/v4/locales/ar.js
 var error = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "\u062D\u0631\u0641", verb: "\u0623\u0646 \u064A\u062D\u0648\u064A" },
+    file: { unit: "\u0628\u0627\u064A\u062A", verb: "\u0623\u0646 \u064A\u062D\u0648\u064A" },
+    array: { unit: "\u0639\u0646\u0635\u0631", verb: "\u0623\u0646 \u064A\u062D\u0648\u064A" },
+    set: { unit: "\u0639\u0646\u0635\u0631", verb: "\u0623\u0646 \u064A\u062D\u0648\u064A" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "\u0645\u062F\u062E\u0644",
+    email: "\u0628\u0631\u064A\u062F \u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A",
+    url: "\u0631\u0627\u0628\u0637",
+    emoji: "\u0625\u064A\u0645\u0648\u062C\u064A",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "\u062A\u0627\u0631\u064A\u062E \u0648\u0648\u0642\u062A \u0628\u0645\u0639\u064A\u0627\u0631 ISO",
+    date: "\u062A\u0627\u0631\u064A\u062E \u0628\u0645\u0639\u064A\u0627\u0631 ISO",
+    time: "\u0648\u0642\u062A \u0628\u0645\u0639\u064A\u0627\u0631 ISO",
+    duration: "\u0645\u062F\u0629 \u0628\u0645\u0639\u064A\u0627\u0631 ISO",
+    ipv4: "\u0639\u0646\u0648\u0627\u0646 IPv4",
+    ipv6: "\u0639\u0646\u0648\u0627\u0646 IPv6",
+    cidrv4: "\u0645\u062F\u0649 \u0639\u0646\u0627\u0648\u064A\u0646 \u0628\u0635\u064A\u063A\u0629 IPv4",
+    cidrv6: "\u0645\u062F\u0649 \u0639\u0646\u0627\u0648\u064A\u0646 \u0628\u0635\u064A\u063A\u0629 IPv6",
+    base64: "\u0646\u064E\u0635 \u0628\u062A\u0631\u0645\u064A\u0632 base64-encoded",
+    base64url: "\u0646\u064E\u0635 \u0628\u062A\u0631\u0645\u064A\u0632 base64url-encoded",
+    json_string: "\u0646\u064E\u0635 \u0639\u0644\u0649 \u0647\u064A\u0626\u0629 JSON",
+    e164: "\u0631\u0642\u0645 \u0647\u0627\u062A\u0641 \u0628\u0645\u0639\u064A\u0627\u0631 E.164",
+    jwt: "JWT",
+    template_literal: "\u0645\u062F\u062E\u0644"
+  };
+  const TypeDictionary = {
+    nan: "NaN"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `\u0645\u062F\u062E\u0644\u0627\u062A \u063A\u064A\u0631 \u0645\u0642\u0628\u0648\u0644\u0629: \u064A\u0641\u062A\u0631\u0636 \u0625\u062F\u062E\u0627\u0644 instanceof ${issue2.expected}\u060C \u0648\u0644\u0643\u0646 \u062A\u0645 \u0625\u062F\u062E\u0627\u0644 ${received}`;
+        }
+        return `\u0645\u062F\u062E\u0644\u0627\u062A \u063A\u064A\u0631 \u0645\u0642\u0628\u0648\u0644\u0629: \u064A\u0641\u062A\u0631\u0636 \u0625\u062F\u062E\u0627\u0644 ${expected}\u060C \u0648\u0644\u0643\u0646 \u062A\u0645 \u0625\u062F\u062E\u0627\u0644 ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `\u0645\u062F\u062E\u0644\u0627\u062A \u063A\u064A\u0631 \u0645\u0642\u0628\u0648\u0644\u0629: \u064A\u0641\u062A\u0631\u0636 \u0625\u062F\u062E\u0627\u0644 ${stringifyPrimitive(issue2.values[0])}`;
+        return `\u0627\u062E\u062A\u064A\u0627\u0631 \u063A\u064A\u0631 \u0645\u0642\u0628\u0648\u0644: \u064A\u062A\u0648\u0642\u0639 \u0627\u0646\u062A\u0642\u0627\u0621 \u0623\u062D\u062F \u0647\u0630\u0647 \u0627\u0644\u062E\u064A\u0627\u0631\u0627\u062A: ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return ` \u0623\u0643\u0628\u0631 \u0645\u0646 \u0627\u0644\u0644\u0627\u0632\u0645: \u064A\u0641\u062A\u0631\u0636 \u0623\u0646 \u062A\u0643\u0648\u0646 ${issue2.origin ?? "\u0627\u0644\u0642\u064A\u0645\u0629"} ${adj} ${issue2.maximum.toString()} ${sizing.unit ?? "\u0639\u0646\u0635\u0631"}`;
+        return `\u0623\u0643\u0628\u0631 \u0645\u0646 \u0627\u0644\u0644\u0627\u0632\u0645: \u064A\u0641\u062A\u0631\u0636 \u0623\u0646 \u062A\u0643\u0648\u0646 ${issue2.origin ?? "\u0627\u0644\u0642\u064A\u0645\u0629"} ${adj} ${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `\u0623\u0635\u063A\u0631 \u0645\u0646 \u0627\u0644\u0644\u0627\u0632\u0645: \u064A\u0641\u062A\u0631\u0636 \u0644\u0640 ${issue2.origin} \u0623\u0646 \u064A\u0643\u0648\u0646 ${adj} ${issue2.minimum.toString()} ${sizing.unit}`;
+        }
+        return `\u0623\u0635\u063A\u0631 \u0645\u0646 \u0627\u0644\u0644\u0627\u0632\u0645: \u064A\u0641\u062A\u0631\u0636 \u0644\u0640 ${issue2.origin} \u0623\u0646 \u064A\u0643\u0648\u0646 ${adj} ${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `\u0646\u064E\u0635 \u063A\u064A\u0631 \u0645\u0642\u0628\u0648\u0644: \u064A\u062C\u0628 \u0623\u0646 \u064A\u0628\u062F\u0623 \u0628\u0640 "${issue2.prefix}"`;
+        if (_issue.format === "ends_with")
+          return `\u0646\u064E\u0635 \u063A\u064A\u0631 \u0645\u0642\u0628\u0648\u0644: \u064A\u062C\u0628 \u0623\u0646 \u064A\u0646\u062A\u0647\u064A \u0628\u0640 "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `\u0646\u064E\u0635 \u063A\u064A\u0631 \u0645\u0642\u0628\u0648\u0644: \u064A\u062C\u0628 \u0623\u0646 \u064A\u062A\u0636\u0645\u0651\u064E\u0646 "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `\u0646\u064E\u0635 \u063A\u064A\u0631 \u0645\u0642\u0628\u0648\u0644: \u064A\u062C\u0628 \u0623\u0646 \u064A\u0637\u0627\u0628\u0642 \u0627\u0644\u0646\u0645\u0637 ${_issue.pattern}`;
+        return `${FormatDictionary[_issue.format] ?? issue2.format} \u063A\u064A\u0631 \u0645\u0642\u0628\u0648\u0644`;
+      }
+      case "not_multiple_of":
+        return `\u0631\u0642\u0645 \u063A\u064A\u0631 \u0645\u0642\u0628\u0648\u0644: \u064A\u062C\u0628 \u0623\u0646 \u064A\u0643\u0648\u0646 \u0645\u0646 \u0645\u0636\u0627\u0639\u0641\u0627\u062A ${issue2.divisor}`;
+      case "unrecognized_keys":
+        return `\u0645\u0639\u0631\u0641${issue2.keys.length > 1 ? "\u0627\u062A" : ""} \u063A\u0631\u064A\u0628${issue2.keys.length > 1 ? "\u0629" : ""}: ${joinValues(issue2.keys, "\u060C ")}`;
+      case "invalid_key":
+        return `\u0645\u0639\u0631\u0641 \u063A\u064A\u0631 \u0645\u0642\u0628\u0648\u0644 \u0641\u064A ${issue2.origin}`;
+      case "invalid_union":
+        return "\u0645\u062F\u062E\u0644 \u063A\u064A\u0631 \u0645\u0642\u0628\u0648\u0644";
+      case "invalid_element":
+        return `\u0645\u062F\u062E\u0644 \u063A\u064A\u0631 \u0645\u0642\u0628\u0648\u0644 \u0641\u064A ${issue2.origin}`;
+      default:
+        return "\u0645\u062F\u062E\u0644 \u063A\u064A\u0631 \u0645\u0642\u0628\u0648\u0644";
+    }
+  };
+}, "error");
+function ar_default() {
+  return {
+    localeError: error()
+  };
+}
+__name(ar_default, "default");
+
+// node_modules/zod/v4/locales/az.js
+var error2 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "simvol", verb: "olmal\u0131d\u0131r" },
+    file: { unit: "bayt", verb: "olmal\u0131d\u0131r" },
+    array: { unit: "element", verb: "olmal\u0131d\u0131r" },
+    set: { unit: "element", verb: "olmal\u0131d\u0131r" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "input",
+    email: "email address",
+    url: "URL",
+    emoji: "emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "ISO datetime",
+    date: "ISO date",
+    time: "ISO time",
+    duration: "ISO duration",
+    ipv4: "IPv4 address",
+    ipv6: "IPv6 address",
+    cidrv4: "IPv4 range",
+    cidrv6: "IPv6 range",
+    base64: "base64-encoded string",
+    base64url: "base64url-encoded string",
+    json_string: "JSON string",
+    e164: "E.164 number",
+    jwt: "JWT",
+    template_literal: "input"
+  };
+  const TypeDictionary = {
+    nan: "NaN"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `Yanl\u0131\u015F d\u0259y\u0259r: g\xF6zl\u0259nil\u0259n instanceof ${issue2.expected}, daxil olan ${received}`;
+        }
+        return `Yanl\u0131\u015F d\u0259y\u0259r: g\xF6zl\u0259nil\u0259n ${expected}, daxil olan ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `Yanl\u0131\u015F d\u0259y\u0259r: g\xF6zl\u0259nil\u0259n ${stringifyPrimitive(issue2.values[0])}`;
+        return `Yanl\u0131\u015F se\xE7im: a\u015Fa\u011F\u0131dak\u0131lardan biri olmal\u0131d\u0131r: ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `\xC7ox b\xF6y\xFCk: g\xF6zl\u0259nil\u0259n ${issue2.origin ?? "d\u0259y\u0259r"} ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "element"}`;
+        return `\xC7ox b\xF6y\xFCk: g\xF6zl\u0259nil\u0259n ${issue2.origin ?? "d\u0259y\u0259r"} ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `\xC7ox ki\xE7ik: g\xF6zl\u0259nil\u0259n ${issue2.origin} ${adj}${issue2.minimum.toString()} ${sizing.unit}`;
+        return `\xC7ox ki\xE7ik: g\xF6zl\u0259nil\u0259n ${issue2.origin} ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `Yanl\u0131\u015F m\u0259tn: "${_issue.prefix}" il\u0259 ba\u015Flamal\u0131d\u0131r`;
+        if (_issue.format === "ends_with")
+          return `Yanl\u0131\u015F m\u0259tn: "${_issue.suffix}" il\u0259 bitm\u0259lidir`;
+        if (_issue.format === "includes")
+          return `Yanl\u0131\u015F m\u0259tn: "${_issue.includes}" daxil olmal\u0131d\u0131r`;
+        if (_issue.format === "regex")
+          return `Yanl\u0131\u015F m\u0259tn: ${_issue.pattern} \u015Fablonuna uy\u011Fun olmal\u0131d\u0131r`;
+        return `Yanl\u0131\u015F ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `Yanl\u0131\u015F \u0259d\u0259d: ${issue2.divisor} il\u0259 b\xF6l\xFCn\u0259 bil\u0259n olmal\u0131d\u0131r`;
+      case "unrecognized_keys":
+        return `Tan\u0131nmayan a\xE7ar${issue2.keys.length > 1 ? "lar" : ""}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `${issue2.origin} daxilind\u0259 yanl\u0131\u015F a\xE7ar`;
+      case "invalid_union":
+        return "Yanl\u0131\u015F d\u0259y\u0259r";
+      case "invalid_element":
+        return `${issue2.origin} daxilind\u0259 yanl\u0131\u015F d\u0259y\u0259r`;
+      default:
+        return `Yanl\u0131\u015F d\u0259y\u0259r`;
+    }
+  };
+}, "error");
+function az_default() {
+  return {
+    localeError: error2()
+  };
+}
+__name(az_default, "default");
+
+// node_modules/zod/v4/locales/be.js
+function getBelarusianPlural(count, one, few, many) {
+  const absCount = Math.abs(count);
+  const lastDigit = absCount % 10;
+  const lastTwoDigits = absCount % 100;
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 19) {
+    return many;
+  }
+  if (lastDigit === 1) {
+    return one;
+  }
+  if (lastDigit >= 2 && lastDigit <= 4) {
+    return few;
+  }
+  return many;
+}
+__name(getBelarusianPlural, "getBelarusianPlural");
+var error3 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: {
+      unit: {
+        one: "\u0441\u0456\u043C\u0432\u0430\u043B",
+        few: "\u0441\u0456\u043C\u0432\u0430\u043B\u044B",
+        many: "\u0441\u0456\u043C\u0432\u0430\u043B\u0430\u045E"
+      },
+      verb: "\u043C\u0435\u0446\u044C"
+    },
+    array: {
+      unit: {
+        one: "\u044D\u043B\u0435\u043C\u0435\u043D\u0442",
+        few: "\u044D\u043B\u0435\u043C\u0435\u043D\u0442\u044B",
+        many: "\u044D\u043B\u0435\u043C\u0435\u043D\u0442\u0430\u045E"
+      },
+      verb: "\u043C\u0435\u0446\u044C"
+    },
+    set: {
+      unit: {
+        one: "\u044D\u043B\u0435\u043C\u0435\u043D\u0442",
+        few: "\u044D\u043B\u0435\u043C\u0435\u043D\u0442\u044B",
+        many: "\u044D\u043B\u0435\u043C\u0435\u043D\u0442\u0430\u045E"
+      },
+      verb: "\u043C\u0435\u0446\u044C"
+    },
+    file: {
+      unit: {
+        one: "\u0431\u0430\u0439\u0442",
+        few: "\u0431\u0430\u0439\u0442\u044B",
+        many: "\u0431\u0430\u0439\u0442\u0430\u045E"
+      },
+      verb: "\u043C\u0435\u0446\u044C"
+    }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "\u0443\u0432\u043E\u0434",
+    email: "email \u0430\u0434\u0440\u0430\u0441",
+    url: "URL",
+    emoji: "\u044D\u043C\u043E\u0434\u0437\u0456",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "ISO \u0434\u0430\u0442\u0430 \u0456 \u0447\u0430\u0441",
+    date: "ISO \u0434\u0430\u0442\u0430",
+    time: "ISO \u0447\u0430\u0441",
+    duration: "ISO \u043F\u0440\u0430\u0446\u044F\u0433\u043B\u0430\u0441\u0446\u044C",
+    ipv4: "IPv4 \u0430\u0434\u0440\u0430\u0441",
+    ipv6: "IPv6 \u0430\u0434\u0440\u0430\u0441",
+    cidrv4: "IPv4 \u0434\u044B\u044F\u043F\u0430\u0437\u043E\u043D",
+    cidrv6: "IPv6 \u0434\u044B\u044F\u043F\u0430\u0437\u043E\u043D",
+    base64: "\u0440\u0430\u0434\u043E\u043A \u0443 \u0444\u0430\u0440\u043C\u0430\u0446\u0435 base64",
+    base64url: "\u0440\u0430\u0434\u043E\u043A \u0443 \u0444\u0430\u0440\u043C\u0430\u0446\u0435 base64url",
+    json_string: "JSON \u0440\u0430\u0434\u043E\u043A",
+    e164: "\u043D\u0443\u043C\u0430\u0440 E.164",
+    jwt: "JWT",
+    template_literal: "\u0443\u0432\u043E\u0434"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "\u043B\u0456\u043A",
+    array: "\u043C\u0430\u0441\u0456\u045E"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `\u041D\u044F\u043F\u0440\u0430\u0432\u0456\u043B\u044C\u043D\u044B \u045E\u0432\u043E\u0434: \u0447\u0430\u043A\u0430\u045E\u0441\u044F instanceof ${issue2.expected}, \u0430\u0442\u0440\u044B\u043C\u0430\u043D\u0430 ${received}`;
+        }
+        return `\u041D\u044F\u043F\u0440\u0430\u0432\u0456\u043B\u044C\u043D\u044B \u045E\u0432\u043E\u0434: \u0447\u0430\u043A\u0430\u045E\u0441\u044F ${expected}, \u0430\u0442\u0440\u044B\u043C\u0430\u043D\u0430 ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `\u041D\u044F\u043F\u0440\u0430\u0432\u0456\u043B\u044C\u043D\u044B \u045E\u0432\u043E\u0434: \u0447\u0430\u043A\u0430\u043B\u0430\u0441\u044F ${stringifyPrimitive(issue2.values[0])}`;
+        return `\u041D\u044F\u043F\u0440\u0430\u0432\u0456\u043B\u044C\u043D\u044B \u0432\u0430\u0440\u044B\u044F\u043D\u0442: \u0447\u0430\u043A\u0430\u045E\u0441\u044F \u0430\u0434\u0437\u0456\u043D \u0437 ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          const maxValue = Number(issue2.maximum);
+          const unit = getBelarusianPlural(maxValue, sizing.unit.one, sizing.unit.few, sizing.unit.many);
+          return `\u0417\u0430\u043D\u0430\u0434\u0442\u0430 \u0432\u044F\u043B\u0456\u043A\u0456: \u0447\u0430\u043A\u0430\u043B\u0430\u0441\u044F, \u0448\u0442\u043E ${issue2.origin ?? "\u0437\u043D\u0430\u0447\u044D\u043D\u043D\u0435"} \u043F\u0430\u0432\u0456\u043D\u043D\u0430 ${sizing.verb} ${adj}${issue2.maximum.toString()} ${unit}`;
+        }
+        return `\u0417\u0430\u043D\u0430\u0434\u0442\u0430 \u0432\u044F\u043B\u0456\u043A\u0456: \u0447\u0430\u043A\u0430\u043B\u0430\u0441\u044F, \u0448\u0442\u043E ${issue2.origin ?? "\u0437\u043D\u0430\u0447\u044D\u043D\u043D\u0435"} \u043F\u0430\u0432\u0456\u043D\u043D\u0430 \u0431\u044B\u0446\u044C ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          const minValue = Number(issue2.minimum);
+          const unit = getBelarusianPlural(minValue, sizing.unit.one, sizing.unit.few, sizing.unit.many);
+          return `\u0417\u0430\u043D\u0430\u0434\u0442\u0430 \u043C\u0430\u043B\u044B: \u0447\u0430\u043A\u0430\u043B\u0430\u0441\u044F, \u0448\u0442\u043E ${issue2.origin} \u043F\u0430\u0432\u0456\u043D\u043D\u0430 ${sizing.verb} ${adj}${issue2.minimum.toString()} ${unit}`;
+        }
+        return `\u0417\u0430\u043D\u0430\u0434\u0442\u0430 \u043C\u0430\u043B\u044B: \u0447\u0430\u043A\u0430\u043B\u0430\u0441\u044F, \u0448\u0442\u043E ${issue2.origin} \u043F\u0430\u0432\u0456\u043D\u043D\u0430 \u0431\u044B\u0446\u044C ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `\u041D\u044F\u043F\u0440\u0430\u0432\u0456\u043B\u044C\u043D\u044B \u0440\u0430\u0434\u043E\u043A: \u043F\u0430\u0432\u0456\u043D\u0435\u043D \u043F\u0430\u0447\u044B\u043D\u0430\u0446\u0446\u0430 \u0437 "${_issue.prefix}"`;
+        if (_issue.format === "ends_with")
+          return `\u041D\u044F\u043F\u0440\u0430\u0432\u0456\u043B\u044C\u043D\u044B \u0440\u0430\u0434\u043E\u043A: \u043F\u0430\u0432\u0456\u043D\u0435\u043D \u0437\u0430\u043A\u0430\u043D\u0447\u0432\u0430\u0446\u0446\u0430 \u043D\u0430 "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `\u041D\u044F\u043F\u0440\u0430\u0432\u0456\u043B\u044C\u043D\u044B \u0440\u0430\u0434\u043E\u043A: \u043F\u0430\u0432\u0456\u043D\u0435\u043D \u0437\u043C\u044F\u0448\u0447\u0430\u0446\u044C "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `\u041D\u044F\u043F\u0440\u0430\u0432\u0456\u043B\u044C\u043D\u044B \u0440\u0430\u0434\u043E\u043A: \u043F\u0430\u0432\u0456\u043D\u0435\u043D \u0430\u0434\u043F\u0430\u0432\u044F\u0434\u0430\u0446\u044C \u0448\u0430\u0431\u043B\u043E\u043D\u0443 ${_issue.pattern}`;
+        return `\u041D\u044F\u043F\u0440\u0430\u0432\u0456\u043B\u044C\u043D\u044B ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `\u041D\u044F\u043F\u0440\u0430\u0432\u0456\u043B\u044C\u043D\u044B \u043B\u0456\u043A: \u043F\u0430\u0432\u0456\u043D\u0435\u043D \u0431\u044B\u0446\u044C \u043A\u0440\u0430\u0442\u043D\u044B\u043C ${issue2.divisor}`;
+      case "unrecognized_keys":
+        return `\u041D\u0435\u0440\u0430\u0441\u043F\u0430\u0437\u043D\u0430\u043D\u044B ${issue2.keys.length > 1 ? "\u043A\u043B\u044E\u0447\u044B" : "\u043A\u043B\u044E\u0447"}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `\u041D\u044F\u043F\u0440\u0430\u0432\u0456\u043B\u044C\u043D\u044B \u043A\u043B\u044E\u0447 \u0443 ${issue2.origin}`;
+      case "invalid_union":
+        return "\u041D\u044F\u043F\u0440\u0430\u0432\u0456\u043B\u044C\u043D\u044B \u045E\u0432\u043E\u0434";
+      case "invalid_element":
+        return `\u041D\u044F\u043F\u0440\u0430\u0432\u0456\u043B\u044C\u043D\u0430\u0435 \u0437\u043D\u0430\u0447\u044D\u043D\u043D\u0435 \u045E ${issue2.origin}`;
+      default:
+        return `\u041D\u044F\u043F\u0440\u0430\u0432\u0456\u043B\u044C\u043D\u044B \u045E\u0432\u043E\u0434`;
+    }
+  };
+}, "error");
+function be_default() {
+  return {
+    localeError: error3()
+  };
+}
+__name(be_default, "default");
+
+// node_modules/zod/v4/locales/bg.js
+var error4 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "\u0441\u0438\u043C\u0432\u043E\u043B\u0430", verb: "\u0434\u0430 \u0441\u044A\u0434\u044A\u0440\u0436\u0430" },
+    file: { unit: "\u0431\u0430\u0439\u0442\u0430", verb: "\u0434\u0430 \u0441\u044A\u0434\u044A\u0440\u0436\u0430" },
+    array: { unit: "\u0435\u043B\u0435\u043C\u0435\u043D\u0442\u0430", verb: "\u0434\u0430 \u0441\u044A\u0434\u044A\u0440\u0436\u0430" },
+    set: { unit: "\u0435\u043B\u0435\u043C\u0435\u043D\u0442\u0430", verb: "\u0434\u0430 \u0441\u044A\u0434\u044A\u0440\u0436\u0430" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "\u0432\u0445\u043E\u0434",
+    email: "\u0438\u043C\u0435\u0439\u043B \u0430\u0434\u0440\u0435\u0441",
+    url: "URL",
+    emoji: "\u0435\u043C\u043E\u0434\u0436\u0438",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "ISO \u0432\u0440\u0435\u043C\u0435",
+    date: "ISO \u0434\u0430\u0442\u0430",
+    time: "ISO \u0432\u0440\u0435\u043C\u0435",
+    duration: "ISO \u043F\u0440\u043E\u0434\u044A\u043B\u0436\u0438\u0442\u0435\u043B\u043D\u043E\u0441\u0442",
+    ipv4: "IPv4 \u0430\u0434\u0440\u0435\u0441",
+    ipv6: "IPv6 \u0430\u0434\u0440\u0435\u0441",
+    cidrv4: "IPv4 \u0434\u0438\u0430\u043F\u0430\u0437\u043E\u043D",
+    cidrv6: "IPv6 \u0434\u0438\u0430\u043F\u0430\u0437\u043E\u043D",
+    base64: "base64-\u043A\u043E\u0434\u0438\u0440\u0430\u043D \u043D\u0438\u0437",
+    base64url: "base64url-\u043A\u043E\u0434\u0438\u0440\u0430\u043D \u043D\u0438\u0437",
+    json_string: "JSON \u043D\u0438\u0437",
+    e164: "E.164 \u043D\u043E\u043C\u0435\u0440",
+    jwt: "JWT",
+    template_literal: "\u0432\u0445\u043E\u0434"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "\u0447\u0438\u0441\u043B\u043E",
+    array: "\u043C\u0430\u0441\u0438\u0432"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `\u041D\u0435\u0432\u0430\u043B\u0438\u0434\u0435\u043D \u0432\u0445\u043E\u0434: \u043E\u0447\u0430\u043A\u0432\u0430\u043D instanceof ${issue2.expected}, \u043F\u043E\u043B\u0443\u0447\u0435\u043D ${received}`;
+        }
+        return `\u041D\u0435\u0432\u0430\u043B\u0438\u0434\u0435\u043D \u0432\u0445\u043E\u0434: \u043E\u0447\u0430\u043A\u0432\u0430\u043D ${expected}, \u043F\u043E\u043B\u0443\u0447\u0435\u043D ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `\u041D\u0435\u0432\u0430\u043B\u0438\u0434\u0435\u043D \u0432\u0445\u043E\u0434: \u043E\u0447\u0430\u043A\u0432\u0430\u043D ${stringifyPrimitive(issue2.values[0])}`;
+        return `\u041D\u0435\u0432\u0430\u043B\u0438\u0434\u043D\u0430 \u043E\u043F\u0446\u0438\u044F: \u043E\u0447\u0430\u043A\u0432\u0430\u043D\u043E \u0435\u0434\u043D\u043E \u043E\u0442 ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `\u0422\u0432\u044A\u0440\u0434\u0435 \u0433\u043E\u043B\u044F\u043C\u043E: \u043E\u0447\u0430\u043A\u0432\u0430 \u0441\u0435 ${issue2.origin ?? "\u0441\u0442\u043E\u0439\u043D\u043E\u0441\u0442"} \u0434\u0430 \u0441\u044A\u0434\u044A\u0440\u0436\u0430 ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "\u0435\u043B\u0435\u043C\u0435\u043D\u0442\u0430"}`;
+        return `\u0422\u0432\u044A\u0440\u0434\u0435 \u0433\u043E\u043B\u044F\u043C\u043E: \u043E\u0447\u0430\u043A\u0432\u0430 \u0441\u0435 ${issue2.origin ?? "\u0441\u0442\u043E\u0439\u043D\u043E\u0441\u0442"} \u0434\u0430 \u0431\u044A\u0434\u0435 ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `\u0422\u0432\u044A\u0440\u0434\u0435 \u043C\u0430\u043B\u043A\u043E: \u043E\u0447\u0430\u043A\u0432\u0430 \u0441\u0435 ${issue2.origin} \u0434\u0430 \u0441\u044A\u0434\u044A\u0440\u0436\u0430 ${adj}${issue2.minimum.toString()} ${sizing.unit}`;
+        }
+        return `\u0422\u0432\u044A\u0440\u0434\u0435 \u043C\u0430\u043B\u043A\u043E: \u043E\u0447\u0430\u043A\u0432\u0430 \u0441\u0435 ${issue2.origin} \u0434\u0430 \u0431\u044A\u0434\u0435 ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with") {
+          return `\u041D\u0435\u0432\u0430\u043B\u0438\u0434\u0435\u043D \u043D\u0438\u0437: \u0442\u0440\u044F\u0431\u0432\u0430 \u0434\u0430 \u0437\u0430\u043F\u043E\u0447\u0432\u0430 \u0441 "${_issue.prefix}"`;
+        }
+        if (_issue.format === "ends_with")
+          return `\u041D\u0435\u0432\u0430\u043B\u0438\u0434\u0435\u043D \u043D\u0438\u0437: \u0442\u0440\u044F\u0431\u0432\u0430 \u0434\u0430 \u0437\u0430\u0432\u044A\u0440\u0448\u0432\u0430 \u0441 "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `\u041D\u0435\u0432\u0430\u043B\u0438\u0434\u0435\u043D \u043D\u0438\u0437: \u0442\u0440\u044F\u0431\u0432\u0430 \u0434\u0430 \u0432\u043A\u043B\u044E\u0447\u0432\u0430 "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `\u041D\u0435\u0432\u0430\u043B\u0438\u0434\u0435\u043D \u043D\u0438\u0437: \u0442\u0440\u044F\u0431\u0432\u0430 \u0434\u0430 \u0441\u044A\u0432\u043F\u0430\u0434\u0430 \u0441 ${_issue.pattern}`;
+        let invalid_adj = "\u041D\u0435\u0432\u0430\u043B\u0438\u0434\u0435\u043D";
+        if (_issue.format === "emoji")
+          invalid_adj = "\u041D\u0435\u0432\u0430\u043B\u0438\u0434\u043D\u043E";
+        if (_issue.format === "datetime")
+          invalid_adj = "\u041D\u0435\u0432\u0430\u043B\u0438\u0434\u043D\u043E";
+        if (_issue.format === "date")
+          invalid_adj = "\u041D\u0435\u0432\u0430\u043B\u0438\u0434\u043D\u0430";
+        if (_issue.format === "time")
+          invalid_adj = "\u041D\u0435\u0432\u0430\u043B\u0438\u0434\u043D\u043E";
+        if (_issue.format === "duration")
+          invalid_adj = "\u041D\u0435\u0432\u0430\u043B\u0438\u0434\u043D\u0430";
+        return `${invalid_adj} ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `\u041D\u0435\u0432\u0430\u043B\u0438\u0434\u043D\u043E \u0447\u0438\u0441\u043B\u043E: \u0442\u0440\u044F\u0431\u0432\u0430 \u0434\u0430 \u0431\u044A\u0434\u0435 \u043A\u0440\u0430\u0442\u043D\u043E \u043D\u0430 ${issue2.divisor}`;
+      case "unrecognized_keys":
+        return `\u041D\u0435\u0440\u0430\u0437\u043F\u043E\u0437\u043D\u0430\u0442${issue2.keys.length > 1 ? "\u0438" : ""} \u043A\u043B\u044E\u0447${issue2.keys.length > 1 ? "\u043E\u0432\u0435" : ""}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `\u041D\u0435\u0432\u0430\u043B\u0438\u0434\u0435\u043D \u043A\u043B\u044E\u0447 \u0432 ${issue2.origin}`;
+      case "invalid_union":
+        return "\u041D\u0435\u0432\u0430\u043B\u0438\u0434\u0435\u043D \u0432\u0445\u043E\u0434";
+      case "invalid_element":
+        return `\u041D\u0435\u0432\u0430\u043B\u0438\u0434\u043D\u0430 \u0441\u0442\u043E\u0439\u043D\u043E\u0441\u0442 \u0432 ${issue2.origin}`;
+      default:
+        return `\u041D\u0435\u0432\u0430\u043B\u0438\u0434\u0435\u043D \u0432\u0445\u043E\u0434`;
+    }
+  };
+}, "error");
+function bg_default() {
+  return {
+    localeError: error4()
+  };
+}
+__name(bg_default, "default");
+
+// node_modules/zod/v4/locales/ca.js
+var error5 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "car\xE0cters", verb: "contenir" },
+    file: { unit: "bytes", verb: "contenir" },
+    array: { unit: "elements", verb: "contenir" },
+    set: { unit: "elements", verb: "contenir" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "entrada",
+    email: "adre\xE7a electr\xF2nica",
+    url: "URL",
+    emoji: "emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "data i hora ISO",
+    date: "data ISO",
+    time: "hora ISO",
+    duration: "durada ISO",
+    ipv4: "adre\xE7a IPv4",
+    ipv6: "adre\xE7a IPv6",
+    cidrv4: "rang IPv4",
+    cidrv6: "rang IPv6",
+    base64: "cadena codificada en base64",
+    base64url: "cadena codificada en base64url",
+    json_string: "cadena JSON",
+    e164: "n\xFAmero E.164",
+    jwt: "JWT",
+    template_literal: "entrada"
+  };
+  const TypeDictionary = {
+    nan: "NaN"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `Tipus inv\xE0lid: s'esperava instanceof ${issue2.expected}, s'ha rebut ${received}`;
+        }
+        return `Tipus inv\xE0lid: s'esperava ${expected}, s'ha rebut ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `Valor inv\xE0lid: s'esperava ${stringifyPrimitive(issue2.values[0])}`;
+        return `Opci\xF3 inv\xE0lida: s'esperava una de ${joinValues(issue2.values, " o ")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "com a m\xE0xim" : "menys de";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `Massa gran: s'esperava que ${issue2.origin ?? "el valor"} contingu\xE9s ${adj} ${issue2.maximum.toString()} ${sizing.unit ?? "elements"}`;
+        return `Massa gran: s'esperava que ${issue2.origin ?? "el valor"} fos ${adj} ${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? "com a m\xEDnim" : "m\xE9s de";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `Massa petit: s'esperava que ${issue2.origin} contingu\xE9s ${adj} ${issue2.minimum.toString()} ${sizing.unit}`;
+        }
+        return `Massa petit: s'esperava que ${issue2.origin} fos ${adj} ${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with") {
+          return `Format inv\xE0lid: ha de comen\xE7ar amb "${_issue.prefix}"`;
+        }
+        if (_issue.format === "ends_with")
+          return `Format inv\xE0lid: ha d'acabar amb "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `Format inv\xE0lid: ha d'incloure "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `Format inv\xE0lid: ha de coincidir amb el patr\xF3 ${_issue.pattern}`;
+        return `Format inv\xE0lid per a ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `N\xFAmero inv\xE0lid: ha de ser m\xFAltiple de ${issue2.divisor}`;
+      case "unrecognized_keys":
+        return `Clau${issue2.keys.length > 1 ? "s" : ""} no reconeguda${issue2.keys.length > 1 ? "s" : ""}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `Clau inv\xE0lida a ${issue2.origin}`;
+      case "invalid_union":
+        return "Entrada inv\xE0lida";
+      // Could also be "Tipus d'unió invàlid" but "Entrada invàlida" is more general
+      case "invalid_element":
+        return `Element inv\xE0lid a ${issue2.origin}`;
+      default:
+        return `Entrada inv\xE0lida`;
+    }
+  };
+}, "error");
+function ca_default() {
+  return {
+    localeError: error5()
+  };
+}
+__name(ca_default, "default");
+
+// node_modules/zod/v4/locales/cs.js
+var error6 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "znak\u016F", verb: "m\xEDt" },
+    file: { unit: "bajt\u016F", verb: "m\xEDt" },
+    array: { unit: "prvk\u016F", verb: "m\xEDt" },
+    set: { unit: "prvk\u016F", verb: "m\xEDt" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "regul\xE1rn\xED v\xFDraz",
+    email: "e-mailov\xE1 adresa",
+    url: "URL",
+    emoji: "emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "datum a \u010Das ve form\xE1tu ISO",
+    date: "datum ve form\xE1tu ISO",
+    time: "\u010Das ve form\xE1tu ISO",
+    duration: "doba trv\xE1n\xED ISO",
+    ipv4: "IPv4 adresa",
+    ipv6: "IPv6 adresa",
+    cidrv4: "rozsah IPv4",
+    cidrv6: "rozsah IPv6",
+    base64: "\u0159et\u011Bzec zak\xF3dovan\xFD ve form\xE1tu base64",
+    base64url: "\u0159et\u011Bzec zak\xF3dovan\xFD ve form\xE1tu base64url",
+    json_string: "\u0159et\u011Bzec ve form\xE1tu JSON",
+    e164: "\u010D\xEDslo E.164",
+    jwt: "JWT",
+    template_literal: "vstup"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "\u010D\xEDslo",
+    string: "\u0159et\u011Bzec",
+    function: "funkce",
+    array: "pole"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `Neplatn\xFD vstup: o\u010Dek\xE1v\xE1no instanceof ${issue2.expected}, obdr\u017Eeno ${received}`;
+        }
+        return `Neplatn\xFD vstup: o\u010Dek\xE1v\xE1no ${expected}, obdr\u017Eeno ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `Neplatn\xFD vstup: o\u010Dek\xE1v\xE1no ${stringifyPrimitive(issue2.values[0])}`;
+        return `Neplatn\xE1 mo\u017Enost: o\u010Dek\xE1v\xE1na jedna z hodnot ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `Hodnota je p\u0159\xEDli\u0161 velk\xE1: ${issue2.origin ?? "hodnota"} mus\xED m\xEDt ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "prvk\u016F"}`;
+        }
+        return `Hodnota je p\u0159\xEDli\u0161 velk\xE1: ${issue2.origin ?? "hodnota"} mus\xED b\xFDt ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `Hodnota je p\u0159\xEDli\u0161 mal\xE1: ${issue2.origin ?? "hodnota"} mus\xED m\xEDt ${adj}${issue2.minimum.toString()} ${sizing.unit ?? "prvk\u016F"}`;
+        }
+        return `Hodnota je p\u0159\xEDli\u0161 mal\xE1: ${issue2.origin ?? "hodnota"} mus\xED b\xFDt ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `Neplatn\xFD \u0159et\u011Bzec: mus\xED za\u010D\xEDnat na "${_issue.prefix}"`;
+        if (_issue.format === "ends_with")
+          return `Neplatn\xFD \u0159et\u011Bzec: mus\xED kon\u010Dit na "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `Neplatn\xFD \u0159et\u011Bzec: mus\xED obsahovat "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `Neplatn\xFD \u0159et\u011Bzec: mus\xED odpov\xEDdat vzoru ${_issue.pattern}`;
+        return `Neplatn\xFD form\xE1t ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `Neplatn\xE9 \u010D\xEDslo: mus\xED b\xFDt n\xE1sobkem ${issue2.divisor}`;
+      case "unrecognized_keys":
+        return `Nezn\xE1m\xE9 kl\xED\u010De: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `Neplatn\xFD kl\xED\u010D v ${issue2.origin}`;
+      case "invalid_union":
+        return "Neplatn\xFD vstup";
+      case "invalid_element":
+        return `Neplatn\xE1 hodnota v ${issue2.origin}`;
+      default:
+        return `Neplatn\xFD vstup`;
+    }
+  };
+}, "error");
+function cs_default() {
+  return {
+    localeError: error6()
+  };
+}
+__name(cs_default, "default");
+
+// node_modules/zod/v4/locales/da.js
+var error7 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "tegn", verb: "havde" },
+    file: { unit: "bytes", verb: "havde" },
+    array: { unit: "elementer", verb: "indeholdt" },
+    set: { unit: "elementer", verb: "indeholdt" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "input",
+    email: "e-mailadresse",
+    url: "URL",
+    emoji: "emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "ISO dato- og klokkesl\xE6t",
+    date: "ISO-dato",
+    time: "ISO-klokkesl\xE6t",
+    duration: "ISO-varighed",
+    ipv4: "IPv4-omr\xE5de",
+    ipv6: "IPv6-omr\xE5de",
+    cidrv4: "IPv4-spektrum",
+    cidrv6: "IPv6-spektrum",
+    base64: "base64-kodet streng",
+    base64url: "base64url-kodet streng",
+    json_string: "JSON-streng",
+    e164: "E.164-nummer",
+    jwt: "JWT",
+    template_literal: "input"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    string: "streng",
+    number: "tal",
+    boolean: "boolean",
+    array: "liste",
+    object: "objekt",
+    set: "s\xE6t",
+    file: "fil"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `Ugyldigt input: forventede instanceof ${issue2.expected}, fik ${received}`;
+        }
+        return `Ugyldigt input: forventede ${expected}, fik ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `Ugyldig v\xE6rdi: forventede ${stringifyPrimitive(issue2.values[0])}`;
+        return `Ugyldigt valg: forventede en af f\xF8lgende ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        const origin = TypeDictionary[issue2.origin] ?? issue2.origin;
+        if (sizing)
+          return `For stor: forventede ${origin ?? "value"} ${sizing.verb} ${adj} ${issue2.maximum.toString()} ${sizing.unit ?? "elementer"}`;
+        return `For stor: forventede ${origin ?? "value"} havde ${adj} ${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        const origin = TypeDictionary[issue2.origin] ?? issue2.origin;
+        if (sizing) {
+          return `For lille: forventede ${origin} ${sizing.verb} ${adj} ${issue2.minimum.toString()} ${sizing.unit}`;
+        }
+        return `For lille: forventede ${origin} havde ${adj} ${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `Ugyldig streng: skal starte med "${_issue.prefix}"`;
+        if (_issue.format === "ends_with")
+          return `Ugyldig streng: skal ende med "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `Ugyldig streng: skal indeholde "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `Ugyldig streng: skal matche m\xF8nsteret ${_issue.pattern}`;
+        return `Ugyldig ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `Ugyldigt tal: skal v\xE6re deleligt med ${issue2.divisor}`;
+      case "unrecognized_keys":
+        return `${issue2.keys.length > 1 ? "Ukendte n\xF8gler" : "Ukendt n\xF8gle"}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `Ugyldig n\xF8gle i ${issue2.origin}`;
+      case "invalid_union":
+        return "Ugyldigt input: matcher ingen af de tilladte typer";
+      case "invalid_element":
+        return `Ugyldig v\xE6rdi i ${issue2.origin}`;
+      default:
+        return `Ugyldigt input`;
+    }
+  };
+}, "error");
+function da_default() {
+  return {
+    localeError: error7()
+  };
+}
+__name(da_default, "default");
+
+// node_modules/zod/v4/locales/de.js
+var error8 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "Zeichen", verb: "zu haben" },
+    file: { unit: "Bytes", verb: "zu haben" },
+    array: { unit: "Elemente", verb: "zu haben" },
+    set: { unit: "Elemente", verb: "zu haben" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "Eingabe",
+    email: "E-Mail-Adresse",
+    url: "URL",
+    emoji: "Emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "ISO-Datum und -Uhrzeit",
+    date: "ISO-Datum",
+    time: "ISO-Uhrzeit",
+    duration: "ISO-Dauer",
+    ipv4: "IPv4-Adresse",
+    ipv6: "IPv6-Adresse",
+    cidrv4: "IPv4-Bereich",
+    cidrv6: "IPv6-Bereich",
+    base64: "Base64-codierter String",
+    base64url: "Base64-URL-codierter String",
+    json_string: "JSON-String",
+    e164: "E.164-Nummer",
+    jwt: "JWT",
+    template_literal: "Eingabe"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "Zahl",
+    array: "Array"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `Ung\xFCltige Eingabe: erwartet instanceof ${issue2.expected}, erhalten ${received}`;
+        }
+        return `Ung\xFCltige Eingabe: erwartet ${expected}, erhalten ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `Ung\xFCltige Eingabe: erwartet ${stringifyPrimitive(issue2.values[0])}`;
+        return `Ung\xFCltige Option: erwartet eine von ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `Zu gro\xDF: erwartet, dass ${issue2.origin ?? "Wert"} ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "Elemente"} hat`;
+        return `Zu gro\xDF: erwartet, dass ${issue2.origin ?? "Wert"} ${adj}${issue2.maximum.toString()} ist`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `Zu klein: erwartet, dass ${issue2.origin} ${adj}${issue2.minimum.toString()} ${sizing.unit} hat`;
+        }
+        return `Zu klein: erwartet, dass ${issue2.origin} ${adj}${issue2.minimum.toString()} ist`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `Ung\xFCltiger String: muss mit "${_issue.prefix}" beginnen`;
+        if (_issue.format === "ends_with")
+          return `Ung\xFCltiger String: muss mit "${_issue.suffix}" enden`;
+        if (_issue.format === "includes")
+          return `Ung\xFCltiger String: muss "${_issue.includes}" enthalten`;
+        if (_issue.format === "regex")
+          return `Ung\xFCltiger String: muss dem Muster ${_issue.pattern} entsprechen`;
+        return `Ung\xFCltig: ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `Ung\xFCltige Zahl: muss ein Vielfaches von ${issue2.divisor} sein`;
+      case "unrecognized_keys":
+        return `${issue2.keys.length > 1 ? "Unbekannte Schl\xFCssel" : "Unbekannter Schl\xFCssel"}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `Ung\xFCltiger Schl\xFCssel in ${issue2.origin}`;
+      case "invalid_union":
+        return "Ung\xFCltige Eingabe";
+      case "invalid_element":
+        return `Ung\xFCltiger Wert in ${issue2.origin}`;
+      default:
+        return `Ung\xFCltige Eingabe`;
+    }
+  };
+}, "error");
+function de_default() {
+  return {
+    localeError: error8()
+  };
+}
+__name(de_default, "default");
+
+// node_modules/zod/v4/locales/el.js
+var error9 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "\u03C7\u03B1\u03C1\u03B1\u03BA\u03C4\u03AE\u03C1\u03B5\u03C2", verb: "\u03BD\u03B1 \u03AD\u03C7\u03B5\u03B9" },
+    file: { unit: "bytes", verb: "\u03BD\u03B1 \u03AD\u03C7\u03B5\u03B9" },
+    array: { unit: "\u03C3\u03C4\u03BF\u03B9\u03C7\u03B5\u03AF\u03B1", verb: "\u03BD\u03B1 \u03AD\u03C7\u03B5\u03B9" },
+    set: { unit: "\u03C3\u03C4\u03BF\u03B9\u03C7\u03B5\u03AF\u03B1", verb: "\u03BD\u03B1 \u03AD\u03C7\u03B5\u03B9" },
+    map: { unit: "\u03BA\u03B1\u03C4\u03B1\u03C7\u03C9\u03C1\u03AE\u03C3\u03B5\u03B9\u03C2", verb: "\u03BD\u03B1 \u03AD\u03C7\u03B5\u03B9" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "\u03B5\u03AF\u03C3\u03BF\u03B4\u03BF\u03C2",
+    email: "\u03B4\u03B9\u03B5\u03CD\u03B8\u03C5\u03BD\u03C3\u03B7 email",
+    url: "URL",
+    emoji: "emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "ISO \u03B7\u03BC\u03B5\u03C1\u03BF\u03BC\u03B7\u03BD\u03AF\u03B1 \u03BA\u03B1\u03B9 \u03CE\u03C1\u03B1",
+    date: "ISO \u03B7\u03BC\u03B5\u03C1\u03BF\u03BC\u03B7\u03BD\u03AF\u03B1",
+    time: "ISO \u03CE\u03C1\u03B1",
+    duration: "ISO \u03B4\u03B9\u03AC\u03C1\u03BA\u03B5\u03B9\u03B1",
+    ipv4: "\u03B4\u03B9\u03B5\u03CD\u03B8\u03C5\u03BD\u03C3\u03B7 IPv4",
+    ipv6: "\u03B4\u03B9\u03B5\u03CD\u03B8\u03C5\u03BD\u03C3\u03B7 IPv6",
+    mac: "\u03B4\u03B9\u03B5\u03CD\u03B8\u03C5\u03BD\u03C3\u03B7 MAC",
+    cidrv4: "\u03B5\u03CD\u03C1\u03BF\u03C2 IPv4",
+    cidrv6: "\u03B5\u03CD\u03C1\u03BF\u03C2 IPv6",
+    base64: "\u03C3\u03C5\u03BC\u03B2\u03BF\u03BB\u03BF\u03C3\u03B5\u03B9\u03C1\u03AC \u03BA\u03C9\u03B4\u03B9\u03BA\u03BF\u03C0\u03BF\u03B9\u03B7\u03BC\u03AD\u03BD\u03B7 \u03C3\u03B5 base64",
+    base64url: "\u03C3\u03C5\u03BC\u03B2\u03BF\u03BB\u03BF\u03C3\u03B5\u03B9\u03C1\u03AC \u03BA\u03C9\u03B4\u03B9\u03BA\u03BF\u03C0\u03BF\u03B9\u03B7\u03BC\u03AD\u03BD\u03B7 \u03C3\u03B5 base64url",
+    json_string: "\u03C3\u03C5\u03BC\u03B2\u03BF\u03BB\u03BF\u03C3\u03B5\u03B9\u03C1\u03AC JSON",
+    e164: "\u03B1\u03C1\u03B9\u03B8\u03BC\u03CC\u03C2 E.164",
+    jwt: "JWT",
+    template_literal: "\u03B5\u03AF\u03C3\u03BF\u03B4\u03BF\u03C2"
+  };
+  const TypeDictionary = {
+    nan: "NaN"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (typeof issue2.expected === "string" && /^[A-Z]/.test(issue2.expected)) {
+          return `\u039C\u03B7 \u03AD\u03B3\u03BA\u03C5\u03C1\u03B7 \u03B5\u03AF\u03C3\u03BF\u03B4\u03BF\u03C2: \u03B1\u03BD\u03B1\u03BC\u03B5\u03BD\u03CC\u03C4\u03B1\u03BD instanceof ${issue2.expected}, \u03BB\u03AE\u03C6\u03B8\u03B7\u03BA\u03B5 ${received}`;
+        }
+        return `\u039C\u03B7 \u03AD\u03B3\u03BA\u03C5\u03C1\u03B7 \u03B5\u03AF\u03C3\u03BF\u03B4\u03BF\u03C2: \u03B1\u03BD\u03B1\u03BC\u03B5\u03BD\u03CC\u03C4\u03B1\u03BD ${expected}, \u03BB\u03AE\u03C6\u03B8\u03B7\u03BA\u03B5 ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `\u039C\u03B7 \u03AD\u03B3\u03BA\u03C5\u03C1\u03B7 \u03B5\u03AF\u03C3\u03BF\u03B4\u03BF\u03C2: \u03B1\u03BD\u03B1\u03BC\u03B5\u03BD\u03CC\u03C4\u03B1\u03BD ${stringifyPrimitive(issue2.values[0])}`;
+        return `\u039C\u03B7 \u03AD\u03B3\u03BA\u03C5\u03C1\u03B7 \u03B5\u03C0\u03B9\u03BB\u03BF\u03B3\u03AE: \u03B1\u03BD\u03B1\u03BC\u03B5\u03BD\u03CC\u03C4\u03B1\u03BD \u03AD\u03BD\u03B1 \u03B1\u03C0\u03CC ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `\u03A0\u03BF\u03BB\u03CD \u03BC\u03B5\u03B3\u03AC\u03BB\u03BF: \u03B1\u03BD\u03B1\u03BC\u03B5\u03BD\u03CC\u03C4\u03B1\u03BD ${issue2.origin ?? "\u03C4\u03B9\u03BC\u03AE"} \u03BD\u03B1 \u03AD\u03C7\u03B5\u03B9 ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "\u03C3\u03C4\u03BF\u03B9\u03C7\u03B5\u03AF\u03B1"}`;
+        return `\u03A0\u03BF\u03BB\u03CD \u03BC\u03B5\u03B3\u03AC\u03BB\u03BF: \u03B1\u03BD\u03B1\u03BC\u03B5\u03BD\u03CC\u03C4\u03B1\u03BD ${issue2.origin ?? "\u03C4\u03B9\u03BC\u03AE"} \u03BD\u03B1 \u03B5\u03AF\u03BD\u03B1\u03B9 ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `\u03A0\u03BF\u03BB\u03CD \u03BC\u03B9\u03BA\u03C1\u03CC: \u03B1\u03BD\u03B1\u03BC\u03B5\u03BD\u03CC\u03C4\u03B1\u03BD ${issue2.origin} \u03BD\u03B1 \u03AD\u03C7\u03B5\u03B9 ${adj}${issue2.minimum.toString()} ${sizing.unit}`;
+        }
+        return `\u03A0\u03BF\u03BB\u03CD \u03BC\u03B9\u03BA\u03C1\u03CC: \u03B1\u03BD\u03B1\u03BC\u03B5\u03BD\u03CC\u03C4\u03B1\u03BD ${issue2.origin} \u03BD\u03B1 \u03B5\u03AF\u03BD\u03B1\u03B9 ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with") {
+          return `\u039C\u03B7 \u03AD\u03B3\u03BA\u03C5\u03C1\u03B7 \u03C3\u03C5\u03BC\u03B2\u03BF\u03BB\u03BF\u03C3\u03B5\u03B9\u03C1\u03AC: \u03C0\u03C1\u03AD\u03C0\u03B5\u03B9 \u03BD\u03B1 \u03BE\u03B5\u03BA\u03B9\u03BD\u03AC \u03BC\u03B5 "${_issue.prefix}"`;
+        }
+        if (_issue.format === "ends_with")
+          return `\u039C\u03B7 \u03AD\u03B3\u03BA\u03C5\u03C1\u03B7 \u03C3\u03C5\u03BC\u03B2\u03BF\u03BB\u03BF\u03C3\u03B5\u03B9\u03C1\u03AC: \u03C0\u03C1\u03AD\u03C0\u03B5\u03B9 \u03BD\u03B1 \u03C4\u03B5\u03BB\u03B5\u03B9\u03CE\u03BD\u03B5\u03B9 \u03BC\u03B5 "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `\u039C\u03B7 \u03AD\u03B3\u03BA\u03C5\u03C1\u03B7 \u03C3\u03C5\u03BC\u03B2\u03BF\u03BB\u03BF\u03C3\u03B5\u03B9\u03C1\u03AC: \u03C0\u03C1\u03AD\u03C0\u03B5\u03B9 \u03BD\u03B1 \u03C0\u03B5\u03C1\u03B9\u03AD\u03C7\u03B5\u03B9 "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `\u039C\u03B7 \u03AD\u03B3\u03BA\u03C5\u03C1\u03B7 \u03C3\u03C5\u03BC\u03B2\u03BF\u03BB\u03BF\u03C3\u03B5\u03B9\u03C1\u03AC: \u03C0\u03C1\u03AD\u03C0\u03B5\u03B9 \u03BD\u03B1 \u03C4\u03B1\u03B9\u03C1\u03B9\u03AC\u03B6\u03B5\u03B9 \u03BC\u03B5 \u03C4\u03BF \u03BC\u03BF\u03C4\u03AF\u03B2\u03BF ${_issue.pattern}`;
+        return `\u039C\u03B7 \u03AD\u03B3\u03BA\u03C5\u03C1\u03BF: ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `\u039C\u03B7 \u03AD\u03B3\u03BA\u03C5\u03C1\u03BF\u03C2 \u03B1\u03C1\u03B9\u03B8\u03BC\u03CC\u03C2: \u03C0\u03C1\u03AD\u03C0\u03B5\u03B9 \u03BD\u03B1 \u03B5\u03AF\u03BD\u03B1\u03B9 \u03C0\u03BF\u03BB\u03BB\u03B1\u03C0\u03BB\u03AC\u03C3\u03B9\u03BF \u03C4\u03BF\u03C5 ${issue2.divisor}`;
+      case "unrecognized_keys":
+        return `\u0386\u03B3\u03BD\u03C9\u03C3\u03C4${issue2.keys.length > 1 ? "\u03B1" : "\u03BF"} \u03BA\u03BB\u03B5\u03B9\u03B4${issue2.keys.length > 1 ? "\u03B9\u03AC" : "\u03AF"}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `\u039C\u03B7 \u03AD\u03B3\u03BA\u03C5\u03C1\u03BF \u03BA\u03BB\u03B5\u03B9\u03B4\u03AF \u03C3\u03C4\u03BF ${issue2.origin}`;
+      case "invalid_union":
+        return "\u039C\u03B7 \u03AD\u03B3\u03BA\u03C5\u03C1\u03B7 \u03B5\u03AF\u03C3\u03BF\u03B4\u03BF\u03C2";
+      case "invalid_element":
+        return `\u039C\u03B7 \u03AD\u03B3\u03BA\u03C5\u03C1\u03B7 \u03C4\u03B9\u03BC\u03AE \u03C3\u03C4\u03BF ${issue2.origin}`;
+      default:
+        return `\u039C\u03B7 \u03AD\u03B3\u03BA\u03C5\u03C1\u03B7 \u03B5\u03AF\u03C3\u03BF\u03B4\u03BF\u03C2`;
+    }
+  };
+}, "error");
+function el_default() {
+  return {
+    localeError: error9()
+  };
+}
+__name(el_default, "default");
+
+// node_modules/zod/v4/locales/en.js
+var error10 = /* @__PURE__ */ __name(() => {
   const Sizable = {
     string: { unit: "characters", verb: "to have" },
     file: { unit: "bytes", verb: "to have" },
@@ -16435,13 +23411,4838 @@ var error = /* @__PURE__ */ __name(() => {
 }, "error");
 function en_default() {
   return {
-    localeError: error()
+    localeError: error10()
   };
 }
 __name(en_default, "default");
 
+// node_modules/zod/v4/locales/eo.js
+var error11 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "karaktrojn", verb: "havi" },
+    file: { unit: "bajtojn", verb: "havi" },
+    array: { unit: "elementojn", verb: "havi" },
+    set: { unit: "elementojn", verb: "havi" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "enigo",
+    email: "retadreso",
+    url: "URL",
+    emoji: "emo\u011Dio",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "ISO-datotempo",
+    date: "ISO-dato",
+    time: "ISO-tempo",
+    duration: "ISO-da\u016Dro",
+    ipv4: "IPv4-adreso",
+    ipv6: "IPv6-adreso",
+    cidrv4: "IPv4-rango",
+    cidrv6: "IPv6-rango",
+    base64: "64-ume kodita karaktraro",
+    base64url: "URL-64-ume kodita karaktraro",
+    json_string: "JSON-karaktraro",
+    e164: "E.164-nombro",
+    jwt: "JWT",
+    template_literal: "enigo"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "nombro",
+    array: "tabelo",
+    null: "senvalora"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `Nevalida enigo: atendi\u011Dis instanceof ${issue2.expected}, ricevi\u011Dis ${received}`;
+        }
+        return `Nevalida enigo: atendi\u011Dis ${expected}, ricevi\u011Dis ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `Nevalida enigo: atendi\u011Dis ${stringifyPrimitive(issue2.values[0])}`;
+        return `Nevalida opcio: atendi\u011Dis unu el ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `Tro granda: atendi\u011Dis ke ${issue2.origin ?? "valoro"} havu ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "elementojn"}`;
+        return `Tro granda: atendi\u011Dis ke ${issue2.origin ?? "valoro"} havu ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `Tro malgranda: atendi\u011Dis ke ${issue2.origin} havu ${adj}${issue2.minimum.toString()} ${sizing.unit}`;
+        }
+        return `Tro malgranda: atendi\u011Dis ke ${issue2.origin} estu ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `Nevalida karaktraro: devas komenci\u011Di per "${_issue.prefix}"`;
+        if (_issue.format === "ends_with")
+          return `Nevalida karaktraro: devas fini\u011Di per "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `Nevalida karaktraro: devas inkluzivi "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `Nevalida karaktraro: devas kongrui kun la modelo ${_issue.pattern}`;
+        return `Nevalida ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `Nevalida nombro: devas esti oblo de ${issue2.divisor}`;
+      case "unrecognized_keys":
+        return `Nekonata${issue2.keys.length > 1 ? "j" : ""} \u015Dlosilo${issue2.keys.length > 1 ? "j" : ""}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `Nevalida \u015Dlosilo en ${issue2.origin}`;
+      case "invalid_union":
+        return "Nevalida enigo";
+      case "invalid_element":
+        return `Nevalida valoro en ${issue2.origin}`;
+      default:
+        return `Nevalida enigo`;
+    }
+  };
+}, "error");
+function eo_default() {
+  return {
+    localeError: error11()
+  };
+}
+__name(eo_default, "default");
+
+// node_modules/zod/v4/locales/es.js
+var error12 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "caracteres", verb: "tener" },
+    file: { unit: "bytes", verb: "tener" },
+    array: { unit: "elementos", verb: "tener" },
+    set: { unit: "elementos", verb: "tener" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "entrada",
+    email: "direcci\xF3n de correo electr\xF3nico",
+    url: "URL",
+    emoji: "emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "fecha y hora ISO",
+    date: "fecha ISO",
+    time: "hora ISO",
+    duration: "duraci\xF3n ISO",
+    ipv4: "direcci\xF3n IPv4",
+    ipv6: "direcci\xF3n IPv6",
+    cidrv4: "rango IPv4",
+    cidrv6: "rango IPv6",
+    base64: "cadena codificada en base64",
+    base64url: "URL codificada en base64",
+    json_string: "cadena JSON",
+    e164: "n\xFAmero E.164",
+    jwt: "JWT",
+    template_literal: "entrada"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    string: "texto",
+    number: "n\xFAmero",
+    boolean: "booleano",
+    array: "arreglo",
+    object: "objeto",
+    set: "conjunto",
+    file: "archivo",
+    date: "fecha",
+    bigint: "n\xFAmero grande",
+    symbol: "s\xEDmbolo",
+    undefined: "indefinido",
+    null: "nulo",
+    function: "funci\xF3n",
+    map: "mapa",
+    record: "registro",
+    tuple: "tupla",
+    enum: "enumeraci\xF3n",
+    union: "uni\xF3n",
+    literal: "literal",
+    promise: "promesa",
+    void: "vac\xEDo",
+    never: "nunca",
+    unknown: "desconocido",
+    any: "cualquiera"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `Entrada inv\xE1lida: se esperaba instanceof ${issue2.expected}, recibido ${received}`;
+        }
+        return `Entrada inv\xE1lida: se esperaba ${expected}, recibido ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `Entrada inv\xE1lida: se esperaba ${stringifyPrimitive(issue2.values[0])}`;
+        return `Opci\xF3n inv\xE1lida: se esperaba una de ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        const origin = TypeDictionary[issue2.origin] ?? issue2.origin;
+        if (sizing)
+          return `Demasiado grande: se esperaba que ${origin ?? "valor"} tuviera ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "elementos"}`;
+        return `Demasiado grande: se esperaba que ${origin ?? "valor"} fuera ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        const origin = TypeDictionary[issue2.origin] ?? issue2.origin;
+        if (sizing) {
+          return `Demasiado peque\xF1o: se esperaba que ${origin} tuviera ${adj}${issue2.minimum.toString()} ${sizing.unit}`;
+        }
+        return `Demasiado peque\xF1o: se esperaba que ${origin} fuera ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `Cadena inv\xE1lida: debe comenzar con "${_issue.prefix}"`;
+        if (_issue.format === "ends_with")
+          return `Cadena inv\xE1lida: debe terminar en "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `Cadena inv\xE1lida: debe incluir "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `Cadena inv\xE1lida: debe coincidir con el patr\xF3n ${_issue.pattern}`;
+        return `Inv\xE1lido ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `N\xFAmero inv\xE1lido: debe ser m\xFAltiplo de ${issue2.divisor}`;
+      case "unrecognized_keys":
+        return `Llave${issue2.keys.length > 1 ? "s" : ""} desconocida${issue2.keys.length > 1 ? "s" : ""}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `Llave inv\xE1lida en ${TypeDictionary[issue2.origin] ?? issue2.origin}`;
+      case "invalid_union":
+        return "Entrada inv\xE1lida";
+      case "invalid_element":
+        return `Valor inv\xE1lido en ${TypeDictionary[issue2.origin] ?? issue2.origin}`;
+      default:
+        return `Entrada inv\xE1lida`;
+    }
+  };
+}, "error");
+function es_default() {
+  return {
+    localeError: error12()
+  };
+}
+__name(es_default, "default");
+
+// node_modules/zod/v4/locales/fa.js
+var error13 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "\u06A9\u0627\u0631\u0627\u06A9\u062A\u0631", verb: "\u062F\u0627\u0634\u062A\u0647 \u0628\u0627\u0634\u062F" },
+    file: { unit: "\u0628\u0627\u06CC\u062A", verb: "\u062F\u0627\u0634\u062A\u0647 \u0628\u0627\u0634\u062F" },
+    array: { unit: "\u0622\u06CC\u062A\u0645", verb: "\u062F\u0627\u0634\u062A\u0647 \u0628\u0627\u0634\u062F" },
+    set: { unit: "\u0622\u06CC\u062A\u0645", verb: "\u062F\u0627\u0634\u062A\u0647 \u0628\u0627\u0634\u062F" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "\u0648\u0631\u0648\u062F\u06CC",
+    email: "\u0622\u062F\u0631\u0633 \u0627\u06CC\u0645\u06CC\u0644",
+    url: "URL",
+    emoji: "\u0627\u06CC\u0645\u0648\u062C\u06CC",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "\u062A\u0627\u0631\u06CC\u062E \u0648 \u0632\u0645\u0627\u0646 \u0627\u06CC\u0632\u0648",
+    date: "\u062A\u0627\u0631\u06CC\u062E \u0627\u06CC\u0632\u0648",
+    time: "\u0632\u0645\u0627\u0646 \u0627\u06CC\u0632\u0648",
+    duration: "\u0645\u062F\u062A \u0632\u0645\u0627\u0646 \u0627\u06CC\u0632\u0648",
+    ipv4: "IPv4 \u0622\u062F\u0631\u0633",
+    ipv6: "IPv6 \u0622\u062F\u0631\u0633",
+    cidrv4: "IPv4 \u062F\u0627\u0645\u0646\u0647",
+    cidrv6: "IPv6 \u062F\u0627\u0645\u0646\u0647",
+    base64: "base64-encoded \u0631\u0634\u062A\u0647",
+    base64url: "base64url-encoded \u0631\u0634\u062A\u0647",
+    json_string: "JSON \u0631\u0634\u062A\u0647",
+    e164: "E.164 \u0639\u062F\u062F",
+    jwt: "JWT",
+    template_literal: "\u0648\u0631\u0648\u062F\u06CC"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "\u0639\u062F\u062F",
+    array: "\u0622\u0631\u0627\u06CC\u0647"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `\u0648\u0631\u0648\u062F\u06CC \u0646\u0627\u0645\u0639\u062A\u0628\u0631: \u0645\u06CC\u200C\u0628\u0627\u06CC\u0633\u062A instanceof ${issue2.expected} \u0645\u06CC\u200C\u0628\u0648\u062F\u060C ${received} \u062F\u0631\u06CC\u0627\u0641\u062A \u0634\u062F`;
+        }
+        return `\u0648\u0631\u0648\u062F\u06CC \u0646\u0627\u0645\u0639\u062A\u0628\u0631: \u0645\u06CC\u200C\u0628\u0627\u06CC\u0633\u062A ${expected} \u0645\u06CC\u200C\u0628\u0648\u062F\u060C ${received} \u062F\u0631\u06CC\u0627\u0641\u062A \u0634\u062F`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1) {
+          return `\u0648\u0631\u0648\u062F\u06CC \u0646\u0627\u0645\u0639\u062A\u0628\u0631: \u0645\u06CC\u200C\u0628\u0627\u06CC\u0633\u062A ${stringifyPrimitive(issue2.values[0])} \u0645\u06CC\u200C\u0628\u0648\u062F`;
+        }
+        return `\u06AF\u0632\u06CC\u0646\u0647 \u0646\u0627\u0645\u0639\u062A\u0628\u0631: \u0645\u06CC\u200C\u0628\u0627\u06CC\u0633\u062A \u06CC\u06A9\u06CC \u0627\u0632 ${joinValues(issue2.values, "|")} \u0645\u06CC\u200C\u0628\u0648\u062F`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `\u062E\u06CC\u0644\u06CC \u0628\u0632\u0631\u06AF: ${issue2.origin ?? "\u0645\u0642\u062F\u0627\u0631"} \u0628\u0627\u06CC\u062F ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "\u0639\u0646\u0635\u0631"} \u0628\u0627\u0634\u062F`;
+        }
+        return `\u062E\u06CC\u0644\u06CC \u0628\u0632\u0631\u06AF: ${issue2.origin ?? "\u0645\u0642\u062F\u0627\u0631"} \u0628\u0627\u06CC\u062F ${adj}${issue2.maximum.toString()} \u0628\u0627\u0634\u062F`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `\u062E\u06CC\u0644\u06CC \u06A9\u0648\u0686\u06A9: ${issue2.origin} \u0628\u0627\u06CC\u062F ${adj}${issue2.minimum.toString()} ${sizing.unit} \u0628\u0627\u0634\u062F`;
+        }
+        return `\u062E\u06CC\u0644\u06CC \u06A9\u0648\u0686\u06A9: ${issue2.origin} \u0628\u0627\u06CC\u062F ${adj}${issue2.minimum.toString()} \u0628\u0627\u0634\u062F`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with") {
+          return `\u0631\u0634\u062A\u0647 \u0646\u0627\u0645\u0639\u062A\u0628\u0631: \u0628\u0627\u06CC\u062F \u0628\u0627 "${_issue.prefix}" \u0634\u0631\u0648\u0639 \u0634\u0648\u062F`;
+        }
+        if (_issue.format === "ends_with") {
+          return `\u0631\u0634\u062A\u0647 \u0646\u0627\u0645\u0639\u062A\u0628\u0631: \u0628\u0627\u06CC\u062F \u0628\u0627 "${_issue.suffix}" \u062A\u0645\u0627\u0645 \u0634\u0648\u062F`;
+        }
+        if (_issue.format === "includes") {
+          return `\u0631\u0634\u062A\u0647 \u0646\u0627\u0645\u0639\u062A\u0628\u0631: \u0628\u0627\u06CC\u062F \u0634\u0627\u0645\u0644 "${_issue.includes}" \u0628\u0627\u0634\u062F`;
+        }
+        if (_issue.format === "regex") {
+          return `\u0631\u0634\u062A\u0647 \u0646\u0627\u0645\u0639\u062A\u0628\u0631: \u0628\u0627\u06CC\u062F \u0628\u0627 \u0627\u0644\u06AF\u0648\u06CC ${_issue.pattern} \u0645\u0637\u0627\u0628\u0642\u062A \u062F\u0627\u0634\u062A\u0647 \u0628\u0627\u0634\u062F`;
+        }
+        return `${FormatDictionary[_issue.format] ?? issue2.format} \u0646\u0627\u0645\u0639\u062A\u0628\u0631`;
+      }
+      case "not_multiple_of":
+        return `\u0639\u062F\u062F \u0646\u0627\u0645\u0639\u062A\u0628\u0631: \u0628\u0627\u06CC\u062F \u0645\u0636\u0631\u0628 ${issue2.divisor} \u0628\u0627\u0634\u062F`;
+      case "unrecognized_keys":
+        return `\u06A9\u0644\u06CC\u062F${issue2.keys.length > 1 ? "\u0647\u0627\u06CC" : ""} \u0646\u0627\u0634\u0646\u0627\u0633: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `\u06A9\u0644\u06CC\u062F \u0646\u0627\u0634\u0646\u0627\u0633 \u062F\u0631 ${issue2.origin}`;
+      case "invalid_union":
+        return `\u0648\u0631\u0648\u062F\u06CC \u0646\u0627\u0645\u0639\u062A\u0628\u0631`;
+      case "invalid_element":
+        return `\u0645\u0642\u062F\u0627\u0631 \u0646\u0627\u0645\u0639\u062A\u0628\u0631 \u062F\u0631 ${issue2.origin}`;
+      default:
+        return `\u0648\u0631\u0648\u062F\u06CC \u0646\u0627\u0645\u0639\u062A\u0628\u0631`;
+    }
+  };
+}, "error");
+function fa_default() {
+  return {
+    localeError: error13()
+  };
+}
+__name(fa_default, "default");
+
+// node_modules/zod/v4/locales/fi.js
+var error14 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "merkki\xE4", subject: "merkkijonon" },
+    file: { unit: "tavua", subject: "tiedoston" },
+    array: { unit: "alkiota", subject: "listan" },
+    set: { unit: "alkiota", subject: "joukon" },
+    number: { unit: "", subject: "luvun" },
+    bigint: { unit: "", subject: "suuren kokonaisluvun" },
+    int: { unit: "", subject: "kokonaisluvun" },
+    date: { unit: "", subject: "p\xE4iv\xE4m\xE4\xE4r\xE4n" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "s\xE4\xE4nn\xF6llinen lauseke",
+    email: "s\xE4hk\xF6postiosoite",
+    url: "URL-osoite",
+    emoji: "emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "ISO-aikaleima",
+    date: "ISO-p\xE4iv\xE4m\xE4\xE4r\xE4",
+    time: "ISO-aika",
+    duration: "ISO-kesto",
+    ipv4: "IPv4-osoite",
+    ipv6: "IPv6-osoite",
+    cidrv4: "IPv4-alue",
+    cidrv6: "IPv6-alue",
+    base64: "base64-koodattu merkkijono",
+    base64url: "base64url-koodattu merkkijono",
+    json_string: "JSON-merkkijono",
+    e164: "E.164-luku",
+    jwt: "JWT",
+    template_literal: "templaattimerkkijono"
+  };
+  const TypeDictionary = {
+    nan: "NaN"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `Virheellinen tyyppi: odotettiin instanceof ${issue2.expected}, oli ${received}`;
+        }
+        return `Virheellinen tyyppi: odotettiin ${expected}, oli ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `Virheellinen sy\xF6te: t\xE4ytyy olla ${stringifyPrimitive(issue2.values[0])}`;
+        return `Virheellinen valinta: t\xE4ytyy olla yksi seuraavista: ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `Liian suuri: ${sizing.subject} t\xE4ytyy olla ${adj}${issue2.maximum.toString()} ${sizing.unit}`.trim();
+        }
+        return `Liian suuri: arvon t\xE4ytyy olla ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `Liian pieni: ${sizing.subject} t\xE4ytyy olla ${adj}${issue2.minimum.toString()} ${sizing.unit}`.trim();
+        }
+        return `Liian pieni: arvon t\xE4ytyy olla ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `Virheellinen sy\xF6te: t\xE4ytyy alkaa "${_issue.prefix}"`;
+        if (_issue.format === "ends_with")
+          return `Virheellinen sy\xF6te: t\xE4ytyy loppua "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `Virheellinen sy\xF6te: t\xE4ytyy sis\xE4lt\xE4\xE4 "${_issue.includes}"`;
+        if (_issue.format === "regex") {
+          return `Virheellinen sy\xF6te: t\xE4ytyy vastata s\xE4\xE4nn\xF6llist\xE4 lauseketta ${_issue.pattern}`;
+        }
+        return `Virheellinen ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `Virheellinen luku: t\xE4ytyy olla luvun ${issue2.divisor} monikerta`;
+      case "unrecognized_keys":
+        return `${issue2.keys.length > 1 ? "Tuntemattomat avaimet" : "Tuntematon avain"}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return "Virheellinen avain tietueessa";
+      case "invalid_union":
+        return "Virheellinen unioni";
+      case "invalid_element":
+        return "Virheellinen arvo joukossa";
+      default:
+        return `Virheellinen sy\xF6te`;
+    }
+  };
+}, "error");
+function fi_default() {
+  return {
+    localeError: error14()
+  };
+}
+__name(fi_default, "default");
+
+// node_modules/zod/v4/locales/fr.js
+var error15 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "caract\xE8res", verb: "avoir" },
+    file: { unit: "octets", verb: "avoir" },
+    array: { unit: "\xE9l\xE9ments", verb: "avoir" },
+    set: { unit: "\xE9l\xE9ments", verb: "avoir" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "entr\xE9e",
+    email: "adresse e-mail",
+    url: "URL",
+    emoji: "emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "date et heure ISO",
+    date: "date ISO",
+    time: "heure ISO",
+    duration: "dur\xE9e ISO",
+    ipv4: "adresse IPv4",
+    ipv6: "adresse IPv6",
+    cidrv4: "plage IPv4",
+    cidrv6: "plage IPv6",
+    base64: "cha\xEEne encod\xE9e en base64",
+    base64url: "cha\xEEne encod\xE9e en base64url",
+    json_string: "cha\xEEne JSON",
+    e164: "num\xE9ro E.164",
+    jwt: "JWT",
+    template_literal: "entr\xE9e"
+  };
+  const TypeDictionary = {
+    string: "cha\xEEne",
+    number: "nombre",
+    int: "entier",
+    boolean: "bool\xE9en",
+    bigint: "grand entier",
+    symbol: "symbole",
+    undefined: "ind\xE9fini",
+    null: "null",
+    never: "jamais",
+    void: "vide",
+    date: "date",
+    array: "tableau",
+    object: "objet",
+    tuple: "tuple",
+    record: "enregistrement",
+    map: "carte",
+    set: "ensemble",
+    file: "fichier",
+    nonoptional: "non-optionnel",
+    nan: "NaN",
+    function: "fonction"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `Entr\xE9e invalide : instanceof ${issue2.expected} attendu, ${received} re\xE7u`;
+        }
+        return `Entr\xE9e invalide : ${expected} attendu, ${received} re\xE7u`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `Entr\xE9e invalide : ${stringifyPrimitive(issue2.values[0])} attendu`;
+        return `Option invalide : une valeur parmi ${joinValues(issue2.values, "|")} attendue`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `Trop grand : ${TypeDictionary[issue2.origin] ?? "valeur"} doit ${sizing.verb} ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "\xE9l\xE9ment(s)"}`;
+        return `Trop grand : ${TypeDictionary[issue2.origin] ?? "valeur"} doit \xEAtre ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `Trop petit : ${TypeDictionary[issue2.origin] ?? "valeur"} doit ${sizing.verb} ${adj}${issue2.minimum.toString()} ${sizing.unit}`;
+        return `Trop petit : ${TypeDictionary[issue2.origin] ?? "valeur"} doit \xEAtre ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `Cha\xEEne invalide : doit commencer par "${_issue.prefix}"`;
+        if (_issue.format === "ends_with")
+          return `Cha\xEEne invalide : doit se terminer par "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `Cha\xEEne invalide : doit inclure "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `Cha\xEEne invalide : doit correspondre au mod\xE8le ${_issue.pattern}`;
+        return `${FormatDictionary[_issue.format] ?? issue2.format} invalide`;
+      }
+      case "not_multiple_of":
+        return `Nombre invalide : doit \xEAtre un multiple de ${issue2.divisor}`;
+      case "unrecognized_keys":
+        return `Cl\xE9${issue2.keys.length > 1 ? "s" : ""} non reconnue${issue2.keys.length > 1 ? "s" : ""} : ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `Cl\xE9 invalide dans ${issue2.origin}`;
+      case "invalid_union":
+        return "Entr\xE9e invalide";
+      case "invalid_element":
+        return `Valeur invalide dans ${issue2.origin}`;
+      default:
+        return `Entr\xE9e invalide`;
+    }
+  };
+}, "error");
+function fr_default() {
+  return {
+    localeError: error15()
+  };
+}
+__name(fr_default, "default");
+
+// node_modules/zod/v4/locales/fr-CA.js
+var error16 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "caract\xE8res", verb: "avoir" },
+    file: { unit: "octets", verb: "avoir" },
+    array: { unit: "\xE9l\xE9ments", verb: "avoir" },
+    set: { unit: "\xE9l\xE9ments", verb: "avoir" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "entr\xE9e",
+    email: "adresse courriel",
+    url: "URL",
+    emoji: "emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "date-heure ISO",
+    date: "date ISO",
+    time: "heure ISO",
+    duration: "dur\xE9e ISO",
+    ipv4: "adresse IPv4",
+    ipv6: "adresse IPv6",
+    cidrv4: "plage IPv4",
+    cidrv6: "plage IPv6",
+    base64: "cha\xEEne encod\xE9e en base64",
+    base64url: "cha\xEEne encod\xE9e en base64url",
+    json_string: "cha\xEEne JSON",
+    e164: "num\xE9ro E.164",
+    jwt: "JWT",
+    template_literal: "entr\xE9e"
+  };
+  const TypeDictionary = {
+    nan: "NaN"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `Entr\xE9e invalide : attendu instanceof ${issue2.expected}, re\xE7u ${received}`;
+        }
+        return `Entr\xE9e invalide : attendu ${expected}, re\xE7u ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `Entr\xE9e invalide : attendu ${stringifyPrimitive(issue2.values[0])}`;
+        return `Option invalide : attendu l'une des valeurs suivantes ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "\u2264" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `Trop grand : attendu que ${issue2.origin ?? "la valeur"} ait ${adj}${issue2.maximum.toString()} ${sizing.unit}`;
+        return `Trop grand : attendu que ${issue2.origin ?? "la valeur"} soit ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? "\u2265" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `Trop petit : attendu que ${issue2.origin} ait ${adj}${issue2.minimum.toString()} ${sizing.unit}`;
+        }
+        return `Trop petit : attendu que ${issue2.origin} soit ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with") {
+          return `Cha\xEEne invalide : doit commencer par "${_issue.prefix}"`;
+        }
+        if (_issue.format === "ends_with")
+          return `Cha\xEEne invalide : doit se terminer par "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `Cha\xEEne invalide : doit inclure "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `Cha\xEEne invalide : doit correspondre au motif ${_issue.pattern}`;
+        return `${FormatDictionary[_issue.format] ?? issue2.format} invalide`;
+      }
+      case "not_multiple_of":
+        return `Nombre invalide : doit \xEAtre un multiple de ${issue2.divisor}`;
+      case "unrecognized_keys":
+        return `Cl\xE9${issue2.keys.length > 1 ? "s" : ""} non reconnue${issue2.keys.length > 1 ? "s" : ""} : ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `Cl\xE9 invalide dans ${issue2.origin}`;
+      case "invalid_union":
+        return "Entr\xE9e invalide";
+      case "invalid_element":
+        return `Valeur invalide dans ${issue2.origin}`;
+      default:
+        return `Entr\xE9e invalide`;
+    }
+  };
+}, "error");
+function fr_CA_default() {
+  return {
+    localeError: error16()
+  };
+}
+__name(fr_CA_default, "default");
+
+// node_modules/zod/v4/locales/he.js
+var error17 = /* @__PURE__ */ __name(() => {
+  const TypeNames = {
+    string: { label: "\u05DE\u05D7\u05E8\u05D5\u05D6\u05EA", gender: "f" },
+    number: { label: "\u05DE\u05E1\u05E4\u05E8", gender: "m" },
+    boolean: { label: "\u05E2\u05E8\u05DA \u05D1\u05D5\u05DC\u05D9\u05D0\u05E0\u05D9", gender: "m" },
+    bigint: { label: "BigInt", gender: "m" },
+    date: { label: "\u05EA\u05D0\u05E8\u05D9\u05DA", gender: "m" },
+    array: { label: "\u05DE\u05E2\u05E8\u05DA", gender: "m" },
+    object: { label: "\u05D0\u05D5\u05D1\u05D9\u05D9\u05E7\u05D8", gender: "m" },
+    null: { label: "\u05E2\u05E8\u05DA \u05E8\u05D9\u05E7 (null)", gender: "m" },
+    undefined: { label: "\u05E2\u05E8\u05DA \u05DC\u05D0 \u05DE\u05D5\u05D2\u05D3\u05E8 (undefined)", gender: "m" },
+    symbol: { label: "\u05E1\u05D9\u05DE\u05D1\u05D5\u05DC (Symbol)", gender: "m" },
+    function: { label: "\u05E4\u05D5\u05E0\u05E7\u05E6\u05D9\u05D4", gender: "f" },
+    map: { label: "\u05DE\u05E4\u05D4 (Map)", gender: "f" },
+    set: { label: "\u05E7\u05D1\u05D5\u05E6\u05D4 (Set)", gender: "f" },
+    file: { label: "\u05E7\u05D5\u05D1\u05E5", gender: "m" },
+    promise: { label: "Promise", gender: "m" },
+    NaN: { label: "NaN", gender: "m" },
+    unknown: { label: "\u05E2\u05E8\u05DA \u05DC\u05D0 \u05D9\u05D3\u05D5\u05E2", gender: "m" },
+    value: { label: "\u05E2\u05E8\u05DA", gender: "m" }
+  };
+  const Sizable = {
+    string: { unit: "\u05EA\u05D5\u05D5\u05D9\u05DD", shortLabel: "\u05E7\u05E6\u05E8", longLabel: "\u05D0\u05E8\u05D5\u05DA" },
+    file: { unit: "\u05D1\u05D9\u05D9\u05D8\u05D9\u05DD", shortLabel: "\u05E7\u05D8\u05DF", longLabel: "\u05D2\u05D3\u05D5\u05DC" },
+    array: { unit: "\u05E4\u05E8\u05D9\u05D8\u05D9\u05DD", shortLabel: "\u05E7\u05D8\u05DF", longLabel: "\u05D2\u05D3\u05D5\u05DC" },
+    set: { unit: "\u05E4\u05E8\u05D9\u05D8\u05D9\u05DD", shortLabel: "\u05E7\u05D8\u05DF", longLabel: "\u05D2\u05D3\u05D5\u05DC" },
+    number: { unit: "", shortLabel: "\u05E7\u05D8\u05DF", longLabel: "\u05D2\u05D3\u05D5\u05DC" }
+    // no unit
+  };
+  const typeEntry = /* @__PURE__ */ __name((t) => t ? TypeNames[t] : void 0, "typeEntry");
+  const typeLabel = /* @__PURE__ */ __name((t) => {
+    const e = typeEntry(t);
+    if (e)
+      return e.label;
+    return t ?? TypeNames.unknown.label;
+  }, "typeLabel");
+  const withDefinite = /* @__PURE__ */ __name((t) => `\u05D4${typeLabel(t)}`, "withDefinite");
+  const verbFor = /* @__PURE__ */ __name((t) => {
+    const e = typeEntry(t);
+    const gender = e?.gender ?? "m";
+    return gender === "f" ? "\u05E6\u05E8\u05D9\u05DB\u05D4 \u05DC\u05D4\u05D9\u05D5\u05EA" : "\u05E6\u05E8\u05D9\u05DA \u05DC\u05D4\u05D9\u05D5\u05EA";
+  }, "verbFor");
+  const getSizing = /* @__PURE__ */ __name((origin) => {
+    if (!origin)
+      return null;
+    return Sizable[origin] ?? null;
+  }, "getSizing");
+  const FormatDictionary = {
+    regex: { label: "\u05E7\u05DC\u05D8", gender: "m" },
+    email: { label: "\u05DB\u05EA\u05D5\u05D1\u05EA \u05D0\u05D9\u05DE\u05D9\u05D9\u05DC", gender: "f" },
+    url: { label: "\u05DB\u05EA\u05D5\u05D1\u05EA \u05E8\u05E9\u05EA", gender: "f" },
+    emoji: { label: "\u05D0\u05D9\u05DE\u05D5\u05D2'\u05D9", gender: "m" },
+    uuid: { label: "UUID", gender: "m" },
+    nanoid: { label: "nanoid", gender: "m" },
+    guid: { label: "GUID", gender: "m" },
+    cuid: { label: "cuid", gender: "m" },
+    cuid2: { label: "cuid2", gender: "m" },
+    ulid: { label: "ULID", gender: "m" },
+    xid: { label: "XID", gender: "m" },
+    ksuid: { label: "KSUID", gender: "m" },
+    datetime: { label: "\u05EA\u05D0\u05E8\u05D9\u05DA \u05D5\u05D6\u05DE\u05DF ISO", gender: "m" },
+    date: { label: "\u05EA\u05D0\u05E8\u05D9\u05DA ISO", gender: "m" },
+    time: { label: "\u05D6\u05DE\u05DF ISO", gender: "m" },
+    duration: { label: "\u05DE\u05E9\u05DA \u05D6\u05DE\u05DF ISO", gender: "m" },
+    ipv4: { label: "\u05DB\u05EA\u05D5\u05D1\u05EA IPv4", gender: "f" },
+    ipv6: { label: "\u05DB\u05EA\u05D5\u05D1\u05EA IPv6", gender: "f" },
+    cidrv4: { label: "\u05D8\u05D5\u05D5\u05D7 IPv4", gender: "m" },
+    cidrv6: { label: "\u05D8\u05D5\u05D5\u05D7 IPv6", gender: "m" },
+    base64: { label: "\u05DE\u05D7\u05E8\u05D5\u05D6\u05EA \u05D1\u05D1\u05E1\u05D9\u05E1 64", gender: "f" },
+    base64url: { label: "\u05DE\u05D7\u05E8\u05D5\u05D6\u05EA \u05D1\u05D1\u05E1\u05D9\u05E1 64 \u05DC\u05DB\u05EA\u05D5\u05D1\u05D5\u05EA \u05E8\u05E9\u05EA", gender: "f" },
+    json_string: { label: "\u05DE\u05D7\u05E8\u05D5\u05D6\u05EA JSON", gender: "f" },
+    e164: { label: "\u05DE\u05E1\u05E4\u05E8 E.164", gender: "m" },
+    jwt: { label: "JWT", gender: "m" },
+    ends_with: { label: "\u05E7\u05DC\u05D8", gender: "m" },
+    includes: { label: "\u05E7\u05DC\u05D8", gender: "m" },
+    lowercase: { label: "\u05E7\u05DC\u05D8", gender: "m" },
+    starts_with: { label: "\u05E7\u05DC\u05D8", gender: "m" },
+    uppercase: { label: "\u05E7\u05DC\u05D8", gender: "m" }
+  };
+  const TypeDictionary = {
+    nan: "NaN"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expectedKey = issue2.expected;
+        const expected = TypeDictionary[expectedKey ?? ""] ?? typeLabel(expectedKey);
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? TypeNames[receivedType]?.label ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `\u05E7\u05DC\u05D8 \u05DC\u05D0 \u05EA\u05E7\u05D9\u05DF: \u05E6\u05E8\u05D9\u05DA \u05DC\u05D4\u05D9\u05D5\u05EA instanceof ${issue2.expected}, \u05D4\u05EA\u05E7\u05D1\u05DC ${received}`;
+        }
+        return `\u05E7\u05DC\u05D8 \u05DC\u05D0 \u05EA\u05E7\u05D9\u05DF: \u05E6\u05E8\u05D9\u05DA \u05DC\u05D4\u05D9\u05D5\u05EA ${expected}, \u05D4\u05EA\u05E7\u05D1\u05DC ${received}`;
+      }
+      case "invalid_value": {
+        if (issue2.values.length === 1) {
+          return `\u05E2\u05E8\u05DA \u05DC\u05D0 \u05EA\u05E7\u05D9\u05DF: \u05D4\u05E2\u05E8\u05DA \u05D7\u05D9\u05D9\u05D1 \u05DC\u05D4\u05D9\u05D5\u05EA ${stringifyPrimitive(issue2.values[0])}`;
+        }
+        const stringified = issue2.values.map((v) => stringifyPrimitive(v));
+        if (issue2.values.length === 2) {
+          return `\u05E2\u05E8\u05DA \u05DC\u05D0 \u05EA\u05E7\u05D9\u05DF: \u05D4\u05D0\u05E4\u05E9\u05E8\u05D5\u05D9\u05D5\u05EA \u05D4\u05DE\u05EA\u05D0\u05D9\u05DE\u05D5\u05EA \u05D4\u05DF ${stringified[0]} \u05D0\u05D5 ${stringified[1]}`;
+        }
+        const lastValue = stringified[stringified.length - 1];
+        const restValues = stringified.slice(0, -1).join(", ");
+        return `\u05E2\u05E8\u05DA \u05DC\u05D0 \u05EA\u05E7\u05D9\u05DF: \u05D4\u05D0\u05E4\u05E9\u05E8\u05D5\u05D9\u05D5\u05EA \u05D4\u05DE\u05EA\u05D0\u05D9\u05DE\u05D5\u05EA \u05D4\u05DF ${restValues} \u05D0\u05D5 ${lastValue}`;
+      }
+      case "too_big": {
+        const sizing = getSizing(issue2.origin);
+        const subject = withDefinite(issue2.origin ?? "value");
+        if (issue2.origin === "string") {
+          return `${sizing?.longLabel ?? "\u05D0\u05E8\u05D5\u05DA"} \u05DE\u05D3\u05D9: ${subject} \u05E6\u05E8\u05D9\u05DB\u05D4 \u05DC\u05D4\u05DB\u05D9\u05DC ${issue2.maximum.toString()} ${sizing?.unit ?? ""} ${issue2.inclusive ? "\u05D0\u05D5 \u05E4\u05D7\u05D5\u05EA" : "\u05DC\u05DB\u05DC \u05D4\u05D9\u05D5\u05EA\u05E8"}`.trim();
+        }
+        if (issue2.origin === "number") {
+          const comparison = issue2.inclusive ? `\u05E7\u05D8\u05DF \u05D0\u05D5 \u05E9\u05D5\u05D5\u05D4 \u05DC-${issue2.maximum}` : `\u05E7\u05D8\u05DF \u05DE-${issue2.maximum}`;
+          return `\u05D2\u05D3\u05D5\u05DC \u05DE\u05D3\u05D9: ${subject} \u05E6\u05E8\u05D9\u05DA \u05DC\u05D4\u05D9\u05D5\u05EA ${comparison}`;
+        }
+        if (issue2.origin === "array" || issue2.origin === "set") {
+          const verb = issue2.origin === "set" ? "\u05E6\u05E8\u05D9\u05DB\u05D4" : "\u05E6\u05E8\u05D9\u05DA";
+          const comparison = issue2.inclusive ? `${issue2.maximum} ${sizing?.unit ?? ""} \u05D0\u05D5 \u05E4\u05D7\u05D5\u05EA` : `\u05E4\u05D7\u05D5\u05EA \u05DE-${issue2.maximum} ${sizing?.unit ?? ""}`;
+          return `\u05D2\u05D3\u05D5\u05DC \u05DE\u05D3\u05D9: ${subject} ${verb} \u05DC\u05D4\u05DB\u05D9\u05DC ${comparison}`.trim();
+        }
+        const adj = issue2.inclusive ? "<=" : "<";
+        const be = verbFor(issue2.origin ?? "value");
+        if (sizing?.unit) {
+          return `${sizing.longLabel} \u05DE\u05D3\u05D9: ${subject} ${be} ${adj}${issue2.maximum.toString()} ${sizing.unit}`;
+        }
+        return `${sizing?.longLabel ?? "\u05D2\u05D3\u05D5\u05DC"} \u05DE\u05D3\u05D9: ${subject} ${be} ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const sizing = getSizing(issue2.origin);
+        const subject = withDefinite(issue2.origin ?? "value");
+        if (issue2.origin === "string") {
+          return `${sizing?.shortLabel ?? "\u05E7\u05E6\u05E8"} \u05DE\u05D3\u05D9: ${subject} \u05E6\u05E8\u05D9\u05DB\u05D4 \u05DC\u05D4\u05DB\u05D9\u05DC ${issue2.minimum.toString()} ${sizing?.unit ?? ""} ${issue2.inclusive ? "\u05D0\u05D5 \u05D9\u05D5\u05EA\u05E8" : "\u05DC\u05E4\u05D7\u05D5\u05EA"}`.trim();
+        }
+        if (issue2.origin === "number") {
+          const comparison = issue2.inclusive ? `\u05D2\u05D3\u05D5\u05DC \u05D0\u05D5 \u05E9\u05D5\u05D5\u05D4 \u05DC-${issue2.minimum}` : `\u05D2\u05D3\u05D5\u05DC \u05DE-${issue2.minimum}`;
+          return `\u05E7\u05D8\u05DF \u05DE\u05D3\u05D9: ${subject} \u05E6\u05E8\u05D9\u05DA \u05DC\u05D4\u05D9\u05D5\u05EA ${comparison}`;
+        }
+        if (issue2.origin === "array" || issue2.origin === "set") {
+          const verb = issue2.origin === "set" ? "\u05E6\u05E8\u05D9\u05DB\u05D4" : "\u05E6\u05E8\u05D9\u05DA";
+          if (issue2.minimum === 1 && issue2.inclusive) {
+            const singularPhrase = issue2.origin === "set" ? "\u05DC\u05E4\u05D7\u05D5\u05EA \u05E4\u05E8\u05D9\u05D8 \u05D0\u05D7\u05D3" : "\u05DC\u05E4\u05D7\u05D5\u05EA \u05E4\u05E8\u05D9\u05D8 \u05D0\u05D7\u05D3";
+            return `\u05E7\u05D8\u05DF \u05DE\u05D3\u05D9: ${subject} ${verb} \u05DC\u05D4\u05DB\u05D9\u05DC ${singularPhrase}`;
+          }
+          const comparison = issue2.inclusive ? `${issue2.minimum} ${sizing?.unit ?? ""} \u05D0\u05D5 \u05D9\u05D5\u05EA\u05E8` : `\u05D9\u05D5\u05EA\u05E8 \u05DE-${issue2.minimum} ${sizing?.unit ?? ""}`;
+          return `\u05E7\u05D8\u05DF \u05DE\u05D3\u05D9: ${subject} ${verb} \u05DC\u05D4\u05DB\u05D9\u05DC ${comparison}`.trim();
+        }
+        const adj = issue2.inclusive ? ">=" : ">";
+        const be = verbFor(issue2.origin ?? "value");
+        if (sizing?.unit) {
+          return `${sizing.shortLabel} \u05DE\u05D3\u05D9: ${subject} ${be} ${adj}${issue2.minimum.toString()} ${sizing.unit}`;
+        }
+        return `${sizing?.shortLabel ?? "\u05E7\u05D8\u05DF"} \u05DE\u05D3\u05D9: ${subject} ${be} ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `\u05D4\u05DE\u05D7\u05E8\u05D5\u05D6\u05EA \u05D7\u05D9\u05D9\u05D1\u05EA \u05DC\u05D4\u05EA\u05D7\u05D9\u05DC \u05D1 "${_issue.prefix}"`;
+        if (_issue.format === "ends_with")
+          return `\u05D4\u05DE\u05D7\u05E8\u05D5\u05D6\u05EA \u05D7\u05D9\u05D9\u05D1\u05EA \u05DC\u05D4\u05E1\u05EA\u05D9\u05D9\u05DD \u05D1 "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `\u05D4\u05DE\u05D7\u05E8\u05D5\u05D6\u05EA \u05D7\u05D9\u05D9\u05D1\u05EA \u05DC\u05DB\u05DC\u05D5\u05DC "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `\u05D4\u05DE\u05D7\u05E8\u05D5\u05D6\u05EA \u05D7\u05D9\u05D9\u05D1\u05EA \u05DC\u05D4\u05EA\u05D0\u05D9\u05DD \u05DC\u05EA\u05D1\u05E0\u05D9\u05EA ${_issue.pattern}`;
+        const nounEntry = FormatDictionary[_issue.format];
+        const noun = nounEntry?.label ?? _issue.format;
+        const gender = nounEntry?.gender ?? "m";
+        const adjective = gender === "f" ? "\u05EA\u05E7\u05D9\u05E0\u05D4" : "\u05EA\u05E7\u05D9\u05DF";
+        return `${noun} \u05DC\u05D0 ${adjective}`;
+      }
+      case "not_multiple_of":
+        return `\u05DE\u05E1\u05E4\u05E8 \u05DC\u05D0 \u05EA\u05E7\u05D9\u05DF: \u05D7\u05D9\u05D9\u05D1 \u05DC\u05D4\u05D9\u05D5\u05EA \u05DE\u05DB\u05E4\u05DC\u05D4 \u05E9\u05DC ${issue2.divisor}`;
+      case "unrecognized_keys":
+        return `\u05DE\u05E4\u05EA\u05D7${issue2.keys.length > 1 ? "\u05D5\u05EA" : ""} \u05DC\u05D0 \u05DE\u05D6\u05D5\u05D4${issue2.keys.length > 1 ? "\u05D9\u05DD" : "\u05D4"}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key": {
+        return `\u05E9\u05D3\u05D4 \u05DC\u05D0 \u05EA\u05E7\u05D9\u05DF \u05D1\u05D0\u05D5\u05D1\u05D9\u05D9\u05E7\u05D8`;
+      }
+      case "invalid_union":
+        return "\u05E7\u05DC\u05D8 \u05DC\u05D0 \u05EA\u05E7\u05D9\u05DF";
+      case "invalid_element": {
+        const place = withDefinite(issue2.origin ?? "array");
+        return `\u05E2\u05E8\u05DA \u05DC\u05D0 \u05EA\u05E7\u05D9\u05DF \u05D1${place}`;
+      }
+      default:
+        return `\u05E7\u05DC\u05D8 \u05DC\u05D0 \u05EA\u05E7\u05D9\u05DF`;
+    }
+  };
+}, "error");
+function he_default() {
+  return {
+    localeError: error17()
+  };
+}
+__name(he_default, "default");
+
+// node_modules/zod/v4/locales/hr.js
+var error18 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "znakova", verb: "imati" },
+    file: { unit: "bajtova", verb: "imati" },
+    array: { unit: "stavki", verb: "imati" },
+    set: { unit: "stavki", verb: "imati" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "unos",
+    email: "email adresa",
+    url: "URL",
+    emoji: "emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "ISO datum i vrijeme",
+    date: "ISO datum",
+    time: "ISO vrijeme",
+    duration: "ISO trajanje",
+    ipv4: "IPv4 adresa",
+    ipv6: "IPv6 adresa",
+    cidrv4: "IPv4 raspon",
+    cidrv6: "IPv6 raspon",
+    base64: "base64 kodirani tekst",
+    base64url: "base64url kodirani tekst",
+    json_string: "JSON tekst",
+    e164: "E.164 broj",
+    jwt: "JWT",
+    template_literal: "unos"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    string: "tekst",
+    number: "broj",
+    boolean: "boolean",
+    array: "niz",
+    object: "objekt",
+    set: "skup",
+    file: "datoteka",
+    date: "datum",
+    bigint: "bigint",
+    symbol: "simbol",
+    undefined: "undefined",
+    null: "null",
+    function: "funkcija",
+    map: "mapa"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `Neispravan unos: o\u010Dekuje se instanceof ${issue2.expected}, a primljeno je ${received}`;
+        }
+        return `Neispravan unos: o\u010Dekuje se ${expected}, a primljeno je ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `Neispravna vrijednost: o\u010Dekivano ${stringifyPrimitive(issue2.values[0])}`;
+        return `Neispravna opcija: o\u010Dekivano jedno od ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        const origin = TypeDictionary[issue2.origin] ?? issue2.origin;
+        if (sizing)
+          return `Preveliko: o\u010Dekivano da ${origin ?? "vrijednost"} ima ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "elemenata"}`;
+        return `Preveliko: o\u010Dekivano da ${origin ?? "vrijednost"} bude ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        const origin = TypeDictionary[issue2.origin] ?? issue2.origin;
+        if (sizing) {
+          return `Premalo: o\u010Dekivano da ${origin} ima ${adj}${issue2.minimum.toString()} ${sizing.unit}`;
+        }
+        return `Premalo: o\u010Dekivano da ${origin} bude ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `Neispravan tekst: mora zapo\u010Dinjati s "${_issue.prefix}"`;
+        if (_issue.format === "ends_with")
+          return `Neispravan tekst: mora zavr\u0161avati s "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `Neispravan tekst: mora sadr\u017Eavati "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `Neispravan tekst: mora odgovarati uzorku ${_issue.pattern}`;
+        return `Neispravna ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `Neispravan broj: mora biti vi\u0161ekratnik od ${issue2.divisor}`;
+      case "unrecognized_keys":
+        return `Neprepoznat${issue2.keys.length > 1 ? "i klju\u010Devi" : " klju\u010D"}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `Neispravan klju\u010D u ${TypeDictionary[issue2.origin] ?? issue2.origin}`;
+      case "invalid_union":
+        return "Neispravan unos";
+      case "invalid_element":
+        return `Neispravna vrijednost u ${TypeDictionary[issue2.origin] ?? issue2.origin}`;
+      default:
+        return `Neispravan unos`;
+    }
+  };
+}, "error");
+function hr_default() {
+  return {
+    localeError: error18()
+  };
+}
+__name(hr_default, "default");
+
+// node_modules/zod/v4/locales/hu.js
+var error19 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "karakter", verb: "legyen" },
+    file: { unit: "byte", verb: "legyen" },
+    array: { unit: "elem", verb: "legyen" },
+    set: { unit: "elem", verb: "legyen" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "bemenet",
+    email: "email c\xEDm",
+    url: "URL",
+    emoji: "emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "ISO id\u0151b\xE9lyeg",
+    date: "ISO d\xE1tum",
+    time: "ISO id\u0151",
+    duration: "ISO id\u0151intervallum",
+    ipv4: "IPv4 c\xEDm",
+    ipv6: "IPv6 c\xEDm",
+    cidrv4: "IPv4 tartom\xE1ny",
+    cidrv6: "IPv6 tartom\xE1ny",
+    base64: "base64-k\xF3dolt string",
+    base64url: "base64url-k\xF3dolt string",
+    json_string: "JSON string",
+    e164: "E.164 sz\xE1m",
+    jwt: "JWT",
+    template_literal: "bemenet"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "sz\xE1m",
+    array: "t\xF6mb"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `\xC9rv\xE9nytelen bemenet: a v\xE1rt \xE9rt\xE9k instanceof ${issue2.expected}, a kapott \xE9rt\xE9k ${received}`;
+        }
+        return `\xC9rv\xE9nytelen bemenet: a v\xE1rt \xE9rt\xE9k ${expected}, a kapott \xE9rt\xE9k ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `\xC9rv\xE9nytelen bemenet: a v\xE1rt \xE9rt\xE9k ${stringifyPrimitive(issue2.values[0])}`;
+        return `\xC9rv\xE9nytelen opci\xF3: valamelyik \xE9rt\xE9k v\xE1rt ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `T\xFAl nagy: ${issue2.origin ?? "\xE9rt\xE9k"} m\xE9rete t\xFAl nagy ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "elem"}`;
+        return `T\xFAl nagy: a bemeneti \xE9rt\xE9k ${issue2.origin ?? "\xE9rt\xE9k"} t\xFAl nagy: ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `T\xFAl kicsi: a bemeneti \xE9rt\xE9k ${issue2.origin} m\xE9rete t\xFAl kicsi ${adj}${issue2.minimum.toString()} ${sizing.unit}`;
+        }
+        return `T\xFAl kicsi: a bemeneti \xE9rt\xE9k ${issue2.origin} t\xFAl kicsi ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `\xC9rv\xE9nytelen string: "${_issue.prefix}" \xE9rt\xE9kkel kell kezd\u0151dnie`;
+        if (_issue.format === "ends_with")
+          return `\xC9rv\xE9nytelen string: "${_issue.suffix}" \xE9rt\xE9kkel kell v\xE9gz\u0151dnie`;
+        if (_issue.format === "includes")
+          return `\xC9rv\xE9nytelen string: "${_issue.includes}" \xE9rt\xE9ket kell tartalmaznia`;
+        if (_issue.format === "regex")
+          return `\xC9rv\xE9nytelen string: ${_issue.pattern} mint\xE1nak kell megfelelnie`;
+        return `\xC9rv\xE9nytelen ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `\xC9rv\xE9nytelen sz\xE1m: ${issue2.divisor} t\xF6bbsz\xF6r\xF6s\xE9nek kell lennie`;
+      case "unrecognized_keys":
+        return `Ismeretlen kulcs${issue2.keys.length > 1 ? "s" : ""}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `\xC9rv\xE9nytelen kulcs ${issue2.origin}`;
+      case "invalid_union":
+        return "\xC9rv\xE9nytelen bemenet";
+      case "invalid_element":
+        return `\xC9rv\xE9nytelen \xE9rt\xE9k: ${issue2.origin}`;
+      default:
+        return `\xC9rv\xE9nytelen bemenet`;
+    }
+  };
+}, "error");
+function hu_default() {
+  return {
+    localeError: error19()
+  };
+}
+__name(hu_default, "default");
+
+// node_modules/zod/v4/locales/hy.js
+function getArmenianPlural(count, one, many) {
+  return Math.abs(count) === 1 ? one : many;
+}
+__name(getArmenianPlural, "getArmenianPlural");
+function withDefiniteArticle(word) {
+  if (!word)
+    return "";
+  const vowels = ["\u0561", "\u0565", "\u0568", "\u056B", "\u0578", "\u0578\u0582", "\u0585"];
+  const lastChar = word[word.length - 1];
+  return word + (vowels.includes(lastChar) ? "\u0576" : "\u0568");
+}
+__name(withDefiniteArticle, "withDefiniteArticle");
+var error20 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: {
+      unit: {
+        one: "\u0576\u0577\u0561\u0576",
+        many: "\u0576\u0577\u0561\u0576\u0576\u0565\u0580"
+      },
+      verb: "\u0578\u0582\u0576\u0565\u0576\u0561\u056C"
+    },
+    file: {
+      unit: {
+        one: "\u0562\u0561\u0575\u0569",
+        many: "\u0562\u0561\u0575\u0569\u0565\u0580"
+      },
+      verb: "\u0578\u0582\u0576\u0565\u0576\u0561\u056C"
+    },
+    array: {
+      unit: {
+        one: "\u057F\u0561\u0580\u0580",
+        many: "\u057F\u0561\u0580\u0580\u0565\u0580"
+      },
+      verb: "\u0578\u0582\u0576\u0565\u0576\u0561\u056C"
+    },
+    set: {
+      unit: {
+        one: "\u057F\u0561\u0580\u0580",
+        many: "\u057F\u0561\u0580\u0580\u0565\u0580"
+      },
+      verb: "\u0578\u0582\u0576\u0565\u0576\u0561\u056C"
+    }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "\u0574\u0578\u0582\u057F\u0584",
+    email: "\u0567\u056C. \u0570\u0561\u057D\u0581\u0565",
+    url: "URL",
+    emoji: "\u0567\u0574\u0578\u057B\u056B",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "ISO \u0561\u0574\u057D\u0561\u0569\u056B\u057E \u0587 \u056A\u0561\u0574",
+    date: "ISO \u0561\u0574\u057D\u0561\u0569\u056B\u057E",
+    time: "ISO \u056A\u0561\u0574",
+    duration: "ISO \u057F\u0587\u0578\u0572\u0578\u0582\u0569\u0575\u0578\u0582\u0576",
+    ipv4: "IPv4 \u0570\u0561\u057D\u0581\u0565",
+    ipv6: "IPv6 \u0570\u0561\u057D\u0581\u0565",
+    cidrv4: "IPv4 \u0574\u056B\u057B\u0561\u056F\u0561\u0575\u0584",
+    cidrv6: "IPv6 \u0574\u056B\u057B\u0561\u056F\u0561\u0575\u0584",
+    base64: "base64 \u0571\u0587\u0561\u0579\u0561\u0583\u0578\u057E \u057F\u0578\u0572",
+    base64url: "base64url \u0571\u0587\u0561\u0579\u0561\u0583\u0578\u057E \u057F\u0578\u0572",
+    json_string: "JSON \u057F\u0578\u0572",
+    e164: "E.164 \u0570\u0561\u0574\u0561\u0580",
+    jwt: "JWT",
+    template_literal: "\u0574\u0578\u0582\u057F\u0584"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "\u0569\u056B\u057E",
+    array: "\u0566\u0561\u0576\u0563\u057E\u0561\u056E"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `\u054D\u056D\u0561\u056C \u0574\u0578\u0582\u057F\u0584\u0561\u0563\u0580\u0578\u0582\u0574\u2024 \u057D\u057A\u0561\u057D\u057E\u0578\u0582\u0574 \u0567\u0580 instanceof ${issue2.expected}, \u057D\u057F\u0561\u0581\u057E\u0565\u056C \u0567 ${received}`;
+        }
+        return `\u054D\u056D\u0561\u056C \u0574\u0578\u0582\u057F\u0584\u0561\u0563\u0580\u0578\u0582\u0574\u2024 \u057D\u057A\u0561\u057D\u057E\u0578\u0582\u0574 \u0567\u0580 ${expected}, \u057D\u057F\u0561\u0581\u057E\u0565\u056C \u0567 ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `\u054D\u056D\u0561\u056C \u0574\u0578\u0582\u057F\u0584\u0561\u0563\u0580\u0578\u0582\u0574\u2024 \u057D\u057A\u0561\u057D\u057E\u0578\u0582\u0574 \u0567\u0580 ${stringifyPrimitive(issue2.values[1])}`;
+        return `\u054D\u056D\u0561\u056C \u057F\u0561\u0580\u0562\u0565\u0580\u0561\u056F\u2024 \u057D\u057A\u0561\u057D\u057E\u0578\u0582\u0574 \u0567\u0580 \u0570\u0565\u057F\u0587\u0575\u0561\u056C\u0576\u0565\u0580\u056B\u0581 \u0574\u0565\u056F\u0568\u055D ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          const maxValue = Number(issue2.maximum);
+          const unit = getArmenianPlural(maxValue, sizing.unit.one, sizing.unit.many);
+          return `\u0549\u0561\u0583\u0561\u0566\u0561\u0576\u0581 \u0574\u0565\u056E \u0561\u0580\u056A\u0565\u0584\u2024 \u057D\u057A\u0561\u057D\u057E\u0578\u0582\u0574 \u0567, \u0578\u0580 ${withDefiniteArticle(issue2.origin ?? "\u0561\u0580\u056A\u0565\u0584")} \u056F\u0578\u0582\u0576\u0565\u0576\u0561 ${adj}${issue2.maximum.toString()} ${unit}`;
+        }
+        return `\u0549\u0561\u0583\u0561\u0566\u0561\u0576\u0581 \u0574\u0565\u056E \u0561\u0580\u056A\u0565\u0584\u2024 \u057D\u057A\u0561\u057D\u057E\u0578\u0582\u0574 \u0567, \u0578\u0580 ${withDefiniteArticle(issue2.origin ?? "\u0561\u0580\u056A\u0565\u0584")} \u056C\u056B\u0576\u056B ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          const minValue = Number(issue2.minimum);
+          const unit = getArmenianPlural(minValue, sizing.unit.one, sizing.unit.many);
+          return `\u0549\u0561\u0583\u0561\u0566\u0561\u0576\u0581 \u0583\u0578\u0584\u0580 \u0561\u0580\u056A\u0565\u0584\u2024 \u057D\u057A\u0561\u057D\u057E\u0578\u0582\u0574 \u0567, \u0578\u0580 ${withDefiniteArticle(issue2.origin)} \u056F\u0578\u0582\u0576\u0565\u0576\u0561 ${adj}${issue2.minimum.toString()} ${unit}`;
+        }
+        return `\u0549\u0561\u0583\u0561\u0566\u0561\u0576\u0581 \u0583\u0578\u0584\u0580 \u0561\u0580\u056A\u0565\u0584\u2024 \u057D\u057A\u0561\u057D\u057E\u0578\u0582\u0574 \u0567, \u0578\u0580 ${withDefiniteArticle(issue2.origin)} \u056C\u056B\u0576\u056B ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `\u054D\u056D\u0561\u056C \u057F\u0578\u0572\u2024 \u057A\u0565\u057F\u0584 \u0567 \u057D\u056F\u057D\u057E\u056B "${_issue.prefix}"-\u0578\u057E`;
+        if (_issue.format === "ends_with")
+          return `\u054D\u056D\u0561\u056C \u057F\u0578\u0572\u2024 \u057A\u0565\u057F\u0584 \u0567 \u0561\u057E\u0561\u0580\u057F\u057E\u056B "${_issue.suffix}"-\u0578\u057E`;
+        if (_issue.format === "includes")
+          return `\u054D\u056D\u0561\u056C \u057F\u0578\u0572\u2024 \u057A\u0565\u057F\u0584 \u0567 \u057A\u0561\u0580\u0578\u0582\u0576\u0561\u056F\u056B "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `\u054D\u056D\u0561\u056C \u057F\u0578\u0572\u2024 \u057A\u0565\u057F\u0584 \u0567 \u0570\u0561\u0574\u0561\u057A\u0561\u057F\u0561\u057D\u056D\u0561\u0576\u056B ${_issue.pattern} \u0571\u0587\u0561\u0579\u0561\u0583\u056B\u0576`;
+        return `\u054D\u056D\u0561\u056C ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `\u054D\u056D\u0561\u056C \u0569\u056B\u057E\u2024 \u057A\u0565\u057F\u0584 \u0567 \u0562\u0561\u0566\u0574\u0561\u057A\u0561\u057F\u056B\u056F \u056C\u056B\u0576\u056B ${issue2.divisor}-\u056B`;
+      case "unrecognized_keys":
+        return `\u0549\u0573\u0561\u0576\u0561\u0579\u057E\u0561\u056E \u0562\u0561\u0576\u0561\u056C\u056B${issue2.keys.length > 1 ? "\u0576\u0565\u0580" : ""}. ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `\u054D\u056D\u0561\u056C \u0562\u0561\u0576\u0561\u056C\u056B ${withDefiniteArticle(issue2.origin)}-\u0578\u0582\u0574`;
+      case "invalid_union":
+        return "\u054D\u056D\u0561\u056C \u0574\u0578\u0582\u057F\u0584\u0561\u0563\u0580\u0578\u0582\u0574";
+      case "invalid_element":
+        return `\u054D\u056D\u0561\u056C \u0561\u0580\u056A\u0565\u0584 ${withDefiniteArticle(issue2.origin)}-\u0578\u0582\u0574`;
+      default:
+        return `\u054D\u056D\u0561\u056C \u0574\u0578\u0582\u057F\u0584\u0561\u0563\u0580\u0578\u0582\u0574`;
+    }
+  };
+}, "error");
+function hy_default() {
+  return {
+    localeError: error20()
+  };
+}
+__name(hy_default, "default");
+
+// node_modules/zod/v4/locales/id.js
+var error21 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "karakter", verb: "memiliki" },
+    file: { unit: "byte", verb: "memiliki" },
+    array: { unit: "item", verb: "memiliki" },
+    set: { unit: "item", verb: "memiliki" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "input",
+    email: "alamat email",
+    url: "URL",
+    emoji: "emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "tanggal dan waktu format ISO",
+    date: "tanggal format ISO",
+    time: "jam format ISO",
+    duration: "durasi format ISO",
+    ipv4: "alamat IPv4",
+    ipv6: "alamat IPv6",
+    cidrv4: "rentang alamat IPv4",
+    cidrv6: "rentang alamat IPv6",
+    base64: "string dengan enkode base64",
+    base64url: "string dengan enkode base64url",
+    json_string: "string JSON",
+    e164: "angka E.164",
+    jwt: "JWT",
+    template_literal: "input"
+  };
+  const TypeDictionary = {
+    nan: "NaN"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `Input tidak valid: diharapkan instanceof ${issue2.expected}, diterima ${received}`;
+        }
+        return `Input tidak valid: diharapkan ${expected}, diterima ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `Input tidak valid: diharapkan ${stringifyPrimitive(issue2.values[0])}`;
+        return `Pilihan tidak valid: diharapkan salah satu dari ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `Terlalu besar: diharapkan ${issue2.origin ?? "value"} memiliki ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "elemen"}`;
+        return `Terlalu besar: diharapkan ${issue2.origin ?? "value"} menjadi ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `Terlalu kecil: diharapkan ${issue2.origin} memiliki ${adj}${issue2.minimum.toString()} ${sizing.unit}`;
+        }
+        return `Terlalu kecil: diharapkan ${issue2.origin} menjadi ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `String tidak valid: harus dimulai dengan "${_issue.prefix}"`;
+        if (_issue.format === "ends_with")
+          return `String tidak valid: harus berakhir dengan "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `String tidak valid: harus menyertakan "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `String tidak valid: harus sesuai pola ${_issue.pattern}`;
+        return `${FormatDictionary[_issue.format] ?? issue2.format} tidak valid`;
+      }
+      case "not_multiple_of":
+        return `Angka tidak valid: harus kelipatan dari ${issue2.divisor}`;
+      case "unrecognized_keys":
+        return `Kunci tidak dikenali ${issue2.keys.length > 1 ? "s" : ""}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `Kunci tidak valid di ${issue2.origin}`;
+      case "invalid_union":
+        return "Input tidak valid";
+      case "invalid_element":
+        return `Nilai tidak valid di ${issue2.origin}`;
+      default:
+        return `Input tidak valid`;
+    }
+  };
+}, "error");
+function id_default() {
+  return {
+    localeError: error21()
+  };
+}
+__name(id_default, "default");
+
+// node_modules/zod/v4/locales/is.js
+var error22 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "stafi", verb: "a\xF0 hafa" },
+    file: { unit: "b\xE6ti", verb: "a\xF0 hafa" },
+    array: { unit: "hluti", verb: "a\xF0 hafa" },
+    set: { unit: "hluti", verb: "a\xF0 hafa" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "gildi",
+    email: "netfang",
+    url: "vefsl\xF3\xF0",
+    emoji: "emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "ISO dagsetning og t\xEDmi",
+    date: "ISO dagsetning",
+    time: "ISO t\xEDmi",
+    duration: "ISO t\xEDmalengd",
+    ipv4: "IPv4 address",
+    ipv6: "IPv6 address",
+    cidrv4: "IPv4 range",
+    cidrv6: "IPv6 range",
+    base64: "base64-encoded strengur",
+    base64url: "base64url-encoded strengur",
+    json_string: "JSON strengur",
+    e164: "E.164 t\xF6lugildi",
+    jwt: "JWT",
+    template_literal: "gildi"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "n\xFAmer",
+    array: "fylki"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `Rangt gildi: \xDE\xFA sl\xF3st inn ${received} \xFEar sem \xE1 a\xF0 vera instanceof ${issue2.expected}`;
+        }
+        return `Rangt gildi: \xDE\xFA sl\xF3st inn ${received} \xFEar sem \xE1 a\xF0 vera ${expected}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `Rangt gildi: gert r\xE1\xF0 fyrir ${stringifyPrimitive(issue2.values[0])}`;
+        return `\xD3gilt val: m\xE1 vera eitt af eftirfarandi ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `Of st\xF3rt: gert er r\xE1\xF0 fyrir a\xF0 ${issue2.origin ?? "gildi"} hafi ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "hluti"}`;
+        return `Of st\xF3rt: gert er r\xE1\xF0 fyrir a\xF0 ${issue2.origin ?? "gildi"} s\xE9 ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `Of l\xEDti\xF0: gert er r\xE1\xF0 fyrir a\xF0 ${issue2.origin} hafi ${adj}${issue2.minimum.toString()} ${sizing.unit}`;
+        }
+        return `Of l\xEDti\xF0: gert er r\xE1\xF0 fyrir a\xF0 ${issue2.origin} s\xE9 ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with") {
+          return `\xD3gildur strengur: ver\xF0ur a\xF0 byrja \xE1 "${_issue.prefix}"`;
+        }
+        if (_issue.format === "ends_with")
+          return `\xD3gildur strengur: ver\xF0ur a\xF0 enda \xE1 "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `\xD3gildur strengur: ver\xF0ur a\xF0 innihalda "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `\xD3gildur strengur: ver\xF0ur a\xF0 fylgja mynstri ${_issue.pattern}`;
+        return `Rangt ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `R\xF6ng tala: ver\xF0ur a\xF0 vera margfeldi af ${issue2.divisor}`;
+      case "unrecognized_keys":
+        return `\xD3\xFEekkt ${issue2.keys.length > 1 ? "ir lyklar" : "ur lykill"}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `Rangur lykill \xED ${issue2.origin}`;
+      case "invalid_union":
+        return "Rangt gildi";
+      case "invalid_element":
+        return `Rangt gildi \xED ${issue2.origin}`;
+      default:
+        return `Rangt gildi`;
+    }
+  };
+}, "error");
+function is_default() {
+  return {
+    localeError: error22()
+  };
+}
+__name(is_default, "default");
+
+// node_modules/zod/v4/locales/it.js
+var error23 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "caratteri", verb: "avere" },
+    file: { unit: "byte", verb: "avere" },
+    array: { unit: "elementi", verb: "avere" },
+    set: { unit: "elementi", verb: "avere" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "input",
+    email: "indirizzo email",
+    url: "URL",
+    emoji: "emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "data e ora ISO",
+    date: "data ISO",
+    time: "ora ISO",
+    duration: "durata ISO",
+    ipv4: "indirizzo IPv4",
+    ipv6: "indirizzo IPv6",
+    cidrv4: "intervallo IPv4",
+    cidrv6: "intervallo IPv6",
+    base64: "stringa codificata in base64",
+    base64url: "URL codificata in base64",
+    json_string: "stringa JSON",
+    e164: "numero E.164",
+    jwt: "JWT",
+    template_literal: "input"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "numero",
+    array: "vettore"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `Input non valido: atteso instanceof ${issue2.expected}, ricevuto ${received}`;
+        }
+        return `Input non valido: atteso ${expected}, ricevuto ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `Input non valido: atteso ${stringifyPrimitive(issue2.values[0])}`;
+        return `Opzione non valida: atteso uno tra ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `Troppo grande: ${issue2.origin ?? "valore"} deve avere ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "elementi"}`;
+        return `Troppo grande: ${issue2.origin ?? "valore"} deve essere ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `Troppo piccolo: ${issue2.origin} deve avere ${adj}${issue2.minimum.toString()} ${sizing.unit}`;
+        }
+        return `Troppo piccolo: ${issue2.origin} deve essere ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `Stringa non valida: deve iniziare con "${_issue.prefix}"`;
+        if (_issue.format === "ends_with")
+          return `Stringa non valida: deve terminare con "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `Stringa non valida: deve includere "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `Stringa non valida: deve corrispondere al pattern ${_issue.pattern}`;
+        return `Input non valido: ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `Numero non valido: deve essere un multiplo di ${issue2.divisor}`;
+      case "unrecognized_keys":
+        return `Chiav${issue2.keys.length > 1 ? "i" : "e"} non riconosciut${issue2.keys.length > 1 ? "e" : "a"}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `Chiave non valida in ${issue2.origin}`;
+      case "invalid_union":
+        return "Input non valido";
+      case "invalid_element":
+        return `Valore non valido in ${issue2.origin}`;
+      default:
+        return `Input non valido`;
+    }
+  };
+}, "error");
+function it_default() {
+  return {
+    localeError: error23()
+  };
+}
+__name(it_default, "default");
+
+// node_modules/zod/v4/locales/ja.js
+var error24 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "\u6587\u5B57", verb: "\u3067\u3042\u308B" },
+    file: { unit: "\u30D0\u30A4\u30C8", verb: "\u3067\u3042\u308B" },
+    array: { unit: "\u8981\u7D20", verb: "\u3067\u3042\u308B" },
+    set: { unit: "\u8981\u7D20", verb: "\u3067\u3042\u308B" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "\u5165\u529B\u5024",
+    email: "\u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9",
+    url: "URL",
+    emoji: "\u7D75\u6587\u5B57",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "ISO\u65E5\u6642",
+    date: "ISO\u65E5\u4ED8",
+    time: "ISO\u6642\u523B",
+    duration: "ISO\u671F\u9593",
+    ipv4: "IPv4\u30A2\u30C9\u30EC\u30B9",
+    ipv6: "IPv6\u30A2\u30C9\u30EC\u30B9",
+    cidrv4: "IPv4\u7BC4\u56F2",
+    cidrv6: "IPv6\u7BC4\u56F2",
+    base64: "base64\u30A8\u30F3\u30B3\u30FC\u30C9\u6587\u5B57\u5217",
+    base64url: "base64url\u30A8\u30F3\u30B3\u30FC\u30C9\u6587\u5B57\u5217",
+    json_string: "JSON\u6587\u5B57\u5217",
+    e164: "E.164\u756A\u53F7",
+    jwt: "JWT",
+    template_literal: "\u5165\u529B\u5024"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "\u6570\u5024",
+    array: "\u914D\u5217"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `\u7121\u52B9\u306A\u5165\u529B: instanceof ${issue2.expected}\u304C\u671F\u5F85\u3055\u308C\u307E\u3057\u305F\u304C\u3001${received}\u304C\u5165\u529B\u3055\u308C\u307E\u3057\u305F`;
+        }
+        return `\u7121\u52B9\u306A\u5165\u529B: ${expected}\u304C\u671F\u5F85\u3055\u308C\u307E\u3057\u305F\u304C\u3001${received}\u304C\u5165\u529B\u3055\u308C\u307E\u3057\u305F`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `\u7121\u52B9\u306A\u5165\u529B: ${stringifyPrimitive(issue2.values[0])}\u304C\u671F\u5F85\u3055\u308C\u307E\u3057\u305F`;
+        return `\u7121\u52B9\u306A\u9078\u629E: ${joinValues(issue2.values, "\u3001")}\u306E\u3044\u305A\u308C\u304B\u3067\u3042\u308B\u5FC5\u8981\u304C\u3042\u308A\u307E\u3059`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "\u4EE5\u4E0B\u3067\u3042\u308B" : "\u3088\u308A\u5C0F\u3055\u3044";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `\u5927\u304D\u3059\u304E\u308B\u5024: ${issue2.origin ?? "\u5024"}\u306F${issue2.maximum.toString()}${sizing.unit ?? "\u8981\u7D20"}${adj}\u5FC5\u8981\u304C\u3042\u308A\u307E\u3059`;
+        return `\u5927\u304D\u3059\u304E\u308B\u5024: ${issue2.origin ?? "\u5024"}\u306F${issue2.maximum.toString()}${adj}\u5FC5\u8981\u304C\u3042\u308A\u307E\u3059`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? "\u4EE5\u4E0A\u3067\u3042\u308B" : "\u3088\u308A\u5927\u304D\u3044";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `\u5C0F\u3055\u3059\u304E\u308B\u5024: ${issue2.origin}\u306F${issue2.minimum.toString()}${sizing.unit}${adj}\u5FC5\u8981\u304C\u3042\u308A\u307E\u3059`;
+        return `\u5C0F\u3055\u3059\u304E\u308B\u5024: ${issue2.origin}\u306F${issue2.minimum.toString()}${adj}\u5FC5\u8981\u304C\u3042\u308A\u307E\u3059`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `\u7121\u52B9\u306A\u6587\u5B57\u5217: "${_issue.prefix}"\u3067\u59CB\u307E\u308B\u5FC5\u8981\u304C\u3042\u308A\u307E\u3059`;
+        if (_issue.format === "ends_with")
+          return `\u7121\u52B9\u306A\u6587\u5B57\u5217: "${_issue.suffix}"\u3067\u7D42\u308F\u308B\u5FC5\u8981\u304C\u3042\u308A\u307E\u3059`;
+        if (_issue.format === "includes")
+          return `\u7121\u52B9\u306A\u6587\u5B57\u5217: "${_issue.includes}"\u3092\u542B\u3080\u5FC5\u8981\u304C\u3042\u308A\u307E\u3059`;
+        if (_issue.format === "regex")
+          return `\u7121\u52B9\u306A\u6587\u5B57\u5217: \u30D1\u30BF\u30FC\u30F3${_issue.pattern}\u306B\u4E00\u81F4\u3059\u308B\u5FC5\u8981\u304C\u3042\u308A\u307E\u3059`;
+        return `\u7121\u52B9\u306A${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `\u7121\u52B9\u306A\u6570\u5024: ${issue2.divisor}\u306E\u500D\u6570\u3067\u3042\u308B\u5FC5\u8981\u304C\u3042\u308A\u307E\u3059`;
+      case "unrecognized_keys":
+        return `\u8A8D\u8B58\u3055\u308C\u3066\u3044\u306A\u3044\u30AD\u30FC${issue2.keys.length > 1 ? "\u7FA4" : ""}: ${joinValues(issue2.keys, "\u3001")}`;
+      case "invalid_key":
+        return `${issue2.origin}\u5185\u306E\u7121\u52B9\u306A\u30AD\u30FC`;
+      case "invalid_union":
+        return "\u7121\u52B9\u306A\u5165\u529B";
+      case "invalid_element":
+        return `${issue2.origin}\u5185\u306E\u7121\u52B9\u306A\u5024`;
+      default:
+        return `\u7121\u52B9\u306A\u5165\u529B`;
+    }
+  };
+}, "error");
+function ja_default() {
+  return {
+    localeError: error24()
+  };
+}
+__name(ja_default, "default");
+
+// node_modules/zod/v4/locales/ka.js
+var error25 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "\u10E1\u10D8\u10DB\u10D1\u10DD\u10DA\u10DD", verb: "\u10E3\u10DC\u10D3\u10D0 \u10E8\u10D4\u10D8\u10EA\u10D0\u10D5\u10D3\u10D4\u10E1" },
+    file: { unit: "\u10D1\u10D0\u10D8\u10E2\u10D8", verb: "\u10E3\u10DC\u10D3\u10D0 \u10E8\u10D4\u10D8\u10EA\u10D0\u10D5\u10D3\u10D4\u10E1" },
+    array: { unit: "\u10D4\u10DA\u10D4\u10DB\u10D4\u10DC\u10E2\u10D8", verb: "\u10E3\u10DC\u10D3\u10D0 \u10E8\u10D4\u10D8\u10EA\u10D0\u10D5\u10D3\u10D4\u10E1" },
+    set: { unit: "\u10D4\u10DA\u10D4\u10DB\u10D4\u10DC\u10E2\u10D8", verb: "\u10E3\u10DC\u10D3\u10D0 \u10E8\u10D4\u10D8\u10EA\u10D0\u10D5\u10D3\u10D4\u10E1" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "\u10E8\u10D4\u10E7\u10D5\u10D0\u10DC\u10D0",
+    email: "\u10D4\u10DA-\u10E4\u10DD\u10E1\u10E2\u10D8\u10E1 \u10DB\u10D8\u10E1\u10D0\u10DB\u10D0\u10E0\u10D7\u10D8",
+    url: "URL",
+    emoji: "\u10D4\u10DB\u10DD\u10EF\u10D8",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "\u10D7\u10D0\u10E0\u10D8\u10E6\u10D8-\u10D3\u10E0\u10DD",
+    date: "\u10D7\u10D0\u10E0\u10D8\u10E6\u10D8",
+    time: "\u10D3\u10E0\u10DD",
+    duration: "\u10EE\u10D0\u10DC\u10D2\u10E0\u10EB\u10DA\u10D8\u10D5\u10DD\u10D1\u10D0",
+    ipv4: "IPv4 \u10DB\u10D8\u10E1\u10D0\u10DB\u10D0\u10E0\u10D7\u10D8",
+    ipv6: "IPv6 \u10DB\u10D8\u10E1\u10D0\u10DB\u10D0\u10E0\u10D7\u10D8",
+    cidrv4: "IPv4 \u10D3\u10D8\u10D0\u10DE\u10D0\u10D6\u10DD\u10DC\u10D8",
+    cidrv6: "IPv6 \u10D3\u10D8\u10D0\u10DE\u10D0\u10D6\u10DD\u10DC\u10D8",
+    base64: "base64-\u10D9\u10DD\u10D3\u10D8\u10E0\u10D4\u10D1\u10E3\u10DA\u10D8 \u10D5\u10D4\u10DA\u10D8",
+    base64url: "base64url-\u10D9\u10DD\u10D3\u10D8\u10E0\u10D4\u10D1\u10E3\u10DA\u10D8 \u10D5\u10D4\u10DA\u10D8",
+    json_string: "JSON \u10D5\u10D4\u10DA\u10D8",
+    e164: "E.164 \u10DC\u10DD\u10DB\u10D4\u10E0\u10D8",
+    jwt: "JWT",
+    template_literal: "\u10E8\u10D4\u10E7\u10D5\u10D0\u10DC\u10D0"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "\u10E0\u10D8\u10EA\u10EE\u10D5\u10D8",
+    string: "\u10D5\u10D4\u10DA\u10D8",
+    boolean: "\u10D1\u10E3\u10DA\u10D4\u10D0\u10DC\u10D8",
+    function: "\u10E4\u10E3\u10DC\u10E5\u10EA\u10D8\u10D0",
+    array: "\u10DB\u10D0\u10E1\u10D8\u10D5\u10D8"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `\u10D0\u10E0\u10D0\u10E1\u10EC\u10DD\u10E0\u10D8 \u10E8\u10D4\u10E7\u10D5\u10D0\u10DC\u10D0: \u10DB\u10DD\u10E1\u10D0\u10DA\u10DD\u10D3\u10DC\u10D4\u10DA\u10D8 instanceof ${issue2.expected}, \u10DB\u10D8\u10E6\u10D4\u10D1\u10E3\u10DA\u10D8 ${received}`;
+        }
+        return `\u10D0\u10E0\u10D0\u10E1\u10EC\u10DD\u10E0\u10D8 \u10E8\u10D4\u10E7\u10D5\u10D0\u10DC\u10D0: \u10DB\u10DD\u10E1\u10D0\u10DA\u10DD\u10D3\u10DC\u10D4\u10DA\u10D8 ${expected}, \u10DB\u10D8\u10E6\u10D4\u10D1\u10E3\u10DA\u10D8 ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `\u10D0\u10E0\u10D0\u10E1\u10EC\u10DD\u10E0\u10D8 \u10E8\u10D4\u10E7\u10D5\u10D0\u10DC\u10D0: \u10DB\u10DD\u10E1\u10D0\u10DA\u10DD\u10D3\u10DC\u10D4\u10DA\u10D8 ${stringifyPrimitive(issue2.values[0])}`;
+        return `\u10D0\u10E0\u10D0\u10E1\u10EC\u10DD\u10E0\u10D8 \u10D5\u10D0\u10E0\u10D8\u10D0\u10DC\u10E2\u10D8: \u10DB\u10DD\u10E1\u10D0\u10DA\u10DD\u10D3\u10DC\u10D4\u10DA\u10D8\u10D0 \u10D4\u10E0\u10D7-\u10D4\u10E0\u10D7\u10D8 ${joinValues(issue2.values, "|")}-\u10D3\u10D0\u10DC`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `\u10D6\u10D4\u10D3\u10DB\u10D4\u10E2\u10D0\u10D3 \u10D3\u10D8\u10D3\u10D8: \u10DB\u10DD\u10E1\u10D0\u10DA\u10DD\u10D3\u10DC\u10D4\u10DA\u10D8 ${issue2.origin ?? "\u10DB\u10DC\u10D8\u10E8\u10D5\u10DC\u10D4\u10DA\u10DD\u10D1\u10D0"} ${sizing.verb} ${adj}${issue2.maximum.toString()} ${sizing.unit}`;
+        return `\u10D6\u10D4\u10D3\u10DB\u10D4\u10E2\u10D0\u10D3 \u10D3\u10D8\u10D3\u10D8: \u10DB\u10DD\u10E1\u10D0\u10DA\u10DD\u10D3\u10DC\u10D4\u10DA\u10D8 ${issue2.origin ?? "\u10DB\u10DC\u10D8\u10E8\u10D5\u10DC\u10D4\u10DA\u10DD\u10D1\u10D0"} \u10D8\u10E7\u10DD\u10E1 ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `\u10D6\u10D4\u10D3\u10DB\u10D4\u10E2\u10D0\u10D3 \u10DE\u10D0\u10E2\u10D0\u10E0\u10D0: \u10DB\u10DD\u10E1\u10D0\u10DA\u10DD\u10D3\u10DC\u10D4\u10DA\u10D8 ${issue2.origin} ${sizing.verb} ${adj}${issue2.minimum.toString()} ${sizing.unit}`;
+        }
+        return `\u10D6\u10D4\u10D3\u10DB\u10D4\u10E2\u10D0\u10D3 \u10DE\u10D0\u10E2\u10D0\u10E0\u10D0: \u10DB\u10DD\u10E1\u10D0\u10DA\u10DD\u10D3\u10DC\u10D4\u10DA\u10D8 ${issue2.origin} \u10D8\u10E7\u10DD\u10E1 ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with") {
+          return `\u10D0\u10E0\u10D0\u10E1\u10EC\u10DD\u10E0\u10D8 \u10D5\u10D4\u10DA\u10D8: \u10E3\u10DC\u10D3\u10D0 \u10D8\u10EC\u10E7\u10D4\u10D1\u10DD\u10D3\u10D4\u10E1 "${_issue.prefix}"-\u10D8\u10D7`;
+        }
+        if (_issue.format === "ends_with")
+          return `\u10D0\u10E0\u10D0\u10E1\u10EC\u10DD\u10E0\u10D8 \u10D5\u10D4\u10DA\u10D8: \u10E3\u10DC\u10D3\u10D0 \u10DB\u10D7\u10D0\u10D5\u10E0\u10D3\u10D4\u10D1\u10DD\u10D3\u10D4\u10E1 "${_issue.suffix}"-\u10D8\u10D7`;
+        if (_issue.format === "includes")
+          return `\u10D0\u10E0\u10D0\u10E1\u10EC\u10DD\u10E0\u10D8 \u10D5\u10D4\u10DA\u10D8: \u10E3\u10DC\u10D3\u10D0 \u10E8\u10D4\u10D8\u10EA\u10D0\u10D5\u10D3\u10D4\u10E1 "${_issue.includes}"-\u10E1`;
+        if (_issue.format === "regex")
+          return `\u10D0\u10E0\u10D0\u10E1\u10EC\u10DD\u10E0\u10D8 \u10D5\u10D4\u10DA\u10D8: \u10E3\u10DC\u10D3\u10D0 \u10E8\u10D4\u10D4\u10E1\u10D0\u10D1\u10D0\u10DB\u10D4\u10D1\u10DD\u10D3\u10D4\u10E1 \u10E8\u10D0\u10D1\u10DA\u10DD\u10DC\u10E1 ${_issue.pattern}`;
+        return `\u10D0\u10E0\u10D0\u10E1\u10EC\u10DD\u10E0\u10D8 ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `\u10D0\u10E0\u10D0\u10E1\u10EC\u10DD\u10E0\u10D8 \u10E0\u10D8\u10EA\u10EE\u10D5\u10D8: \u10E3\u10DC\u10D3\u10D0 \u10D8\u10E7\u10DD\u10E1 ${issue2.divisor}-\u10D8\u10E1 \u10EF\u10D4\u10E0\u10D0\u10D3\u10D8`;
+      case "unrecognized_keys":
+        return `\u10E3\u10EA\u10DC\u10DD\u10D1\u10D8 \u10D2\u10D0\u10E1\u10D0\u10E6\u10D4\u10D1${issue2.keys.length > 1 ? "\u10D4\u10D1\u10D8" : "\u10D8"}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `\u10D0\u10E0\u10D0\u10E1\u10EC\u10DD\u10E0\u10D8 \u10D2\u10D0\u10E1\u10D0\u10E6\u10D4\u10D1\u10D8 ${issue2.origin}-\u10E8\u10D8`;
+      case "invalid_union":
+        return "\u10D0\u10E0\u10D0\u10E1\u10EC\u10DD\u10E0\u10D8 \u10E8\u10D4\u10E7\u10D5\u10D0\u10DC\u10D0";
+      case "invalid_element":
+        return `\u10D0\u10E0\u10D0\u10E1\u10EC\u10DD\u10E0\u10D8 \u10DB\u10DC\u10D8\u10E8\u10D5\u10DC\u10D4\u10DA\u10DD\u10D1\u10D0 ${issue2.origin}-\u10E8\u10D8`;
+      default:
+        return `\u10D0\u10E0\u10D0\u10E1\u10EC\u10DD\u10E0\u10D8 \u10E8\u10D4\u10E7\u10D5\u10D0\u10DC\u10D0`;
+    }
+  };
+}, "error");
+function ka_default() {
+  return {
+    localeError: error25()
+  };
+}
+__name(ka_default, "default");
+
+// node_modules/zod/v4/locales/km.js
+var error26 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "\u178F\u17BD\u17A2\u1780\u17D2\u179F\u179A", verb: "\u1782\u17BD\u179A\u1798\u17B6\u1793" },
+    file: { unit: "\u1794\u17C3", verb: "\u1782\u17BD\u179A\u1798\u17B6\u1793" },
+    array: { unit: "\u1792\u17B6\u178F\u17BB", verb: "\u1782\u17BD\u179A\u1798\u17B6\u1793" },
+    set: { unit: "\u1792\u17B6\u178F\u17BB", verb: "\u1782\u17BD\u179A\u1798\u17B6\u1793" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "\u1791\u17B7\u1793\u17D2\u1793\u1793\u17D0\u1799\u1794\u1789\u17D2\u1785\u17BC\u179B",
+    email: "\u17A2\u17B6\u179F\u1799\u178A\u17D2\u178B\u17B6\u1793\u17A2\u17CA\u17B8\u1798\u17C2\u179B",
+    url: "URL",
+    emoji: "\u179F\u1789\u17D2\u1789\u17B6\u17A2\u17B6\u179A\u1798\u17D2\u1798\u178E\u17CD",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "\u1780\u17B6\u179B\u1794\u179A\u17B7\u1785\u17D2\u1786\u17C1\u1791 \u1793\u17B7\u1784\u1798\u17C9\u17C4\u1784 ISO",
+    date: "\u1780\u17B6\u179B\u1794\u179A\u17B7\u1785\u17D2\u1786\u17C1\u1791 ISO",
+    time: "\u1798\u17C9\u17C4\u1784 ISO",
+    duration: "\u179A\u1799\u17C8\u1796\u17C1\u179B ISO",
+    ipv4: "\u17A2\u17B6\u179F\u1799\u178A\u17D2\u178B\u17B6\u1793 IPv4",
+    ipv6: "\u17A2\u17B6\u179F\u1799\u178A\u17D2\u178B\u17B6\u1793 IPv6",
+    cidrv4: "\u178A\u17C2\u1793\u17A2\u17B6\u179F\u1799\u178A\u17D2\u178B\u17B6\u1793 IPv4",
+    cidrv6: "\u178A\u17C2\u1793\u17A2\u17B6\u179F\u1799\u178A\u17D2\u178B\u17B6\u1793 IPv6",
+    base64: "\u1781\u17D2\u179F\u17C2\u17A2\u1780\u17D2\u179F\u179A\u17A2\u17CA\u17B7\u1780\u17BC\u178A base64",
+    base64url: "\u1781\u17D2\u179F\u17C2\u17A2\u1780\u17D2\u179F\u179A\u17A2\u17CA\u17B7\u1780\u17BC\u178A base64url",
+    json_string: "\u1781\u17D2\u179F\u17C2\u17A2\u1780\u17D2\u179F\u179A JSON",
+    e164: "\u179B\u17C1\u1781 E.164",
+    jwt: "JWT",
+    template_literal: "\u1791\u17B7\u1793\u17D2\u1793\u1793\u17D0\u1799\u1794\u1789\u17D2\u1785\u17BC\u179B"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "\u179B\u17C1\u1781",
+    array: "\u17A2\u17B6\u179A\u17C1 (Array)",
+    null: "\u1782\u17D2\u1798\u17B6\u1793\u178F\u1798\u17D2\u179B\u17C3 (null)"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `\u1791\u17B7\u1793\u17D2\u1793\u1793\u17D0\u1799\u1794\u1789\u17D2\u1785\u17BC\u179B\u1798\u17B7\u1793\u178F\u17D2\u179A\u17B9\u1798\u178F\u17D2\u179A\u17BC\u179C\u17D6 \u178F\u17D2\u179A\u17BC\u179C\u1780\u17B6\u179A instanceof ${issue2.expected} \u1794\u17C9\u17BB\u1793\u17D2\u178F\u17C2\u1791\u1791\u17BD\u179B\u1794\u17B6\u1793 ${received}`;
+        }
+        return `\u1791\u17B7\u1793\u17D2\u1793\u1793\u17D0\u1799\u1794\u1789\u17D2\u1785\u17BC\u179B\u1798\u17B7\u1793\u178F\u17D2\u179A\u17B9\u1798\u178F\u17D2\u179A\u17BC\u179C\u17D6 \u178F\u17D2\u179A\u17BC\u179C\u1780\u17B6\u179A ${expected} \u1794\u17C9\u17BB\u1793\u17D2\u178F\u17C2\u1791\u1791\u17BD\u179B\u1794\u17B6\u1793 ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `\u1791\u17B7\u1793\u17D2\u1793\u1793\u17D0\u1799\u1794\u1789\u17D2\u1785\u17BC\u179B\u1798\u17B7\u1793\u178F\u17D2\u179A\u17B9\u1798\u178F\u17D2\u179A\u17BC\u179C\u17D6 \u178F\u17D2\u179A\u17BC\u179C\u1780\u17B6\u179A ${stringifyPrimitive(issue2.values[0])}`;
+        return `\u1787\u1798\u17D2\u179A\u17BE\u179F\u1798\u17B7\u1793\u178F\u17D2\u179A\u17B9\u1798\u178F\u17D2\u179A\u17BC\u179C\u17D6 \u178F\u17D2\u179A\u17BC\u179C\u1787\u17B6\u1798\u17BD\u1799\u1780\u17D2\u1793\u17BB\u1784\u1785\u17C6\u178E\u17C4\u1798 ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `\u1792\u17C6\u1796\u17C1\u1780\u17D6 \u178F\u17D2\u179A\u17BC\u179C\u1780\u17B6\u179A ${issue2.origin ?? "\u178F\u1798\u17D2\u179B\u17C3"} ${adj} ${issue2.maximum.toString()} ${sizing.unit ?? "\u1792\u17B6\u178F\u17BB"}`;
+        return `\u1792\u17C6\u1796\u17C1\u1780\u17D6 \u178F\u17D2\u179A\u17BC\u179C\u1780\u17B6\u179A ${issue2.origin ?? "\u178F\u1798\u17D2\u179B\u17C3"} ${adj} ${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `\u178F\u17BC\u1785\u1796\u17C1\u1780\u17D6 \u178F\u17D2\u179A\u17BC\u179C\u1780\u17B6\u179A ${issue2.origin} ${adj} ${issue2.minimum.toString()} ${sizing.unit}`;
+        }
+        return `\u178F\u17BC\u1785\u1796\u17C1\u1780\u17D6 \u178F\u17D2\u179A\u17BC\u179C\u1780\u17B6\u179A ${issue2.origin} ${adj} ${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with") {
+          return `\u1781\u17D2\u179F\u17C2\u17A2\u1780\u17D2\u179F\u179A\u1798\u17B7\u1793\u178F\u17D2\u179A\u17B9\u1798\u178F\u17D2\u179A\u17BC\u179C\u17D6 \u178F\u17D2\u179A\u17BC\u179C\u1785\u17B6\u1794\u17CB\u1795\u17D2\u178F\u17BE\u1798\u178A\u17C4\u1799 "${_issue.prefix}"`;
+        }
+        if (_issue.format === "ends_with")
+          return `\u1781\u17D2\u179F\u17C2\u17A2\u1780\u17D2\u179F\u179A\u1798\u17B7\u1793\u178F\u17D2\u179A\u17B9\u1798\u178F\u17D2\u179A\u17BC\u179C\u17D6 \u178F\u17D2\u179A\u17BC\u179C\u1794\u1789\u17D2\u1785\u1794\u17CB\u178A\u17C4\u1799 "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `\u1781\u17D2\u179F\u17C2\u17A2\u1780\u17D2\u179F\u179A\u1798\u17B7\u1793\u178F\u17D2\u179A\u17B9\u1798\u178F\u17D2\u179A\u17BC\u179C\u17D6 \u178F\u17D2\u179A\u17BC\u179C\u1798\u17B6\u1793 "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `\u1781\u17D2\u179F\u17C2\u17A2\u1780\u17D2\u179F\u179A\u1798\u17B7\u1793\u178F\u17D2\u179A\u17B9\u1798\u178F\u17D2\u179A\u17BC\u179C\u17D6 \u178F\u17D2\u179A\u17BC\u179C\u178F\u17C2\u1795\u17D2\u1782\u17BC\u1795\u17D2\u1782\u1784\u1793\u17B9\u1784\u1791\u1798\u17D2\u179A\u1784\u17CB\u178A\u17C2\u179B\u1794\u17B6\u1793\u1780\u17C6\u178E\u178F\u17CB ${_issue.pattern}`;
+        return `\u1798\u17B7\u1793\u178F\u17D2\u179A\u17B9\u1798\u178F\u17D2\u179A\u17BC\u179C\u17D6 ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `\u179B\u17C1\u1781\u1798\u17B7\u1793\u178F\u17D2\u179A\u17B9\u1798\u178F\u17D2\u179A\u17BC\u179C\u17D6 \u178F\u17D2\u179A\u17BC\u179C\u178F\u17C2\u1787\u17B6\u1796\u17A0\u17BB\u1782\u17BB\u178E\u1793\u17C3 ${issue2.divisor}`;
+      case "unrecognized_keys":
+        return `\u179A\u1780\u1783\u17BE\u1789\u179F\u17C4\u1798\u17B7\u1793\u179F\u17D2\u1782\u17B6\u179B\u17CB\u17D6 ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `\u179F\u17C4\u1798\u17B7\u1793\u178F\u17D2\u179A\u17B9\u1798\u178F\u17D2\u179A\u17BC\u179C\u1793\u17C5\u1780\u17D2\u1793\u17BB\u1784 ${issue2.origin}`;
+      case "invalid_union":
+        return `\u1791\u17B7\u1793\u17D2\u1793\u1793\u17D0\u1799\u1798\u17B7\u1793\u178F\u17D2\u179A\u17B9\u1798\u178F\u17D2\u179A\u17BC\u179C`;
+      case "invalid_element":
+        return `\u1791\u17B7\u1793\u17D2\u1793\u1793\u17D0\u1799\u1798\u17B7\u1793\u178F\u17D2\u179A\u17B9\u1798\u178F\u17D2\u179A\u17BC\u179C\u1793\u17C5\u1780\u17D2\u1793\u17BB\u1784 ${issue2.origin}`;
+      default:
+        return `\u1791\u17B7\u1793\u17D2\u1793\u1793\u17D0\u1799\u1798\u17B7\u1793\u178F\u17D2\u179A\u17B9\u1798\u178F\u17D2\u179A\u17BC\u179C`;
+    }
+  };
+}, "error");
+function km_default() {
+  return {
+    localeError: error26()
+  };
+}
+__name(km_default, "default");
+
+// node_modules/zod/v4/locales/kh.js
+function kh_default() {
+  return km_default();
+}
+__name(kh_default, "default");
+
+// node_modules/zod/v4/locales/ko.js
+var error27 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "\uBB38\uC790", verb: "to have" },
+    file: { unit: "\uBC14\uC774\uD2B8", verb: "to have" },
+    array: { unit: "\uAC1C", verb: "to have" },
+    set: { unit: "\uAC1C", verb: "to have" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "\uC785\uB825",
+    email: "\uC774\uBA54\uC77C \uC8FC\uC18C",
+    url: "URL",
+    emoji: "\uC774\uBAA8\uC9C0",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "ISO \uB0A0\uC9DC\uC2DC\uAC04",
+    date: "ISO \uB0A0\uC9DC",
+    time: "ISO \uC2DC\uAC04",
+    duration: "ISO \uAE30\uAC04",
+    ipv4: "IPv4 \uC8FC\uC18C",
+    ipv6: "IPv6 \uC8FC\uC18C",
+    cidrv4: "IPv4 \uBC94\uC704",
+    cidrv6: "IPv6 \uBC94\uC704",
+    base64: "base64 \uC778\uCF54\uB529 \uBB38\uC790\uC5F4",
+    base64url: "base64url \uC778\uCF54\uB529 \uBB38\uC790\uC5F4",
+    json_string: "JSON \uBB38\uC790\uC5F4",
+    e164: "E.164 \uBC88\uD638",
+    jwt: "JWT",
+    template_literal: "\uC785\uB825"
+  };
+  const TypeDictionary = {
+    nan: "NaN"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `\uC798\uBABB\uB41C \uC785\uB825: \uC608\uC0C1 \uD0C0\uC785\uC740 instanceof ${issue2.expected}, \uBC1B\uC740 \uD0C0\uC785\uC740 ${received}\uC785\uB2C8\uB2E4`;
+        }
+        return `\uC798\uBABB\uB41C \uC785\uB825: \uC608\uC0C1 \uD0C0\uC785\uC740 ${expected}, \uBC1B\uC740 \uD0C0\uC785\uC740 ${received}\uC785\uB2C8\uB2E4`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `\uC798\uBABB\uB41C \uC785\uB825: \uAC12\uC740 ${stringifyPrimitive(issue2.values[0])} \uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4`;
+        return `\uC798\uBABB\uB41C \uC635\uC158: ${joinValues(issue2.values, "\uB610\uB294 ")} \uC911 \uD558\uB098\uC5EC\uC57C \uD569\uB2C8\uB2E4`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "\uC774\uD558" : "\uBBF8\uB9CC";
+        const suffix = adj === "\uBBF8\uB9CC" ? "\uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4" : "\uC5EC\uC57C \uD569\uB2C8\uB2E4";
+        const sizing = getSizing(issue2.origin);
+        const unit = sizing?.unit ?? "\uC694\uC18C";
+        if (sizing)
+          return `${issue2.origin ?? "\uAC12"}\uC774 \uB108\uBB34 \uD07D\uB2C8\uB2E4: ${issue2.maximum.toString()}${unit} ${adj}${suffix}`;
+        return `${issue2.origin ?? "\uAC12"}\uC774 \uB108\uBB34 \uD07D\uB2C8\uB2E4: ${issue2.maximum.toString()} ${adj}${suffix}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? "\uC774\uC0C1" : "\uCD08\uACFC";
+        const suffix = adj === "\uC774\uC0C1" ? "\uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4" : "\uC5EC\uC57C \uD569\uB2C8\uB2E4";
+        const sizing = getSizing(issue2.origin);
+        const unit = sizing?.unit ?? "\uC694\uC18C";
+        if (sizing) {
+          return `${issue2.origin ?? "\uAC12"}\uC774 \uB108\uBB34 \uC791\uC2B5\uB2C8\uB2E4: ${issue2.minimum.toString()}${unit} ${adj}${suffix}`;
+        }
+        return `${issue2.origin ?? "\uAC12"}\uC774 \uB108\uBB34 \uC791\uC2B5\uB2C8\uB2E4: ${issue2.minimum.toString()} ${adj}${suffix}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with") {
+          return `\uC798\uBABB\uB41C \uBB38\uC790\uC5F4: "${_issue.prefix}"(\uC73C)\uB85C \uC2DC\uC791\uD574\uC57C \uD569\uB2C8\uB2E4`;
+        }
+        if (_issue.format === "ends_with")
+          return `\uC798\uBABB\uB41C \uBB38\uC790\uC5F4: "${_issue.suffix}"(\uC73C)\uB85C \uB05D\uB098\uC57C \uD569\uB2C8\uB2E4`;
+        if (_issue.format === "includes")
+          return `\uC798\uBABB\uB41C \uBB38\uC790\uC5F4: "${_issue.includes}"\uC744(\uB97C) \uD3EC\uD568\uD574\uC57C \uD569\uB2C8\uB2E4`;
+        if (_issue.format === "regex")
+          return `\uC798\uBABB\uB41C \uBB38\uC790\uC5F4: \uC815\uADDC\uC2DD ${_issue.pattern} \uD328\uD134\uACFC \uC77C\uCE58\uD574\uC57C \uD569\uB2C8\uB2E4`;
+        return `\uC798\uBABB\uB41C ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `\uC798\uBABB\uB41C \uC22B\uC790: ${issue2.divisor}\uC758 \uBC30\uC218\uC5EC\uC57C \uD569\uB2C8\uB2E4`;
+      case "unrecognized_keys":
+        return `\uC778\uC2DD\uD560 \uC218 \uC5C6\uB294 \uD0A4: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `\uC798\uBABB\uB41C \uD0A4: ${issue2.origin}`;
+      case "invalid_union":
+        return `\uC798\uBABB\uB41C \uC785\uB825`;
+      case "invalid_element":
+        return `\uC798\uBABB\uB41C \uAC12: ${issue2.origin}`;
+      default:
+        return `\uC798\uBABB\uB41C \uC785\uB825`;
+    }
+  };
+}, "error");
+function ko_default() {
+  return {
+    localeError: error27()
+  };
+}
+__name(ko_default, "default");
+
+// node_modules/zod/v4/locales/lt.js
+var capitalizeFirstCharacter = /* @__PURE__ */ __name((text2) => {
+  return text2.charAt(0).toUpperCase() + text2.slice(1);
+}, "capitalizeFirstCharacter");
+function getUnitTypeFromNumber(number4) {
+  const abs = Math.abs(number4);
+  const last = abs % 10;
+  const last2 = abs % 100;
+  if (last2 >= 11 && last2 <= 19 || last === 0)
+    return "many";
+  if (last === 1)
+    return "one";
+  return "few";
+}
+__name(getUnitTypeFromNumber, "getUnitTypeFromNumber");
+var error28 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: {
+      unit: {
+        one: "simbolis",
+        few: "simboliai",
+        many: "simboli\u0173"
+      },
+      verb: {
+        smaller: {
+          inclusive: "turi b\u016Bti ne ilgesn\u0117 kaip",
+          notInclusive: "turi b\u016Bti trumpesn\u0117 kaip"
+        },
+        bigger: {
+          inclusive: "turi b\u016Bti ne trumpesn\u0117 kaip",
+          notInclusive: "turi b\u016Bti ilgesn\u0117 kaip"
+        }
+      }
+    },
+    file: {
+      unit: {
+        one: "baitas",
+        few: "baitai",
+        many: "bait\u0173"
+      },
+      verb: {
+        smaller: {
+          inclusive: "turi b\u016Bti ne didesnis kaip",
+          notInclusive: "turi b\u016Bti ma\u017Eesnis kaip"
+        },
+        bigger: {
+          inclusive: "turi b\u016Bti ne ma\u017Eesnis kaip",
+          notInclusive: "turi b\u016Bti didesnis kaip"
+        }
+      }
+    },
+    array: {
+      unit: {
+        one: "element\u0105",
+        few: "elementus",
+        many: "element\u0173"
+      },
+      verb: {
+        smaller: {
+          inclusive: "turi tur\u0117ti ne daugiau kaip",
+          notInclusive: "turi tur\u0117ti ma\u017Eiau kaip"
+        },
+        bigger: {
+          inclusive: "turi tur\u0117ti ne ma\u017Eiau kaip",
+          notInclusive: "turi tur\u0117ti daugiau kaip"
+        }
+      }
+    },
+    set: {
+      unit: {
+        one: "element\u0105",
+        few: "elementus",
+        many: "element\u0173"
+      },
+      verb: {
+        smaller: {
+          inclusive: "turi tur\u0117ti ne daugiau kaip",
+          notInclusive: "turi tur\u0117ti ma\u017Eiau kaip"
+        },
+        bigger: {
+          inclusive: "turi tur\u0117ti ne ma\u017Eiau kaip",
+          notInclusive: "turi tur\u0117ti daugiau kaip"
+        }
+      }
+    }
+  };
+  function getSizing(origin, unitType, inclusive, targetShouldBe) {
+    const result = Sizable[origin] ?? null;
+    if (result === null)
+      return result;
+    return {
+      unit: result.unit[unitType],
+      verb: result.verb[targetShouldBe][inclusive ? "inclusive" : "notInclusive"]
+    };
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "\u012Fvestis",
+    email: "el. pa\u0161to adresas",
+    url: "URL",
+    emoji: "jaustukas",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "ISO data ir laikas",
+    date: "ISO data",
+    time: "ISO laikas",
+    duration: "ISO trukm\u0117",
+    ipv4: "IPv4 adresas",
+    ipv6: "IPv6 adresas",
+    cidrv4: "IPv4 tinklo prefiksas (CIDR)",
+    cidrv6: "IPv6 tinklo prefiksas (CIDR)",
+    base64: "base64 u\u017Ekoduota eilut\u0117",
+    base64url: "base64url u\u017Ekoduota eilut\u0117",
+    json_string: "JSON eilut\u0117",
+    e164: "E.164 numeris",
+    jwt: "JWT",
+    template_literal: "\u012Fvestis"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "skai\u010Dius",
+    bigint: "sveikasis skai\u010Dius",
+    string: "eilut\u0117",
+    boolean: "login\u0117 reik\u0161m\u0117",
+    undefined: "neapibr\u0117\u017Eta reik\u0161m\u0117",
+    function: "funkcija",
+    symbol: "simbolis",
+    array: "masyvas",
+    object: "objektas",
+    null: "nulin\u0117 reik\u0161m\u0117"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `Gautas tipas ${received}, o tik\u0117tasi - instanceof ${issue2.expected}`;
+        }
+        return `Gautas tipas ${received}, o tik\u0117tasi - ${expected}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `Privalo b\u016Bti ${stringifyPrimitive(issue2.values[0])}`;
+        return `Privalo b\u016Bti vienas i\u0161 ${joinValues(issue2.values, "|")} pasirinkim\u0173`;
+      case "too_big": {
+        const origin = TypeDictionary[issue2.origin] ?? issue2.origin;
+        const sizing = getSizing(issue2.origin, getUnitTypeFromNumber(Number(issue2.maximum)), issue2.inclusive ?? false, "smaller");
+        if (sizing?.verb)
+          return `${capitalizeFirstCharacter(origin ?? issue2.origin ?? "reik\u0161m\u0117")} ${sizing.verb} ${issue2.maximum.toString()} ${sizing.unit ?? "element\u0173"}`;
+        const adj = issue2.inclusive ? "ne didesnis kaip" : "ma\u017Eesnis kaip";
+        return `${capitalizeFirstCharacter(origin ?? issue2.origin ?? "reik\u0161m\u0117")} turi b\u016Bti ${adj} ${issue2.maximum.toString()} ${sizing?.unit}`;
+      }
+      case "too_small": {
+        const origin = TypeDictionary[issue2.origin] ?? issue2.origin;
+        const sizing = getSizing(issue2.origin, getUnitTypeFromNumber(Number(issue2.minimum)), issue2.inclusive ?? false, "bigger");
+        if (sizing?.verb)
+          return `${capitalizeFirstCharacter(origin ?? issue2.origin ?? "reik\u0161m\u0117")} ${sizing.verb} ${issue2.minimum.toString()} ${sizing.unit ?? "element\u0173"}`;
+        const adj = issue2.inclusive ? "ne ma\u017Eesnis kaip" : "didesnis kaip";
+        return `${capitalizeFirstCharacter(origin ?? issue2.origin ?? "reik\u0161m\u0117")} turi b\u016Bti ${adj} ${issue2.minimum.toString()} ${sizing?.unit}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with") {
+          return `Eilut\u0117 privalo prasid\u0117ti "${_issue.prefix}"`;
+        }
+        if (_issue.format === "ends_with")
+          return `Eilut\u0117 privalo pasibaigti "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `Eilut\u0117 privalo \u012Ftraukti "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `Eilut\u0117 privalo atitikti ${_issue.pattern}`;
+        return `Neteisingas ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `Skai\u010Dius privalo b\u016Bti ${issue2.divisor} kartotinis.`;
+      case "unrecognized_keys":
+        return `Neatpa\u017Eint${issue2.keys.length > 1 ? "i" : "as"} rakt${issue2.keys.length > 1 ? "ai" : "as"}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return "Rastas klaidingas raktas";
+      case "invalid_union":
+        return "Klaidinga \u012Fvestis";
+      case "invalid_element": {
+        const origin = TypeDictionary[issue2.origin] ?? issue2.origin;
+        return `${capitalizeFirstCharacter(origin ?? issue2.origin ?? "reik\u0161m\u0117")} turi klaiding\u0105 \u012Fvest\u012F`;
+      }
+      default:
+        return "Klaidinga \u012Fvestis";
+    }
+  };
+}, "error");
+function lt_default() {
+  return {
+    localeError: error28()
+  };
+}
+__name(lt_default, "default");
+
+// node_modules/zod/v4/locales/mk.js
+var error29 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "\u0437\u043D\u0430\u0446\u0438", verb: "\u0434\u0430 \u0438\u043C\u0430\u0430\u0442" },
+    file: { unit: "\u0431\u0430\u0458\u0442\u0438", verb: "\u0434\u0430 \u0438\u043C\u0430\u0430\u0442" },
+    array: { unit: "\u0441\u0442\u0430\u0432\u043A\u0438", verb: "\u0434\u0430 \u0438\u043C\u0430\u0430\u0442" },
+    set: { unit: "\u0441\u0442\u0430\u0432\u043A\u0438", verb: "\u0434\u0430 \u0438\u043C\u0430\u0430\u0442" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "\u0432\u043D\u0435\u0441",
+    email: "\u0430\u0434\u0440\u0435\u0441\u0430 \u043D\u0430 \u0435-\u043F\u043E\u0448\u0442\u0430",
+    url: "URL",
+    emoji: "\u0435\u043C\u043E\u045F\u0438",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "ISO \u0434\u0430\u0442\u0443\u043C \u0438 \u0432\u0440\u0435\u043C\u0435",
+    date: "ISO \u0434\u0430\u0442\u0443\u043C",
+    time: "ISO \u0432\u0440\u0435\u043C\u0435",
+    duration: "ISO \u0432\u0440\u0435\u043C\u0435\u0442\u0440\u0430\u0435\u045A\u0435",
+    ipv4: "IPv4 \u0430\u0434\u0440\u0435\u0441\u0430",
+    ipv6: "IPv6 \u0430\u0434\u0440\u0435\u0441\u0430",
+    cidrv4: "IPv4 \u043E\u043F\u0441\u0435\u0433",
+    cidrv6: "IPv6 \u043E\u043F\u0441\u0435\u0433",
+    base64: "base64-\u0435\u043D\u043A\u043E\u0434\u0438\u0440\u0430\u043D\u0430 \u043D\u0438\u0437\u0430",
+    base64url: "base64url-\u0435\u043D\u043A\u043E\u0434\u0438\u0440\u0430\u043D\u0430 \u043D\u0438\u0437\u0430",
+    json_string: "JSON \u043D\u0438\u0437\u0430",
+    e164: "E.164 \u0431\u0440\u043E\u0458",
+    jwt: "JWT",
+    template_literal: "\u0432\u043D\u0435\u0441"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "\u0431\u0440\u043E\u0458",
+    array: "\u043D\u0438\u0437\u0430"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `\u0413\u0440\u0435\u0448\u0435\u043D \u0432\u043D\u0435\u0441: \u0441\u0435 \u043E\u0447\u0435\u043A\u0443\u0432\u0430 instanceof ${issue2.expected}, \u043F\u0440\u0438\u043C\u0435\u043D\u043E ${received}`;
+        }
+        return `\u0413\u0440\u0435\u0448\u0435\u043D \u0432\u043D\u0435\u0441: \u0441\u0435 \u043E\u0447\u0435\u043A\u0443\u0432\u0430 ${expected}, \u043F\u0440\u0438\u043C\u0435\u043D\u043E ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `Invalid input: expected ${stringifyPrimitive(issue2.values[0])}`;
+        return `\u0413\u0440\u0435\u0448\u0430\u043D\u0430 \u043E\u043F\u0446\u0438\u0458\u0430: \u0441\u0435 \u043E\u0447\u0435\u043A\u0443\u0432\u0430 \u0435\u0434\u043D\u0430 ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `\u041F\u0440\u0435\u043C\u043D\u043E\u0433\u0443 \u0433\u043E\u043B\u0435\u043C: \u0441\u0435 \u043E\u0447\u0435\u043A\u0443\u0432\u0430 ${issue2.origin ?? "\u0432\u0440\u0435\u0434\u043D\u043E\u0441\u0442\u0430"} \u0434\u0430 \u0438\u043C\u0430 ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "\u0435\u043B\u0435\u043C\u0435\u043D\u0442\u0438"}`;
+        return `\u041F\u0440\u0435\u043C\u043D\u043E\u0433\u0443 \u0433\u043E\u043B\u0435\u043C: \u0441\u0435 \u043E\u0447\u0435\u043A\u0443\u0432\u0430 ${issue2.origin ?? "\u0432\u0440\u0435\u0434\u043D\u043E\u0441\u0442\u0430"} \u0434\u0430 \u0431\u0438\u0434\u0435 ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `\u041F\u0440\u0435\u043C\u043D\u043E\u0433\u0443 \u043C\u0430\u043B: \u0441\u0435 \u043E\u0447\u0435\u043A\u0443\u0432\u0430 ${issue2.origin} \u0434\u0430 \u0438\u043C\u0430 ${adj}${issue2.minimum.toString()} ${sizing.unit}`;
+        }
+        return `\u041F\u0440\u0435\u043C\u043D\u043E\u0433\u0443 \u043C\u0430\u043B: \u0441\u0435 \u043E\u0447\u0435\u043A\u0443\u0432\u0430 ${issue2.origin} \u0434\u0430 \u0431\u0438\u0434\u0435 ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with") {
+          return `\u041D\u0435\u0432\u0430\u0436\u0435\u0447\u043A\u0430 \u043D\u0438\u0437\u0430: \u043C\u043E\u0440\u0430 \u0434\u0430 \u0437\u0430\u043F\u043E\u0447\u043D\u0443\u0432\u0430 \u0441\u043E "${_issue.prefix}"`;
+        }
+        if (_issue.format === "ends_with")
+          return `\u041D\u0435\u0432\u0430\u0436\u0435\u0447\u043A\u0430 \u043D\u0438\u0437\u0430: \u043C\u043E\u0440\u0430 \u0434\u0430 \u0437\u0430\u0432\u0440\u0448\u0443\u0432\u0430 \u0441\u043E "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `\u041D\u0435\u0432\u0430\u0436\u0435\u0447\u043A\u0430 \u043D\u0438\u0437\u0430: \u043C\u043E\u0440\u0430 \u0434\u0430 \u0432\u043A\u043B\u0443\u0447\u0443\u0432\u0430 "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `\u041D\u0435\u0432\u0430\u0436\u0435\u0447\u043A\u0430 \u043D\u0438\u0437\u0430: \u043C\u043E\u0440\u0430 \u0434\u0430 \u043E\u0434\u0433\u043E\u0430\u0440\u0430 \u043D\u0430 \u043F\u0430\u0442\u0435\u0440\u043D\u043E\u0442 ${_issue.pattern}`;
+        return `Invalid ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `\u0413\u0440\u0435\u0448\u0435\u043D \u0431\u0440\u043E\u0458: \u043C\u043E\u0440\u0430 \u0434\u0430 \u0431\u0438\u0434\u0435 \u0434\u0435\u043B\u0438\u0432 \u0441\u043E ${issue2.divisor}`;
+      case "unrecognized_keys":
+        return `${issue2.keys.length > 1 ? "\u041D\u0435\u043F\u0440\u0435\u043F\u043E\u0437\u043D\u0430\u0435\u043D\u0438 \u043A\u043B\u0443\u0447\u0435\u0432\u0438" : "\u041D\u0435\u043F\u0440\u0435\u043F\u043E\u0437\u043D\u0430\u0435\u043D \u043A\u043B\u0443\u0447"}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `\u0413\u0440\u0435\u0448\u0435\u043D \u043A\u043B\u0443\u0447 \u0432\u043E ${issue2.origin}`;
+      case "invalid_union":
+        return "\u0413\u0440\u0435\u0448\u0435\u043D \u0432\u043D\u0435\u0441";
+      case "invalid_element":
+        return `\u0413\u0440\u0435\u0448\u043D\u0430 \u0432\u0440\u0435\u0434\u043D\u043E\u0441\u0442 \u0432\u043E ${issue2.origin}`;
+      default:
+        return `\u0413\u0440\u0435\u0448\u0435\u043D \u0432\u043D\u0435\u0441`;
+    }
+  };
+}, "error");
+function mk_default() {
+  return {
+    localeError: error29()
+  };
+}
+__name(mk_default, "default");
+
+// node_modules/zod/v4/locales/ms.js
+var error30 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "aksara", verb: "mempunyai" },
+    file: { unit: "bait", verb: "mempunyai" },
+    array: { unit: "elemen", verb: "mempunyai" },
+    set: { unit: "elemen", verb: "mempunyai" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "input",
+    email: "alamat e-mel",
+    url: "URL",
+    emoji: "emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "tarikh masa ISO",
+    date: "tarikh ISO",
+    time: "masa ISO",
+    duration: "tempoh ISO",
+    ipv4: "alamat IPv4",
+    ipv6: "alamat IPv6",
+    cidrv4: "julat IPv4",
+    cidrv6: "julat IPv6",
+    base64: "string dikodkan base64",
+    base64url: "string dikodkan base64url",
+    json_string: "string JSON",
+    e164: "nombor E.164",
+    jwt: "JWT",
+    template_literal: "input"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "nombor"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `Input tidak sah: dijangka instanceof ${issue2.expected}, diterima ${received}`;
+        }
+        return `Input tidak sah: dijangka ${expected}, diterima ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `Input tidak sah: dijangka ${stringifyPrimitive(issue2.values[0])}`;
+        return `Pilihan tidak sah: dijangka salah satu daripada ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `Terlalu besar: dijangka ${issue2.origin ?? "nilai"} ${sizing.verb} ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "elemen"}`;
+        return `Terlalu besar: dijangka ${issue2.origin ?? "nilai"} adalah ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `Terlalu kecil: dijangka ${issue2.origin} ${sizing.verb} ${adj}${issue2.minimum.toString()} ${sizing.unit}`;
+        }
+        return `Terlalu kecil: dijangka ${issue2.origin} adalah ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `String tidak sah: mesti bermula dengan "${_issue.prefix}"`;
+        if (_issue.format === "ends_with")
+          return `String tidak sah: mesti berakhir dengan "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `String tidak sah: mesti mengandungi "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `String tidak sah: mesti sepadan dengan corak ${_issue.pattern}`;
+        return `${FormatDictionary[_issue.format] ?? issue2.format} tidak sah`;
+      }
+      case "not_multiple_of":
+        return `Nombor tidak sah: perlu gandaan ${issue2.divisor}`;
+      case "unrecognized_keys":
+        return `Kunci tidak dikenali: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `Kunci tidak sah dalam ${issue2.origin}`;
+      case "invalid_union":
+        return "Input tidak sah";
+      case "invalid_element":
+        return `Nilai tidak sah dalam ${issue2.origin}`;
+      default:
+        return `Input tidak sah`;
+    }
+  };
+}, "error");
+function ms_default() {
+  return {
+    localeError: error30()
+  };
+}
+__name(ms_default, "default");
+
+// node_modules/zod/v4/locales/nl.js
+var error31 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "tekens", verb: "heeft" },
+    file: { unit: "bytes", verb: "heeft" },
+    array: { unit: "elementen", verb: "heeft" },
+    set: { unit: "elementen", verb: "heeft" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "invoer",
+    email: "emailadres",
+    url: "URL",
+    emoji: "emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "ISO datum en tijd",
+    date: "ISO datum",
+    time: "ISO tijd",
+    duration: "ISO duur",
+    ipv4: "IPv4-adres",
+    ipv6: "IPv6-adres",
+    cidrv4: "IPv4-bereik",
+    cidrv6: "IPv6-bereik",
+    base64: "base64-gecodeerde tekst",
+    base64url: "base64 URL-gecodeerde tekst",
+    json_string: "JSON string",
+    e164: "E.164-nummer",
+    jwt: "JWT",
+    template_literal: "invoer"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "getal"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `Ongeldige invoer: verwacht instanceof ${issue2.expected}, ontving ${received}`;
+        }
+        return `Ongeldige invoer: verwacht ${expected}, ontving ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `Ongeldige invoer: verwacht ${stringifyPrimitive(issue2.values[0])}`;
+        return `Ongeldige optie: verwacht \xE9\xE9n van ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        const longName = issue2.origin === "date" ? "laat" : issue2.origin === "string" ? "lang" : "groot";
+        if (sizing)
+          return `Te ${longName}: verwacht dat ${issue2.origin ?? "waarde"} ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "elementen"} ${sizing.verb}`;
+        return `Te ${longName}: verwacht dat ${issue2.origin ?? "waarde"} ${adj}${issue2.maximum.toString()} is`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        const shortName = issue2.origin === "date" ? "vroeg" : issue2.origin === "string" ? "kort" : "klein";
+        if (sizing) {
+          return `Te ${shortName}: verwacht dat ${issue2.origin} ${adj}${issue2.minimum.toString()} ${sizing.unit} ${sizing.verb}`;
+        }
+        return `Te ${shortName}: verwacht dat ${issue2.origin} ${adj}${issue2.minimum.toString()} is`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with") {
+          return `Ongeldige tekst: moet met "${_issue.prefix}" beginnen`;
+        }
+        if (_issue.format === "ends_with")
+          return `Ongeldige tekst: moet op "${_issue.suffix}" eindigen`;
+        if (_issue.format === "includes")
+          return `Ongeldige tekst: moet "${_issue.includes}" bevatten`;
+        if (_issue.format === "regex")
+          return `Ongeldige tekst: moet overeenkomen met patroon ${_issue.pattern}`;
+        return `Ongeldig: ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `Ongeldig getal: moet een veelvoud van ${issue2.divisor} zijn`;
+      case "unrecognized_keys":
+        return `Onbekende key${issue2.keys.length > 1 ? "s" : ""}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `Ongeldige key in ${issue2.origin}`;
+      case "invalid_union":
+        return "Ongeldige invoer";
+      case "invalid_element":
+        return `Ongeldige waarde in ${issue2.origin}`;
+      default:
+        return `Ongeldige invoer`;
+    }
+  };
+}, "error");
+function nl_default() {
+  return {
+    localeError: error31()
+  };
+}
+__name(nl_default, "default");
+
+// node_modules/zod/v4/locales/no.js
+var error32 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "tegn", verb: "\xE5 ha" },
+    file: { unit: "bytes", verb: "\xE5 ha" },
+    array: { unit: "elementer", verb: "\xE5 inneholde" },
+    set: { unit: "elementer", verb: "\xE5 inneholde" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "input",
+    email: "e-postadresse",
+    url: "URL",
+    emoji: "emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "ISO dato- og klokkeslett",
+    date: "ISO-dato",
+    time: "ISO-klokkeslett",
+    duration: "ISO-varighet",
+    ipv4: "IPv4-omr\xE5de",
+    ipv6: "IPv6-omr\xE5de",
+    cidrv4: "IPv4-spekter",
+    cidrv6: "IPv6-spekter",
+    base64: "base64-enkodet streng",
+    base64url: "base64url-enkodet streng",
+    json_string: "JSON-streng",
+    e164: "E.164-nummer",
+    jwt: "JWT",
+    template_literal: "input"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "tall",
+    array: "liste"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `Ugyldig input: forventet instanceof ${issue2.expected}, fikk ${received}`;
+        }
+        return `Ugyldig input: forventet ${expected}, fikk ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `Ugyldig verdi: forventet ${stringifyPrimitive(issue2.values[0])}`;
+        return `Ugyldig valg: forventet en av ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `For stor(t): forventet ${issue2.origin ?? "value"} til \xE5 ha ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "elementer"}`;
+        return `For stor(t): forventet ${issue2.origin ?? "value"} til \xE5 ha ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `For lite(n): forventet ${issue2.origin} til \xE5 ha ${adj}${issue2.minimum.toString()} ${sizing.unit}`;
+        }
+        return `For lite(n): forventet ${issue2.origin} til \xE5 ha ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `Ugyldig streng: m\xE5 starte med "${_issue.prefix}"`;
+        if (_issue.format === "ends_with")
+          return `Ugyldig streng: m\xE5 ende med "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `Ugyldig streng: m\xE5 inneholde "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `Ugyldig streng: m\xE5 matche m\xF8nsteret ${_issue.pattern}`;
+        return `Ugyldig ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `Ugyldig tall: m\xE5 v\xE6re et multiplum av ${issue2.divisor}`;
+      case "unrecognized_keys":
+        return `${issue2.keys.length > 1 ? "Ukjente n\xF8kler" : "Ukjent n\xF8kkel"}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `Ugyldig n\xF8kkel i ${issue2.origin}`;
+      case "invalid_union":
+        return "Ugyldig input";
+      case "invalid_element":
+        return `Ugyldig verdi i ${issue2.origin}`;
+      default:
+        return `Ugyldig input`;
+    }
+  };
+}, "error");
+function no_default() {
+  return {
+    localeError: error32()
+  };
+}
+__name(no_default, "default");
+
+// node_modules/zod/v4/locales/ota.js
+var error33 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "harf", verb: "olmal\u0131d\u0131r" },
+    file: { unit: "bayt", verb: "olmal\u0131d\u0131r" },
+    array: { unit: "unsur", verb: "olmal\u0131d\u0131r" },
+    set: { unit: "unsur", verb: "olmal\u0131d\u0131r" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "giren",
+    email: "epostag\xE2h",
+    url: "URL",
+    emoji: "emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "ISO heng\xE2m\u0131",
+    date: "ISO tarihi",
+    time: "ISO zaman\u0131",
+    duration: "ISO m\xFCddeti",
+    ipv4: "IPv4 ni\u015F\xE2n\u0131",
+    ipv6: "IPv6 ni\u015F\xE2n\u0131",
+    cidrv4: "IPv4 menzili",
+    cidrv6: "IPv6 menzili",
+    base64: "base64-\u015Fifreli metin",
+    base64url: "base64url-\u015Fifreli metin",
+    json_string: "JSON metin",
+    e164: "E.164 say\u0131s\u0131",
+    jwt: "JWT",
+    template_literal: "giren"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "numara",
+    array: "saf",
+    null: "gayb"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `F\xE2sit giren: umulan instanceof ${issue2.expected}, al\u0131nan ${received}`;
+        }
+        return `F\xE2sit giren: umulan ${expected}, al\u0131nan ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `F\xE2sit giren: umulan ${stringifyPrimitive(issue2.values[0])}`;
+        return `F\xE2sit tercih: m\xFBteberler ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `Fazla b\xFCy\xFCk: ${issue2.origin ?? "value"}, ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "elements"} sahip olmal\u0131yd\u0131.`;
+        return `Fazla b\xFCy\xFCk: ${issue2.origin ?? "value"}, ${adj}${issue2.maximum.toString()} olmal\u0131yd\u0131.`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `Fazla k\xFC\xE7\xFCk: ${issue2.origin}, ${adj}${issue2.minimum.toString()} ${sizing.unit} sahip olmal\u0131yd\u0131.`;
+        }
+        return `Fazla k\xFC\xE7\xFCk: ${issue2.origin}, ${adj}${issue2.minimum.toString()} olmal\u0131yd\u0131.`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `F\xE2sit metin: "${_issue.prefix}" ile ba\u015Flamal\u0131.`;
+        if (_issue.format === "ends_with")
+          return `F\xE2sit metin: "${_issue.suffix}" ile bitmeli.`;
+        if (_issue.format === "includes")
+          return `F\xE2sit metin: "${_issue.includes}" ihtiv\xE2 etmeli.`;
+        if (_issue.format === "regex")
+          return `F\xE2sit metin: ${_issue.pattern} nak\u015F\u0131na uymal\u0131.`;
+        return `F\xE2sit ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `F\xE2sit say\u0131: ${issue2.divisor} kat\u0131 olmal\u0131yd\u0131.`;
+      case "unrecognized_keys":
+        return `Tan\u0131nmayan anahtar ${issue2.keys.length > 1 ? "s" : ""}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `${issue2.origin} i\xE7in tan\u0131nmayan anahtar var.`;
+      case "invalid_union":
+        return "Giren tan\u0131namad\u0131.";
+      case "invalid_element":
+        return `${issue2.origin} i\xE7in tan\u0131nmayan k\u0131ymet var.`;
+      default:
+        return `K\u0131ymet tan\u0131namad\u0131.`;
+    }
+  };
+}, "error");
+function ota_default() {
+  return {
+    localeError: error33()
+  };
+}
+__name(ota_default, "default");
+
+// node_modules/zod/v4/locales/ps.js
+var error34 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "\u062A\u0648\u06A9\u064A", verb: "\u0648\u0644\u0631\u064A" },
+    file: { unit: "\u0628\u0627\u06CC\u067C\u0633", verb: "\u0648\u0644\u0631\u064A" },
+    array: { unit: "\u062A\u0648\u06A9\u064A", verb: "\u0648\u0644\u0631\u064A" },
+    set: { unit: "\u062A\u0648\u06A9\u064A", verb: "\u0648\u0644\u0631\u064A" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "\u0648\u0631\u0648\u062F\u064A",
+    email: "\u0628\u0631\u06CC\u069A\u0646\u0627\u0644\u06CC\u06A9",
+    url: "\u06CC\u0648 \u0622\u0631 \u0627\u0644",
+    emoji: "\u0627\u06CC\u0645\u0648\u062C\u064A",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "\u0646\u06CC\u067C\u0647 \u0627\u0648 \u0648\u062E\u062A",
+    date: "\u0646\u06D0\u067C\u0647",
+    time: "\u0648\u062E\u062A",
+    duration: "\u0645\u0648\u062F\u0647",
+    ipv4: "\u062F IPv4 \u067E\u062A\u0647",
+    ipv6: "\u062F IPv6 \u067E\u062A\u0647",
+    cidrv4: "\u062F IPv4 \u0633\u0627\u062D\u0647",
+    cidrv6: "\u062F IPv6 \u0633\u0627\u062D\u0647",
+    base64: "base64-encoded \u0645\u062A\u0646",
+    base64url: "base64url-encoded \u0645\u062A\u0646",
+    json_string: "JSON \u0645\u062A\u0646",
+    e164: "\u062F E.164 \u0634\u0645\u06D0\u0631\u0647",
+    jwt: "JWT",
+    template_literal: "\u0648\u0631\u0648\u062F\u064A"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "\u0639\u062F\u062F",
+    array: "\u0627\u0631\u06D0"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `\u0646\u0627\u0633\u0645 \u0648\u0631\u0648\u062F\u064A: \u0628\u0627\u06CC\u062F instanceof ${issue2.expected} \u0648\u0627\u06CC, \u0645\u06AB\u0631 ${received} \u062A\u0631\u0644\u0627\u0633\u0647 \u0634\u0648`;
+        }
+        return `\u0646\u0627\u0633\u0645 \u0648\u0631\u0648\u062F\u064A: \u0628\u0627\u06CC\u062F ${expected} \u0648\u0627\u06CC, \u0645\u06AB\u0631 ${received} \u062A\u0631\u0644\u0627\u0633\u0647 \u0634\u0648`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1) {
+          return `\u0646\u0627\u0633\u0645 \u0648\u0631\u0648\u062F\u064A: \u0628\u0627\u06CC\u062F ${stringifyPrimitive(issue2.values[0])} \u0648\u0627\u06CC`;
+        }
+        return `\u0646\u0627\u0633\u0645 \u0627\u0646\u062A\u062E\u0627\u0628: \u0628\u0627\u06CC\u062F \u06CC\u0648 \u0644\u0647 ${joinValues(issue2.values, "|")} \u0685\u062E\u0647 \u0648\u0627\u06CC`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `\u0689\u06CC\u0631 \u0644\u0648\u06CC: ${issue2.origin ?? "\u0627\u0631\u0632\u069A\u062A"} \u0628\u0627\u06CC\u062F ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "\u0639\u0646\u0635\u0631\u0648\u0646\u0647"} \u0648\u0644\u0631\u064A`;
+        }
+        return `\u0689\u06CC\u0631 \u0644\u0648\u06CC: ${issue2.origin ?? "\u0627\u0631\u0632\u069A\u062A"} \u0628\u0627\u06CC\u062F ${adj}${issue2.maximum.toString()} \u0648\u064A`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `\u0689\u06CC\u0631 \u06A9\u0648\u0686\u0646\u06CC: ${issue2.origin} \u0628\u0627\u06CC\u062F ${adj}${issue2.minimum.toString()} ${sizing.unit} \u0648\u0644\u0631\u064A`;
+        }
+        return `\u0689\u06CC\u0631 \u06A9\u0648\u0686\u0646\u06CC: ${issue2.origin} \u0628\u0627\u06CC\u062F ${adj}${issue2.minimum.toString()} \u0648\u064A`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with") {
+          return `\u0646\u0627\u0633\u0645 \u0645\u062A\u0646: \u0628\u0627\u06CC\u062F \u062F "${_issue.prefix}" \u0633\u0631\u0647 \u067E\u06CC\u0644 \u0634\u064A`;
+        }
+        if (_issue.format === "ends_with") {
+          return `\u0646\u0627\u0633\u0645 \u0645\u062A\u0646: \u0628\u0627\u06CC\u062F \u062F "${_issue.suffix}" \u0633\u0631\u0647 \u067E\u0627\u06CC \u062A\u0647 \u0648\u0631\u0633\u064A\u0696\u064A`;
+        }
+        if (_issue.format === "includes") {
+          return `\u0646\u0627\u0633\u0645 \u0645\u062A\u0646: \u0628\u0627\u06CC\u062F "${_issue.includes}" \u0648\u0644\u0631\u064A`;
+        }
+        if (_issue.format === "regex") {
+          return `\u0646\u0627\u0633\u0645 \u0645\u062A\u0646: \u0628\u0627\u06CC\u062F \u062F ${_issue.pattern} \u0633\u0631\u0647 \u0645\u0637\u0627\u0628\u0642\u062A \u0648\u0644\u0631\u064A`;
+        }
+        return `${FormatDictionary[_issue.format] ?? issue2.format} \u0646\u0627\u0633\u0645 \u062F\u06CC`;
+      }
+      case "not_multiple_of":
+        return `\u0646\u0627\u0633\u0645 \u0639\u062F\u062F: \u0628\u0627\u06CC\u062F \u062F ${issue2.divisor} \u0645\u0636\u0631\u0628 \u0648\u064A`;
+      case "unrecognized_keys":
+        return `\u0646\u0627\u0633\u0645 ${issue2.keys.length > 1 ? "\u06A9\u0644\u06CC\u0689\u0648\u0646\u0647" : "\u06A9\u0644\u06CC\u0689"}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `\u0646\u0627\u0633\u0645 \u06A9\u0644\u06CC\u0689 \u067E\u0647 ${issue2.origin} \u06A9\u06D0`;
+      case "invalid_union":
+        return `\u0646\u0627\u0633\u0645\u0647 \u0648\u0631\u0648\u062F\u064A`;
+      case "invalid_element":
+        return `\u0646\u0627\u0633\u0645 \u0639\u0646\u0635\u0631 \u067E\u0647 ${issue2.origin} \u06A9\u06D0`;
+      default:
+        return `\u0646\u0627\u0633\u0645\u0647 \u0648\u0631\u0648\u062F\u064A`;
+    }
+  };
+}, "error");
+function ps_default() {
+  return {
+    localeError: error34()
+  };
+}
+__name(ps_default, "default");
+
+// node_modules/zod/v4/locales/pl.js
+var error35 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "znak\xF3w", verb: "mie\u0107" },
+    file: { unit: "bajt\xF3w", verb: "mie\u0107" },
+    array: { unit: "element\xF3w", verb: "mie\u0107" },
+    set: { unit: "element\xF3w", verb: "mie\u0107" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "wyra\u017Cenie",
+    email: "adres email",
+    url: "URL",
+    emoji: "emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "data i godzina w formacie ISO",
+    date: "data w formacie ISO",
+    time: "godzina w formacie ISO",
+    duration: "czas trwania ISO",
+    ipv4: "adres IPv4",
+    ipv6: "adres IPv6",
+    cidrv4: "zakres IPv4",
+    cidrv6: "zakres IPv6",
+    base64: "ci\u0105g znak\xF3w zakodowany w formacie base64",
+    base64url: "ci\u0105g znak\xF3w zakodowany w formacie base64url",
+    json_string: "ci\u0105g znak\xF3w w formacie JSON",
+    e164: "liczba E.164",
+    jwt: "JWT",
+    template_literal: "wej\u015Bcie"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "liczba",
+    array: "tablica"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `Nieprawid\u0142owe dane wej\u015Bciowe: oczekiwano instanceof ${issue2.expected}, otrzymano ${received}`;
+        }
+        return `Nieprawid\u0142owe dane wej\u015Bciowe: oczekiwano ${expected}, otrzymano ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `Nieprawid\u0142owe dane wej\u015Bciowe: oczekiwano ${stringifyPrimitive(issue2.values[0])}`;
+        return `Nieprawid\u0142owa opcja: oczekiwano jednej z warto\u015Bci ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `Za du\u017Ca warto\u015B\u0107: oczekiwano, \u017Ce ${issue2.origin ?? "warto\u015B\u0107"} b\u0119dzie mie\u0107 ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "element\xF3w"}`;
+        }
+        return `Zbyt du\u017C(y/a/e): oczekiwano, \u017Ce ${issue2.origin ?? "warto\u015B\u0107"} b\u0119dzie wynosi\u0107 ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `Za ma\u0142a warto\u015B\u0107: oczekiwano, \u017Ce ${issue2.origin ?? "warto\u015B\u0107"} b\u0119dzie mie\u0107 ${adj}${issue2.minimum.toString()} ${sizing.unit ?? "element\xF3w"}`;
+        }
+        return `Zbyt ma\u0142(y/a/e): oczekiwano, \u017Ce ${issue2.origin ?? "warto\u015B\u0107"} b\u0119dzie wynosi\u0107 ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `Nieprawid\u0142owy ci\u0105g znak\xF3w: musi zaczyna\u0107 si\u0119 od "${_issue.prefix}"`;
+        if (_issue.format === "ends_with")
+          return `Nieprawid\u0142owy ci\u0105g znak\xF3w: musi ko\u0144czy\u0107 si\u0119 na "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `Nieprawid\u0142owy ci\u0105g znak\xF3w: musi zawiera\u0107 "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `Nieprawid\u0142owy ci\u0105g znak\xF3w: musi odpowiada\u0107 wzorcowi ${_issue.pattern}`;
+        return `Nieprawid\u0142ow(y/a/e) ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `Nieprawid\u0142owa liczba: musi by\u0107 wielokrotno\u015Bci\u0105 ${issue2.divisor}`;
+      case "unrecognized_keys":
+        return `Nierozpoznane klucze${issue2.keys.length > 1 ? "s" : ""}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `Nieprawid\u0142owy klucz w ${issue2.origin}`;
+      case "invalid_union":
+        return "Nieprawid\u0142owe dane wej\u015Bciowe";
+      case "invalid_element":
+        return `Nieprawid\u0142owa warto\u015B\u0107 w ${issue2.origin}`;
+      default:
+        return `Nieprawid\u0142owe dane wej\u015Bciowe`;
+    }
+  };
+}, "error");
+function pl_default() {
+  return {
+    localeError: error35()
+  };
+}
+__name(pl_default, "default");
+
+// node_modules/zod/v4/locales/pt.js
+var error36 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "caracteres", verb: "ter" },
+    file: { unit: "bytes", verb: "ter" },
+    array: { unit: "itens", verb: "ter" },
+    set: { unit: "itens", verb: "ter" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "padr\xE3o",
+    email: "endere\xE7o de e-mail",
+    url: "URL",
+    emoji: "emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "data e hora ISO",
+    date: "data ISO",
+    time: "hora ISO",
+    duration: "dura\xE7\xE3o ISO",
+    ipv4: "endere\xE7o IPv4",
+    ipv6: "endere\xE7o IPv6",
+    cidrv4: "faixa de IPv4",
+    cidrv6: "faixa de IPv6",
+    base64: "texto codificado em base64",
+    base64url: "URL codificada em base64",
+    json_string: "texto JSON",
+    e164: "n\xFAmero E.164",
+    jwt: "JWT",
+    template_literal: "entrada"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "n\xFAmero",
+    null: "nulo"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `Tipo inv\xE1lido: esperado instanceof ${issue2.expected}, recebido ${received}`;
+        }
+        return `Tipo inv\xE1lido: esperado ${expected}, recebido ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `Entrada inv\xE1lida: esperado ${stringifyPrimitive(issue2.values[0])}`;
+        return `Op\xE7\xE3o inv\xE1lida: esperada uma das ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `Muito grande: esperado que ${issue2.origin ?? "valor"} tivesse ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "elementos"}`;
+        return `Muito grande: esperado que ${issue2.origin ?? "valor"} fosse ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `Muito pequeno: esperado que ${issue2.origin} tivesse ${adj}${issue2.minimum.toString()} ${sizing.unit}`;
+        }
+        return `Muito pequeno: esperado que ${issue2.origin} fosse ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `Texto inv\xE1lido: deve come\xE7ar com "${_issue.prefix}"`;
+        if (_issue.format === "ends_with")
+          return `Texto inv\xE1lido: deve terminar com "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `Texto inv\xE1lido: deve incluir "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `Texto inv\xE1lido: deve corresponder ao padr\xE3o ${_issue.pattern}`;
+        return `${FormatDictionary[_issue.format] ?? issue2.format} inv\xE1lido`;
+      }
+      case "not_multiple_of":
+        return `N\xFAmero inv\xE1lido: deve ser m\xFAltiplo de ${issue2.divisor}`;
+      case "unrecognized_keys":
+        return `Chave${issue2.keys.length > 1 ? "s" : ""} desconhecida${issue2.keys.length > 1 ? "s" : ""}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `Chave inv\xE1lida em ${issue2.origin}`;
+      case "invalid_union":
+        return "Entrada inv\xE1lida";
+      case "invalid_element":
+        return `Valor inv\xE1lido em ${issue2.origin}`;
+      default:
+        return `Campo inv\xE1lido`;
+    }
+  };
+}, "error");
+function pt_default() {
+  return {
+    localeError: error36()
+  };
+}
+__name(pt_default, "default");
+
+// node_modules/zod/v4/locales/ro.js
+var error37 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "caractere", verb: "s\u0103 aib\u0103" },
+    file: { unit: "octe\u021Bi", verb: "s\u0103 aib\u0103" },
+    array: { unit: "elemente", verb: "s\u0103 aib\u0103" },
+    set: { unit: "elemente", verb: "s\u0103 aib\u0103" },
+    map: { unit: "intr\u0103ri", verb: "s\u0103 aib\u0103" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "intrare",
+    email: "adres\u0103 de email",
+    url: "URL",
+    emoji: "emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "dat\u0103 \u0219i or\u0103 ISO",
+    date: "dat\u0103 ISO",
+    time: "or\u0103 ISO",
+    duration: "durat\u0103 ISO",
+    ipv4: "adres\u0103 IPv4",
+    ipv6: "adres\u0103 IPv6",
+    mac: "adres\u0103 MAC",
+    cidrv4: "interval IPv4",
+    cidrv6: "interval IPv6",
+    base64: "\u0219ir codat base64",
+    base64url: "\u0219ir codat base64url",
+    json_string: "\u0219ir JSON",
+    e164: "num\u0103r E.164",
+    jwt: "JWT",
+    template_literal: "intrare"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    string: "\u0219ir",
+    number: "num\u0103r",
+    boolean: "boolean",
+    function: "func\u021Bie",
+    array: "matrice",
+    object: "obiect",
+    undefined: "nedefinit",
+    symbol: "simbol",
+    bigint: "num\u0103r mare",
+    void: "void",
+    never: "never",
+    map: "hart\u0103",
+    set: "set"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        return `Intrare invalid\u0103: a\u0219teptat ${expected}, primit ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `Intrare invalid\u0103: a\u0219teptat ${stringifyPrimitive(issue2.values[0])}`;
+        return `Op\u021Biune invalid\u0103: a\u0219teptat una dintre ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `Prea mare: a\u0219teptat ca ${issue2.origin ?? "valoarea"} ${sizing.verb} ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "elemente"}`;
+        return `Prea mare: a\u0219teptat ca ${issue2.origin ?? "valoarea"} s\u0103 fie ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `Prea mic: a\u0219teptat ca ${issue2.origin} ${sizing.verb} ${adj}${issue2.minimum.toString()} ${sizing.unit}`;
+        }
+        return `Prea mic: a\u0219teptat ca ${issue2.origin} s\u0103 fie ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with") {
+          return `\u0218ir invalid: trebuie s\u0103 \xEEnceap\u0103 cu "${_issue.prefix}"`;
+        }
+        if (_issue.format === "ends_with")
+          return `\u0218ir invalid: trebuie s\u0103 se termine cu "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `\u0218ir invalid: trebuie s\u0103 includ\u0103 "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `\u0218ir invalid: trebuie s\u0103 se potriveasc\u0103 cu modelul ${_issue.pattern}`;
+        return `Format invalid: ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `Num\u0103r invalid: trebuie s\u0103 fie multiplu de ${issue2.divisor}`;
+      case "unrecognized_keys":
+        return `Chei nerecunoscute: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `Cheie invalid\u0103 \xEEn ${issue2.origin}`;
+      case "invalid_union":
+        return "Intrare invalid\u0103";
+      case "invalid_element":
+        return `Valoare invalid\u0103 \xEEn ${issue2.origin}`;
+      default:
+        return `Intrare invalid\u0103`;
+    }
+  };
+}, "error");
+function ro_default() {
+  return {
+    localeError: error37()
+  };
+}
+__name(ro_default, "default");
+
+// node_modules/zod/v4/locales/ru.js
+function getRussianPlural(count, one, few, many) {
+  const absCount = Math.abs(count);
+  const lastDigit = absCount % 10;
+  const lastTwoDigits = absCount % 100;
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 19) {
+    return many;
+  }
+  if (lastDigit === 1) {
+    return one;
+  }
+  if (lastDigit >= 2 && lastDigit <= 4) {
+    return few;
+  }
+  return many;
+}
+__name(getRussianPlural, "getRussianPlural");
+var error38 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: {
+      unit: {
+        one: "\u0441\u0438\u043C\u0432\u043E\u043B",
+        few: "\u0441\u0438\u043C\u0432\u043E\u043B\u0430",
+        many: "\u0441\u0438\u043C\u0432\u043E\u043B\u043E\u0432"
+      },
+      verb: "\u0438\u043C\u0435\u0442\u044C"
+    },
+    file: {
+      unit: {
+        one: "\u0431\u0430\u0439\u0442",
+        few: "\u0431\u0430\u0439\u0442\u0430",
+        many: "\u0431\u0430\u0439\u0442"
+      },
+      verb: "\u0438\u043C\u0435\u0442\u044C"
+    },
+    array: {
+      unit: {
+        one: "\u044D\u043B\u0435\u043C\u0435\u043D\u0442",
+        few: "\u044D\u043B\u0435\u043C\u0435\u043D\u0442\u0430",
+        many: "\u044D\u043B\u0435\u043C\u0435\u043D\u0442\u043E\u0432"
+      },
+      verb: "\u0438\u043C\u0435\u0442\u044C"
+    },
+    set: {
+      unit: {
+        one: "\u044D\u043B\u0435\u043C\u0435\u043D\u0442",
+        few: "\u044D\u043B\u0435\u043C\u0435\u043D\u0442\u0430",
+        many: "\u044D\u043B\u0435\u043C\u0435\u043D\u0442\u043E\u0432"
+      },
+      verb: "\u0438\u043C\u0435\u0442\u044C"
+    }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "\u0432\u0432\u043E\u0434",
+    email: "email \u0430\u0434\u0440\u0435\u0441",
+    url: "URL",
+    emoji: "\u044D\u043C\u043E\u0434\u0437\u0438",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "ISO \u0434\u0430\u0442\u0430 \u0438 \u0432\u0440\u0435\u043C\u044F",
+    date: "ISO \u0434\u0430\u0442\u0430",
+    time: "ISO \u0432\u0440\u0435\u043C\u044F",
+    duration: "ISO \u0434\u043B\u0438\u0442\u0435\u043B\u044C\u043D\u043E\u0441\u0442\u044C",
+    ipv4: "IPv4 \u0430\u0434\u0440\u0435\u0441",
+    ipv6: "IPv6 \u0430\u0434\u0440\u0435\u0441",
+    cidrv4: "IPv4 \u0434\u0438\u0430\u043F\u0430\u0437\u043E\u043D",
+    cidrv6: "IPv6 \u0434\u0438\u0430\u043F\u0430\u0437\u043E\u043D",
+    base64: "\u0441\u0442\u0440\u043E\u043A\u0430 \u0432 \u0444\u043E\u0440\u043C\u0430\u0442\u0435 base64",
+    base64url: "\u0441\u0442\u0440\u043E\u043A\u0430 \u0432 \u0444\u043E\u0440\u043C\u0430\u0442\u0435 base64url",
+    json_string: "JSON \u0441\u0442\u0440\u043E\u043A\u0430",
+    e164: "\u043D\u043E\u043C\u0435\u0440 E.164",
+    jwt: "JWT",
+    template_literal: "\u0432\u0432\u043E\u0434"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "\u0447\u0438\u0441\u043B\u043E",
+    array: "\u043C\u0430\u0441\u0441\u0438\u0432"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `\u041D\u0435\u0432\u0435\u0440\u043D\u044B\u0439 \u0432\u0432\u043E\u0434: \u043E\u0436\u0438\u0434\u0430\u043B\u043E\u0441\u044C instanceof ${issue2.expected}, \u043F\u043E\u043B\u0443\u0447\u0435\u043D\u043E ${received}`;
+        }
+        return `\u041D\u0435\u0432\u0435\u0440\u043D\u044B\u0439 \u0432\u0432\u043E\u0434: \u043E\u0436\u0438\u0434\u0430\u043B\u043E\u0441\u044C ${expected}, \u043F\u043E\u043B\u0443\u0447\u0435\u043D\u043E ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `\u041D\u0435\u0432\u0435\u0440\u043D\u044B\u0439 \u0432\u0432\u043E\u0434: \u043E\u0436\u0438\u0434\u0430\u043B\u043E\u0441\u044C ${stringifyPrimitive(issue2.values[0])}`;
+        return `\u041D\u0435\u0432\u0435\u0440\u043D\u044B\u0439 \u0432\u0430\u0440\u0438\u0430\u043D\u0442: \u043E\u0436\u0438\u0434\u0430\u043B\u043E\u0441\u044C \u043E\u0434\u043D\u043E \u0438\u0437 ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          const maxValue = Number(issue2.maximum);
+          const unit = getRussianPlural(maxValue, sizing.unit.one, sizing.unit.few, sizing.unit.many);
+          return `\u0421\u043B\u0438\u0448\u043A\u043E\u043C \u0431\u043E\u043B\u044C\u0448\u043E\u0435 \u0437\u043D\u0430\u0447\u0435\u043D\u0438\u0435: \u043E\u0436\u0438\u0434\u0430\u043B\u043E\u0441\u044C, \u0447\u0442\u043E ${issue2.origin ?? "\u0437\u043D\u0430\u0447\u0435\u043D\u0438\u0435"} \u0431\u0443\u0434\u0435\u0442 \u0438\u043C\u0435\u0442\u044C ${adj}${issue2.maximum.toString()} ${unit}`;
+        }
+        return `\u0421\u043B\u0438\u0448\u043A\u043E\u043C \u0431\u043E\u043B\u044C\u0448\u043E\u0435 \u0437\u043D\u0430\u0447\u0435\u043D\u0438\u0435: \u043E\u0436\u0438\u0434\u0430\u043B\u043E\u0441\u044C, \u0447\u0442\u043E ${issue2.origin ?? "\u0437\u043D\u0430\u0447\u0435\u043D\u0438\u0435"} \u0431\u0443\u0434\u0435\u0442 ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          const minValue = Number(issue2.minimum);
+          const unit = getRussianPlural(minValue, sizing.unit.one, sizing.unit.few, sizing.unit.many);
+          return `\u0421\u043B\u0438\u0448\u043A\u043E\u043C \u043C\u0430\u043B\u0435\u043D\u044C\u043A\u043E\u0435 \u0437\u043D\u0430\u0447\u0435\u043D\u0438\u0435: \u043E\u0436\u0438\u0434\u0430\u043B\u043E\u0441\u044C, \u0447\u0442\u043E ${issue2.origin} \u0431\u0443\u0434\u0435\u0442 \u0438\u043C\u0435\u0442\u044C ${adj}${issue2.minimum.toString()} ${unit}`;
+        }
+        return `\u0421\u043B\u0438\u0448\u043A\u043E\u043C \u043C\u0430\u043B\u0435\u043D\u044C\u043A\u043E\u0435 \u0437\u043D\u0430\u0447\u0435\u043D\u0438\u0435: \u043E\u0436\u0438\u0434\u0430\u043B\u043E\u0441\u044C, \u0447\u0442\u043E ${issue2.origin} \u0431\u0443\u0434\u0435\u0442 ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `\u041D\u0435\u0432\u0435\u0440\u043D\u0430\u044F \u0441\u0442\u0440\u043E\u043A\u0430: \u0434\u043E\u043B\u0436\u043D\u0430 \u043D\u0430\u0447\u0438\u043D\u0430\u0442\u044C\u0441\u044F \u0441 "${_issue.prefix}"`;
+        if (_issue.format === "ends_with")
+          return `\u041D\u0435\u0432\u0435\u0440\u043D\u0430\u044F \u0441\u0442\u0440\u043E\u043A\u0430: \u0434\u043E\u043B\u0436\u043D\u0430 \u0437\u0430\u043A\u0430\u043D\u0447\u0438\u0432\u0430\u0442\u044C\u0441\u044F \u043D\u0430 "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `\u041D\u0435\u0432\u0435\u0440\u043D\u0430\u044F \u0441\u0442\u0440\u043E\u043A\u0430: \u0434\u043E\u043B\u0436\u043D\u0430 \u0441\u043E\u0434\u0435\u0440\u0436\u0430\u0442\u044C "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `\u041D\u0435\u0432\u0435\u0440\u043D\u0430\u044F \u0441\u0442\u0440\u043E\u043A\u0430: \u0434\u043E\u043B\u0436\u043D\u0430 \u0441\u043E\u043E\u0442\u0432\u0435\u0442\u0441\u0442\u0432\u043E\u0432\u0430\u0442\u044C \u0448\u0430\u0431\u043B\u043E\u043D\u0443 ${_issue.pattern}`;
+        return `\u041D\u0435\u0432\u0435\u0440\u043D\u044B\u0439 ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `\u041D\u0435\u0432\u0435\u0440\u043D\u043E\u0435 \u0447\u0438\u0441\u043B\u043E: \u0434\u043E\u043B\u0436\u043D\u043E \u0431\u044B\u0442\u044C \u043A\u0440\u0430\u0442\u043D\u044B\u043C ${issue2.divisor}`;
+      case "unrecognized_keys":
+        return `\u041D\u0435\u0440\u0430\u0441\u043F\u043E\u0437\u043D\u0430\u043D\u043D${issue2.keys.length > 1 ? "\u044B\u0435" : "\u044B\u0439"} \u043A\u043B\u044E\u0447${issue2.keys.length > 1 ? "\u0438" : ""}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `\u041D\u0435\u0432\u0435\u0440\u043D\u044B\u0439 \u043A\u043B\u044E\u0447 \u0432 ${issue2.origin}`;
+      case "invalid_union":
+        return "\u041D\u0435\u0432\u0435\u0440\u043D\u044B\u0435 \u0432\u0445\u043E\u0434\u043D\u044B\u0435 \u0434\u0430\u043D\u043D\u044B\u0435";
+      case "invalid_element":
+        return `\u041D\u0435\u0432\u0435\u0440\u043D\u043E\u0435 \u0437\u043D\u0430\u0447\u0435\u043D\u0438\u0435 \u0432 ${issue2.origin}`;
+      default:
+        return `\u041D\u0435\u0432\u0435\u0440\u043D\u044B\u0435 \u0432\u0445\u043E\u0434\u043D\u044B\u0435 \u0434\u0430\u043D\u043D\u044B\u0435`;
+    }
+  };
+}, "error");
+function ru_default() {
+  return {
+    localeError: error38()
+  };
+}
+__name(ru_default, "default");
+
+// node_modules/zod/v4/locales/sl.js
+var error39 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "znakov", verb: "imeti" },
+    file: { unit: "bajtov", verb: "imeti" },
+    array: { unit: "elementov", verb: "imeti" },
+    set: { unit: "elementov", verb: "imeti" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "vnos",
+    email: "e-po\u0161tni naslov",
+    url: "URL",
+    emoji: "emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "ISO datum in \u010Das",
+    date: "ISO datum",
+    time: "ISO \u010Das",
+    duration: "ISO trajanje",
+    ipv4: "IPv4 naslov",
+    ipv6: "IPv6 naslov",
+    cidrv4: "obseg IPv4",
+    cidrv6: "obseg IPv6",
+    base64: "base64 kodiran niz",
+    base64url: "base64url kodiran niz",
+    json_string: "JSON niz",
+    e164: "E.164 \u0161tevilka",
+    jwt: "JWT",
+    template_literal: "vnos"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "\u0161tevilo",
+    array: "tabela"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `Neveljaven vnos: pri\u010Dakovano instanceof ${issue2.expected}, prejeto ${received}`;
+        }
+        return `Neveljaven vnos: pri\u010Dakovano ${expected}, prejeto ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `Neveljaven vnos: pri\u010Dakovano ${stringifyPrimitive(issue2.values[0])}`;
+        return `Neveljavna mo\u017Enost: pri\u010Dakovano eno izmed ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `Preveliko: pri\u010Dakovano, da bo ${issue2.origin ?? "vrednost"} imelo ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "elementov"}`;
+        return `Preveliko: pri\u010Dakovano, da bo ${issue2.origin ?? "vrednost"} ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `Premajhno: pri\u010Dakovano, da bo ${issue2.origin} imelo ${adj}${issue2.minimum.toString()} ${sizing.unit}`;
+        }
+        return `Premajhno: pri\u010Dakovano, da bo ${issue2.origin} ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with") {
+          return `Neveljaven niz: mora se za\u010Deti z "${_issue.prefix}"`;
+        }
+        if (_issue.format === "ends_with")
+          return `Neveljaven niz: mora se kon\u010Dati z "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `Neveljaven niz: mora vsebovati "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `Neveljaven niz: mora ustrezati vzorcu ${_issue.pattern}`;
+        return `Neveljaven ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `Neveljavno \u0161tevilo: mora biti ve\u010Dkratnik ${issue2.divisor}`;
+      case "unrecognized_keys":
+        return `Neprepoznan${issue2.keys.length > 1 ? "i klju\u010Di" : " klju\u010D"}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `Neveljaven klju\u010D v ${issue2.origin}`;
+      case "invalid_union":
+        return "Neveljaven vnos";
+      case "invalid_element":
+        return `Neveljavna vrednost v ${issue2.origin}`;
+      default:
+        return "Neveljaven vnos";
+    }
+  };
+}, "error");
+function sl_default() {
+  return {
+    localeError: error39()
+  };
+}
+__name(sl_default, "default");
+
+// node_modules/zod/v4/locales/sv.js
+var error40 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "tecken", verb: "att ha" },
+    file: { unit: "bytes", verb: "att ha" },
+    array: { unit: "objekt", verb: "att inneh\xE5lla" },
+    set: { unit: "objekt", verb: "att inneh\xE5lla" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "regulj\xE4rt uttryck",
+    email: "e-postadress",
+    url: "URL",
+    emoji: "emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "ISO-datum och tid",
+    date: "ISO-datum",
+    time: "ISO-tid",
+    duration: "ISO-varaktighet",
+    ipv4: "IPv4-intervall",
+    ipv6: "IPv6-intervall",
+    cidrv4: "IPv4-spektrum",
+    cidrv6: "IPv6-spektrum",
+    base64: "base64-kodad str\xE4ng",
+    base64url: "base64url-kodad str\xE4ng",
+    json_string: "JSON-str\xE4ng",
+    e164: "E.164-nummer",
+    jwt: "JWT",
+    template_literal: "mall-literal"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "antal",
+    array: "lista"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `Ogiltig inmatning: f\xF6rv\xE4ntat instanceof ${issue2.expected}, fick ${received}`;
+        }
+        return `Ogiltig inmatning: f\xF6rv\xE4ntat ${expected}, fick ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `Ogiltig inmatning: f\xF6rv\xE4ntat ${stringifyPrimitive(issue2.values[0])}`;
+        return `Ogiltigt val: f\xF6rv\xE4ntade en av ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `F\xF6r stor(t): f\xF6rv\xE4ntade ${issue2.origin ?? "v\xE4rdet"} att ha ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "element"}`;
+        }
+        return `F\xF6r stor(t): f\xF6rv\xE4ntat ${issue2.origin ?? "v\xE4rdet"} att ha ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `F\xF6r lite(t): f\xF6rv\xE4ntade ${issue2.origin ?? "v\xE4rdet"} att ha ${adj}${issue2.minimum.toString()} ${sizing.unit}`;
+        }
+        return `F\xF6r lite(t): f\xF6rv\xE4ntade ${issue2.origin ?? "v\xE4rdet"} att ha ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with") {
+          return `Ogiltig str\xE4ng: m\xE5ste b\xF6rja med "${_issue.prefix}"`;
+        }
+        if (_issue.format === "ends_with")
+          return `Ogiltig str\xE4ng: m\xE5ste sluta med "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `Ogiltig str\xE4ng: m\xE5ste inneh\xE5lla "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `Ogiltig str\xE4ng: m\xE5ste matcha m\xF6nstret "${_issue.pattern}"`;
+        return `Ogiltig(t) ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `Ogiltigt tal: m\xE5ste vara en multipel av ${issue2.divisor}`;
+      case "unrecognized_keys":
+        return `${issue2.keys.length > 1 ? "Ok\xE4nda nycklar" : "Ok\xE4nd nyckel"}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `Ogiltig nyckel i ${issue2.origin ?? "v\xE4rdet"}`;
+      case "invalid_union":
+        return "Ogiltig input";
+      case "invalid_element":
+        return `Ogiltigt v\xE4rde i ${issue2.origin ?? "v\xE4rdet"}`;
+      default:
+        return `Ogiltig input`;
+    }
+  };
+}, "error");
+function sv_default() {
+  return {
+    localeError: error40()
+  };
+}
+__name(sv_default, "default");
+
+// node_modules/zod/v4/locales/ta.js
+var error41 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "\u0B8E\u0BB4\u0BC1\u0BA4\u0BCD\u0BA4\u0BC1\u0B95\u0BCD\u0B95\u0BB3\u0BCD", verb: "\u0B95\u0BCA\u0BA3\u0BCD\u0B9F\u0BBF\u0BB0\u0BC1\u0B95\u0BCD\u0B95 \u0BB5\u0BC7\u0BA3\u0BCD\u0B9F\u0BC1\u0BAE\u0BCD" },
+    file: { unit: "\u0BAA\u0BC8\u0B9F\u0BCD\u0B9F\u0BC1\u0B95\u0BB3\u0BCD", verb: "\u0B95\u0BCA\u0BA3\u0BCD\u0B9F\u0BBF\u0BB0\u0BC1\u0B95\u0BCD\u0B95 \u0BB5\u0BC7\u0BA3\u0BCD\u0B9F\u0BC1\u0BAE\u0BCD" },
+    array: { unit: "\u0B89\u0BB1\u0BC1\u0BAA\u0BCD\u0BAA\u0BC1\u0B95\u0BB3\u0BCD", verb: "\u0B95\u0BCA\u0BA3\u0BCD\u0B9F\u0BBF\u0BB0\u0BC1\u0B95\u0BCD\u0B95 \u0BB5\u0BC7\u0BA3\u0BCD\u0B9F\u0BC1\u0BAE\u0BCD" },
+    set: { unit: "\u0B89\u0BB1\u0BC1\u0BAA\u0BCD\u0BAA\u0BC1\u0B95\u0BB3\u0BCD", verb: "\u0B95\u0BCA\u0BA3\u0BCD\u0B9F\u0BBF\u0BB0\u0BC1\u0B95\u0BCD\u0B95 \u0BB5\u0BC7\u0BA3\u0BCD\u0B9F\u0BC1\u0BAE\u0BCD" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "\u0B89\u0BB3\u0BCD\u0BB3\u0BC0\u0B9F\u0BC1",
+    email: "\u0BAE\u0BBF\u0BA9\u0BCD\u0BA9\u0B9E\u0BCD\u0B9A\u0BB2\u0BCD \u0BAE\u0BC1\u0B95\u0BB5\u0BB0\u0BBF",
+    url: "URL",
+    emoji: "emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "ISO \u0BA4\u0BC7\u0BA4\u0BBF \u0BA8\u0BC7\u0BB0\u0BAE\u0BCD",
+    date: "ISO \u0BA4\u0BC7\u0BA4\u0BBF",
+    time: "ISO \u0BA8\u0BC7\u0BB0\u0BAE\u0BCD",
+    duration: "ISO \u0B95\u0BBE\u0BB2 \u0B85\u0BB3\u0BB5\u0BC1",
+    ipv4: "IPv4 \u0BAE\u0BC1\u0B95\u0BB5\u0BB0\u0BBF",
+    ipv6: "IPv6 \u0BAE\u0BC1\u0B95\u0BB5\u0BB0\u0BBF",
+    cidrv4: "IPv4 \u0BB5\u0BB0\u0BAE\u0BCD\u0BAA\u0BC1",
+    cidrv6: "IPv6 \u0BB5\u0BB0\u0BAE\u0BCD\u0BAA\u0BC1",
+    base64: "base64-encoded \u0B9A\u0BB0\u0BAE\u0BCD",
+    base64url: "base64url-encoded \u0B9A\u0BB0\u0BAE\u0BCD",
+    json_string: "JSON \u0B9A\u0BB0\u0BAE\u0BCD",
+    e164: "E.164 \u0B8E\u0BA3\u0BCD",
+    jwt: "JWT",
+    template_literal: "input"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "\u0B8E\u0BA3\u0BCD",
+    array: "\u0B85\u0BA3\u0BBF",
+    null: "\u0BB5\u0BC6\u0BB1\u0BC1\u0BAE\u0BC8"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `\u0BA4\u0BB5\u0BB1\u0BBE\u0BA9 \u0B89\u0BB3\u0BCD\u0BB3\u0BC0\u0B9F\u0BC1: \u0B8E\u0BA4\u0BBF\u0BB0\u0BCD\u0BAA\u0BBE\u0BB0\u0BCD\u0B95\u0BCD\u0B95\u0BAA\u0BCD\u0BAA\u0B9F\u0BCD\u0B9F\u0BA4\u0BC1 instanceof ${issue2.expected}, \u0BAA\u0BC6\u0BB1\u0BAA\u0BCD\u0BAA\u0B9F\u0BCD\u0B9F\u0BA4\u0BC1 ${received}`;
+        }
+        return `\u0BA4\u0BB5\u0BB1\u0BBE\u0BA9 \u0B89\u0BB3\u0BCD\u0BB3\u0BC0\u0B9F\u0BC1: \u0B8E\u0BA4\u0BBF\u0BB0\u0BCD\u0BAA\u0BBE\u0BB0\u0BCD\u0B95\u0BCD\u0B95\u0BAA\u0BCD\u0BAA\u0B9F\u0BCD\u0B9F\u0BA4\u0BC1 ${expected}, \u0BAA\u0BC6\u0BB1\u0BAA\u0BCD\u0BAA\u0B9F\u0BCD\u0B9F\u0BA4\u0BC1 ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `\u0BA4\u0BB5\u0BB1\u0BBE\u0BA9 \u0B89\u0BB3\u0BCD\u0BB3\u0BC0\u0B9F\u0BC1: \u0B8E\u0BA4\u0BBF\u0BB0\u0BCD\u0BAA\u0BBE\u0BB0\u0BCD\u0B95\u0BCD\u0B95\u0BAA\u0BCD\u0BAA\u0B9F\u0BCD\u0B9F\u0BA4\u0BC1 ${stringifyPrimitive(issue2.values[0])}`;
+        return `\u0BA4\u0BB5\u0BB1\u0BBE\u0BA9 \u0BB5\u0BBF\u0BB0\u0BC1\u0BAA\u0BCD\u0BAA\u0BAE\u0BCD: \u0B8E\u0BA4\u0BBF\u0BB0\u0BCD\u0BAA\u0BBE\u0BB0\u0BCD\u0B95\u0BCD\u0B95\u0BAA\u0BCD\u0BAA\u0B9F\u0BCD\u0B9F\u0BA4\u0BC1 ${joinValues(issue2.values, "|")} \u0B87\u0BB2\u0BCD \u0B92\u0BA9\u0BCD\u0BB1\u0BC1`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `\u0BAE\u0BBF\u0B95 \u0BAA\u0BC6\u0BB0\u0BBF\u0BAF\u0BA4\u0BC1: \u0B8E\u0BA4\u0BBF\u0BB0\u0BCD\u0BAA\u0BBE\u0BB0\u0BCD\u0B95\u0BCD\u0B95\u0BAA\u0BCD\u0BAA\u0B9F\u0BCD\u0B9F\u0BA4\u0BC1 ${issue2.origin ?? "\u0BAE\u0BA4\u0BBF\u0BAA\u0BCD\u0BAA\u0BC1"} ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "\u0B89\u0BB1\u0BC1\u0BAA\u0BCD\u0BAA\u0BC1\u0B95\u0BB3\u0BCD"} \u0B86\u0B95 \u0B87\u0BB0\u0BC1\u0B95\u0BCD\u0B95 \u0BB5\u0BC7\u0BA3\u0BCD\u0B9F\u0BC1\u0BAE\u0BCD`;
+        }
+        return `\u0BAE\u0BBF\u0B95 \u0BAA\u0BC6\u0BB0\u0BBF\u0BAF\u0BA4\u0BC1: \u0B8E\u0BA4\u0BBF\u0BB0\u0BCD\u0BAA\u0BBE\u0BB0\u0BCD\u0B95\u0BCD\u0B95\u0BAA\u0BCD\u0BAA\u0B9F\u0BCD\u0B9F\u0BA4\u0BC1 ${issue2.origin ?? "\u0BAE\u0BA4\u0BBF\u0BAA\u0BCD\u0BAA\u0BC1"} ${adj}${issue2.maximum.toString()} \u0B86\u0B95 \u0B87\u0BB0\u0BC1\u0B95\u0BCD\u0B95 \u0BB5\u0BC7\u0BA3\u0BCD\u0B9F\u0BC1\u0BAE\u0BCD`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `\u0BAE\u0BBF\u0B95\u0B9A\u0BCD \u0B9A\u0BBF\u0BB1\u0BBF\u0BAF\u0BA4\u0BC1: \u0B8E\u0BA4\u0BBF\u0BB0\u0BCD\u0BAA\u0BBE\u0BB0\u0BCD\u0B95\u0BCD\u0B95\u0BAA\u0BCD\u0BAA\u0B9F\u0BCD\u0B9F\u0BA4\u0BC1 ${issue2.origin} ${adj}${issue2.minimum.toString()} ${sizing.unit} \u0B86\u0B95 \u0B87\u0BB0\u0BC1\u0B95\u0BCD\u0B95 \u0BB5\u0BC7\u0BA3\u0BCD\u0B9F\u0BC1\u0BAE\u0BCD`;
+        }
+        return `\u0BAE\u0BBF\u0B95\u0B9A\u0BCD \u0B9A\u0BBF\u0BB1\u0BBF\u0BAF\u0BA4\u0BC1: \u0B8E\u0BA4\u0BBF\u0BB0\u0BCD\u0BAA\u0BBE\u0BB0\u0BCD\u0B95\u0BCD\u0B95\u0BAA\u0BCD\u0BAA\u0B9F\u0BCD\u0B9F\u0BA4\u0BC1 ${issue2.origin} ${adj}${issue2.minimum.toString()} \u0B86\u0B95 \u0B87\u0BB0\u0BC1\u0B95\u0BCD\u0B95 \u0BB5\u0BC7\u0BA3\u0BCD\u0B9F\u0BC1\u0BAE\u0BCD`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `\u0BA4\u0BB5\u0BB1\u0BBE\u0BA9 \u0B9A\u0BB0\u0BAE\u0BCD: "${_issue.prefix}" \u0B87\u0BB2\u0BCD \u0BA4\u0BCA\u0B9F\u0B99\u0BCD\u0B95 \u0BB5\u0BC7\u0BA3\u0BCD\u0B9F\u0BC1\u0BAE\u0BCD`;
+        if (_issue.format === "ends_with")
+          return `\u0BA4\u0BB5\u0BB1\u0BBE\u0BA9 \u0B9A\u0BB0\u0BAE\u0BCD: "${_issue.suffix}" \u0B87\u0BB2\u0BCD \u0BAE\u0BC1\u0B9F\u0BBF\u0BB5\u0B9F\u0BC8\u0BAF \u0BB5\u0BC7\u0BA3\u0BCD\u0B9F\u0BC1\u0BAE\u0BCD`;
+        if (_issue.format === "includes")
+          return `\u0BA4\u0BB5\u0BB1\u0BBE\u0BA9 \u0B9A\u0BB0\u0BAE\u0BCD: "${_issue.includes}" \u0B90 \u0B89\u0BB3\u0BCD\u0BB3\u0B9F\u0B95\u0BCD\u0B95 \u0BB5\u0BC7\u0BA3\u0BCD\u0B9F\u0BC1\u0BAE\u0BCD`;
+        if (_issue.format === "regex")
+          return `\u0BA4\u0BB5\u0BB1\u0BBE\u0BA9 \u0B9A\u0BB0\u0BAE\u0BCD: ${_issue.pattern} \u0BAE\u0BC1\u0BB1\u0BC8\u0BAA\u0BBE\u0B9F\u0BCD\u0B9F\u0BC1\u0B9F\u0BA9\u0BCD \u0BAA\u0BCA\u0BB0\u0BC1\u0BA8\u0BCD\u0BA4 \u0BB5\u0BC7\u0BA3\u0BCD\u0B9F\u0BC1\u0BAE\u0BCD`;
+        return `\u0BA4\u0BB5\u0BB1\u0BBE\u0BA9 ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `\u0BA4\u0BB5\u0BB1\u0BBE\u0BA9 \u0B8E\u0BA3\u0BCD: ${issue2.divisor} \u0B87\u0BA9\u0BCD \u0BAA\u0BB2\u0BAE\u0BBE\u0B95 \u0B87\u0BB0\u0BC1\u0B95\u0BCD\u0B95 \u0BB5\u0BC7\u0BA3\u0BCD\u0B9F\u0BC1\u0BAE\u0BCD`;
+      case "unrecognized_keys":
+        return `\u0B85\u0B9F\u0BC8\u0BAF\u0BBE\u0BB3\u0BAE\u0BCD \u0BA4\u0BC6\u0BB0\u0BBF\u0BAF\u0BBE\u0BA4 \u0BB5\u0BBF\u0B9A\u0BC8${issue2.keys.length > 1 ? "\u0B95\u0BB3\u0BCD" : ""}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `${issue2.origin} \u0B87\u0BB2\u0BCD \u0BA4\u0BB5\u0BB1\u0BBE\u0BA9 \u0BB5\u0BBF\u0B9A\u0BC8`;
+      case "invalid_union":
+        return "\u0BA4\u0BB5\u0BB1\u0BBE\u0BA9 \u0B89\u0BB3\u0BCD\u0BB3\u0BC0\u0B9F\u0BC1";
+      case "invalid_element":
+        return `${issue2.origin} \u0B87\u0BB2\u0BCD \u0BA4\u0BB5\u0BB1\u0BBE\u0BA9 \u0BAE\u0BA4\u0BBF\u0BAA\u0BCD\u0BAA\u0BC1`;
+      default:
+        return `\u0BA4\u0BB5\u0BB1\u0BBE\u0BA9 \u0B89\u0BB3\u0BCD\u0BB3\u0BC0\u0B9F\u0BC1`;
+    }
+  };
+}, "error");
+function ta_default() {
+  return {
+    localeError: error41()
+  };
+}
+__name(ta_default, "default");
+
+// node_modules/zod/v4/locales/th.js
+var error42 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "\u0E15\u0E31\u0E27\u0E2D\u0E31\u0E01\u0E29\u0E23", verb: "\u0E04\u0E27\u0E23\u0E21\u0E35" },
+    file: { unit: "\u0E44\u0E1A\u0E15\u0E4C", verb: "\u0E04\u0E27\u0E23\u0E21\u0E35" },
+    array: { unit: "\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23", verb: "\u0E04\u0E27\u0E23\u0E21\u0E35" },
+    set: { unit: "\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23", verb: "\u0E04\u0E27\u0E23\u0E21\u0E35" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E17\u0E35\u0E48\u0E1B\u0E49\u0E2D\u0E19",
+    email: "\u0E17\u0E35\u0E48\u0E2D\u0E22\u0E39\u0E48\u0E2D\u0E35\u0E40\u0E21\u0E25",
+    url: "URL",
+    emoji: "\u0E2D\u0E34\u0E42\u0E21\u0E08\u0E34",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "\u0E27\u0E31\u0E19\u0E17\u0E35\u0E48\u0E40\u0E27\u0E25\u0E32\u0E41\u0E1A\u0E1A ISO",
+    date: "\u0E27\u0E31\u0E19\u0E17\u0E35\u0E48\u0E41\u0E1A\u0E1A ISO",
+    time: "\u0E40\u0E27\u0E25\u0E32\u0E41\u0E1A\u0E1A ISO",
+    duration: "\u0E0A\u0E48\u0E27\u0E07\u0E40\u0E27\u0E25\u0E32\u0E41\u0E1A\u0E1A ISO",
+    ipv4: "\u0E17\u0E35\u0E48\u0E2D\u0E22\u0E39\u0E48 IPv4",
+    ipv6: "\u0E17\u0E35\u0E48\u0E2D\u0E22\u0E39\u0E48 IPv6",
+    cidrv4: "\u0E0A\u0E48\u0E27\u0E07 IP \u0E41\u0E1A\u0E1A IPv4",
+    cidrv6: "\u0E0A\u0E48\u0E27\u0E07 IP \u0E41\u0E1A\u0E1A IPv6",
+    base64: "\u0E02\u0E49\u0E2D\u0E04\u0E27\u0E32\u0E21\u0E41\u0E1A\u0E1A Base64",
+    base64url: "\u0E02\u0E49\u0E2D\u0E04\u0E27\u0E32\u0E21\u0E41\u0E1A\u0E1A Base64 \u0E2A\u0E33\u0E2B\u0E23\u0E31\u0E1A URL",
+    json_string: "\u0E02\u0E49\u0E2D\u0E04\u0E27\u0E32\u0E21\u0E41\u0E1A\u0E1A JSON",
+    e164: "\u0E40\u0E1A\u0E2D\u0E23\u0E4C\u0E42\u0E17\u0E23\u0E28\u0E31\u0E1E\u0E17\u0E4C\u0E23\u0E30\u0E2B\u0E27\u0E48\u0E32\u0E07\u0E1B\u0E23\u0E30\u0E40\u0E17\u0E28 (E.164)",
+    jwt: "\u0E42\u0E17\u0E40\u0E04\u0E19 JWT",
+    template_literal: "\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E17\u0E35\u0E48\u0E1B\u0E49\u0E2D\u0E19"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "\u0E15\u0E31\u0E27\u0E40\u0E25\u0E02",
+    array: "\u0E2D\u0E32\u0E23\u0E4C\u0E40\u0E23\u0E22\u0E4C (Array)",
+    null: "\u0E44\u0E21\u0E48\u0E21\u0E35\u0E04\u0E48\u0E32 (null)"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `\u0E1B\u0E23\u0E30\u0E40\u0E20\u0E17\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E44\u0E21\u0E48\u0E16\u0E39\u0E01\u0E15\u0E49\u0E2D\u0E07: \u0E04\u0E27\u0E23\u0E40\u0E1B\u0E47\u0E19 instanceof ${issue2.expected} \u0E41\u0E15\u0E48\u0E44\u0E14\u0E49\u0E23\u0E31\u0E1A ${received}`;
+        }
+        return `\u0E1B\u0E23\u0E30\u0E40\u0E20\u0E17\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E44\u0E21\u0E48\u0E16\u0E39\u0E01\u0E15\u0E49\u0E2D\u0E07: \u0E04\u0E27\u0E23\u0E40\u0E1B\u0E47\u0E19 ${expected} \u0E41\u0E15\u0E48\u0E44\u0E14\u0E49\u0E23\u0E31\u0E1A ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `\u0E04\u0E48\u0E32\u0E44\u0E21\u0E48\u0E16\u0E39\u0E01\u0E15\u0E49\u0E2D\u0E07: \u0E04\u0E27\u0E23\u0E40\u0E1B\u0E47\u0E19 ${stringifyPrimitive(issue2.values[0])}`;
+        return `\u0E15\u0E31\u0E27\u0E40\u0E25\u0E37\u0E2D\u0E01\u0E44\u0E21\u0E48\u0E16\u0E39\u0E01\u0E15\u0E49\u0E2D\u0E07: \u0E04\u0E27\u0E23\u0E40\u0E1B\u0E47\u0E19\u0E2B\u0E19\u0E36\u0E48\u0E07\u0E43\u0E19 ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "\u0E44\u0E21\u0E48\u0E40\u0E01\u0E34\u0E19" : "\u0E19\u0E49\u0E2D\u0E22\u0E01\u0E27\u0E48\u0E32";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `\u0E40\u0E01\u0E34\u0E19\u0E01\u0E33\u0E2B\u0E19\u0E14: ${issue2.origin ?? "\u0E04\u0E48\u0E32"} \u0E04\u0E27\u0E23\u0E21\u0E35${adj} ${issue2.maximum.toString()} ${sizing.unit ?? "\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23"}`;
+        return `\u0E40\u0E01\u0E34\u0E19\u0E01\u0E33\u0E2B\u0E19\u0E14: ${issue2.origin ?? "\u0E04\u0E48\u0E32"} \u0E04\u0E27\u0E23\u0E21\u0E35${adj} ${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? "\u0E2D\u0E22\u0E48\u0E32\u0E07\u0E19\u0E49\u0E2D\u0E22" : "\u0E21\u0E32\u0E01\u0E01\u0E27\u0E48\u0E32";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `\u0E19\u0E49\u0E2D\u0E22\u0E01\u0E27\u0E48\u0E32\u0E01\u0E33\u0E2B\u0E19\u0E14: ${issue2.origin} \u0E04\u0E27\u0E23\u0E21\u0E35${adj} ${issue2.minimum.toString()} ${sizing.unit}`;
+        }
+        return `\u0E19\u0E49\u0E2D\u0E22\u0E01\u0E27\u0E48\u0E32\u0E01\u0E33\u0E2B\u0E19\u0E14: ${issue2.origin} \u0E04\u0E27\u0E23\u0E21\u0E35${adj} ${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with") {
+          return `\u0E23\u0E39\u0E1B\u0E41\u0E1A\u0E1A\u0E44\u0E21\u0E48\u0E16\u0E39\u0E01\u0E15\u0E49\u0E2D\u0E07: \u0E02\u0E49\u0E2D\u0E04\u0E27\u0E32\u0E21\u0E15\u0E49\u0E2D\u0E07\u0E02\u0E36\u0E49\u0E19\u0E15\u0E49\u0E19\u0E14\u0E49\u0E27\u0E22 "${_issue.prefix}"`;
+        }
+        if (_issue.format === "ends_with")
+          return `\u0E23\u0E39\u0E1B\u0E41\u0E1A\u0E1A\u0E44\u0E21\u0E48\u0E16\u0E39\u0E01\u0E15\u0E49\u0E2D\u0E07: \u0E02\u0E49\u0E2D\u0E04\u0E27\u0E32\u0E21\u0E15\u0E49\u0E2D\u0E07\u0E25\u0E07\u0E17\u0E49\u0E32\u0E22\u0E14\u0E49\u0E27\u0E22 "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `\u0E23\u0E39\u0E1B\u0E41\u0E1A\u0E1A\u0E44\u0E21\u0E48\u0E16\u0E39\u0E01\u0E15\u0E49\u0E2D\u0E07: \u0E02\u0E49\u0E2D\u0E04\u0E27\u0E32\u0E21\u0E15\u0E49\u0E2D\u0E07\u0E21\u0E35 "${_issue.includes}" \u0E2D\u0E22\u0E39\u0E48\u0E43\u0E19\u0E02\u0E49\u0E2D\u0E04\u0E27\u0E32\u0E21`;
+        if (_issue.format === "regex")
+          return `\u0E23\u0E39\u0E1B\u0E41\u0E1A\u0E1A\u0E44\u0E21\u0E48\u0E16\u0E39\u0E01\u0E15\u0E49\u0E2D\u0E07: \u0E15\u0E49\u0E2D\u0E07\u0E15\u0E23\u0E07\u0E01\u0E31\u0E1A\u0E23\u0E39\u0E1B\u0E41\u0E1A\u0E1A\u0E17\u0E35\u0E48\u0E01\u0E33\u0E2B\u0E19\u0E14 ${_issue.pattern}`;
+        return `\u0E23\u0E39\u0E1B\u0E41\u0E1A\u0E1A\u0E44\u0E21\u0E48\u0E16\u0E39\u0E01\u0E15\u0E49\u0E2D\u0E07: ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `\u0E15\u0E31\u0E27\u0E40\u0E25\u0E02\u0E44\u0E21\u0E48\u0E16\u0E39\u0E01\u0E15\u0E49\u0E2D\u0E07: \u0E15\u0E49\u0E2D\u0E07\u0E40\u0E1B\u0E47\u0E19\u0E08\u0E33\u0E19\u0E27\u0E19\u0E17\u0E35\u0E48\u0E2B\u0E32\u0E23\u0E14\u0E49\u0E27\u0E22 ${issue2.divisor} \u0E44\u0E14\u0E49\u0E25\u0E07\u0E15\u0E31\u0E27`;
+      case "unrecognized_keys":
+        return `\u0E1E\u0E1A\u0E04\u0E35\u0E22\u0E4C\u0E17\u0E35\u0E48\u0E44\u0E21\u0E48\u0E23\u0E39\u0E49\u0E08\u0E31\u0E01: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `\u0E04\u0E35\u0E22\u0E4C\u0E44\u0E21\u0E48\u0E16\u0E39\u0E01\u0E15\u0E49\u0E2D\u0E07\u0E43\u0E19 ${issue2.origin}`;
+      case "invalid_union":
+        return "\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E44\u0E21\u0E48\u0E16\u0E39\u0E01\u0E15\u0E49\u0E2D\u0E07: \u0E44\u0E21\u0E48\u0E15\u0E23\u0E07\u0E01\u0E31\u0E1A\u0E23\u0E39\u0E1B\u0E41\u0E1A\u0E1A\u0E22\u0E39\u0E40\u0E19\u0E35\u0E22\u0E19\u0E17\u0E35\u0E48\u0E01\u0E33\u0E2B\u0E19\u0E14\u0E44\u0E27\u0E49";
+      case "invalid_element":
+        return `\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E44\u0E21\u0E48\u0E16\u0E39\u0E01\u0E15\u0E49\u0E2D\u0E07\u0E43\u0E19 ${issue2.origin}`;
+      default:
+        return `\u0E02\u0E49\u0E2D\u0E21\u0E39\u0E25\u0E44\u0E21\u0E48\u0E16\u0E39\u0E01\u0E15\u0E49\u0E2D\u0E07`;
+    }
+  };
+}, "error");
+function th_default() {
+  return {
+    localeError: error42()
+  };
+}
+__name(th_default, "default");
+
+// node_modules/zod/v4/locales/tr.js
+var error43 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "karakter", verb: "olmal\u0131" },
+    file: { unit: "bayt", verb: "olmal\u0131" },
+    array: { unit: "\xF6\u011Fe", verb: "olmal\u0131" },
+    set: { unit: "\xF6\u011Fe", verb: "olmal\u0131" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "girdi",
+    email: "e-posta adresi",
+    url: "URL",
+    emoji: "emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "ISO tarih ve saat",
+    date: "ISO tarih",
+    time: "ISO saat",
+    duration: "ISO s\xFCre",
+    ipv4: "IPv4 adresi",
+    ipv6: "IPv6 adresi",
+    cidrv4: "IPv4 aral\u0131\u011F\u0131",
+    cidrv6: "IPv6 aral\u0131\u011F\u0131",
+    base64: "base64 ile \u015Fifrelenmi\u015F metin",
+    base64url: "base64url ile \u015Fifrelenmi\u015F metin",
+    json_string: "JSON dizesi",
+    e164: "E.164 say\u0131s\u0131",
+    jwt: "JWT",
+    template_literal: "\u015Eablon dizesi"
+  };
+  const TypeDictionary = {
+    nan: "NaN"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `Ge\xE7ersiz de\u011Fer: beklenen instanceof ${issue2.expected}, al\u0131nan ${received}`;
+        }
+        return `Ge\xE7ersiz de\u011Fer: beklenen ${expected}, al\u0131nan ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `Ge\xE7ersiz de\u011Fer: beklenen ${stringifyPrimitive(issue2.values[0])}`;
+        return `Ge\xE7ersiz se\xE7enek: a\u015Fa\u011F\u0131dakilerden biri olmal\u0131: ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `\xC7ok b\xFCy\xFCk: beklenen ${issue2.origin ?? "de\u011Fer"} ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "\xF6\u011Fe"}`;
+        return `\xC7ok b\xFCy\xFCk: beklenen ${issue2.origin ?? "de\u011Fer"} ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `\xC7ok k\xFC\xE7\xFCk: beklenen ${issue2.origin} ${adj}${issue2.minimum.toString()} ${sizing.unit}`;
+        return `\xC7ok k\xFC\xE7\xFCk: beklenen ${issue2.origin} ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `Ge\xE7ersiz metin: "${_issue.prefix}" ile ba\u015Flamal\u0131`;
+        if (_issue.format === "ends_with")
+          return `Ge\xE7ersiz metin: "${_issue.suffix}" ile bitmeli`;
+        if (_issue.format === "includes")
+          return `Ge\xE7ersiz metin: "${_issue.includes}" i\xE7ermeli`;
+        if (_issue.format === "regex")
+          return `Ge\xE7ersiz metin: ${_issue.pattern} desenine uymal\u0131`;
+        return `Ge\xE7ersiz ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `Ge\xE7ersiz say\u0131: ${issue2.divisor} ile tam b\xF6l\xFCnebilmeli`;
+      case "unrecognized_keys":
+        return `Tan\u0131nmayan anahtar${issue2.keys.length > 1 ? "lar" : ""}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `${issue2.origin} i\xE7inde ge\xE7ersiz anahtar`;
+      case "invalid_union":
+        return "Ge\xE7ersiz de\u011Fer";
+      case "invalid_element":
+        return `${issue2.origin} i\xE7inde ge\xE7ersiz de\u011Fer`;
+      default:
+        return `Ge\xE7ersiz de\u011Fer`;
+    }
+  };
+}, "error");
+function tr_default() {
+  return {
+    localeError: error43()
+  };
+}
+__name(tr_default, "default");
+
+// node_modules/zod/v4/locales/uk.js
+var error44 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "\u0441\u0438\u043C\u0432\u043E\u043B\u0456\u0432", verb: "\u043C\u0430\u0442\u0438\u043C\u0435" },
+    file: { unit: "\u0431\u0430\u0439\u0442\u0456\u0432", verb: "\u043C\u0430\u0442\u0438\u043C\u0435" },
+    array: { unit: "\u0435\u043B\u0435\u043C\u0435\u043D\u0442\u0456\u0432", verb: "\u043C\u0430\u0442\u0438\u043C\u0435" },
+    set: { unit: "\u0435\u043B\u0435\u043C\u0435\u043D\u0442\u0456\u0432", verb: "\u043C\u0430\u0442\u0438\u043C\u0435" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "\u0432\u0445\u0456\u0434\u043D\u0456 \u0434\u0430\u043D\u0456",
+    email: "\u0430\u0434\u0440\u0435\u0441\u0430 \u0435\u043B\u0435\u043A\u0442\u0440\u043E\u043D\u043D\u043E\u0457 \u043F\u043E\u0448\u0442\u0438",
+    url: "URL",
+    emoji: "\u0435\u043C\u043E\u0434\u0437\u0456",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "\u0434\u0430\u0442\u0430 \u0442\u0430 \u0447\u0430\u0441 ISO",
+    date: "\u0434\u0430\u0442\u0430 ISO",
+    time: "\u0447\u0430\u0441 ISO",
+    duration: "\u0442\u0440\u0438\u0432\u0430\u043B\u0456\u0441\u0442\u044C ISO",
+    ipv4: "\u0430\u0434\u0440\u0435\u0441\u0430 IPv4",
+    ipv6: "\u0430\u0434\u0440\u0435\u0441\u0430 IPv6",
+    cidrv4: "\u0434\u0456\u0430\u043F\u0430\u0437\u043E\u043D IPv4",
+    cidrv6: "\u0434\u0456\u0430\u043F\u0430\u0437\u043E\u043D IPv6",
+    base64: "\u0440\u044F\u0434\u043E\u043A \u0443 \u043A\u043E\u0434\u0443\u0432\u0430\u043D\u043D\u0456 base64",
+    base64url: "\u0440\u044F\u0434\u043E\u043A \u0443 \u043A\u043E\u0434\u0443\u0432\u0430\u043D\u043D\u0456 base64url",
+    json_string: "\u0440\u044F\u0434\u043E\u043A JSON",
+    e164: "\u043D\u043E\u043C\u0435\u0440 E.164",
+    jwt: "JWT",
+    template_literal: "\u0432\u0445\u0456\u0434\u043D\u0456 \u0434\u0430\u043D\u0456"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "\u0447\u0438\u0441\u043B\u043E",
+    array: "\u043C\u0430\u0441\u0438\u0432"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `\u041D\u0435\u043F\u0440\u0430\u0432\u0438\u043B\u044C\u043D\u0456 \u0432\u0445\u0456\u0434\u043D\u0456 \u0434\u0430\u043D\u0456: \u043E\u0447\u0456\u043A\u0443\u0454\u0442\u044C\u0441\u044F instanceof ${issue2.expected}, \u043E\u0442\u0440\u0438\u043C\u0430\u043D\u043E ${received}`;
+        }
+        return `\u041D\u0435\u043F\u0440\u0430\u0432\u0438\u043B\u044C\u043D\u0456 \u0432\u0445\u0456\u0434\u043D\u0456 \u0434\u0430\u043D\u0456: \u043E\u0447\u0456\u043A\u0443\u0454\u0442\u044C\u0441\u044F ${expected}, \u043E\u0442\u0440\u0438\u043C\u0430\u043D\u043E ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `\u041D\u0435\u043F\u0440\u0430\u0432\u0438\u043B\u044C\u043D\u0456 \u0432\u0445\u0456\u0434\u043D\u0456 \u0434\u0430\u043D\u0456: \u043E\u0447\u0456\u043A\u0443\u0454\u0442\u044C\u0441\u044F ${stringifyPrimitive(issue2.values[0])}`;
+        return `\u041D\u0435\u043F\u0440\u0430\u0432\u0438\u043B\u044C\u043D\u0430 \u043E\u043F\u0446\u0456\u044F: \u043E\u0447\u0456\u043A\u0443\u0454\u0442\u044C\u0441\u044F \u043E\u0434\u043D\u0435 \u0437 ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `\u0417\u0430\u043D\u0430\u0434\u0442\u043E \u0432\u0435\u043B\u0438\u043A\u0435: \u043E\u0447\u0456\u043A\u0443\u0454\u0442\u044C\u0441\u044F, \u0449\u043E ${issue2.origin ?? "\u0437\u043D\u0430\u0447\u0435\u043D\u043D\u044F"} ${sizing.verb} ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "\u0435\u043B\u0435\u043C\u0435\u043D\u0442\u0456\u0432"}`;
+        return `\u0417\u0430\u043D\u0430\u0434\u0442\u043E \u0432\u0435\u043B\u0438\u043A\u0435: \u043E\u0447\u0456\u043A\u0443\u0454\u0442\u044C\u0441\u044F, \u0449\u043E ${issue2.origin ?? "\u0437\u043D\u0430\u0447\u0435\u043D\u043D\u044F"} \u0431\u0443\u0434\u0435 ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `\u0417\u0430\u043D\u0430\u0434\u0442\u043E \u043C\u0430\u043B\u0435: \u043E\u0447\u0456\u043A\u0443\u0454\u0442\u044C\u0441\u044F, \u0449\u043E ${issue2.origin} ${sizing.verb} ${adj}${issue2.minimum.toString()} ${sizing.unit}`;
+        }
+        return `\u0417\u0430\u043D\u0430\u0434\u0442\u043E \u043C\u0430\u043B\u0435: \u043E\u0447\u0456\u043A\u0443\u0454\u0442\u044C\u0441\u044F, \u0449\u043E ${issue2.origin} \u0431\u0443\u0434\u0435 ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `\u041D\u0435\u043F\u0440\u0430\u0432\u0438\u043B\u044C\u043D\u0438\u0439 \u0440\u044F\u0434\u043E\u043A: \u043F\u043E\u0432\u0438\u043D\u0435\u043D \u043F\u043E\u0447\u0438\u043D\u0430\u0442\u0438\u0441\u044F \u0437 "${_issue.prefix}"`;
+        if (_issue.format === "ends_with")
+          return `\u041D\u0435\u043F\u0440\u0430\u0432\u0438\u043B\u044C\u043D\u0438\u0439 \u0440\u044F\u0434\u043E\u043A: \u043F\u043E\u0432\u0438\u043D\u0435\u043D \u0437\u0430\u043A\u0456\u043D\u0447\u0443\u0432\u0430\u0442\u0438\u0441\u044F \u043D\u0430 "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `\u041D\u0435\u043F\u0440\u0430\u0432\u0438\u043B\u044C\u043D\u0438\u0439 \u0440\u044F\u0434\u043E\u043A: \u043F\u043E\u0432\u0438\u043D\u0435\u043D \u043C\u0456\u0441\u0442\u0438\u0442\u0438 "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `\u041D\u0435\u043F\u0440\u0430\u0432\u0438\u043B\u044C\u043D\u0438\u0439 \u0440\u044F\u0434\u043E\u043A: \u043F\u043E\u0432\u0438\u043D\u0435\u043D \u0432\u0456\u0434\u043F\u043E\u0432\u0456\u0434\u0430\u0442\u0438 \u0448\u0430\u0431\u043B\u043E\u043D\u0443 ${_issue.pattern}`;
+        return `\u041D\u0435\u043F\u0440\u0430\u0432\u0438\u043B\u044C\u043D\u0438\u0439 ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `\u041D\u0435\u043F\u0440\u0430\u0432\u0438\u043B\u044C\u043D\u0435 \u0447\u0438\u0441\u043B\u043E: \u043F\u043E\u0432\u0438\u043D\u043D\u043E \u0431\u0443\u0442\u0438 \u043A\u0440\u0430\u0442\u043D\u0438\u043C ${issue2.divisor}`;
+      case "unrecognized_keys":
+        return `\u041D\u0435\u0440\u043E\u0437\u043F\u0456\u0437\u043D\u0430\u043D\u0438\u0439 \u043A\u043B\u044E\u0447${issue2.keys.length > 1 ? "\u0456" : ""}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `\u041D\u0435\u043F\u0440\u0430\u0432\u0438\u043B\u044C\u043D\u0438\u0439 \u043A\u043B\u044E\u0447 \u0443 ${issue2.origin}`;
+      case "invalid_union":
+        return "\u041D\u0435\u043F\u0440\u0430\u0432\u0438\u043B\u044C\u043D\u0456 \u0432\u0445\u0456\u0434\u043D\u0456 \u0434\u0430\u043D\u0456";
+      case "invalid_element":
+        return `\u041D\u0435\u043F\u0440\u0430\u0432\u0438\u043B\u044C\u043D\u0435 \u0437\u043D\u0430\u0447\u0435\u043D\u043D\u044F \u0443 ${issue2.origin}`;
+      default:
+        return `\u041D\u0435\u043F\u0440\u0430\u0432\u0438\u043B\u044C\u043D\u0456 \u0432\u0445\u0456\u0434\u043D\u0456 \u0434\u0430\u043D\u0456`;
+    }
+  };
+}, "error");
+function uk_default() {
+  return {
+    localeError: error44()
+  };
+}
+__name(uk_default, "default");
+
+// node_modules/zod/v4/locales/ua.js
+function ua_default() {
+  return uk_default();
+}
+__name(ua_default, "default");
+
+// node_modules/zod/v4/locales/ur.js
+var error45 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "\u062D\u0631\u0648\u0641", verb: "\u06C1\u0648\u0646\u0627" },
+    file: { unit: "\u0628\u0627\u0626\u0679\u0633", verb: "\u06C1\u0648\u0646\u0627" },
+    array: { unit: "\u0622\u0626\u0679\u0645\u0632", verb: "\u06C1\u0648\u0646\u0627" },
+    set: { unit: "\u0622\u0626\u0679\u0645\u0632", verb: "\u06C1\u0648\u0646\u0627" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "\u0627\u0646 \u067E\u0679",
+    email: "\u0627\u06CC \u0645\u06CC\u0644 \u0627\u06CC\u0688\u0631\u06CC\u0633",
+    url: "\u06CC\u0648 \u0622\u0631 \u0627\u06CC\u0644",
+    emoji: "\u0627\u06CC\u0645\u0648\u062C\u06CC",
+    uuid: "\u06CC\u0648 \u06CC\u0648 \u0622\u0626\u06CC \u0688\u06CC",
+    uuidv4: "\u06CC\u0648 \u06CC\u0648 \u0622\u0626\u06CC \u0688\u06CC \u0648\u06CC 4",
+    uuidv6: "\u06CC\u0648 \u06CC\u0648 \u0622\u0626\u06CC \u0688\u06CC \u0648\u06CC 6",
+    nanoid: "\u0646\u06CC\u0646\u0648 \u0622\u0626\u06CC \u0688\u06CC",
+    guid: "\u062C\u06CC \u06CC\u0648 \u0622\u0626\u06CC \u0688\u06CC",
+    cuid: "\u0633\u06CC \u06CC\u0648 \u0622\u0626\u06CC \u0688\u06CC",
+    cuid2: "\u0633\u06CC \u06CC\u0648 \u0622\u0626\u06CC \u0688\u06CC 2",
+    ulid: "\u06CC\u0648 \u0627\u06CC\u0644 \u0622\u0626\u06CC \u0688\u06CC",
+    xid: "\u0627\u06CC\u06A9\u0633 \u0622\u0626\u06CC \u0688\u06CC",
+    ksuid: "\u06A9\u06D2 \u0627\u06CC\u0633 \u06CC\u0648 \u0622\u0626\u06CC \u0688\u06CC",
+    datetime: "\u0622\u0626\u06CC \u0627\u06CC\u0633 \u0627\u0648 \u0688\u06CC\u0679 \u0679\u0627\u0626\u0645",
+    date: "\u0622\u0626\u06CC \u0627\u06CC\u0633 \u0627\u0648 \u062A\u0627\u0631\u06CC\u062E",
+    time: "\u0622\u0626\u06CC \u0627\u06CC\u0633 \u0627\u0648 \u0648\u0642\u062A",
+    duration: "\u0622\u0626\u06CC \u0627\u06CC\u0633 \u0627\u0648 \u0645\u062F\u062A",
+    ipv4: "\u0622\u0626\u06CC \u067E\u06CC \u0648\u06CC 4 \u0627\u06CC\u0688\u0631\u06CC\u0633",
+    ipv6: "\u0622\u0626\u06CC \u067E\u06CC \u0648\u06CC 6 \u0627\u06CC\u0688\u0631\u06CC\u0633",
+    cidrv4: "\u0622\u0626\u06CC \u067E\u06CC \u0648\u06CC 4 \u0631\u06CC\u0646\u062C",
+    cidrv6: "\u0622\u0626\u06CC \u067E\u06CC \u0648\u06CC 6 \u0631\u06CC\u0646\u062C",
+    base64: "\u0628\u06CC\u0633 64 \u0627\u0646 \u06A9\u0648\u0688\u0688 \u0633\u0679\u0631\u0646\u06AF",
+    base64url: "\u0628\u06CC\u0633 64 \u06CC\u0648 \u0622\u0631 \u0627\u06CC\u0644 \u0627\u0646 \u06A9\u0648\u0688\u0688 \u0633\u0679\u0631\u0646\u06AF",
+    json_string: "\u062C\u06D2 \u0627\u06CC\u0633 \u0627\u0648 \u0627\u06CC\u0646 \u0633\u0679\u0631\u0646\u06AF",
+    e164: "\u0627\u06CC 164 \u0646\u0645\u0628\u0631",
+    jwt: "\u062C\u06D2 \u0688\u0628\u0644\u06CC\u0648 \u0679\u06CC",
+    template_literal: "\u0627\u0646 \u067E\u0679"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "\u0646\u0645\u0628\u0631",
+    array: "\u0622\u0631\u06D2",
+    null: "\u0646\u0644"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `\u063A\u0644\u0637 \u0627\u0646 \u067E\u0679: instanceof ${issue2.expected} \u0645\u062A\u0648\u0642\u0639 \u062A\u06BE\u0627\u060C ${received} \u0645\u0648\u0635\u0648\u0644 \u06C1\u0648\u0627`;
+        }
+        return `\u063A\u0644\u0637 \u0627\u0646 \u067E\u0679: ${expected} \u0645\u062A\u0648\u0642\u0639 \u062A\u06BE\u0627\u060C ${received} \u0645\u0648\u0635\u0648\u0644 \u06C1\u0648\u0627`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `\u063A\u0644\u0637 \u0627\u0646 \u067E\u0679: ${stringifyPrimitive(issue2.values[0])} \u0645\u062A\u0648\u0642\u0639 \u062A\u06BE\u0627`;
+        return `\u063A\u0644\u0637 \u0622\u067E\u0634\u0646: ${joinValues(issue2.values, "|")} \u0645\u06CC\u06BA \u0633\u06D2 \u0627\u06CC\u06A9 \u0645\u062A\u0648\u0642\u0639 \u062A\u06BE\u0627`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `\u0628\u06C1\u062A \u0628\u0691\u0627: ${issue2.origin ?? "\u0648\u06CC\u0644\u06CC\u0648"} \u06A9\u06D2 ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "\u0639\u0646\u0627\u0635\u0631"} \u06C1\u0648\u0646\u06D2 \u0645\u062A\u0648\u0642\u0639 \u062A\u06BE\u06D2`;
+        return `\u0628\u06C1\u062A \u0628\u0691\u0627: ${issue2.origin ?? "\u0648\u06CC\u0644\u06CC\u0648"} \u06A9\u0627 ${adj}${issue2.maximum.toString()} \u06C1\u0648\u0646\u0627 \u0645\u062A\u0648\u0642\u0639 \u062A\u06BE\u0627`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `\u0628\u06C1\u062A \u0686\u06BE\u0648\u0679\u0627: ${issue2.origin} \u06A9\u06D2 ${adj}${issue2.minimum.toString()} ${sizing.unit} \u06C1\u0648\u0646\u06D2 \u0645\u062A\u0648\u0642\u0639 \u062A\u06BE\u06D2`;
+        }
+        return `\u0628\u06C1\u062A \u0686\u06BE\u0648\u0679\u0627: ${issue2.origin} \u06A9\u0627 ${adj}${issue2.minimum.toString()} \u06C1\u0648\u0646\u0627 \u0645\u062A\u0648\u0642\u0639 \u062A\u06BE\u0627`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with") {
+          return `\u063A\u0644\u0637 \u0633\u0679\u0631\u0646\u06AF: "${_issue.prefix}" \u0633\u06D2 \u0634\u0631\u0648\u0639 \u06C1\u0648\u0646\u0627 \u0686\u0627\u06C1\u06CC\u06D2`;
+        }
+        if (_issue.format === "ends_with")
+          return `\u063A\u0644\u0637 \u0633\u0679\u0631\u0646\u06AF: "${_issue.suffix}" \u067E\u0631 \u062E\u062A\u0645 \u06C1\u0648\u0646\u0627 \u0686\u0627\u06C1\u06CC\u06D2`;
+        if (_issue.format === "includes")
+          return `\u063A\u0644\u0637 \u0633\u0679\u0631\u0646\u06AF: "${_issue.includes}" \u0634\u0627\u0645\u0644 \u06C1\u0648\u0646\u0627 \u0686\u0627\u06C1\u06CC\u06D2`;
+        if (_issue.format === "regex")
+          return `\u063A\u0644\u0637 \u0633\u0679\u0631\u0646\u06AF: \u067E\u06CC\u0679\u0631\u0646 ${_issue.pattern} \u0633\u06D2 \u0645\u06CC\u0686 \u06C1\u0648\u0646\u0627 \u0686\u0627\u06C1\u06CC\u06D2`;
+        return `\u063A\u0644\u0637 ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `\u063A\u0644\u0637 \u0646\u0645\u0628\u0631: ${issue2.divisor} \u06A9\u0627 \u0645\u0636\u0627\u0639\u0641 \u06C1\u0648\u0646\u0627 \u0686\u0627\u06C1\u06CC\u06D2`;
+      case "unrecognized_keys":
+        return `\u063A\u06CC\u0631 \u062A\u0633\u0644\u06CC\u0645 \u0634\u062F\u06C1 \u06A9\u06CC${issue2.keys.length > 1 ? "\u0632" : ""}: ${joinValues(issue2.keys, "\u060C ")}`;
+      case "invalid_key":
+        return `${issue2.origin} \u0645\u06CC\u06BA \u063A\u0644\u0637 \u06A9\u06CC`;
+      case "invalid_union":
+        return "\u063A\u0644\u0637 \u0627\u0646 \u067E\u0679";
+      case "invalid_element":
+        return `${issue2.origin} \u0645\u06CC\u06BA \u063A\u0644\u0637 \u0648\u06CC\u0644\u06CC\u0648`;
+      default:
+        return `\u063A\u0644\u0637 \u0627\u0646 \u067E\u0679`;
+    }
+  };
+}, "error");
+function ur_default() {
+  return {
+    localeError: error45()
+  };
+}
+__name(ur_default, "default");
+
+// node_modules/zod/v4/locales/uz.js
+var error46 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "belgi", verb: "bo\u2018lishi kerak" },
+    file: { unit: "bayt", verb: "bo\u2018lishi kerak" },
+    array: { unit: "element", verb: "bo\u2018lishi kerak" },
+    set: { unit: "element", verb: "bo\u2018lishi kerak" },
+    map: { unit: "yozuv", verb: "bo\u2018lishi kerak" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "kirish",
+    email: "elektron pochta manzili",
+    url: "URL",
+    emoji: "emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "ISO sana va vaqti",
+    date: "ISO sana",
+    time: "ISO vaqt",
+    duration: "ISO davomiylik",
+    ipv4: "IPv4 manzil",
+    ipv6: "IPv6 manzil",
+    mac: "MAC manzil",
+    cidrv4: "IPv4 diapazon",
+    cidrv6: "IPv6 diapazon",
+    base64: "base64 kodlangan satr",
+    base64url: "base64url kodlangan satr",
+    json_string: "JSON satr",
+    e164: "E.164 raqam",
+    jwt: "JWT",
+    template_literal: "kirish"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "raqam",
+    array: "massiv"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `Noto\u2018g\u2018ri kirish: kutilgan instanceof ${issue2.expected}, qabul qilingan ${received}`;
+        }
+        return `Noto\u2018g\u2018ri kirish: kutilgan ${expected}, qabul qilingan ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `Noto\u2018g\u2018ri kirish: kutilgan ${stringifyPrimitive(issue2.values[0])}`;
+        return `Noto\u2018g\u2018ri variant: quyidagilardan biri kutilgan ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `Juda katta: kutilgan ${issue2.origin ?? "qiymat"} ${adj}${issue2.maximum.toString()} ${sizing.unit} ${sizing.verb}`;
+        return `Juda katta: kutilgan ${issue2.origin ?? "qiymat"} ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `Juda kichik: kutilgan ${issue2.origin} ${adj}${issue2.minimum.toString()} ${sizing.unit} ${sizing.verb}`;
+        }
+        return `Juda kichik: kutilgan ${issue2.origin} ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `Noto\u2018g\u2018ri satr: "${_issue.prefix}" bilan boshlanishi kerak`;
+        if (_issue.format === "ends_with")
+          return `Noto\u2018g\u2018ri satr: "${_issue.suffix}" bilan tugashi kerak`;
+        if (_issue.format === "includes")
+          return `Noto\u2018g\u2018ri satr: "${_issue.includes}" ni o\u2018z ichiga olishi kerak`;
+        if (_issue.format === "regex")
+          return `Noto\u2018g\u2018ri satr: ${_issue.pattern} shabloniga mos kelishi kerak`;
+        return `Noto\u2018g\u2018ri ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `Noto\u2018g\u2018ri raqam: ${issue2.divisor} ning karralisi bo\u2018lishi kerak`;
+      case "unrecognized_keys":
+        return `Noma\u2019lum kalit${issue2.keys.length > 1 ? "lar" : ""}: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `${issue2.origin} dagi kalit noto\u2018g\u2018ri`;
+      case "invalid_union":
+        return "Noto\u2018g\u2018ri kirish";
+      case "invalid_element":
+        return `${issue2.origin} da noto\u2018g\u2018ri qiymat`;
+      default:
+        return `Noto\u2018g\u2018ri kirish`;
+    }
+  };
+}, "error");
+function uz_default() {
+  return {
+    localeError: error46()
+  };
+}
+__name(uz_default, "default");
+
+// node_modules/zod/v4/locales/vi.js
+var error47 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "k\xFD t\u1EF1", verb: "c\xF3" },
+    file: { unit: "byte", verb: "c\xF3" },
+    array: { unit: "ph\u1EA7n t\u1EED", verb: "c\xF3" },
+    set: { unit: "ph\u1EA7n t\u1EED", verb: "c\xF3" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "\u0111\u1EA7u v\xE0o",
+    email: "\u0111\u1ECBa ch\u1EC9 email",
+    url: "URL",
+    emoji: "emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "ng\xE0y gi\u1EDD ISO",
+    date: "ng\xE0y ISO",
+    time: "gi\u1EDD ISO",
+    duration: "kho\u1EA3ng th\u1EDDi gian ISO",
+    ipv4: "\u0111\u1ECBa ch\u1EC9 IPv4",
+    ipv6: "\u0111\u1ECBa ch\u1EC9 IPv6",
+    cidrv4: "d\u1EA3i IPv4",
+    cidrv6: "d\u1EA3i IPv6",
+    base64: "chu\u1ED7i m\xE3 h\xF3a base64",
+    base64url: "chu\u1ED7i m\xE3 h\xF3a base64url",
+    json_string: "chu\u1ED7i JSON",
+    e164: "s\u1ED1 E.164",
+    jwt: "JWT",
+    template_literal: "\u0111\u1EA7u v\xE0o"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "s\u1ED1",
+    array: "m\u1EA3ng"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `\u0110\u1EA7u v\xE0o kh\xF4ng h\u1EE3p l\u1EC7: mong \u0111\u1EE3i instanceof ${issue2.expected}, nh\u1EADn \u0111\u01B0\u1EE3c ${received}`;
+        }
+        return `\u0110\u1EA7u v\xE0o kh\xF4ng h\u1EE3p l\u1EC7: mong \u0111\u1EE3i ${expected}, nh\u1EADn \u0111\u01B0\u1EE3c ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `\u0110\u1EA7u v\xE0o kh\xF4ng h\u1EE3p l\u1EC7: mong \u0111\u1EE3i ${stringifyPrimitive(issue2.values[0])}`;
+        return `T\xF9y ch\u1ECDn kh\xF4ng h\u1EE3p l\u1EC7: mong \u0111\u1EE3i m\u1ED9t trong c\xE1c gi\xE1 tr\u1ECB ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `Qu\xE1 l\u1EDBn: mong \u0111\u1EE3i ${issue2.origin ?? "gi\xE1 tr\u1ECB"} ${sizing.verb} ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "ph\u1EA7n t\u1EED"}`;
+        return `Qu\xE1 l\u1EDBn: mong \u0111\u1EE3i ${issue2.origin ?? "gi\xE1 tr\u1ECB"} ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `Qu\xE1 nh\u1ECF: mong \u0111\u1EE3i ${issue2.origin} ${sizing.verb} ${adj}${issue2.minimum.toString()} ${sizing.unit}`;
+        }
+        return `Qu\xE1 nh\u1ECF: mong \u0111\u1EE3i ${issue2.origin} ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `Chu\u1ED7i kh\xF4ng h\u1EE3p l\u1EC7: ph\u1EA3i b\u1EAFt \u0111\u1EA7u b\u1EB1ng "${_issue.prefix}"`;
+        if (_issue.format === "ends_with")
+          return `Chu\u1ED7i kh\xF4ng h\u1EE3p l\u1EC7: ph\u1EA3i k\u1EBFt th\xFAc b\u1EB1ng "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `Chu\u1ED7i kh\xF4ng h\u1EE3p l\u1EC7: ph\u1EA3i bao g\u1ED3m "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `Chu\u1ED7i kh\xF4ng h\u1EE3p l\u1EC7: ph\u1EA3i kh\u1EDBp v\u1EDBi m\u1EABu ${_issue.pattern}`;
+        return `${FormatDictionary[_issue.format] ?? issue2.format} kh\xF4ng h\u1EE3p l\u1EC7`;
+      }
+      case "not_multiple_of":
+        return `S\u1ED1 kh\xF4ng h\u1EE3p l\u1EC7: ph\u1EA3i l\xE0 b\u1ED9i s\u1ED1 c\u1EE7a ${issue2.divisor}`;
+      case "unrecognized_keys":
+        return `Kh\xF3a kh\xF4ng \u0111\u01B0\u1EE3c nh\u1EADn d\u1EA1ng: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `Kh\xF3a kh\xF4ng h\u1EE3p l\u1EC7 trong ${issue2.origin}`;
+      case "invalid_union":
+        return "\u0110\u1EA7u v\xE0o kh\xF4ng h\u1EE3p l\u1EC7";
+      case "invalid_element":
+        return `Gi\xE1 tr\u1ECB kh\xF4ng h\u1EE3p l\u1EC7 trong ${issue2.origin}`;
+      default:
+        return `\u0110\u1EA7u v\xE0o kh\xF4ng h\u1EE3p l\u1EC7`;
+    }
+  };
+}, "error");
+function vi_default() {
+  return {
+    localeError: error47()
+  };
+}
+__name(vi_default, "default");
+
+// node_modules/zod/v4/locales/zh-CN.js
+var error48 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "\u5B57\u7B26", verb: "\u5305\u542B" },
+    file: { unit: "\u5B57\u8282", verb: "\u5305\u542B" },
+    array: { unit: "\u9879", verb: "\u5305\u542B" },
+    set: { unit: "\u9879", verb: "\u5305\u542B" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "\u8F93\u5165",
+    email: "\u7535\u5B50\u90AE\u4EF6",
+    url: "URL",
+    emoji: "\u8868\u60C5\u7B26\u53F7",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "ISO\u65E5\u671F\u65F6\u95F4",
+    date: "ISO\u65E5\u671F",
+    time: "ISO\u65F6\u95F4",
+    duration: "ISO\u65F6\u957F",
+    ipv4: "IPv4\u5730\u5740",
+    ipv6: "IPv6\u5730\u5740",
+    cidrv4: "IPv4\u7F51\u6BB5",
+    cidrv6: "IPv6\u7F51\u6BB5",
+    base64: "base64\u7F16\u7801\u5B57\u7B26\u4E32",
+    base64url: "base64url\u7F16\u7801\u5B57\u7B26\u4E32",
+    json_string: "JSON\u5B57\u7B26\u4E32",
+    e164: "E.164\u53F7\u7801",
+    jwt: "JWT",
+    template_literal: "\u8F93\u5165"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "\u6570\u5B57",
+    array: "\u6570\u7EC4",
+    null: "\u7A7A\u503C(null)"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `\u65E0\u6548\u8F93\u5165\uFF1A\u671F\u671B instanceof ${issue2.expected}\uFF0C\u5B9E\u9645\u63A5\u6536 ${received}`;
+        }
+        return `\u65E0\u6548\u8F93\u5165\uFF1A\u671F\u671B ${expected}\uFF0C\u5B9E\u9645\u63A5\u6536 ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `\u65E0\u6548\u8F93\u5165\uFF1A\u671F\u671B ${stringifyPrimitive(issue2.values[0])}`;
+        return `\u65E0\u6548\u9009\u9879\uFF1A\u671F\u671B\u4EE5\u4E0B\u4E4B\u4E00 ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `\u6570\u503C\u8FC7\u5927\uFF1A\u671F\u671B ${issue2.origin ?? "\u503C"} ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "\u4E2A\u5143\u7D20"}`;
+        return `\u6570\u503C\u8FC7\u5927\uFF1A\u671F\u671B ${issue2.origin ?? "\u503C"} ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `\u6570\u503C\u8FC7\u5C0F\uFF1A\u671F\u671B ${issue2.origin} ${adj}${issue2.minimum.toString()} ${sizing.unit}`;
+        }
+        return `\u6570\u503C\u8FC7\u5C0F\uFF1A\u671F\u671B ${issue2.origin} ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `\u65E0\u6548\u5B57\u7B26\u4E32\uFF1A\u5FC5\u987B\u4EE5 "${_issue.prefix}" \u5F00\u5934`;
+        if (_issue.format === "ends_with")
+          return `\u65E0\u6548\u5B57\u7B26\u4E32\uFF1A\u5FC5\u987B\u4EE5 "${_issue.suffix}" \u7ED3\u5C3E`;
+        if (_issue.format === "includes")
+          return `\u65E0\u6548\u5B57\u7B26\u4E32\uFF1A\u5FC5\u987B\u5305\u542B "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `\u65E0\u6548\u5B57\u7B26\u4E32\uFF1A\u5FC5\u987B\u6EE1\u8DB3\u6B63\u5219\u8868\u8FBE\u5F0F ${_issue.pattern}`;
+        return `\u65E0\u6548${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `\u65E0\u6548\u6570\u5B57\uFF1A\u5FC5\u987B\u662F ${issue2.divisor} \u7684\u500D\u6570`;
+      case "unrecognized_keys":
+        return `\u51FA\u73B0\u672A\u77E5\u7684\u952E(key): ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `${issue2.origin} \u4E2D\u7684\u952E(key)\u65E0\u6548`;
+      case "invalid_union":
+        return "\u65E0\u6548\u8F93\u5165";
+      case "invalid_element":
+        return `${issue2.origin} \u4E2D\u5305\u542B\u65E0\u6548\u503C(value)`;
+      default:
+        return `\u65E0\u6548\u8F93\u5165`;
+    }
+  };
+}, "error");
+function zh_CN_default() {
+  return {
+    localeError: error48()
+  };
+}
+__name(zh_CN_default, "default");
+
+// node_modules/zod/v4/locales/zh-TW.js
+var error49 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "\u5B57\u5143", verb: "\u64C1\u6709" },
+    file: { unit: "\u4F4D\u5143\u7D44", verb: "\u64C1\u6709" },
+    array: { unit: "\u9805\u76EE", verb: "\u64C1\u6709" },
+    set: { unit: "\u9805\u76EE", verb: "\u64C1\u6709" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "\u8F38\u5165",
+    email: "\u90F5\u4EF6\u5730\u5740",
+    url: "URL",
+    emoji: "emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "ISO \u65E5\u671F\u6642\u9593",
+    date: "ISO \u65E5\u671F",
+    time: "ISO \u6642\u9593",
+    duration: "ISO \u671F\u9593",
+    ipv4: "IPv4 \u4F4D\u5740",
+    ipv6: "IPv6 \u4F4D\u5740",
+    cidrv4: "IPv4 \u7BC4\u570D",
+    cidrv6: "IPv6 \u7BC4\u570D",
+    base64: "base64 \u7DE8\u78BC\u5B57\u4E32",
+    base64url: "base64url \u7DE8\u78BC\u5B57\u4E32",
+    json_string: "JSON \u5B57\u4E32",
+    e164: "E.164 \u6578\u503C",
+    jwt: "JWT",
+    template_literal: "\u8F38\u5165"
+  };
+  const TypeDictionary = {
+    nan: "NaN"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `\u7121\u6548\u7684\u8F38\u5165\u503C\uFF1A\u9810\u671F\u70BA instanceof ${issue2.expected}\uFF0C\u4F46\u6536\u5230 ${received}`;
+        }
+        return `\u7121\u6548\u7684\u8F38\u5165\u503C\uFF1A\u9810\u671F\u70BA ${expected}\uFF0C\u4F46\u6536\u5230 ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `\u7121\u6548\u7684\u8F38\u5165\u503C\uFF1A\u9810\u671F\u70BA ${stringifyPrimitive(issue2.values[0])}`;
+        return `\u7121\u6548\u7684\u9078\u9805\uFF1A\u9810\u671F\u70BA\u4EE5\u4E0B\u5176\u4E2D\u4E4B\u4E00 ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `\u6578\u503C\u904E\u5927\uFF1A\u9810\u671F ${issue2.origin ?? "\u503C"} \u61C9\u70BA ${adj}${issue2.maximum.toString()} ${sizing.unit ?? "\u500B\u5143\u7D20"}`;
+        return `\u6578\u503C\u904E\u5927\uFF1A\u9810\u671F ${issue2.origin ?? "\u503C"} \u61C9\u70BA ${adj}${issue2.maximum.toString()}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing) {
+          return `\u6578\u503C\u904E\u5C0F\uFF1A\u9810\u671F ${issue2.origin} \u61C9\u70BA ${adj}${issue2.minimum.toString()} ${sizing.unit}`;
+        }
+        return `\u6578\u503C\u904E\u5C0F\uFF1A\u9810\u671F ${issue2.origin} \u61C9\u70BA ${adj}${issue2.minimum.toString()}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with") {
+          return `\u7121\u6548\u7684\u5B57\u4E32\uFF1A\u5FC5\u9808\u4EE5 "${_issue.prefix}" \u958B\u982D`;
+        }
+        if (_issue.format === "ends_with")
+          return `\u7121\u6548\u7684\u5B57\u4E32\uFF1A\u5FC5\u9808\u4EE5 "${_issue.suffix}" \u7D50\u5C3E`;
+        if (_issue.format === "includes")
+          return `\u7121\u6548\u7684\u5B57\u4E32\uFF1A\u5FC5\u9808\u5305\u542B "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `\u7121\u6548\u7684\u5B57\u4E32\uFF1A\u5FC5\u9808\u7B26\u5408\u683C\u5F0F ${_issue.pattern}`;
+        return `\u7121\u6548\u7684 ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `\u7121\u6548\u7684\u6578\u5B57\uFF1A\u5FC5\u9808\u70BA ${issue2.divisor} \u7684\u500D\u6578`;
+      case "unrecognized_keys":
+        return `\u7121\u6CD5\u8B58\u5225\u7684\u9375\u503C${issue2.keys.length > 1 ? "\u5011" : ""}\uFF1A${joinValues(issue2.keys, "\u3001")}`;
+      case "invalid_key":
+        return `${issue2.origin} \u4E2D\u6709\u7121\u6548\u7684\u9375\u503C`;
+      case "invalid_union":
+        return "\u7121\u6548\u7684\u8F38\u5165\u503C";
+      case "invalid_element":
+        return `${issue2.origin} \u4E2D\u6709\u7121\u6548\u7684\u503C`;
+      default:
+        return `\u7121\u6548\u7684\u8F38\u5165\u503C`;
+    }
+  };
+}, "error");
+function zh_TW_default() {
+  return {
+    localeError: error49()
+  };
+}
+__name(zh_TW_default, "default");
+
+// node_modules/zod/v4/locales/yo.js
+var error50 = /* @__PURE__ */ __name(() => {
+  const Sizable = {
+    string: { unit: "\xE0mi", verb: "n\xED" },
+    file: { unit: "bytes", verb: "n\xED" },
+    array: { unit: "nkan", verb: "n\xED" },
+    set: { unit: "nkan", verb: "n\xED" }
+  };
+  function getSizing(origin) {
+    return Sizable[origin] ?? null;
+  }
+  __name(getSizing, "getSizing");
+  const FormatDictionary = {
+    regex: "\u1EB9\u0300r\u1ECD \xECb\xE1w\u1ECDl\xE9",
+    email: "\xE0d\xEDr\u1EB9\u0301s\xEC \xECm\u1EB9\u0301l\xEC",
+    url: "URL",
+    emoji: "emoji",
+    uuid: "UUID",
+    uuidv4: "UUIDv4",
+    uuidv6: "UUIDv6",
+    nanoid: "nanoid",
+    guid: "GUID",
+    cuid: "cuid",
+    cuid2: "cuid2",
+    ulid: "ULID",
+    xid: "XID",
+    ksuid: "KSUID",
+    datetime: "\xE0k\xF3k\xF2 ISO",
+    date: "\u1ECDj\u1ECD\u0301 ISO",
+    time: "\xE0k\xF3k\xF2 ISO",
+    duration: "\xE0k\xF3k\xF2 t\xF3 p\xE9 ISO",
+    ipv4: "\xE0d\xEDr\u1EB9\u0301s\xEC IPv4",
+    ipv6: "\xE0d\xEDr\u1EB9\u0301s\xEC IPv6",
+    cidrv4: "\xE0gb\xE8gb\xE8 IPv4",
+    cidrv6: "\xE0gb\xE8gb\xE8 IPv6",
+    base64: "\u1ECD\u0300r\u1ECD\u0300 t\xED a k\u1ECD\u0301 n\xED base64",
+    base64url: "\u1ECD\u0300r\u1ECD\u0300 base64url",
+    json_string: "\u1ECD\u0300r\u1ECD\u0300 JSON",
+    e164: "n\u1ECD\u0301mb\xE0 E.164",
+    jwt: "JWT",
+    template_literal: "\u1EB9\u0300r\u1ECD \xECb\xE1w\u1ECDl\xE9"
+  };
+  const TypeDictionary = {
+    nan: "NaN",
+    number: "n\u1ECD\u0301mb\xE0",
+    array: "akop\u1ECD"
+  };
+  return (issue2) => {
+    switch (issue2.code) {
+      case "invalid_type": {
+        const expected = TypeDictionary[issue2.expected] ?? issue2.expected;
+        const receivedType = parsedType(issue2.input);
+        const received = TypeDictionary[receivedType] ?? receivedType;
+        if (/^[A-Z]/.test(issue2.expected)) {
+          return `\xCCb\xE1w\u1ECDl\xE9 a\u1E63\xEC\u1E63e: a n\xED l\xE1ti fi instanceof ${issue2.expected}, \xE0m\u1ECD\u0300 a r\xED ${received}`;
+        }
+        return `\xCCb\xE1w\u1ECDl\xE9 a\u1E63\xEC\u1E63e: a n\xED l\xE1ti fi ${expected}, \xE0m\u1ECD\u0300 a r\xED ${received}`;
+      }
+      case "invalid_value":
+        if (issue2.values.length === 1)
+          return `\xCCb\xE1w\u1ECDl\xE9 a\u1E63\xEC\u1E63e: a n\xED l\xE1ti fi ${stringifyPrimitive(issue2.values[0])}`;
+        return `\xC0\u1E63\xE0y\xE0n a\u1E63\xEC\u1E63e: yan \u1ECD\u0300kan l\xE1ra ${joinValues(issue2.values, "|")}`;
+      case "too_big": {
+        const adj = issue2.inclusive ? "<=" : "<";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `T\xF3 p\u1ECD\u0300 j\xF9: a n\xED l\xE1ti j\u1EB9\u0301 p\xE9 ${issue2.origin ?? "iye"} ${sizing.verb} ${adj}${issue2.maximum} ${sizing.unit}`;
+        return `T\xF3 p\u1ECD\u0300 j\xF9: a n\xED l\xE1ti j\u1EB9\u0301 ${adj}${issue2.maximum}`;
+      }
+      case "too_small": {
+        const adj = issue2.inclusive ? ">=" : ">";
+        const sizing = getSizing(issue2.origin);
+        if (sizing)
+          return `K\xE9r\xE9 ju: a n\xED l\xE1ti j\u1EB9\u0301 p\xE9 ${issue2.origin} ${sizing.verb} ${adj}${issue2.minimum} ${sizing.unit}`;
+        return `K\xE9r\xE9 ju: a n\xED l\xE1ti j\u1EB9\u0301 ${adj}${issue2.minimum}`;
+      }
+      case "invalid_format": {
+        const _issue = issue2;
+        if (_issue.format === "starts_with")
+          return `\u1ECC\u0300r\u1ECD\u0300 a\u1E63\xEC\u1E63e: gb\u1ECD\u0301d\u1ECD\u0300 b\u1EB9\u0300r\u1EB9\u0300 p\u1EB9\u0300l\xFA "${_issue.prefix}"`;
+        if (_issue.format === "ends_with")
+          return `\u1ECC\u0300r\u1ECD\u0300 a\u1E63\xEC\u1E63e: gb\u1ECD\u0301d\u1ECD\u0300 par\xED p\u1EB9\u0300l\xFA "${_issue.suffix}"`;
+        if (_issue.format === "includes")
+          return `\u1ECC\u0300r\u1ECD\u0300 a\u1E63\xEC\u1E63e: gb\u1ECD\u0301d\u1ECD\u0300 n\xED "${_issue.includes}"`;
+        if (_issue.format === "regex")
+          return `\u1ECC\u0300r\u1ECD\u0300 a\u1E63\xEC\u1E63e: gb\u1ECD\u0301d\u1ECD\u0300 b\xE1 \xE0p\u1EB9\u1EB9r\u1EB9 mu ${_issue.pattern}`;
+        return `A\u1E63\xEC\u1E63e: ${FormatDictionary[_issue.format] ?? issue2.format}`;
+      }
+      case "not_multiple_of":
+        return `N\u1ECD\u0301mb\xE0 a\u1E63\xEC\u1E63e: gb\u1ECD\u0301d\u1ECD\u0300 j\u1EB9\u0301 \xE8y\xE0 p\xEDp\xEDn ti ${issue2.divisor}`;
+      case "unrecognized_keys":
+        return `B\u1ECDt\xECn\xEC \xE0\xECm\u1ECD\u0300: ${joinValues(issue2.keys, ", ")}`;
+      case "invalid_key":
+        return `B\u1ECDt\xECn\xEC a\u1E63\xEC\u1E63e n\xEDn\xFA ${issue2.origin}`;
+      case "invalid_union":
+        return "\xCCb\xE1w\u1ECDl\xE9 a\u1E63\xEC\u1E63e";
+      case "invalid_element":
+        return `Iye a\u1E63\xEC\u1E63e n\xEDn\xFA ${issue2.origin}`;
+      default:
+        return "\xCCb\xE1w\u1ECDl\xE9 a\u1E63\xEC\u1E63e";
+    }
+  };
+}, "error");
+function yo_default() {
+  return {
+    localeError: error50()
+  };
+}
+__name(yo_default, "default");
+
 // node_modules/zod/v4/core/registries.js
 var _a2;
+var $output = /* @__PURE__ */ Symbol("ZodOutput");
+var $input = /* @__PURE__ */ Symbol("ZodInput");
 var $ZodRegistry = class {
   static {
     __name(this, "$ZodRegistry");
@@ -16451,10 +28252,10 @@ var $ZodRegistry = class {
     this._idmap = /* @__PURE__ */ new Map();
   }
   add(schema, ..._meta) {
-    const meta2 = _meta[0];
-    this._map.set(schema, meta2);
-    if (meta2 && typeof meta2 === "object" && "id" in meta2) {
-      this._idmap.set(meta2.id, schema);
+    const meta3 = _meta[0];
+    this._map.set(schema, meta3);
+    if (meta3 && typeof meta3 === "object" && "id" in meta3) {
+      this._idmap.set(meta3.id, schema);
     }
     return this;
   }
@@ -16464,9 +28265,9 @@ var $ZodRegistry = class {
     return this;
   }
   remove(schema) {
-    const meta2 = this._map.get(schema);
-    if (meta2 && typeof meta2 === "object" && "id" in meta2) {
-      this._idmap.delete(meta2.id);
+    const meta3 = this._map.get(schema);
+    if (meta3 && typeof meta3 === "object" && "id" in meta3) {
+      this._idmap.delete(meta3.id);
     }
     this._map.delete(schema);
     return this;
@@ -16501,6 +28302,15 @@ function _string(Class2, params) {
   });
 }
 __name(_string, "_string");
+// @__NO_SIDE_EFFECTS__
+function _coercedString(Class2, params) {
+  return new Class2({
+    type: "string",
+    coerce: true,
+    ...normalizeParams(params)
+  });
+}
+__name(_coercedString, "_coercedString");
 // @__NO_SIDE_EFFECTS__
 function _email(Class2, params) {
   return new Class2({
@@ -16681,6 +28491,17 @@ function _ipv6(Class2, params) {
 }
 __name(_ipv6, "_ipv6");
 // @__NO_SIDE_EFFECTS__
+function _mac(Class2, params) {
+  return new Class2({
+    type: "string",
+    format: "mac",
+    check: "string_format",
+    abort: false,
+    ...normalizeParams(params)
+  });
+}
+__name(_mac, "_mac");
+// @__NO_SIDE_EFFECTS__
 function _cidrv4(Class2, params) {
   return new Class2({
     type: "string",
@@ -16746,6 +28567,13 @@ function _jwt(Class2, params) {
   });
 }
 __name(_jwt, "_jwt");
+var TimePrecision = {
+  Any: null,
+  Minute: -1,
+  Second: 0,
+  Millisecond: 3,
+  Microsecond: 6
+};
 // @__NO_SIDE_EFFECTS__
 function _isoDateTime(Class2, params) {
   return new Class2({
@@ -16800,6 +28628,16 @@ function _number(Class2, params) {
 }
 __name(_number, "_number");
 // @__NO_SIDE_EFFECTS__
+function _coercedNumber(Class2, params) {
+  return new Class2({
+    type: "number",
+    coerce: true,
+    checks: [],
+    ...normalizeParams(params)
+  });
+}
+__name(_coercedNumber, "_coercedNumber");
+// @__NO_SIDE_EFFECTS__
 function _int(Class2, params) {
   return new Class2({
     type: "number",
@@ -16811,6 +28649,50 @@ function _int(Class2, params) {
 }
 __name(_int, "_int");
 // @__NO_SIDE_EFFECTS__
+function _float32(Class2, params) {
+  return new Class2({
+    type: "number",
+    check: "number_format",
+    abort: false,
+    format: "float32",
+    ...normalizeParams(params)
+  });
+}
+__name(_float32, "_float32");
+// @__NO_SIDE_EFFECTS__
+function _float64(Class2, params) {
+  return new Class2({
+    type: "number",
+    check: "number_format",
+    abort: false,
+    format: "float64",
+    ...normalizeParams(params)
+  });
+}
+__name(_float64, "_float64");
+// @__NO_SIDE_EFFECTS__
+function _int32(Class2, params) {
+  return new Class2({
+    type: "number",
+    check: "number_format",
+    abort: false,
+    format: "int32",
+    ...normalizeParams(params)
+  });
+}
+__name(_int32, "_int32");
+// @__NO_SIDE_EFFECTS__
+function _uint32(Class2, params) {
+  return new Class2({
+    type: "number",
+    check: "number_format",
+    abort: false,
+    format: "uint32",
+    ...normalizeParams(params)
+  });
+}
+__name(_uint32, "_uint32");
+// @__NO_SIDE_EFFECTS__
 function _boolean(Class2, params) {
   return new Class2({
     type: "boolean",
@@ -16819,6 +28701,70 @@ function _boolean(Class2, params) {
 }
 __name(_boolean, "_boolean");
 // @__NO_SIDE_EFFECTS__
+function _coercedBoolean(Class2, params) {
+  return new Class2({
+    type: "boolean",
+    coerce: true,
+    ...normalizeParams(params)
+  });
+}
+__name(_coercedBoolean, "_coercedBoolean");
+// @__NO_SIDE_EFFECTS__
+function _bigint(Class2, params) {
+  return new Class2({
+    type: "bigint",
+    ...normalizeParams(params)
+  });
+}
+__name(_bigint, "_bigint");
+// @__NO_SIDE_EFFECTS__
+function _coercedBigint(Class2, params) {
+  return new Class2({
+    type: "bigint",
+    coerce: true,
+    ...normalizeParams(params)
+  });
+}
+__name(_coercedBigint, "_coercedBigint");
+// @__NO_SIDE_EFFECTS__
+function _int64(Class2, params) {
+  return new Class2({
+    type: "bigint",
+    check: "bigint_format",
+    abort: false,
+    format: "int64",
+    ...normalizeParams(params)
+  });
+}
+__name(_int64, "_int64");
+// @__NO_SIDE_EFFECTS__
+function _uint64(Class2, params) {
+  return new Class2({
+    type: "bigint",
+    check: "bigint_format",
+    abort: false,
+    format: "uint64",
+    ...normalizeParams(params)
+  });
+}
+__name(_uint64, "_uint64");
+// @__NO_SIDE_EFFECTS__
+function _symbol(Class2, params) {
+  return new Class2({
+    type: "symbol",
+    ...normalizeParams(params)
+  });
+}
+__name(_symbol, "_symbol");
+// @__NO_SIDE_EFFECTS__
+function _undefined2(Class2, params) {
+  return new Class2({
+    type: "undefined",
+    ...normalizeParams(params)
+  });
+}
+__name(_undefined2, "_undefined");
+// @__NO_SIDE_EFFECTS__
 function _null2(Class2, params) {
   return new Class2({
     type: "null",
@@ -16826,6 +28772,13 @@ function _null2(Class2, params) {
   });
 }
 __name(_null2, "_null");
+// @__NO_SIDE_EFFECTS__
+function _any(Class2) {
+  return new Class2({
+    type: "any"
+  });
+}
+__name(_any, "_any");
 // @__NO_SIDE_EFFECTS__
 function _unknown(Class2) {
   return new Class2({
@@ -16841,6 +28794,39 @@ function _never(Class2, params) {
   });
 }
 __name(_never, "_never");
+// @__NO_SIDE_EFFECTS__
+function _void(Class2, params) {
+  return new Class2({
+    type: "void",
+    ...normalizeParams(params)
+  });
+}
+__name(_void, "_void");
+// @__NO_SIDE_EFFECTS__
+function _date(Class2, params) {
+  return new Class2({
+    type: "date",
+    ...normalizeParams(params)
+  });
+}
+__name(_date, "_date");
+// @__NO_SIDE_EFFECTS__
+function _coercedDate(Class2, params) {
+  return new Class2({
+    type: "date",
+    coerce: true,
+    ...normalizeParams(params)
+  });
+}
+__name(_coercedDate, "_coercedDate");
+// @__NO_SIDE_EFFECTS__
+function _nan(Class2, params) {
+  return new Class2({
+    type: "nan",
+    ...normalizeParams(params)
+  });
+}
+__name(_nan, "_nan");
 // @__NO_SIDE_EFFECTS__
 function _lt(value, params) {
   return new $ZodCheckLessThan({
@@ -16882,6 +28868,26 @@ function _gte(value, params) {
 }
 __name(_gte, "_gte");
 // @__NO_SIDE_EFFECTS__
+function _positive(params) {
+  return /* @__PURE__ */ _gt(0, params);
+}
+__name(_positive, "_positive");
+// @__NO_SIDE_EFFECTS__
+function _negative(params) {
+  return /* @__PURE__ */ _lt(0, params);
+}
+__name(_negative, "_negative");
+// @__NO_SIDE_EFFECTS__
+function _nonpositive(params) {
+  return /* @__PURE__ */ _lte(0, params);
+}
+__name(_nonpositive, "_nonpositive");
+// @__NO_SIDE_EFFECTS__
+function _nonnegative(params) {
+  return /* @__PURE__ */ _gte(0, params);
+}
+__name(_nonnegative, "_nonnegative");
+// @__NO_SIDE_EFFECTS__
 function _multipleOf(value, params) {
   return new $ZodCheckMultipleOf({
     check: "multiple_of",
@@ -16890,6 +28896,33 @@ function _multipleOf(value, params) {
   });
 }
 __name(_multipleOf, "_multipleOf");
+// @__NO_SIDE_EFFECTS__
+function _maxSize(maximum, params) {
+  return new $ZodCheckMaxSize({
+    check: "max_size",
+    ...normalizeParams(params),
+    maximum
+  });
+}
+__name(_maxSize, "_maxSize");
+// @__NO_SIDE_EFFECTS__
+function _minSize(minimum, params) {
+  return new $ZodCheckMinSize({
+    check: "min_size",
+    ...normalizeParams(params),
+    minimum
+  });
+}
+__name(_minSize, "_minSize");
+// @__NO_SIDE_EFFECTS__
+function _size(size, params) {
+  return new $ZodCheckSizeEquals({
+    check: "size_equals",
+    ...normalizeParams(params),
+    size
+  });
+}
+__name(_size, "_size");
 // @__NO_SIDE_EFFECTS__
 function _maxLength(maximum, params) {
   const ch = new $ZodCheckMaxLength({
@@ -16977,6 +29010,25 @@ function _endsWith(suffix, params) {
 }
 __name(_endsWith, "_endsWith");
 // @__NO_SIDE_EFFECTS__
+function _property(property, schema, params) {
+  return new $ZodCheckProperty({
+    check: "property",
+    property,
+    schema,
+    ...normalizeParams(params)
+  });
+}
+__name(_property, "_property");
+// @__NO_SIDE_EFFECTS__
+function _mime(types, params) {
+  return new $ZodCheckMimeType({
+    check: "mime_type",
+    mime: types,
+    ...normalizeParams(params)
+  });
+}
+__name(_mime, "_mime");
+// @__NO_SIDE_EFFECTS__
 function _overwrite(tx) {
   return new $ZodCheckOverwrite({
     check: "overwrite",
@@ -17021,6 +29073,224 @@ function _array(Class2, element, params) {
   });
 }
 __name(_array, "_array");
+// @__NO_SIDE_EFFECTS__
+function _union(Class2, options, params) {
+  return new Class2({
+    type: "union",
+    options,
+    ...normalizeParams(params)
+  });
+}
+__name(_union, "_union");
+function _xor(Class2, options, params) {
+  return new Class2({
+    type: "union",
+    options,
+    inclusive: false,
+    ...normalizeParams(params)
+  });
+}
+__name(_xor, "_xor");
+// @__NO_SIDE_EFFECTS__
+function _discriminatedUnion(Class2, discriminator, options, params) {
+  return new Class2({
+    type: "union",
+    options,
+    discriminator,
+    ...normalizeParams(params)
+  });
+}
+__name(_discriminatedUnion, "_discriminatedUnion");
+// @__NO_SIDE_EFFECTS__
+function _intersection(Class2, left, right) {
+  return new Class2({
+    type: "intersection",
+    left,
+    right
+  });
+}
+__name(_intersection, "_intersection");
+// @__NO_SIDE_EFFECTS__
+function _tuple(Class2, items, _paramsOrRest, _params) {
+  const hasRest = _paramsOrRest instanceof $ZodType;
+  const params = hasRest ? _params : _paramsOrRest;
+  const rest = hasRest ? _paramsOrRest : null;
+  return new Class2({
+    type: "tuple",
+    items,
+    rest,
+    ...normalizeParams(params)
+  });
+}
+__name(_tuple, "_tuple");
+// @__NO_SIDE_EFFECTS__
+function _record(Class2, keyType, valueType, params) {
+  return new Class2({
+    type: "record",
+    keyType,
+    valueType,
+    ...normalizeParams(params)
+  });
+}
+__name(_record, "_record");
+// @__NO_SIDE_EFFECTS__
+function _map(Class2, keyType, valueType, params) {
+  return new Class2({
+    type: "map",
+    keyType,
+    valueType,
+    ...normalizeParams(params)
+  });
+}
+__name(_map, "_map");
+// @__NO_SIDE_EFFECTS__
+function _set(Class2, valueType, params) {
+  return new Class2({
+    type: "set",
+    valueType,
+    ...normalizeParams(params)
+  });
+}
+__name(_set, "_set");
+// @__NO_SIDE_EFFECTS__
+function _enum(Class2, values, params) {
+  const entries = Array.isArray(values) ? Object.fromEntries(values.map((v) => [v, v])) : values;
+  return new Class2({
+    type: "enum",
+    entries,
+    ...normalizeParams(params)
+  });
+}
+__name(_enum, "_enum");
+// @__NO_SIDE_EFFECTS__
+function _nativeEnum(Class2, entries, params) {
+  return new Class2({
+    type: "enum",
+    entries,
+    ...normalizeParams(params)
+  });
+}
+__name(_nativeEnum, "_nativeEnum");
+// @__NO_SIDE_EFFECTS__
+function _literal(Class2, value, params) {
+  return new Class2({
+    type: "literal",
+    values: Array.isArray(value) ? value : [value],
+    ...normalizeParams(params)
+  });
+}
+__name(_literal, "_literal");
+// @__NO_SIDE_EFFECTS__
+function _file(Class2, params) {
+  return new Class2({
+    type: "file",
+    ...normalizeParams(params)
+  });
+}
+__name(_file, "_file");
+// @__NO_SIDE_EFFECTS__
+function _transform(Class2, fn) {
+  return new Class2({
+    type: "transform",
+    transform: fn
+  });
+}
+__name(_transform, "_transform");
+// @__NO_SIDE_EFFECTS__
+function _optional(Class2, innerType) {
+  return new Class2({
+    type: "optional",
+    innerType
+  });
+}
+__name(_optional, "_optional");
+// @__NO_SIDE_EFFECTS__
+function _nullable(Class2, innerType) {
+  return new Class2({
+    type: "nullable",
+    innerType
+  });
+}
+__name(_nullable, "_nullable");
+// @__NO_SIDE_EFFECTS__
+function _default(Class2, innerType, defaultValue) {
+  return new Class2({
+    type: "default",
+    innerType,
+    get defaultValue() {
+      return typeof defaultValue === "function" ? defaultValue() : shallowClone(defaultValue);
+    }
+  });
+}
+__name(_default, "_default");
+// @__NO_SIDE_EFFECTS__
+function _nonoptional(Class2, innerType, params) {
+  return new Class2({
+    type: "nonoptional",
+    innerType,
+    ...normalizeParams(params)
+  });
+}
+__name(_nonoptional, "_nonoptional");
+// @__NO_SIDE_EFFECTS__
+function _success(Class2, innerType) {
+  return new Class2({
+    type: "success",
+    innerType
+  });
+}
+__name(_success, "_success");
+// @__NO_SIDE_EFFECTS__
+function _catch(Class2, innerType, catchValue) {
+  return new Class2({
+    type: "catch",
+    innerType,
+    catchValue: typeof catchValue === "function" ? catchValue : () => catchValue
+  });
+}
+__name(_catch, "_catch");
+// @__NO_SIDE_EFFECTS__
+function _pipe(Class2, in_, out) {
+  return new Class2({
+    type: "pipe",
+    in: in_,
+    out
+  });
+}
+__name(_pipe, "_pipe");
+// @__NO_SIDE_EFFECTS__
+function _readonly(Class2, innerType) {
+  return new Class2({
+    type: "readonly",
+    innerType
+  });
+}
+__name(_readonly, "_readonly");
+// @__NO_SIDE_EFFECTS__
+function _templateLiteral(Class2, parts, params) {
+  return new Class2({
+    type: "template_literal",
+    parts,
+    ...normalizeParams(params)
+  });
+}
+__name(_templateLiteral, "_templateLiteral");
+// @__NO_SIDE_EFFECTS__
+function _lazy(Class2, getter) {
+  return new Class2({
+    type: "lazy",
+    getter
+  });
+}
+__name(_lazy, "_lazy");
+// @__NO_SIDE_EFFECTS__
+function _promise(Class2, innerType) {
+  return new Class2({
+    type: "promise",
+    innerType
+  });
+}
+__name(_promise, "_promise");
 // @__NO_SIDE_EFFECTS__
 function _custom(Class2, fn, _params) {
   const norm = normalizeParams(_params);
@@ -17077,6 +29347,104 @@ function _check(fn, params) {
   return ch;
 }
 __name(_check, "_check");
+// @__NO_SIDE_EFFECTS__
+function describe(description) {
+  const ch = new $ZodCheck({ check: "describe" });
+  ch._zod.onattach = [
+    (inst) => {
+      const existing = globalRegistry.get(inst) ?? {};
+      globalRegistry.add(inst, { ...existing, description });
+    }
+  ];
+  ch._zod.check = () => {
+  };
+  return ch;
+}
+__name(describe, "describe");
+// @__NO_SIDE_EFFECTS__
+function meta(metadata) {
+  const ch = new $ZodCheck({ check: "meta" });
+  ch._zod.onattach = [
+    (inst) => {
+      const existing = globalRegistry.get(inst) ?? {};
+      globalRegistry.add(inst, { ...existing, ...metadata });
+    }
+  ];
+  ch._zod.check = () => {
+  };
+  return ch;
+}
+__name(meta, "meta");
+// @__NO_SIDE_EFFECTS__
+function _stringbool(Classes, _params) {
+  const params = normalizeParams(_params);
+  let truthyArray = params.truthy ?? ["true", "1", "yes", "on", "y", "enabled"];
+  let falsyArray = params.falsy ?? ["false", "0", "no", "off", "n", "disabled"];
+  if (params.case !== "sensitive") {
+    truthyArray = truthyArray.map((v) => typeof v === "string" ? v.toLowerCase() : v);
+    falsyArray = falsyArray.map((v) => typeof v === "string" ? v.toLowerCase() : v);
+  }
+  const truthySet = new Set(truthyArray);
+  const falsySet = new Set(falsyArray);
+  const _Codec = Classes.Codec ?? $ZodCodec;
+  const _Boolean = Classes.Boolean ?? $ZodBoolean;
+  const _String = Classes.String ?? $ZodString;
+  const stringSchema = new _String({ type: "string", error: params.error });
+  const booleanSchema = new _Boolean({ type: "boolean", error: params.error });
+  const codec2 = new _Codec({
+    type: "pipe",
+    in: stringSchema,
+    out: booleanSchema,
+    transform: /* @__PURE__ */ __name(((input, payload) => {
+      let data = input;
+      if (params.case !== "sensitive")
+        data = data.toLowerCase();
+      if (truthySet.has(data)) {
+        return true;
+      } else if (falsySet.has(data)) {
+        return false;
+      } else {
+        payload.issues.push({
+          code: "invalid_value",
+          expected: "stringbool",
+          values: [...truthySet, ...falsySet],
+          input: payload.value,
+          inst: codec2,
+          continue: false
+        });
+        return {};
+      }
+    }), "transform"),
+    reverseTransform: /* @__PURE__ */ __name(((input, _payload) => {
+      if (input === true) {
+        return truthyArray[0] || "true";
+      } else {
+        return falsyArray[0] || "false";
+      }
+    }), "reverseTransform"),
+    error: params.error
+  });
+  return codec2;
+}
+__name(_stringbool, "_stringbool");
+// @__NO_SIDE_EFFECTS__
+function _stringFormat(Class2, format, fnOrRegex, _params = {}) {
+  const params = normalizeParams(_params);
+  const def = {
+    ...normalizeParams(_params),
+    check: "string_format",
+    type: "string",
+    format,
+    fn: typeof fnOrRegex === "function" ? fnOrRegex : (val) => fnOrRegex.test(val),
+    ...params
+  };
+  if (fnOrRegex instanceof RegExp) {
+    def.pattern = fnOrRegex;
+  }
+  const inst = new Class2(def);
+  return inst;
+}
+__name(_stringFormat, "_stringFormat");
 
 // node_modules/zod/v4/core/to-json-schema.js
 function initializeContext(params) {
@@ -17142,9 +29510,9 @@ function process2(schema, ctx, _params = { path: [], schemaPath: [] }) {
       ctx.seen.get(parent).isParent = true;
     }
   }
-  const meta2 = ctx.metadataRegistry.get(schema);
-  if (meta2)
-    Object.assign(result.schema, meta2);
+  const meta3 = ctx.metadataRegistry.get(schema);
+  if (meta3)
+    Object.assign(result.schema, meta3);
   if (ctx.io === "input" && isTransforming(schema)) {
     delete result.schema.examples;
     delete result.schema.default;
@@ -17452,29 +29820,29 @@ var formatMap = {
   // do not set
 };
 var stringProcessor = /* @__PURE__ */ __name((schema, ctx, _json, _params) => {
-  const json = _json;
-  json.type = "string";
+  const json2 = _json;
+  json2.type = "string";
   const { minimum, maximum, format, patterns, contentEncoding } = schema._zod.bag;
   if (typeof minimum === "number")
-    json.minLength = minimum;
+    json2.minLength = minimum;
   if (typeof maximum === "number")
-    json.maxLength = maximum;
+    json2.maxLength = maximum;
   if (format) {
-    json.format = formatMap[format] ?? format;
-    if (json.format === "")
-      delete json.format;
+    json2.format = formatMap[format] ?? format;
+    if (json2.format === "")
+      delete json2.format;
     if (format === "time") {
-      delete json.format;
+      delete json2.format;
     }
   }
   if (contentEncoding)
-    json.contentEncoding = contentEncoding;
+    json2.contentEncoding = contentEncoding;
   if (patterns && patterns.size > 0) {
     const regexes = [...patterns];
     if (regexes.length === 1)
-      json.pattern = regexes[0].source;
+      json2.pattern = regexes[0].source;
     else if (regexes.length > 1) {
-      json.allOf = [
+      json2.allOf = [
         ...regexes.map((regex) => ({
           ...ctx.target === "draft-07" || ctx.target === "draft-04" || ctx.target === "openapi-3.0" ? { type: "string" } : {},
           pattern: regex.source
@@ -17484,65 +29852,92 @@ var stringProcessor = /* @__PURE__ */ __name((schema, ctx, _json, _params) => {
   }
 }, "stringProcessor");
 var numberProcessor = /* @__PURE__ */ __name((schema, ctx, _json, _params) => {
-  const json = _json;
+  const json2 = _json;
   const { minimum, maximum, format, multipleOf, exclusiveMaximum, exclusiveMinimum } = schema._zod.bag;
   if (typeof format === "string" && format.includes("int"))
-    json.type = "integer";
+    json2.type = "integer";
   else
-    json.type = "number";
+    json2.type = "number";
   const exMin = typeof exclusiveMinimum === "number" && exclusiveMinimum >= (minimum ?? Number.NEGATIVE_INFINITY);
   const exMax = typeof exclusiveMaximum === "number" && exclusiveMaximum <= (maximum ?? Number.POSITIVE_INFINITY);
   const legacy = ctx.target === "draft-04" || ctx.target === "openapi-3.0";
   if (exMin) {
     if (legacy) {
-      json.minimum = exclusiveMinimum;
-      json.exclusiveMinimum = true;
+      json2.minimum = exclusiveMinimum;
+      json2.exclusiveMinimum = true;
     } else {
-      json.exclusiveMinimum = exclusiveMinimum;
+      json2.exclusiveMinimum = exclusiveMinimum;
     }
   } else if (typeof minimum === "number") {
-    json.minimum = minimum;
+    json2.minimum = minimum;
   }
   if (exMax) {
     if (legacy) {
-      json.maximum = exclusiveMaximum;
-      json.exclusiveMaximum = true;
+      json2.maximum = exclusiveMaximum;
+      json2.exclusiveMaximum = true;
     } else {
-      json.exclusiveMaximum = exclusiveMaximum;
+      json2.exclusiveMaximum = exclusiveMaximum;
     }
   } else if (typeof maximum === "number") {
-    json.maximum = maximum;
+    json2.maximum = maximum;
   }
   if (typeof multipleOf === "number")
-    json.multipleOf = multipleOf;
+    json2.multipleOf = multipleOf;
 }, "numberProcessor");
-var booleanProcessor = /* @__PURE__ */ __name((_schema, _ctx, json, _params) => {
-  json.type = "boolean";
+var booleanProcessor = /* @__PURE__ */ __name((_schema, _ctx, json2, _params) => {
+  json2.type = "boolean";
 }, "booleanProcessor");
-var nullProcessor = /* @__PURE__ */ __name((_schema, ctx, json, _params) => {
+var bigintProcessor = /* @__PURE__ */ __name((_schema, ctx, _json, _params) => {
+  if (ctx.unrepresentable === "throw") {
+    throw new Error("BigInt cannot be represented in JSON Schema");
+  }
+}, "bigintProcessor");
+var symbolProcessor = /* @__PURE__ */ __name((_schema, ctx, _json, _params) => {
+  if (ctx.unrepresentable === "throw") {
+    throw new Error("Symbols cannot be represented in JSON Schema");
+  }
+}, "symbolProcessor");
+var nullProcessor = /* @__PURE__ */ __name((_schema, ctx, json2, _params) => {
   if (ctx.target === "openapi-3.0") {
-    json.type = "string";
-    json.nullable = true;
-    json.enum = [null];
+    json2.type = "string";
+    json2.nullable = true;
+    json2.enum = [null];
   } else {
-    json.type = "null";
+    json2.type = "null";
   }
 }, "nullProcessor");
-var neverProcessor = /* @__PURE__ */ __name((_schema, _ctx, json, _params) => {
-  json.not = {};
+var undefinedProcessor = /* @__PURE__ */ __name((_schema, ctx, _json, _params) => {
+  if (ctx.unrepresentable === "throw") {
+    throw new Error("Undefined cannot be represented in JSON Schema");
+  }
+}, "undefinedProcessor");
+var voidProcessor = /* @__PURE__ */ __name((_schema, ctx, _json, _params) => {
+  if (ctx.unrepresentable === "throw") {
+    throw new Error("Void cannot be represented in JSON Schema");
+  }
+}, "voidProcessor");
+var neverProcessor = /* @__PURE__ */ __name((_schema, _ctx, json2, _params) => {
+  json2.not = {};
 }, "neverProcessor");
+var anyProcessor = /* @__PURE__ */ __name((_schema, _ctx, _json, _params) => {
+}, "anyProcessor");
 var unknownProcessor = /* @__PURE__ */ __name((_schema, _ctx, _json, _params) => {
 }, "unknownProcessor");
-var enumProcessor = /* @__PURE__ */ __name((schema, _ctx, json, _params) => {
+var dateProcessor = /* @__PURE__ */ __name((_schema, ctx, _json, _params) => {
+  if (ctx.unrepresentable === "throw") {
+    throw new Error("Date cannot be represented in JSON Schema");
+  }
+}, "dateProcessor");
+var enumProcessor = /* @__PURE__ */ __name((schema, _ctx, json2, _params) => {
   const def = schema._zod.def;
   const values = getEnumValues(def.entries);
   if (values.every((v) => typeof v === "number"))
-    json.type = "number";
+    json2.type = "number";
   if (values.every((v) => typeof v === "string"))
-    json.type = "string";
-  json.enum = values;
+    json2.type = "string";
+  json2.enum = values;
 }, "enumProcessor");
-var literalProcessor = /* @__PURE__ */ __name((schema, ctx, json, _params) => {
+var literalProcessor = /* @__PURE__ */ __name((schema, ctx, json2, _params) => {
   const def = schema._zod.def;
   const vals = [];
   for (const val of def.values) {
@@ -17564,56 +29959,111 @@ var literalProcessor = /* @__PURE__ */ __name((schema, ctx, json, _params) => {
   if (vals.length === 0) {
   } else if (vals.length === 1) {
     const val = vals[0];
-    json.type = val === null ? "null" : typeof val;
+    json2.type = val === null ? "null" : typeof val;
     if (ctx.target === "draft-04" || ctx.target === "openapi-3.0") {
-      json.enum = [val];
+      json2.enum = [val];
     } else {
-      json.const = val;
+      json2.const = val;
     }
   } else {
     if (vals.every((v) => typeof v === "number"))
-      json.type = "number";
+      json2.type = "number";
     if (vals.every((v) => typeof v === "string"))
-      json.type = "string";
+      json2.type = "string";
     if (vals.every((v) => typeof v === "boolean"))
-      json.type = "boolean";
+      json2.type = "boolean";
     if (vals.every((v) => v === null))
-      json.type = "null";
-    json.enum = vals;
+      json2.type = "null";
+    json2.enum = vals;
   }
 }, "literalProcessor");
+var nanProcessor = /* @__PURE__ */ __name((_schema, ctx, _json, _params) => {
+  if (ctx.unrepresentable === "throw") {
+    throw new Error("NaN cannot be represented in JSON Schema");
+  }
+}, "nanProcessor");
+var templateLiteralProcessor = /* @__PURE__ */ __name((schema, _ctx, json2, _params) => {
+  const _json = json2;
+  const pattern = schema._zod.pattern;
+  if (!pattern)
+    throw new Error("Pattern not found in template literal");
+  _json.type = "string";
+  _json.pattern = pattern.source;
+}, "templateLiteralProcessor");
+var fileProcessor = /* @__PURE__ */ __name((schema, _ctx, json2, _params) => {
+  const _json = json2;
+  const file2 = {
+    type: "string",
+    format: "binary",
+    contentEncoding: "binary"
+  };
+  const { minimum, maximum, mime } = schema._zod.bag;
+  if (minimum !== void 0)
+    file2.minLength = minimum;
+  if (maximum !== void 0)
+    file2.maxLength = maximum;
+  if (mime) {
+    if (mime.length === 1) {
+      file2.contentMediaType = mime[0];
+      Object.assign(_json, file2);
+    } else {
+      Object.assign(_json, file2);
+      _json.anyOf = mime.map((m) => ({ contentMediaType: m }));
+    }
+  } else {
+    Object.assign(_json, file2);
+  }
+}, "fileProcessor");
+var successProcessor = /* @__PURE__ */ __name((_schema, _ctx, json2, _params) => {
+  json2.type = "boolean";
+}, "successProcessor");
 var customProcessor = /* @__PURE__ */ __name((_schema, ctx, _json, _params) => {
   if (ctx.unrepresentable === "throw") {
     throw new Error("Custom types cannot be represented in JSON Schema");
   }
 }, "customProcessor");
+var functionProcessor = /* @__PURE__ */ __name((_schema, ctx, _json, _params) => {
+  if (ctx.unrepresentable === "throw") {
+    throw new Error("Function types cannot be represented in JSON Schema");
+  }
+}, "functionProcessor");
 var transformProcessor = /* @__PURE__ */ __name((_schema, ctx, _json, _params) => {
   if (ctx.unrepresentable === "throw") {
     throw new Error("Transforms cannot be represented in JSON Schema");
   }
 }, "transformProcessor");
+var mapProcessor = /* @__PURE__ */ __name((_schema, ctx, _json, _params) => {
+  if (ctx.unrepresentable === "throw") {
+    throw new Error("Map cannot be represented in JSON Schema");
+  }
+}, "mapProcessor");
+var setProcessor = /* @__PURE__ */ __name((_schema, ctx, _json, _params) => {
+  if (ctx.unrepresentable === "throw") {
+    throw new Error("Set cannot be represented in JSON Schema");
+  }
+}, "setProcessor");
 var arrayProcessor = /* @__PURE__ */ __name((schema, ctx, _json, params) => {
-  const json = _json;
+  const json2 = _json;
   const def = schema._zod.def;
   const { minimum, maximum } = schema._zod.bag;
   if (typeof minimum === "number")
-    json.minItems = minimum;
+    json2.minItems = minimum;
   if (typeof maximum === "number")
-    json.maxItems = maximum;
-  json.type = "array";
-  json.items = process2(def.element, ctx, {
+    json2.maxItems = maximum;
+  json2.type = "array";
+  json2.items = process2(def.element, ctx, {
     ...params,
     path: [...params.path, "items"]
   });
 }, "arrayProcessor");
 var objectProcessor = /* @__PURE__ */ __name((schema, ctx, _json, params) => {
-  const json = _json;
+  const json2 = _json;
   const def = schema._zod.def;
-  json.type = "object";
-  json.properties = {};
+  json2.type = "object";
+  json2.properties = {};
   const shape = def.shape;
   for (const key in shape) {
-    json.properties[key] = process2(shape[key], ctx, {
+    json2.properties[key] = process2(shape[key], ctx, {
       ...params,
       path: [...params.path, "properties", key]
     });
@@ -17628,21 +30078,21 @@ var objectProcessor = /* @__PURE__ */ __name((schema, ctx, _json, params) => {
     }
   }));
   if (requiredKeys.size > 0) {
-    json.required = Array.from(requiredKeys);
+    json2.required = Array.from(requiredKeys);
   }
   if (def.catchall?._zod.def.type === "never") {
-    json.additionalProperties = false;
+    json2.additionalProperties = false;
   } else if (!def.catchall) {
     if (ctx.io === "output")
-      json.additionalProperties = false;
+      json2.additionalProperties = false;
   } else if (def.catchall) {
-    json.additionalProperties = process2(def.catchall, ctx, {
+    json2.additionalProperties = process2(def.catchall, ctx, {
       ...params,
       path: [...params.path, "additionalProperties"]
     });
   }
 }, "objectProcessor");
-var unionProcessor = /* @__PURE__ */ __name((schema, ctx, json, params) => {
+var unionProcessor = /* @__PURE__ */ __name((schema, ctx, json2, params) => {
   const def = schema._zod.def;
   const isExclusive = def.inclusive === false;
   const options = def.options.map((x, i) => process2(x, ctx, {
@@ -17650,12 +30100,12 @@ var unionProcessor = /* @__PURE__ */ __name((schema, ctx, json, params) => {
     path: [...params.path, isExclusive ? "oneOf" : "anyOf", i]
   }));
   if (isExclusive) {
-    json.oneOf = options;
+    json2.oneOf = options;
   } else {
-    json.anyOf = options;
+    json2.anyOf = options;
   }
 }, "unionProcessor");
-var intersectionProcessor = /* @__PURE__ */ __name((schema, ctx, json, params) => {
+var intersectionProcessor = /* @__PURE__ */ __name((schema, ctx, json2, params) => {
   const def = schema._zod.def;
   const a = process2(def.left, ctx, {
     ...params,
@@ -17670,12 +30120,54 @@ var intersectionProcessor = /* @__PURE__ */ __name((schema, ctx, json, params) =
     ...isSimpleIntersection(a) ? a.allOf : [a],
     ...isSimpleIntersection(b) ? b.allOf : [b]
   ];
-  json.allOf = allOf;
+  json2.allOf = allOf;
 }, "intersectionProcessor");
-var recordProcessor = /* @__PURE__ */ __name((schema, ctx, _json, params) => {
-  const json = _json;
+var tupleProcessor = /* @__PURE__ */ __name((schema, ctx, _json, params) => {
+  const json2 = _json;
   const def = schema._zod.def;
-  json.type = "object";
+  json2.type = "array";
+  const prefixPath = ctx.target === "draft-2020-12" ? "prefixItems" : "items";
+  const restPath = ctx.target === "draft-2020-12" ? "items" : ctx.target === "openapi-3.0" ? "items" : "additionalItems";
+  const prefixItems = def.items.map((x, i) => process2(x, ctx, {
+    ...params,
+    path: [...params.path, prefixPath, i]
+  }));
+  const rest = def.rest ? process2(def.rest, ctx, {
+    ...params,
+    path: [...params.path, restPath, ...ctx.target === "openapi-3.0" ? [def.items.length] : []]
+  }) : null;
+  if (ctx.target === "draft-2020-12") {
+    json2.prefixItems = prefixItems;
+    if (rest) {
+      json2.items = rest;
+    }
+  } else if (ctx.target === "openapi-3.0") {
+    json2.items = {
+      anyOf: prefixItems
+    };
+    if (rest) {
+      json2.items.anyOf.push(rest);
+    }
+    json2.minItems = prefixItems.length;
+    if (!rest) {
+      json2.maxItems = prefixItems.length;
+    }
+  } else {
+    json2.items = prefixItems;
+    if (rest) {
+      json2.additionalItems = rest;
+    }
+  }
+  const { minimum, maximum } = schema._zod.bag;
+  if (typeof minimum === "number")
+    json2.minItems = minimum;
+  if (typeof maximum === "number")
+    json2.maxItems = maximum;
+}, "tupleProcessor");
+var recordProcessor = /* @__PURE__ */ __name((schema, ctx, _json, params) => {
+  const json2 = _json;
+  const def = schema._zod.def;
+  json2.type = "object";
   const keyType = def.keyType;
   const keyBag = keyType._zod.bag;
   const patterns = keyBag?.patterns;
@@ -17684,18 +30176,18 @@ var recordProcessor = /* @__PURE__ */ __name((schema, ctx, _json, params) => {
       ...params,
       path: [...params.path, "patternProperties", "*"]
     });
-    json.patternProperties = {};
+    json2.patternProperties = {};
     for (const pattern of patterns) {
-      json.patternProperties[pattern.source] = valueSchema;
+      json2.patternProperties[pattern.source] = valueSchema;
     }
   } else {
     if (ctx.target === "draft-07" || ctx.target === "draft-2020-12") {
-      json.propertyNames = process2(def.keyType, ctx, {
+      json2.propertyNames = process2(def.keyType, ctx, {
         ...params,
         path: [...params.path, "propertyNames"]
       });
     }
-    json.additionalProperties = process2(def.valueType, ctx, {
+    json2.additionalProperties = process2(def.valueType, ctx, {
       ...params,
       path: [...params.path, "additionalProperties"]
     });
@@ -17704,19 +30196,19 @@ var recordProcessor = /* @__PURE__ */ __name((schema, ctx, _json, params) => {
   if (keyValues) {
     const validKeyValues = [...keyValues].filter((v) => typeof v === "string" || typeof v === "number");
     if (validKeyValues.length > 0) {
-      json.required = validKeyValues;
+      json2.required = validKeyValues;
     }
   }
 }, "recordProcessor");
-var nullableProcessor = /* @__PURE__ */ __name((schema, ctx, json, params) => {
+var nullableProcessor = /* @__PURE__ */ __name((schema, ctx, json2, params) => {
   const def = schema._zod.def;
   const inner = process2(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
   if (ctx.target === "openapi-3.0") {
     seen.ref = def.innerType;
-    json.nullable = true;
+    json2.nullable = true;
   } else {
-    json.anyOf = [inner, { type: "null" }];
+    json2.anyOf = [inner, { type: "null" }];
   }
 }, "nullableProcessor");
 var nonoptionalProcessor = /* @__PURE__ */ __name((schema, ctx, _json, params) => {
@@ -17725,22 +30217,22 @@ var nonoptionalProcessor = /* @__PURE__ */ __name((schema, ctx, _json, params) =
   const seen = ctx.seen.get(schema);
   seen.ref = def.innerType;
 }, "nonoptionalProcessor");
-var defaultProcessor = /* @__PURE__ */ __name((schema, ctx, json, params) => {
+var defaultProcessor = /* @__PURE__ */ __name((schema, ctx, json2, params) => {
   const def = schema._zod.def;
   process2(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
   seen.ref = def.innerType;
-  json.default = JSON.parse(JSON.stringify(def.defaultValue));
+  json2.default = JSON.parse(JSON.stringify(def.defaultValue));
 }, "defaultProcessor");
-var prefaultProcessor = /* @__PURE__ */ __name((schema, ctx, json, params) => {
+var prefaultProcessor = /* @__PURE__ */ __name((schema, ctx, json2, params) => {
   const def = schema._zod.def;
   process2(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
   seen.ref = def.innerType;
   if (ctx.io === "input")
-    json._prefault = JSON.parse(JSON.stringify(def.defaultValue));
+    json2._prefault = JSON.parse(JSON.stringify(def.defaultValue));
 }, "prefaultProcessor");
-var catchProcessor = /* @__PURE__ */ __name((schema, ctx, json, params) => {
+var catchProcessor = /* @__PURE__ */ __name((schema, ctx, json2, params) => {
   const def = schema._zod.def;
   process2(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
@@ -17751,7 +30243,7 @@ var catchProcessor = /* @__PURE__ */ __name((schema, ctx, json, params) => {
   } catch {
     throw new Error("Dynamic catch values are not supported in JSON Schema");
   }
-  json.default = catchValue;
+  json2.default = catchValue;
 }, "catchProcessor");
 var pipeProcessor = /* @__PURE__ */ __name((schema, ctx, _json, params) => {
   const def = schema._zod.def;
@@ -17761,19 +30253,188 @@ var pipeProcessor = /* @__PURE__ */ __name((schema, ctx, _json, params) => {
   const seen = ctx.seen.get(schema);
   seen.ref = innerType;
 }, "pipeProcessor");
-var readonlyProcessor = /* @__PURE__ */ __name((schema, ctx, json, params) => {
+var readonlyProcessor = /* @__PURE__ */ __name((schema, ctx, json2, params) => {
   const def = schema._zod.def;
   process2(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
   seen.ref = def.innerType;
-  json.readOnly = true;
+  json2.readOnly = true;
 }, "readonlyProcessor");
+var promiseProcessor = /* @__PURE__ */ __name((schema, ctx, _json, params) => {
+  const def = schema._zod.def;
+  process2(def.innerType, ctx, params);
+  const seen = ctx.seen.get(schema);
+  seen.ref = def.innerType;
+}, "promiseProcessor");
 var optionalProcessor = /* @__PURE__ */ __name((schema, ctx, _json, params) => {
   const def = schema._zod.def;
   process2(def.innerType, ctx, params);
   const seen = ctx.seen.get(schema);
   seen.ref = def.innerType;
 }, "optionalProcessor");
+var lazyProcessor = /* @__PURE__ */ __name((schema, ctx, _json, params) => {
+  const innerType = schema._zod.innerType;
+  process2(innerType, ctx, params);
+  const seen = ctx.seen.get(schema);
+  seen.ref = innerType;
+}, "lazyProcessor");
+var allProcessors = {
+  string: stringProcessor,
+  number: numberProcessor,
+  boolean: booleanProcessor,
+  bigint: bigintProcessor,
+  symbol: symbolProcessor,
+  null: nullProcessor,
+  undefined: undefinedProcessor,
+  void: voidProcessor,
+  never: neverProcessor,
+  any: anyProcessor,
+  unknown: unknownProcessor,
+  date: dateProcessor,
+  enum: enumProcessor,
+  literal: literalProcessor,
+  nan: nanProcessor,
+  template_literal: templateLiteralProcessor,
+  file: fileProcessor,
+  success: successProcessor,
+  custom: customProcessor,
+  function: functionProcessor,
+  transform: transformProcessor,
+  map: mapProcessor,
+  set: setProcessor,
+  array: arrayProcessor,
+  object: objectProcessor,
+  union: unionProcessor,
+  intersection: intersectionProcessor,
+  tuple: tupleProcessor,
+  record: recordProcessor,
+  nullable: nullableProcessor,
+  nonoptional: nonoptionalProcessor,
+  default: defaultProcessor,
+  prefault: prefaultProcessor,
+  catch: catchProcessor,
+  pipe: pipeProcessor,
+  readonly: readonlyProcessor,
+  promise: promiseProcessor,
+  optional: optionalProcessor,
+  lazy: lazyProcessor
+};
+function toJSONSchema(input, params) {
+  if ("_idmap" in input) {
+    const registry2 = input;
+    const ctx2 = initializeContext({ ...params, processors: allProcessors });
+    const defs = {};
+    for (const entry of registry2._idmap.entries()) {
+      const [_, schema] = entry;
+      process2(schema, ctx2);
+    }
+    const schemas = {};
+    const external = {
+      registry: registry2,
+      uri: params?.uri,
+      defs
+    };
+    ctx2.external = external;
+    for (const entry of registry2._idmap.entries()) {
+      const [key, schema] = entry;
+      extractDefs(ctx2, schema);
+      schemas[key] = finalize(ctx2, schema);
+    }
+    if (Object.keys(defs).length > 0) {
+      const defsSegment = ctx2.target === "draft-2020-12" ? "$defs" : "definitions";
+      schemas.__shared = {
+        [defsSegment]: defs
+      };
+    }
+    return { schemas };
+  }
+  const ctx = initializeContext({ ...params, processors: allProcessors });
+  process2(input, ctx);
+  extractDefs(ctx, input);
+  return finalize(ctx, input);
+}
+__name(toJSONSchema, "toJSONSchema");
+
+// node_modules/zod/v4/core/json-schema-generator.js
+var JSONSchemaGenerator = class {
+  static {
+    __name(this, "JSONSchemaGenerator");
+  }
+  /** @deprecated Access via ctx instead */
+  get metadataRegistry() {
+    return this.ctx.metadataRegistry;
+  }
+  /** @deprecated Access via ctx instead */
+  get target() {
+    return this.ctx.target;
+  }
+  /** @deprecated Access via ctx instead */
+  get unrepresentable() {
+    return this.ctx.unrepresentable;
+  }
+  /** @deprecated Access via ctx instead */
+  get override() {
+    return this.ctx.override;
+  }
+  /** @deprecated Access via ctx instead */
+  get io() {
+    return this.ctx.io;
+  }
+  /** @deprecated Access via ctx instead */
+  get counter() {
+    return this.ctx.counter;
+  }
+  set counter(value) {
+    this.ctx.counter = value;
+  }
+  /** @deprecated Access via ctx instead */
+  get seen() {
+    return this.ctx.seen;
+  }
+  constructor(params) {
+    let normalizedTarget = params?.target ?? "draft-2020-12";
+    if (normalizedTarget === "draft-4")
+      normalizedTarget = "draft-04";
+    if (normalizedTarget === "draft-7")
+      normalizedTarget = "draft-07";
+    this.ctx = initializeContext({
+      processors: allProcessors,
+      target: normalizedTarget,
+      ...params?.metadata && { metadata: params.metadata },
+      ...params?.unrepresentable && { unrepresentable: params.unrepresentable },
+      ...params?.override && { override: params.override },
+      ...params?.io && { io: params.io }
+    });
+  }
+  /**
+   * Process a schema to prepare it for JSON Schema generation.
+   * This must be called before emit().
+   */
+  process(schema, _params = { path: [], schemaPath: [] }) {
+    return process2(schema, this.ctx, _params);
+  }
+  /**
+   * Emit the final JSON Schema after processing.
+   * Must call process() first.
+   */
+  emit(schema, _params) {
+    if (_params) {
+      if (_params.cycles)
+        this.ctx.cycles = _params.cycles;
+      if (_params.reused)
+        this.ctx.reused = _params.reused;
+      if (_params.external)
+        this.ctx.external = _params.external;
+    }
+    extractDefs(this.ctx, schema);
+    const result = finalize(this.ctx, schema);
+    const { "~standard": _, ...plainResult } = result;
+    return plainResult;
+  }
+};
+
+// node_modules/zod/v4/core/json-schema.js
+var json_schema_exports = {};
 
 // node_modules/@modelcontextprotocol/sdk/dist/esm/server/zod-compat.js
 function isZ4Schema(s) {
@@ -17841,6 +30502,454 @@ function getLiteralValue(schema) {
   return void 0;
 }
 __name(getLiteralValue, "getLiteralValue");
+
+// node_modules/zod/v4/classic/external.js
+var external_exports = {};
+__export(external_exports, {
+  $brand: () => $brand,
+  $input: () => $input,
+  $output: () => $output,
+  NEVER: () => NEVER,
+  TimePrecision: () => TimePrecision,
+  ZodAny: () => ZodAny,
+  ZodArray: () => ZodArray,
+  ZodBase64: () => ZodBase64,
+  ZodBase64URL: () => ZodBase64URL,
+  ZodBigInt: () => ZodBigInt,
+  ZodBigIntFormat: () => ZodBigIntFormat,
+  ZodBoolean: () => ZodBoolean,
+  ZodCIDRv4: () => ZodCIDRv4,
+  ZodCIDRv6: () => ZodCIDRv6,
+  ZodCUID: () => ZodCUID,
+  ZodCUID2: () => ZodCUID2,
+  ZodCatch: () => ZodCatch,
+  ZodCodec: () => ZodCodec,
+  ZodCustom: () => ZodCustom,
+  ZodCustomStringFormat: () => ZodCustomStringFormat,
+  ZodDate: () => ZodDate,
+  ZodDefault: () => ZodDefault,
+  ZodDiscriminatedUnion: () => ZodDiscriminatedUnion,
+  ZodE164: () => ZodE164,
+  ZodEmail: () => ZodEmail,
+  ZodEmoji: () => ZodEmoji,
+  ZodEnum: () => ZodEnum,
+  ZodError: () => ZodError,
+  ZodExactOptional: () => ZodExactOptional,
+  ZodFile: () => ZodFile,
+  ZodFirstPartyTypeKind: () => ZodFirstPartyTypeKind,
+  ZodFunction: () => ZodFunction,
+  ZodGUID: () => ZodGUID,
+  ZodIPv4: () => ZodIPv4,
+  ZodIPv6: () => ZodIPv6,
+  ZodISODate: () => ZodISODate,
+  ZodISODateTime: () => ZodISODateTime,
+  ZodISODuration: () => ZodISODuration,
+  ZodISOTime: () => ZodISOTime,
+  ZodIntersection: () => ZodIntersection,
+  ZodIssueCode: () => ZodIssueCode,
+  ZodJWT: () => ZodJWT,
+  ZodKSUID: () => ZodKSUID,
+  ZodLazy: () => ZodLazy,
+  ZodLiteral: () => ZodLiteral,
+  ZodMAC: () => ZodMAC,
+  ZodMap: () => ZodMap,
+  ZodNaN: () => ZodNaN,
+  ZodNanoID: () => ZodNanoID,
+  ZodNever: () => ZodNever,
+  ZodNonOptional: () => ZodNonOptional,
+  ZodNull: () => ZodNull,
+  ZodNullable: () => ZodNullable,
+  ZodNumber: () => ZodNumber,
+  ZodNumberFormat: () => ZodNumberFormat,
+  ZodObject: () => ZodObject,
+  ZodOptional: () => ZodOptional,
+  ZodPipe: () => ZodPipe,
+  ZodPrefault: () => ZodPrefault,
+  ZodPreprocess: () => ZodPreprocess,
+  ZodPromise: () => ZodPromise,
+  ZodReadonly: () => ZodReadonly,
+  ZodRealError: () => ZodRealError,
+  ZodRecord: () => ZodRecord,
+  ZodSet: () => ZodSet,
+  ZodString: () => ZodString,
+  ZodStringFormat: () => ZodStringFormat,
+  ZodSuccess: () => ZodSuccess,
+  ZodSymbol: () => ZodSymbol,
+  ZodTemplateLiteral: () => ZodTemplateLiteral,
+  ZodTransform: () => ZodTransform,
+  ZodTuple: () => ZodTuple,
+  ZodType: () => ZodType,
+  ZodULID: () => ZodULID,
+  ZodURL: () => ZodURL,
+  ZodUUID: () => ZodUUID,
+  ZodUndefined: () => ZodUndefined,
+  ZodUnion: () => ZodUnion,
+  ZodUnknown: () => ZodUnknown,
+  ZodVoid: () => ZodVoid,
+  ZodXID: () => ZodXID,
+  ZodXor: () => ZodXor,
+  _ZodString: () => _ZodString,
+  _default: () => _default2,
+  _function: () => _function,
+  any: () => any,
+  array: () => array,
+  base64: () => base642,
+  base64url: () => base64url2,
+  bigint: () => bigint2,
+  boolean: () => boolean2,
+  catch: () => _catch2,
+  check: () => check,
+  cidrv4: () => cidrv42,
+  cidrv6: () => cidrv62,
+  clone: () => clone,
+  codec: () => codec,
+  coerce: () => coerce_exports,
+  config: () => config,
+  core: () => core_exports2,
+  cuid: () => cuid3,
+  cuid2: () => cuid22,
+  custom: () => custom,
+  date: () => date3,
+  decode: () => decode2,
+  decodeAsync: () => decodeAsync2,
+  describe: () => describe2,
+  discriminatedUnion: () => discriminatedUnion,
+  e164: () => e1642,
+  email: () => email2,
+  emoji: () => emoji2,
+  encode: () => encode2,
+  encodeAsync: () => encodeAsync2,
+  endsWith: () => _endsWith,
+  enum: () => _enum2,
+  exactOptional: () => exactOptional,
+  file: () => file,
+  flattenError: () => flattenError,
+  float32: () => float32,
+  float64: () => float64,
+  formatError: () => formatError,
+  fromJSONSchema: () => fromJSONSchema,
+  function: () => _function,
+  getErrorMap: () => getErrorMap,
+  globalRegistry: () => globalRegistry,
+  gt: () => _gt,
+  gte: () => _gte,
+  guid: () => guid2,
+  hash: () => hash,
+  hex: () => hex2,
+  hostname: () => hostname2,
+  httpUrl: () => httpUrl,
+  includes: () => _includes,
+  instanceof: () => _instanceof,
+  int: () => int,
+  int32: () => int32,
+  int64: () => int64,
+  intersection: () => intersection,
+  invertCodec: () => invertCodec,
+  ipv4: () => ipv42,
+  ipv6: () => ipv62,
+  iso: () => iso_exports,
+  json: () => json,
+  jwt: () => jwt,
+  keyof: () => keyof,
+  ksuid: () => ksuid2,
+  lazy: () => lazy,
+  length: () => _length,
+  literal: () => literal,
+  locales: () => locales_exports,
+  looseObject: () => looseObject,
+  looseRecord: () => looseRecord,
+  lowercase: () => _lowercase,
+  lt: () => _lt,
+  lte: () => _lte,
+  mac: () => mac2,
+  map: () => map,
+  maxLength: () => _maxLength,
+  maxSize: () => _maxSize,
+  meta: () => meta2,
+  mime: () => _mime,
+  minLength: () => _minLength,
+  minSize: () => _minSize,
+  multipleOf: () => _multipleOf,
+  nan: () => nan,
+  nanoid: () => nanoid2,
+  nativeEnum: () => nativeEnum,
+  negative: () => _negative,
+  never: () => never,
+  nonnegative: () => _nonnegative,
+  nonoptional: () => nonoptional,
+  nonpositive: () => _nonpositive,
+  normalize: () => _normalize,
+  null: () => _null3,
+  nullable: () => nullable,
+  nullish: () => nullish2,
+  number: () => number2,
+  object: () => object2,
+  optional: () => optional,
+  overwrite: () => _overwrite,
+  parse: () => parse2,
+  parseAsync: () => parseAsync2,
+  partialRecord: () => partialRecord,
+  pipe: () => pipe,
+  positive: () => _positive,
+  prefault: () => prefault,
+  preprocess: () => preprocess,
+  prettifyError: () => prettifyError,
+  promise: () => promise,
+  property: () => _property,
+  readonly: () => readonly,
+  record: () => record,
+  refine: () => refine,
+  regex: () => _regex,
+  regexes: () => regexes_exports,
+  registry: () => registry,
+  safeDecode: () => safeDecode2,
+  safeDecodeAsync: () => safeDecodeAsync2,
+  safeEncode: () => safeEncode2,
+  safeEncodeAsync: () => safeEncodeAsync2,
+  safeParse: () => safeParse3,
+  safeParseAsync: () => safeParseAsync2,
+  set: () => set,
+  setErrorMap: () => setErrorMap,
+  size: () => _size,
+  slugify: () => _slugify,
+  startsWith: () => _startsWith,
+  strictObject: () => strictObject,
+  string: () => string2,
+  stringFormat: () => stringFormat,
+  stringbool: () => stringbool,
+  success: () => success,
+  superRefine: () => superRefine,
+  symbol: () => symbol,
+  templateLiteral: () => templateLiteral,
+  toJSONSchema: () => toJSONSchema,
+  toLowerCase: () => _toLowerCase,
+  toUpperCase: () => _toUpperCase,
+  transform: () => transform,
+  treeifyError: () => treeifyError,
+  trim: () => _trim,
+  tuple: () => tuple,
+  uint32: () => uint32,
+  uint64: () => uint64,
+  ulid: () => ulid2,
+  undefined: () => _undefined3,
+  union: () => union,
+  unknown: () => unknown,
+  uppercase: () => _uppercase,
+  url: () => url,
+  util: () => util_exports,
+  uuid: () => uuid2,
+  uuidv4: () => uuidv4,
+  uuidv6: () => uuidv6,
+  uuidv7: () => uuidv7,
+  void: () => _void2,
+  xid: () => xid2,
+  xor: () => xor
+});
+
+// node_modules/zod/v4/classic/schemas.js
+var schemas_exports2 = {};
+__export(schemas_exports2, {
+  ZodAny: () => ZodAny,
+  ZodArray: () => ZodArray,
+  ZodBase64: () => ZodBase64,
+  ZodBase64URL: () => ZodBase64URL,
+  ZodBigInt: () => ZodBigInt,
+  ZodBigIntFormat: () => ZodBigIntFormat,
+  ZodBoolean: () => ZodBoolean,
+  ZodCIDRv4: () => ZodCIDRv4,
+  ZodCIDRv6: () => ZodCIDRv6,
+  ZodCUID: () => ZodCUID,
+  ZodCUID2: () => ZodCUID2,
+  ZodCatch: () => ZodCatch,
+  ZodCodec: () => ZodCodec,
+  ZodCustom: () => ZodCustom,
+  ZodCustomStringFormat: () => ZodCustomStringFormat,
+  ZodDate: () => ZodDate,
+  ZodDefault: () => ZodDefault,
+  ZodDiscriminatedUnion: () => ZodDiscriminatedUnion,
+  ZodE164: () => ZodE164,
+  ZodEmail: () => ZodEmail,
+  ZodEmoji: () => ZodEmoji,
+  ZodEnum: () => ZodEnum,
+  ZodExactOptional: () => ZodExactOptional,
+  ZodFile: () => ZodFile,
+  ZodFunction: () => ZodFunction,
+  ZodGUID: () => ZodGUID,
+  ZodIPv4: () => ZodIPv4,
+  ZodIPv6: () => ZodIPv6,
+  ZodIntersection: () => ZodIntersection,
+  ZodJWT: () => ZodJWT,
+  ZodKSUID: () => ZodKSUID,
+  ZodLazy: () => ZodLazy,
+  ZodLiteral: () => ZodLiteral,
+  ZodMAC: () => ZodMAC,
+  ZodMap: () => ZodMap,
+  ZodNaN: () => ZodNaN,
+  ZodNanoID: () => ZodNanoID,
+  ZodNever: () => ZodNever,
+  ZodNonOptional: () => ZodNonOptional,
+  ZodNull: () => ZodNull,
+  ZodNullable: () => ZodNullable,
+  ZodNumber: () => ZodNumber,
+  ZodNumberFormat: () => ZodNumberFormat,
+  ZodObject: () => ZodObject,
+  ZodOptional: () => ZodOptional,
+  ZodPipe: () => ZodPipe,
+  ZodPrefault: () => ZodPrefault,
+  ZodPreprocess: () => ZodPreprocess,
+  ZodPromise: () => ZodPromise,
+  ZodReadonly: () => ZodReadonly,
+  ZodRecord: () => ZodRecord,
+  ZodSet: () => ZodSet,
+  ZodString: () => ZodString,
+  ZodStringFormat: () => ZodStringFormat,
+  ZodSuccess: () => ZodSuccess,
+  ZodSymbol: () => ZodSymbol,
+  ZodTemplateLiteral: () => ZodTemplateLiteral,
+  ZodTransform: () => ZodTransform,
+  ZodTuple: () => ZodTuple,
+  ZodType: () => ZodType,
+  ZodULID: () => ZodULID,
+  ZodURL: () => ZodURL,
+  ZodUUID: () => ZodUUID,
+  ZodUndefined: () => ZodUndefined,
+  ZodUnion: () => ZodUnion,
+  ZodUnknown: () => ZodUnknown,
+  ZodVoid: () => ZodVoid,
+  ZodXID: () => ZodXID,
+  ZodXor: () => ZodXor,
+  _ZodString: () => _ZodString,
+  _default: () => _default2,
+  _function: () => _function,
+  any: () => any,
+  array: () => array,
+  base64: () => base642,
+  base64url: () => base64url2,
+  bigint: () => bigint2,
+  boolean: () => boolean2,
+  catch: () => _catch2,
+  check: () => check,
+  cidrv4: () => cidrv42,
+  cidrv6: () => cidrv62,
+  codec: () => codec,
+  cuid: () => cuid3,
+  cuid2: () => cuid22,
+  custom: () => custom,
+  date: () => date3,
+  describe: () => describe2,
+  discriminatedUnion: () => discriminatedUnion,
+  e164: () => e1642,
+  email: () => email2,
+  emoji: () => emoji2,
+  enum: () => _enum2,
+  exactOptional: () => exactOptional,
+  file: () => file,
+  float32: () => float32,
+  float64: () => float64,
+  function: () => _function,
+  guid: () => guid2,
+  hash: () => hash,
+  hex: () => hex2,
+  hostname: () => hostname2,
+  httpUrl: () => httpUrl,
+  instanceof: () => _instanceof,
+  int: () => int,
+  int32: () => int32,
+  int64: () => int64,
+  intersection: () => intersection,
+  invertCodec: () => invertCodec,
+  ipv4: () => ipv42,
+  ipv6: () => ipv62,
+  json: () => json,
+  jwt: () => jwt,
+  keyof: () => keyof,
+  ksuid: () => ksuid2,
+  lazy: () => lazy,
+  literal: () => literal,
+  looseObject: () => looseObject,
+  looseRecord: () => looseRecord,
+  mac: () => mac2,
+  map: () => map,
+  meta: () => meta2,
+  nan: () => nan,
+  nanoid: () => nanoid2,
+  nativeEnum: () => nativeEnum,
+  never: () => never,
+  nonoptional: () => nonoptional,
+  null: () => _null3,
+  nullable: () => nullable,
+  nullish: () => nullish2,
+  number: () => number2,
+  object: () => object2,
+  optional: () => optional,
+  partialRecord: () => partialRecord,
+  pipe: () => pipe,
+  prefault: () => prefault,
+  preprocess: () => preprocess,
+  promise: () => promise,
+  readonly: () => readonly,
+  record: () => record,
+  refine: () => refine,
+  set: () => set,
+  strictObject: () => strictObject,
+  string: () => string2,
+  stringFormat: () => stringFormat,
+  stringbool: () => stringbool,
+  success: () => success,
+  superRefine: () => superRefine,
+  symbol: () => symbol,
+  templateLiteral: () => templateLiteral,
+  transform: () => transform,
+  tuple: () => tuple,
+  uint32: () => uint32,
+  uint64: () => uint64,
+  ulid: () => ulid2,
+  undefined: () => _undefined3,
+  union: () => union,
+  unknown: () => unknown,
+  url: () => url,
+  uuid: () => uuid2,
+  uuidv4: () => uuidv4,
+  uuidv6: () => uuidv6,
+  uuidv7: () => uuidv7,
+  void: () => _void2,
+  xid: () => xid2,
+  xor: () => xor
+});
+
+// node_modules/zod/v4/classic/checks.js
+var checks_exports2 = {};
+__export(checks_exports2, {
+  endsWith: () => _endsWith,
+  gt: () => _gt,
+  gte: () => _gte,
+  includes: () => _includes,
+  length: () => _length,
+  lowercase: () => _lowercase,
+  lt: () => _lt,
+  lte: () => _lte,
+  maxLength: () => _maxLength,
+  maxSize: () => _maxSize,
+  mime: () => _mime,
+  minLength: () => _minLength,
+  minSize: () => _minSize,
+  multipleOf: () => _multipleOf,
+  negative: () => _negative,
+  nonnegative: () => _nonnegative,
+  nonpositive: () => _nonpositive,
+  normalize: () => _normalize,
+  overwrite: () => _overwrite,
+  positive: () => _positive,
+  property: () => _property,
+  regex: () => _regex,
+  size: () => _size,
+  slugify: () => _slugify,
+  startsWith: () => _startsWith,
+  toLowerCase: () => _toLowerCase,
+  toUpperCase: () => _toUpperCase,
+  trim: () => _trim,
+  uppercase: () => _uppercase
+});
 
 // node_modules/zod/v4/classic/iso.js
 var iso_exports = {};
@@ -17922,6 +31031,7 @@ var initializer2 = /* @__PURE__ */ __name((inst, issues) => {
     }
   });
 }, "initializer");
+var ZodError = /* @__PURE__ */ $constructor("ZodError", initializer2);
 var ZodRealError = /* @__PURE__ */ $constructor("ZodError", initializer2, {
   Parent: Error
 });
@@ -18023,12 +31133,12 @@ var ZodType = /* @__PURE__ */ $constructor("ZodType", (inst, def) => {
     brand() {
       return this;
     },
-    register(reg, meta2) {
-      reg.add(this, meta2);
+    register(reg, meta3) {
+      reg.add(this, meta3);
       return this;
     },
-    refine(check, params) {
-      return this.check(refine(check, params));
+    refine(check2, params) {
+      return this.check(refine(check2, params));
     },
     superRefine(refinement, params) {
       return this.check(superRefine(refinement, params));
@@ -18064,13 +31174,13 @@ var ZodType = /* @__PURE__ */ $constructor("ZodType", (inst, def) => {
       return pipe(this, transform(tx));
     },
     default(d) {
-      return _default(this, d);
+      return _default2(this, d);
     },
     prefault(d) {
       return prefault(this, d);
     },
     catch(params) {
-      return _catch(this, params);
+      return _catch2(this, params);
     },
     pipe(target) {
       return pipe(this, target);
@@ -18111,7 +31221,7 @@ var ZodType = /* @__PURE__ */ $constructor("ZodType", (inst, def) => {
 var _ZodString = /* @__PURE__ */ $constructor("_ZodString", (inst, def) => {
   $ZodString.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json, params) => stringProcessor(inst, ctx, json, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => stringProcessor(inst, ctx, json2, params);
   const bag = inst._zod.bag;
   inst.format = bag.format ?? null;
   inst.minLength = bag.minimum ?? null;
@@ -18207,82 +31317,211 @@ var ZodEmail = /* @__PURE__ */ $constructor("ZodEmail", (inst, def) => {
   $ZodEmail.init(inst, def);
   ZodStringFormat.init(inst, def);
 });
+function email2(params) {
+  return _email(ZodEmail, params);
+}
+__name(email2, "email");
 var ZodGUID = /* @__PURE__ */ $constructor("ZodGUID", (inst, def) => {
   $ZodGUID.init(inst, def);
   ZodStringFormat.init(inst, def);
 });
+function guid2(params) {
+  return _guid(ZodGUID, params);
+}
+__name(guid2, "guid");
 var ZodUUID = /* @__PURE__ */ $constructor("ZodUUID", (inst, def) => {
   $ZodUUID.init(inst, def);
   ZodStringFormat.init(inst, def);
 });
+function uuid2(params) {
+  return _uuid(ZodUUID, params);
+}
+__name(uuid2, "uuid");
+function uuidv4(params) {
+  return _uuidv4(ZodUUID, params);
+}
+__name(uuidv4, "uuidv4");
+function uuidv6(params) {
+  return _uuidv6(ZodUUID, params);
+}
+__name(uuidv6, "uuidv6");
+function uuidv7(params) {
+  return _uuidv7(ZodUUID, params);
+}
+__name(uuidv7, "uuidv7");
 var ZodURL = /* @__PURE__ */ $constructor("ZodURL", (inst, def) => {
   $ZodURL.init(inst, def);
   ZodStringFormat.init(inst, def);
 });
+function url(params) {
+  return _url(ZodURL, params);
+}
+__name(url, "url");
+function httpUrl(params) {
+  return _url(ZodURL, {
+    protocol: regexes_exports.httpProtocol,
+    hostname: regexes_exports.domain,
+    ...util_exports.normalizeParams(params)
+  });
+}
+__name(httpUrl, "httpUrl");
 var ZodEmoji = /* @__PURE__ */ $constructor("ZodEmoji", (inst, def) => {
   $ZodEmoji.init(inst, def);
   ZodStringFormat.init(inst, def);
 });
+function emoji2(params) {
+  return _emoji2(ZodEmoji, params);
+}
+__name(emoji2, "emoji");
 var ZodNanoID = /* @__PURE__ */ $constructor("ZodNanoID", (inst, def) => {
   $ZodNanoID.init(inst, def);
   ZodStringFormat.init(inst, def);
 });
+function nanoid2(params) {
+  return _nanoid(ZodNanoID, params);
+}
+__name(nanoid2, "nanoid");
 var ZodCUID = /* @__PURE__ */ $constructor("ZodCUID", (inst, def) => {
   $ZodCUID.init(inst, def);
   ZodStringFormat.init(inst, def);
 });
+function cuid3(params) {
+  return _cuid(ZodCUID, params);
+}
+__name(cuid3, "cuid");
 var ZodCUID2 = /* @__PURE__ */ $constructor("ZodCUID2", (inst, def) => {
   $ZodCUID2.init(inst, def);
   ZodStringFormat.init(inst, def);
 });
+function cuid22(params) {
+  return _cuid2(ZodCUID2, params);
+}
+__name(cuid22, "cuid2");
 var ZodULID = /* @__PURE__ */ $constructor("ZodULID", (inst, def) => {
   $ZodULID.init(inst, def);
   ZodStringFormat.init(inst, def);
 });
+function ulid2(params) {
+  return _ulid(ZodULID, params);
+}
+__name(ulid2, "ulid");
 var ZodXID = /* @__PURE__ */ $constructor("ZodXID", (inst, def) => {
   $ZodXID.init(inst, def);
   ZodStringFormat.init(inst, def);
 });
+function xid2(params) {
+  return _xid(ZodXID, params);
+}
+__name(xid2, "xid");
 var ZodKSUID = /* @__PURE__ */ $constructor("ZodKSUID", (inst, def) => {
   $ZodKSUID.init(inst, def);
   ZodStringFormat.init(inst, def);
 });
+function ksuid2(params) {
+  return _ksuid(ZodKSUID, params);
+}
+__name(ksuid2, "ksuid");
 var ZodIPv4 = /* @__PURE__ */ $constructor("ZodIPv4", (inst, def) => {
   $ZodIPv4.init(inst, def);
   ZodStringFormat.init(inst, def);
 });
+function ipv42(params) {
+  return _ipv4(ZodIPv4, params);
+}
+__name(ipv42, "ipv4");
+var ZodMAC = /* @__PURE__ */ $constructor("ZodMAC", (inst, def) => {
+  $ZodMAC.init(inst, def);
+  ZodStringFormat.init(inst, def);
+});
+function mac2(params) {
+  return _mac(ZodMAC, params);
+}
+__name(mac2, "mac");
 var ZodIPv6 = /* @__PURE__ */ $constructor("ZodIPv6", (inst, def) => {
   $ZodIPv6.init(inst, def);
   ZodStringFormat.init(inst, def);
 });
+function ipv62(params) {
+  return _ipv6(ZodIPv6, params);
+}
+__name(ipv62, "ipv6");
 var ZodCIDRv4 = /* @__PURE__ */ $constructor("ZodCIDRv4", (inst, def) => {
   $ZodCIDRv4.init(inst, def);
   ZodStringFormat.init(inst, def);
 });
+function cidrv42(params) {
+  return _cidrv4(ZodCIDRv4, params);
+}
+__name(cidrv42, "cidrv4");
 var ZodCIDRv6 = /* @__PURE__ */ $constructor("ZodCIDRv6", (inst, def) => {
   $ZodCIDRv6.init(inst, def);
   ZodStringFormat.init(inst, def);
 });
+function cidrv62(params) {
+  return _cidrv6(ZodCIDRv6, params);
+}
+__name(cidrv62, "cidrv6");
 var ZodBase64 = /* @__PURE__ */ $constructor("ZodBase64", (inst, def) => {
   $ZodBase64.init(inst, def);
   ZodStringFormat.init(inst, def);
 });
+function base642(params) {
+  return _base64(ZodBase64, params);
+}
+__name(base642, "base64");
 var ZodBase64URL = /* @__PURE__ */ $constructor("ZodBase64URL", (inst, def) => {
   $ZodBase64URL.init(inst, def);
   ZodStringFormat.init(inst, def);
 });
+function base64url2(params) {
+  return _base64url(ZodBase64URL, params);
+}
+__name(base64url2, "base64url");
 var ZodE164 = /* @__PURE__ */ $constructor("ZodE164", (inst, def) => {
   $ZodE164.init(inst, def);
   ZodStringFormat.init(inst, def);
 });
+function e1642(params) {
+  return _e164(ZodE164, params);
+}
+__name(e1642, "e164");
 var ZodJWT = /* @__PURE__ */ $constructor("ZodJWT", (inst, def) => {
   $ZodJWT.init(inst, def);
   ZodStringFormat.init(inst, def);
 });
+function jwt(params) {
+  return _jwt(ZodJWT, params);
+}
+__name(jwt, "jwt");
+var ZodCustomStringFormat = /* @__PURE__ */ $constructor("ZodCustomStringFormat", (inst, def) => {
+  $ZodCustomStringFormat.init(inst, def);
+  ZodStringFormat.init(inst, def);
+});
+function stringFormat(format, fnOrRegex, _params = {}) {
+  return _stringFormat(ZodCustomStringFormat, format, fnOrRegex, _params);
+}
+__name(stringFormat, "stringFormat");
+function hostname2(_params) {
+  return _stringFormat(ZodCustomStringFormat, "hostname", regexes_exports.hostname, _params);
+}
+__name(hostname2, "hostname");
+function hex2(_params) {
+  return _stringFormat(ZodCustomStringFormat, "hex", regexes_exports.hex, _params);
+}
+__name(hex2, "hex");
+function hash(alg, params) {
+  const enc = params?.enc ?? "hex";
+  const format = `${alg}_${enc}`;
+  const regex = regexes_exports[format];
+  if (!regex)
+    throw new Error(`Unrecognized hash format: ${format}`);
+  return _stringFormat(ZodCustomStringFormat, format, regex, params);
+}
+__name(hash, "hash");
 var ZodNumber = /* @__PURE__ */ $constructor("ZodNumber", (inst, def) => {
   $ZodNumber.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json, params) => numberProcessor(inst, ctx, json, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => numberProcessor(inst, ctx, json2, params);
   _installLazyMethods(inst, "ZodNumber", {
     gt(value, params) {
       return this.check(_gt(value, params));
@@ -18349,28 +31588,109 @@ function int(params) {
   return _int(ZodNumberFormat, params);
 }
 __name(int, "int");
+function float32(params) {
+  return _float32(ZodNumberFormat, params);
+}
+__name(float32, "float32");
+function float64(params) {
+  return _float64(ZodNumberFormat, params);
+}
+__name(float64, "float64");
+function int32(params) {
+  return _int32(ZodNumberFormat, params);
+}
+__name(int32, "int32");
+function uint32(params) {
+  return _uint32(ZodNumberFormat, params);
+}
+__name(uint32, "uint32");
 var ZodBoolean = /* @__PURE__ */ $constructor("ZodBoolean", (inst, def) => {
   $ZodBoolean.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json, params) => booleanProcessor(inst, ctx, json, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => booleanProcessor(inst, ctx, json2, params);
 });
 function boolean2(params) {
   return _boolean(ZodBoolean, params);
 }
 __name(boolean2, "boolean");
+var ZodBigInt = /* @__PURE__ */ $constructor("ZodBigInt", (inst, def) => {
+  $ZodBigInt.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json2, params) => bigintProcessor(inst, ctx, json2, params);
+  inst.gte = (value, params) => inst.check(_gte(value, params));
+  inst.min = (value, params) => inst.check(_gte(value, params));
+  inst.gt = (value, params) => inst.check(_gt(value, params));
+  inst.gte = (value, params) => inst.check(_gte(value, params));
+  inst.min = (value, params) => inst.check(_gte(value, params));
+  inst.lt = (value, params) => inst.check(_lt(value, params));
+  inst.lte = (value, params) => inst.check(_lte(value, params));
+  inst.max = (value, params) => inst.check(_lte(value, params));
+  inst.positive = (params) => inst.check(_gt(BigInt(0), params));
+  inst.negative = (params) => inst.check(_lt(BigInt(0), params));
+  inst.nonpositive = (params) => inst.check(_lte(BigInt(0), params));
+  inst.nonnegative = (params) => inst.check(_gte(BigInt(0), params));
+  inst.multipleOf = (value, params) => inst.check(_multipleOf(value, params));
+  const bag = inst._zod.bag;
+  inst.minValue = bag.minimum ?? null;
+  inst.maxValue = bag.maximum ?? null;
+  inst.format = bag.format ?? null;
+});
+function bigint2(params) {
+  return _bigint(ZodBigInt, params);
+}
+__name(bigint2, "bigint");
+var ZodBigIntFormat = /* @__PURE__ */ $constructor("ZodBigIntFormat", (inst, def) => {
+  $ZodBigIntFormat.init(inst, def);
+  ZodBigInt.init(inst, def);
+});
+function int64(params) {
+  return _int64(ZodBigIntFormat, params);
+}
+__name(int64, "int64");
+function uint64(params) {
+  return _uint64(ZodBigIntFormat, params);
+}
+__name(uint64, "uint64");
+var ZodSymbol = /* @__PURE__ */ $constructor("ZodSymbol", (inst, def) => {
+  $ZodSymbol.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json2, params) => symbolProcessor(inst, ctx, json2, params);
+});
+function symbol(params) {
+  return _symbol(ZodSymbol, params);
+}
+__name(symbol, "symbol");
+var ZodUndefined = /* @__PURE__ */ $constructor("ZodUndefined", (inst, def) => {
+  $ZodUndefined.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json2, params) => undefinedProcessor(inst, ctx, json2, params);
+});
+function _undefined3(params) {
+  return _undefined2(ZodUndefined, params);
+}
+__name(_undefined3, "_undefined");
 var ZodNull = /* @__PURE__ */ $constructor("ZodNull", (inst, def) => {
   $ZodNull.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json, params) => nullProcessor(inst, ctx, json, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => nullProcessor(inst, ctx, json2, params);
 });
 function _null3(params) {
   return _null2(ZodNull, params);
 }
 __name(_null3, "_null");
+var ZodAny = /* @__PURE__ */ $constructor("ZodAny", (inst, def) => {
+  $ZodAny.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json2, params) => anyProcessor(inst, ctx, json2, params);
+});
+function any() {
+  return _any(ZodAny);
+}
+__name(any, "any");
 var ZodUnknown = /* @__PURE__ */ $constructor("ZodUnknown", (inst, def) => {
   $ZodUnknown.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json, params) => unknownProcessor(inst, ctx, json, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => unknownProcessor(inst, ctx, json2, params);
 });
 function unknown() {
   return _unknown(ZodUnknown);
@@ -18379,16 +31699,39 @@ __name(unknown, "unknown");
 var ZodNever = /* @__PURE__ */ $constructor("ZodNever", (inst, def) => {
   $ZodNever.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json, params) => neverProcessor(inst, ctx, json, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => neverProcessor(inst, ctx, json2, params);
 });
 function never(params) {
   return _never(ZodNever, params);
 }
 __name(never, "never");
+var ZodVoid = /* @__PURE__ */ $constructor("ZodVoid", (inst, def) => {
+  $ZodVoid.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json2, params) => voidProcessor(inst, ctx, json2, params);
+});
+function _void2(params) {
+  return _void(ZodVoid, params);
+}
+__name(_void2, "_void");
+var ZodDate = /* @__PURE__ */ $constructor("ZodDate", (inst, def) => {
+  $ZodDate.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json2, params) => dateProcessor(inst, ctx, json2, params);
+  inst.min = (value, params) => inst.check(_gte(value, params));
+  inst.max = (value, params) => inst.check(_lte(value, params));
+  const c = inst._zod.bag;
+  inst.minDate = c.minimum ? new Date(c.minimum) : null;
+  inst.maxDate = c.maximum ? new Date(c.maximum) : null;
+});
+function date3(params) {
+  return _date(ZodDate, params);
+}
+__name(date3, "date");
 var ZodArray = /* @__PURE__ */ $constructor("ZodArray", (inst, def) => {
   $ZodArray.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json, params) => arrayProcessor(inst, ctx, json, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => arrayProcessor(inst, ctx, json2, params);
   inst.element = def.element;
   _installLazyMethods(inst, "ZodArray", {
     min(n, params) {
@@ -18412,16 +31755,21 @@ function array(element, params) {
   return _array(ZodArray, element, params);
 }
 __name(array, "array");
+function keyof(schema) {
+  const shape = schema._zod.def.shape;
+  return _enum2(Object.keys(shape));
+}
+__name(keyof, "keyof");
 var ZodObject = /* @__PURE__ */ $constructor("ZodObject", (inst, def) => {
   $ZodObjectJIT.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json, params) => objectProcessor(inst, ctx, json, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => objectProcessor(inst, ctx, json2, params);
   util_exports.defineLazy(inst, "shape", () => {
     return def.shape;
   });
   _installLazyMethods(inst, "ZodObject", {
     keyof() {
-      return _enum(Object.keys(this._zod.def.shape));
+      return _enum2(Object.keys(this._zod.def.shape));
     },
     catchall(catchall) {
       return this.clone({ ...this._zod.def, catchall });
@@ -18470,6 +31818,15 @@ function object2(shape, params) {
   return new ZodObject(def);
 }
 __name(object2, "object");
+function strictObject(shape, params) {
+  return new ZodObject({
+    type: "object",
+    shape,
+    catchall: never(),
+    ...util_exports.normalizeParams(params)
+  });
+}
+__name(strictObject, "strictObject");
 function looseObject(shape, params) {
   return new ZodObject({
     type: "object",
@@ -18482,7 +31839,7 @@ __name(looseObject, "looseObject");
 var ZodUnion = /* @__PURE__ */ $constructor("ZodUnion", (inst, def) => {
   $ZodUnion.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json, params) => unionProcessor(inst, ctx, json, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => unionProcessor(inst, ctx, json2, params);
   inst.options = def.options;
 });
 function union(options, params) {
@@ -18493,6 +31850,21 @@ function union(options, params) {
   });
 }
 __name(union, "union");
+var ZodXor = /* @__PURE__ */ $constructor("ZodXor", (inst, def) => {
+  ZodUnion.init(inst, def);
+  $ZodXor.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json2, params) => unionProcessor(inst, ctx, json2, params);
+  inst.options = def.options;
+});
+function xor(options, params) {
+  return new ZodXor({
+    type: "union",
+    options,
+    inclusive: false,
+    ...util_exports.normalizeParams(params)
+  });
+}
+__name(xor, "xor");
 var ZodDiscriminatedUnion = /* @__PURE__ */ $constructor("ZodDiscriminatedUnion", (inst, def) => {
   ZodUnion.init(inst, def);
   $ZodDiscriminatedUnion.init(inst, def);
@@ -18509,7 +31881,7 @@ __name(discriminatedUnion, "discriminatedUnion");
 var ZodIntersection = /* @__PURE__ */ $constructor("ZodIntersection", (inst, def) => {
   $ZodIntersection.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json, params) => intersectionProcessor(inst, ctx, json, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => intersectionProcessor(inst, ctx, json2, params);
 });
 function intersection(left, right) {
   return new ZodIntersection({
@@ -18519,10 +31891,31 @@ function intersection(left, right) {
   });
 }
 __name(intersection, "intersection");
+var ZodTuple = /* @__PURE__ */ $constructor("ZodTuple", (inst, def) => {
+  $ZodTuple.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json2, params) => tupleProcessor(inst, ctx, json2, params);
+  inst.rest = (rest) => inst.clone({
+    ...inst._zod.def,
+    rest
+  });
+});
+function tuple(items, _paramsOrRest, _params) {
+  const hasRest = _paramsOrRest instanceof $ZodType;
+  const params = hasRest ? _params : _paramsOrRest;
+  const rest = hasRest ? _paramsOrRest : null;
+  return new ZodTuple({
+    type: "tuple",
+    items,
+    rest,
+    ...util_exports.normalizeParams(params)
+  });
+}
+__name(tuple, "tuple");
 var ZodRecord = /* @__PURE__ */ $constructor("ZodRecord", (inst, def) => {
   $ZodRecord.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json, params) => recordProcessor(inst, ctx, json, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => recordProcessor(inst, ctx, json2, params);
   inst.keyType = def.keyType;
   inst.valueType = def.valueType;
 });
@@ -18543,10 +31936,68 @@ function record(keyType, valueType, params) {
   });
 }
 __name(record, "record");
+function partialRecord(keyType, valueType, params) {
+  const k = clone(keyType);
+  k._zod.values = void 0;
+  return new ZodRecord({
+    type: "record",
+    keyType: k,
+    valueType,
+    ...util_exports.normalizeParams(params)
+  });
+}
+__name(partialRecord, "partialRecord");
+function looseRecord(keyType, valueType, params) {
+  return new ZodRecord({
+    type: "record",
+    keyType,
+    valueType,
+    mode: "loose",
+    ...util_exports.normalizeParams(params)
+  });
+}
+__name(looseRecord, "looseRecord");
+var ZodMap = /* @__PURE__ */ $constructor("ZodMap", (inst, def) => {
+  $ZodMap.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json2, params) => mapProcessor(inst, ctx, json2, params);
+  inst.keyType = def.keyType;
+  inst.valueType = def.valueType;
+  inst.min = (...args) => inst.check(_minSize(...args));
+  inst.nonempty = (params) => inst.check(_minSize(1, params));
+  inst.max = (...args) => inst.check(_maxSize(...args));
+  inst.size = (...args) => inst.check(_size(...args));
+});
+function map(keyType, valueType, params) {
+  return new ZodMap({
+    type: "map",
+    keyType,
+    valueType,
+    ...util_exports.normalizeParams(params)
+  });
+}
+__name(map, "map");
+var ZodSet = /* @__PURE__ */ $constructor("ZodSet", (inst, def) => {
+  $ZodSet.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json2, params) => setProcessor(inst, ctx, json2, params);
+  inst.min = (...args) => inst.check(_minSize(...args));
+  inst.nonempty = (params) => inst.check(_minSize(1, params));
+  inst.max = (...args) => inst.check(_maxSize(...args));
+  inst.size = (...args) => inst.check(_size(...args));
+});
+function set(valueType, params) {
+  return new ZodSet({
+    type: "set",
+    valueType,
+    ...util_exports.normalizeParams(params)
+  });
+}
+__name(set, "set");
 var ZodEnum = /* @__PURE__ */ $constructor("ZodEnum", (inst, def) => {
   $ZodEnum.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json, params) => enumProcessor(inst, ctx, json, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => enumProcessor(inst, ctx, json2, params);
   inst.enum = def.entries;
   inst.options = Object.values(def.entries);
   const keys = new Set(Object.keys(def.entries));
@@ -18581,7 +32032,7 @@ var ZodEnum = /* @__PURE__ */ $constructor("ZodEnum", (inst, def) => {
     });
   };
 });
-function _enum(values, params) {
+function _enum2(values, params) {
   const entries = Array.isArray(values) ? Object.fromEntries(values.map((v) => [v, v])) : values;
   return new ZodEnum({
     type: "enum",
@@ -18589,11 +32040,19 @@ function _enum(values, params) {
     ...util_exports.normalizeParams(params)
   });
 }
-__name(_enum, "_enum");
+__name(_enum2, "_enum");
+function nativeEnum(entries, params) {
+  return new ZodEnum({
+    type: "enum",
+    entries,
+    ...util_exports.normalizeParams(params)
+  });
+}
+__name(nativeEnum, "nativeEnum");
 var ZodLiteral = /* @__PURE__ */ $constructor("ZodLiteral", (inst, def) => {
   $ZodLiteral.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json, params) => literalProcessor(inst, ctx, json, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => literalProcessor(inst, ctx, json2, params);
   inst.values = new Set(def.values);
   Object.defineProperty(inst, "value", {
     get() {
@@ -18612,10 +32071,22 @@ function literal(value, params) {
   });
 }
 __name(literal, "literal");
+var ZodFile = /* @__PURE__ */ $constructor("ZodFile", (inst, def) => {
+  $ZodFile.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json2, params) => fileProcessor(inst, ctx, json2, params);
+  inst.min = (size, params) => inst.check(_minSize(size, params));
+  inst.max = (size, params) => inst.check(_maxSize(size, params));
+  inst.mime = (types, params) => inst.check(_mime(Array.isArray(types) ? types : [types], params));
+});
+function file(params) {
+  return _file(ZodFile, params);
+}
+__name(file, "file");
 var ZodTransform = /* @__PURE__ */ $constructor("ZodTransform", (inst, def) => {
   $ZodTransform.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json, params) => transformProcessor(inst, ctx, json, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => transformProcessor(inst, ctx, json2, params);
   inst._zod.parse = (payload, _ctx) => {
     if (_ctx.direction === "backward") {
       throw new $ZodEncodeError(inst.constructor.name);
@@ -18656,7 +32127,7 @@ __name(transform, "transform");
 var ZodOptional = /* @__PURE__ */ $constructor("ZodOptional", (inst, def) => {
   $ZodOptional.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json, params) => optionalProcessor(inst, ctx, json, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => optionalProcessor(inst, ctx, json2, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function optional(innerType) {
@@ -18669,7 +32140,7 @@ __name(optional, "optional");
 var ZodExactOptional = /* @__PURE__ */ $constructor("ZodExactOptional", (inst, def) => {
   $ZodExactOptional.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json, params) => optionalProcessor(inst, ctx, json, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => optionalProcessor(inst, ctx, json2, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function exactOptional(innerType) {
@@ -18682,7 +32153,7 @@ __name(exactOptional, "exactOptional");
 var ZodNullable = /* @__PURE__ */ $constructor("ZodNullable", (inst, def) => {
   $ZodNullable.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json, params) => nullableProcessor(inst, ctx, json, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => nullableProcessor(inst, ctx, json2, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function nullable(innerType) {
@@ -18692,14 +32163,18 @@ function nullable(innerType) {
   });
 }
 __name(nullable, "nullable");
+function nullish2(innerType) {
+  return optional(nullable(innerType));
+}
+__name(nullish2, "nullish");
 var ZodDefault = /* @__PURE__ */ $constructor("ZodDefault", (inst, def) => {
   $ZodDefault.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json, params) => defaultProcessor(inst, ctx, json, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => defaultProcessor(inst, ctx, json2, params);
   inst.unwrap = () => inst._zod.def.innerType;
   inst.removeDefault = inst.unwrap;
 });
-function _default(innerType, defaultValue) {
+function _default2(innerType, defaultValue) {
   return new ZodDefault({
     type: "default",
     innerType,
@@ -18708,11 +32183,11 @@ function _default(innerType, defaultValue) {
     }
   });
 }
-__name(_default, "_default");
+__name(_default2, "_default");
 var ZodPrefault = /* @__PURE__ */ $constructor("ZodPrefault", (inst, def) => {
   $ZodPrefault.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json, params) => prefaultProcessor(inst, ctx, json, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => prefaultProcessor(inst, ctx, json2, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function prefault(innerType, defaultValue) {
@@ -18728,7 +32203,7 @@ __name(prefault, "prefault");
 var ZodNonOptional = /* @__PURE__ */ $constructor("ZodNonOptional", (inst, def) => {
   $ZodNonOptional.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json, params) => nonoptionalProcessor(inst, ctx, json, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => nonoptionalProcessor(inst, ctx, json2, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function nonoptional(innerType, params) {
@@ -18739,25 +32214,47 @@ function nonoptional(innerType, params) {
   });
 }
 __name(nonoptional, "nonoptional");
+var ZodSuccess = /* @__PURE__ */ $constructor("ZodSuccess", (inst, def) => {
+  $ZodSuccess.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json2, params) => successProcessor(inst, ctx, json2, params);
+  inst.unwrap = () => inst._zod.def.innerType;
+});
+function success(innerType) {
+  return new ZodSuccess({
+    type: "success",
+    innerType
+  });
+}
+__name(success, "success");
 var ZodCatch = /* @__PURE__ */ $constructor("ZodCatch", (inst, def) => {
   $ZodCatch.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json, params) => catchProcessor(inst, ctx, json, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => catchProcessor(inst, ctx, json2, params);
   inst.unwrap = () => inst._zod.def.innerType;
   inst.removeCatch = inst.unwrap;
 });
-function _catch(innerType, catchValue) {
+function _catch2(innerType, catchValue) {
   return new ZodCatch({
     type: "catch",
     innerType,
     catchValue: typeof catchValue === "function" ? catchValue : () => catchValue
   });
 }
-__name(_catch, "_catch");
+__name(_catch2, "_catch");
+var ZodNaN = /* @__PURE__ */ $constructor("ZodNaN", (inst, def) => {
+  $ZodNaN.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json2, params) => nanProcessor(inst, ctx, json2, params);
+});
+function nan(params) {
+  return _nan(ZodNaN, params);
+}
+__name(nan, "nan");
 var ZodPipe = /* @__PURE__ */ $constructor("ZodPipe", (inst, def) => {
   $ZodPipe.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json, params) => pipeProcessor(inst, ctx, json, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => pipeProcessor(inst, ctx, json2, params);
   inst.in = def.in;
   inst.out = def.out;
 });
@@ -18770,6 +32267,31 @@ function pipe(in_, out) {
   });
 }
 __name(pipe, "pipe");
+var ZodCodec = /* @__PURE__ */ $constructor("ZodCodec", (inst, def) => {
+  ZodPipe.init(inst, def);
+  $ZodCodec.init(inst, def);
+});
+function codec(in_, out, params) {
+  return new ZodCodec({
+    type: "pipe",
+    in: in_,
+    out,
+    transform: params.decode,
+    reverseTransform: params.encode
+  });
+}
+__name(codec, "codec");
+function invertCodec(codec2) {
+  const def = codec2._zod.def;
+  return new ZodCodec({
+    type: "pipe",
+    in: def.out,
+    out: def.in,
+    transform: def.reverseTransform,
+    reverseTransform: def.transform
+  });
+}
+__name(invertCodec, "invertCodec");
 var ZodPreprocess = /* @__PURE__ */ $constructor("ZodPreprocess", (inst, def) => {
   ZodPipe.init(inst, def);
   $ZodPreprocess.init(inst, def);
@@ -18777,7 +32299,7 @@ var ZodPreprocess = /* @__PURE__ */ $constructor("ZodPreprocess", (inst, def) =>
 var ZodReadonly = /* @__PURE__ */ $constructor("ZodReadonly", (inst, def) => {
   $ZodReadonly.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json, params) => readonlyProcessor(inst, ctx, json, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => readonlyProcessor(inst, ctx, json2, params);
   inst.unwrap = () => inst._zod.def.innerType;
 });
 function readonly(innerType) {
@@ -18787,11 +32309,72 @@ function readonly(innerType) {
   });
 }
 __name(readonly, "readonly");
+var ZodTemplateLiteral = /* @__PURE__ */ $constructor("ZodTemplateLiteral", (inst, def) => {
+  $ZodTemplateLiteral.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json2, params) => templateLiteralProcessor(inst, ctx, json2, params);
+});
+function templateLiteral(parts, params) {
+  return new ZodTemplateLiteral({
+    type: "template_literal",
+    parts,
+    ...util_exports.normalizeParams(params)
+  });
+}
+__name(templateLiteral, "templateLiteral");
+var ZodLazy = /* @__PURE__ */ $constructor("ZodLazy", (inst, def) => {
+  $ZodLazy.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json2, params) => lazyProcessor(inst, ctx, json2, params);
+  inst.unwrap = () => inst._zod.def.getter();
+});
+function lazy(getter) {
+  return new ZodLazy({
+    type: "lazy",
+    getter
+  });
+}
+__name(lazy, "lazy");
+var ZodPromise = /* @__PURE__ */ $constructor("ZodPromise", (inst, def) => {
+  $ZodPromise.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json2, params) => promiseProcessor(inst, ctx, json2, params);
+  inst.unwrap = () => inst._zod.def.innerType;
+});
+function promise(innerType) {
+  return new ZodPromise({
+    type: "promise",
+    innerType
+  });
+}
+__name(promise, "promise");
+var ZodFunction = /* @__PURE__ */ $constructor("ZodFunction", (inst, def) => {
+  $ZodFunction.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json2, params) => functionProcessor(inst, ctx, json2, params);
+});
+function _function(params) {
+  return new ZodFunction({
+    type: "function",
+    input: Array.isArray(params?.input) ? tuple(params?.input) : params?.input ?? array(unknown()),
+    output: params?.output ?? unknown()
+  });
+}
+__name(_function, "_function");
 var ZodCustom = /* @__PURE__ */ $constructor("ZodCustom", (inst, def) => {
   $ZodCustom.init(inst, def);
   ZodType.init(inst, def);
-  inst._zod.processJSONSchema = (ctx, json, params) => customProcessor(inst, ctx, json, params);
+  inst._zod.processJSONSchema = (ctx, json2, params) => customProcessor(inst, ctx, json2, params);
 });
+function check(fn) {
+  const ch = new $ZodCheck({
+    check: "custom"
+    // ...util.normalizeParams(params),
+  });
+  ch._zod.check = fn;
+  return ch;
+}
+__name(check, "check");
 function custom(fn, _params) {
   return _custom(ZodCustom, fn ?? (() => true), _params);
 }
@@ -18804,6 +32387,43 @@ function superRefine(fn, params) {
   return _superRefine(fn, params);
 }
 __name(superRefine, "superRefine");
+var describe2 = describe;
+var meta2 = meta;
+function _instanceof(cls, params = {}) {
+  const inst = new ZodCustom({
+    type: "custom",
+    check: "custom",
+    fn: /* @__PURE__ */ __name((data) => data instanceof cls, "fn"),
+    abort: true,
+    ...util_exports.normalizeParams(params)
+  });
+  inst._zod.bag.Class = cls;
+  inst._zod.check = (payload) => {
+    if (!(payload.value instanceof cls)) {
+      payload.issues.push({
+        code: "invalid_type",
+        expected: cls.name,
+        input: payload.value,
+        inst,
+        path: [...inst._zod.def.path ?? []]
+      });
+    }
+  };
+  return inst;
+}
+__name(_instanceof, "_instanceof");
+var stringbool = /* @__PURE__ */ __name((...args) => _stringbool({
+  Codec: ZodCodec,
+  Boolean: ZodBoolean,
+  String: ZodString
+}, ...args), "stringbool");
+function json(params) {
+  const jsonSchema = lazy(() => {
+    return union([string2(params), number2(), boolean2(), _null3(), array(jsonSchema), record(string2(), jsonSchema)]);
+  });
+  return jsonSchema;
+}
+__name(json, "json");
 function preprocess(fn, schema) {
   return new ZodPreprocess({
     type: "pipe",
@@ -18812,6 +32432,549 @@ function preprocess(fn, schema) {
   });
 }
 __name(preprocess, "preprocess");
+
+// node_modules/zod/v4/classic/compat.js
+var ZodIssueCode = {
+  invalid_type: "invalid_type",
+  too_big: "too_big",
+  too_small: "too_small",
+  invalid_format: "invalid_format",
+  not_multiple_of: "not_multiple_of",
+  unrecognized_keys: "unrecognized_keys",
+  invalid_union: "invalid_union",
+  invalid_key: "invalid_key",
+  invalid_element: "invalid_element",
+  invalid_value: "invalid_value",
+  custom: "custom"
+};
+function setErrorMap(map2) {
+  config({
+    customError: map2
+  });
+}
+__name(setErrorMap, "setErrorMap");
+function getErrorMap() {
+  return config().customError;
+}
+__name(getErrorMap, "getErrorMap");
+var ZodFirstPartyTypeKind;
+/* @__PURE__ */ (function(ZodFirstPartyTypeKind2) {
+})(ZodFirstPartyTypeKind || (ZodFirstPartyTypeKind = {}));
+
+// node_modules/zod/v4/classic/from-json-schema.js
+var z = {
+  ...schemas_exports2,
+  ...checks_exports2,
+  iso: iso_exports
+};
+var RECOGNIZED_KEYS = /* @__PURE__ */ new Set([
+  // Schema identification
+  "$schema",
+  "$ref",
+  "$defs",
+  "definitions",
+  // Core schema keywords
+  "$id",
+  "id",
+  "$comment",
+  "$anchor",
+  "$vocabulary",
+  "$dynamicRef",
+  "$dynamicAnchor",
+  // Type
+  "type",
+  "enum",
+  "const",
+  // Composition
+  "anyOf",
+  "oneOf",
+  "allOf",
+  "not",
+  // Object
+  "properties",
+  "required",
+  "additionalProperties",
+  "patternProperties",
+  "propertyNames",
+  "minProperties",
+  "maxProperties",
+  // Array
+  "items",
+  "prefixItems",
+  "additionalItems",
+  "minItems",
+  "maxItems",
+  "uniqueItems",
+  "contains",
+  "minContains",
+  "maxContains",
+  // String
+  "minLength",
+  "maxLength",
+  "pattern",
+  "format",
+  // Number
+  "minimum",
+  "maximum",
+  "exclusiveMinimum",
+  "exclusiveMaximum",
+  "multipleOf",
+  // Already handled metadata
+  "description",
+  "default",
+  // Content
+  "contentEncoding",
+  "contentMediaType",
+  "contentSchema",
+  // Unsupported (error-throwing)
+  "unevaluatedItems",
+  "unevaluatedProperties",
+  "if",
+  "then",
+  "else",
+  "dependentSchemas",
+  "dependentRequired",
+  // OpenAPI
+  "nullable",
+  "readOnly"
+]);
+function detectVersion(schema, defaultTarget) {
+  const $schema = schema.$schema;
+  if ($schema === "https://json-schema.org/draft/2020-12/schema") {
+    return "draft-2020-12";
+  }
+  if ($schema === "http://json-schema.org/draft-07/schema#") {
+    return "draft-7";
+  }
+  if ($schema === "http://json-schema.org/draft-04/schema#") {
+    return "draft-4";
+  }
+  return defaultTarget ?? "draft-2020-12";
+}
+__name(detectVersion, "detectVersion");
+function resolveRef(ref, ctx) {
+  if (!ref.startsWith("#")) {
+    throw new Error("External $ref is not supported, only local refs (#/...) are allowed");
+  }
+  const path11 = ref.slice(1).split("/").filter(Boolean);
+  if (path11.length === 0) {
+    return ctx.rootSchema;
+  }
+  const defsKey = ctx.version === "draft-2020-12" ? "$defs" : "definitions";
+  if (path11[0] === defsKey) {
+    const key = path11[1];
+    if (!key || !ctx.defs[key]) {
+      throw new Error(`Reference not found: ${ref}`);
+    }
+    return ctx.defs[key];
+  }
+  throw new Error(`Reference not found: ${ref}`);
+}
+__name(resolveRef, "resolveRef");
+function convertBaseSchema(schema, ctx) {
+  if (schema.not !== void 0) {
+    if (typeof schema.not === "object" && Object.keys(schema.not).length === 0) {
+      return z.never();
+    }
+    throw new Error("not is not supported in Zod (except { not: {} } for never)");
+  }
+  if (schema.unevaluatedItems !== void 0) {
+    throw new Error("unevaluatedItems is not supported");
+  }
+  if (schema.unevaluatedProperties !== void 0) {
+    throw new Error("unevaluatedProperties is not supported");
+  }
+  if (schema.if !== void 0 || schema.then !== void 0 || schema.else !== void 0) {
+    throw new Error("Conditional schemas (if/then/else) are not supported");
+  }
+  if (schema.dependentSchemas !== void 0 || schema.dependentRequired !== void 0) {
+    throw new Error("dependentSchemas and dependentRequired are not supported");
+  }
+  if (schema.$ref) {
+    const refPath = schema.$ref;
+    if (ctx.refs.has(refPath)) {
+      return ctx.refs.get(refPath);
+    }
+    if (ctx.processing.has(refPath)) {
+      return z.lazy(() => {
+        if (!ctx.refs.has(refPath)) {
+          throw new Error(`Circular reference not resolved: ${refPath}`);
+        }
+        return ctx.refs.get(refPath);
+      });
+    }
+    ctx.processing.add(refPath);
+    const resolved = resolveRef(refPath, ctx);
+    const zodSchema2 = convertSchema(resolved, ctx);
+    ctx.refs.set(refPath, zodSchema2);
+    ctx.processing.delete(refPath);
+    return zodSchema2;
+  }
+  if (schema.enum !== void 0) {
+    const enumValues = schema.enum;
+    if (ctx.version === "openapi-3.0" && schema.nullable === true && enumValues.length === 1 && enumValues[0] === null) {
+      return z.null();
+    }
+    if (enumValues.length === 0) {
+      return z.never();
+    }
+    if (enumValues.length === 1) {
+      return z.literal(enumValues[0]);
+    }
+    if (enumValues.every((v) => typeof v === "string")) {
+      return z.enum(enumValues);
+    }
+    const literalSchemas = enumValues.map((v) => z.literal(v));
+    if (literalSchemas.length < 2) {
+      return literalSchemas[0];
+    }
+    return z.union([literalSchemas[0], literalSchemas[1], ...literalSchemas.slice(2)]);
+  }
+  if (schema.const !== void 0) {
+    return z.literal(schema.const);
+  }
+  const type = schema.type;
+  if (Array.isArray(type)) {
+    const typeSchemas = type.map((t) => {
+      const typeSchema = { ...schema, type: t };
+      return convertBaseSchema(typeSchema, ctx);
+    });
+    if (typeSchemas.length === 0) {
+      return z.never();
+    }
+    if (typeSchemas.length === 1) {
+      return typeSchemas[0];
+    }
+    return z.union(typeSchemas);
+  }
+  if (!type) {
+    return z.any();
+  }
+  let zodSchema;
+  switch (type) {
+    case "string": {
+      let stringSchema = z.string();
+      if (schema.format) {
+        const format = schema.format;
+        if (format === "email") {
+          stringSchema = stringSchema.check(z.email());
+        } else if (format === "uri" || format === "uri-reference") {
+          stringSchema = stringSchema.check(z.url());
+        } else if (format === "uuid" || format === "guid") {
+          stringSchema = stringSchema.check(z.uuid());
+        } else if (format === "date-time") {
+          stringSchema = stringSchema.check(z.iso.datetime());
+        } else if (format === "date") {
+          stringSchema = stringSchema.check(z.iso.date());
+        } else if (format === "time") {
+          stringSchema = stringSchema.check(z.iso.time());
+        } else if (format === "duration") {
+          stringSchema = stringSchema.check(z.iso.duration());
+        } else if (format === "ipv4") {
+          stringSchema = stringSchema.check(z.ipv4());
+        } else if (format === "ipv6") {
+          stringSchema = stringSchema.check(z.ipv6());
+        } else if (format === "mac") {
+          stringSchema = stringSchema.check(z.mac());
+        } else if (format === "cidr") {
+          stringSchema = stringSchema.check(z.cidrv4());
+        } else if (format === "cidr-v6") {
+          stringSchema = stringSchema.check(z.cidrv6());
+        } else if (format === "base64") {
+          stringSchema = stringSchema.check(z.base64());
+        } else if (format === "base64url") {
+          stringSchema = stringSchema.check(z.base64url());
+        } else if (format === "e164") {
+          stringSchema = stringSchema.check(z.e164());
+        } else if (format === "jwt") {
+          stringSchema = stringSchema.check(z.jwt());
+        } else if (format === "emoji") {
+          stringSchema = stringSchema.check(z.emoji());
+        } else if (format === "nanoid") {
+          stringSchema = stringSchema.check(z.nanoid());
+        } else if (format === "cuid") {
+          stringSchema = stringSchema.check(z.cuid());
+        } else if (format === "cuid2") {
+          stringSchema = stringSchema.check(z.cuid2());
+        } else if (format === "ulid") {
+          stringSchema = stringSchema.check(z.ulid());
+        } else if (format === "xid") {
+          stringSchema = stringSchema.check(z.xid());
+        } else if (format === "ksuid") {
+          stringSchema = stringSchema.check(z.ksuid());
+        }
+      }
+      if (typeof schema.minLength === "number") {
+        stringSchema = stringSchema.min(schema.minLength);
+      }
+      if (typeof schema.maxLength === "number") {
+        stringSchema = stringSchema.max(schema.maxLength);
+      }
+      if (schema.pattern) {
+        stringSchema = stringSchema.regex(new RegExp(schema.pattern));
+      }
+      zodSchema = stringSchema;
+      break;
+    }
+    case "number":
+    case "integer": {
+      let numberSchema = type === "integer" ? z.number().int() : z.number();
+      if (typeof schema.minimum === "number") {
+        numberSchema = numberSchema.min(schema.minimum);
+      }
+      if (typeof schema.maximum === "number") {
+        numberSchema = numberSchema.max(schema.maximum);
+      }
+      if (typeof schema.exclusiveMinimum === "number") {
+        numberSchema = numberSchema.gt(schema.exclusiveMinimum);
+      } else if (schema.exclusiveMinimum === true && typeof schema.minimum === "number") {
+        numberSchema = numberSchema.gt(schema.minimum);
+      }
+      if (typeof schema.exclusiveMaximum === "number") {
+        numberSchema = numberSchema.lt(schema.exclusiveMaximum);
+      } else if (schema.exclusiveMaximum === true && typeof schema.maximum === "number") {
+        numberSchema = numberSchema.lt(schema.maximum);
+      }
+      if (typeof schema.multipleOf === "number") {
+        numberSchema = numberSchema.multipleOf(schema.multipleOf);
+      }
+      zodSchema = numberSchema;
+      break;
+    }
+    case "boolean": {
+      zodSchema = z.boolean();
+      break;
+    }
+    case "null": {
+      zodSchema = z.null();
+      break;
+    }
+    case "object": {
+      const shape = {};
+      const properties = schema.properties || {};
+      const requiredSet = new Set(schema.required || []);
+      for (const [key, propSchema] of Object.entries(properties)) {
+        const propZodSchema = convertSchema(propSchema, ctx);
+        shape[key] = requiredSet.has(key) ? propZodSchema : propZodSchema.optional();
+      }
+      if (schema.propertyNames) {
+        const keySchema = convertSchema(schema.propertyNames, ctx);
+        const valueSchema = schema.additionalProperties && typeof schema.additionalProperties === "object" ? convertSchema(schema.additionalProperties, ctx) : z.any();
+        if (Object.keys(shape).length === 0) {
+          zodSchema = z.record(keySchema, valueSchema);
+          break;
+        }
+        const objectSchema2 = z.object(shape).passthrough();
+        const recordSchema = z.looseRecord(keySchema, valueSchema);
+        zodSchema = z.intersection(objectSchema2, recordSchema);
+        break;
+      }
+      if (schema.patternProperties) {
+        const patternProps = schema.patternProperties;
+        const patternKeys = Object.keys(patternProps);
+        const looseRecords = [];
+        for (const pattern of patternKeys) {
+          const patternValue = convertSchema(patternProps[pattern], ctx);
+          const keySchema = z.string().regex(new RegExp(pattern));
+          looseRecords.push(z.looseRecord(keySchema, patternValue));
+        }
+        const schemasToIntersect = [];
+        if (Object.keys(shape).length > 0) {
+          schemasToIntersect.push(z.object(shape).passthrough());
+        }
+        schemasToIntersect.push(...looseRecords);
+        if (schemasToIntersect.length === 0) {
+          zodSchema = z.object({}).passthrough();
+        } else if (schemasToIntersect.length === 1) {
+          zodSchema = schemasToIntersect[0];
+        } else {
+          let result = z.intersection(schemasToIntersect[0], schemasToIntersect[1]);
+          for (let i = 2; i < schemasToIntersect.length; i++) {
+            result = z.intersection(result, schemasToIntersect[i]);
+          }
+          zodSchema = result;
+        }
+        break;
+      }
+      const objectSchema = z.object(shape);
+      if (schema.additionalProperties === false) {
+        zodSchema = objectSchema.strict();
+      } else if (typeof schema.additionalProperties === "object") {
+        zodSchema = objectSchema.catchall(convertSchema(schema.additionalProperties, ctx));
+      } else {
+        zodSchema = objectSchema.passthrough();
+      }
+      break;
+    }
+    case "array": {
+      const prefixItems = schema.prefixItems;
+      const items = schema.items;
+      if (prefixItems && Array.isArray(prefixItems)) {
+        const tupleItems = prefixItems.map((item) => convertSchema(item, ctx));
+        const rest = items && typeof items === "object" && !Array.isArray(items) ? convertSchema(items, ctx) : void 0;
+        if (rest) {
+          zodSchema = z.tuple(tupleItems).rest(rest);
+        } else {
+          zodSchema = z.tuple(tupleItems);
+        }
+        if (typeof schema.minItems === "number") {
+          zodSchema = zodSchema.check(z.minLength(schema.minItems));
+        }
+        if (typeof schema.maxItems === "number") {
+          zodSchema = zodSchema.check(z.maxLength(schema.maxItems));
+        }
+      } else if (Array.isArray(items)) {
+        const tupleItems = items.map((item) => convertSchema(item, ctx));
+        const rest = schema.additionalItems && typeof schema.additionalItems === "object" ? convertSchema(schema.additionalItems, ctx) : void 0;
+        if (rest) {
+          zodSchema = z.tuple(tupleItems).rest(rest);
+        } else {
+          zodSchema = z.tuple(tupleItems);
+        }
+        if (typeof schema.minItems === "number") {
+          zodSchema = zodSchema.check(z.minLength(schema.minItems));
+        }
+        if (typeof schema.maxItems === "number") {
+          zodSchema = zodSchema.check(z.maxLength(schema.maxItems));
+        }
+      } else if (items !== void 0) {
+        const element = convertSchema(items, ctx);
+        let arraySchema = z.array(element);
+        if (typeof schema.minItems === "number") {
+          arraySchema = arraySchema.min(schema.minItems);
+        }
+        if (typeof schema.maxItems === "number") {
+          arraySchema = arraySchema.max(schema.maxItems);
+        }
+        zodSchema = arraySchema;
+      } else {
+        zodSchema = z.array(z.any());
+      }
+      break;
+    }
+    default:
+      throw new Error(`Unsupported type: ${type}`);
+  }
+  return zodSchema;
+}
+__name(convertBaseSchema, "convertBaseSchema");
+function convertSchema(schema, ctx) {
+  if (typeof schema === "boolean") {
+    return schema ? z.any() : z.never();
+  }
+  let baseSchema = convertBaseSchema(schema, ctx);
+  const hasExplicitType = schema.type || schema.enum !== void 0 || schema.const !== void 0;
+  if (schema.anyOf && Array.isArray(schema.anyOf)) {
+    const options = schema.anyOf.map((s) => convertSchema(s, ctx));
+    const anyOfUnion = z.union(options);
+    baseSchema = hasExplicitType ? z.intersection(baseSchema, anyOfUnion) : anyOfUnion;
+  }
+  if (schema.oneOf && Array.isArray(schema.oneOf)) {
+    const options = schema.oneOf.map((s) => convertSchema(s, ctx));
+    const oneOfUnion = z.xor(options);
+    baseSchema = hasExplicitType ? z.intersection(baseSchema, oneOfUnion) : oneOfUnion;
+  }
+  if (schema.allOf && Array.isArray(schema.allOf)) {
+    if (schema.allOf.length === 0) {
+      baseSchema = hasExplicitType ? baseSchema : z.any();
+    } else {
+      let result = hasExplicitType ? baseSchema : convertSchema(schema.allOf[0], ctx);
+      const startIdx = hasExplicitType ? 0 : 1;
+      for (let i = startIdx; i < schema.allOf.length; i++) {
+        result = z.intersection(result, convertSchema(schema.allOf[i], ctx));
+      }
+      baseSchema = result;
+    }
+  }
+  if (schema.nullable === true && ctx.version === "openapi-3.0") {
+    baseSchema = z.nullable(baseSchema);
+  }
+  if (schema.readOnly === true) {
+    baseSchema = z.readonly(baseSchema);
+  }
+  if (schema.default !== void 0) {
+    baseSchema = baseSchema.default(schema.default);
+  }
+  const extraMeta = {};
+  const coreMetadataKeys = ["$id", "id", "$comment", "$anchor", "$vocabulary", "$dynamicRef", "$dynamicAnchor"];
+  for (const key of coreMetadataKeys) {
+    if (key in schema) {
+      extraMeta[key] = schema[key];
+    }
+  }
+  const contentMetadataKeys = ["contentEncoding", "contentMediaType", "contentSchema"];
+  for (const key of contentMetadataKeys) {
+    if (key in schema) {
+      extraMeta[key] = schema[key];
+    }
+  }
+  for (const key of Object.keys(schema)) {
+    if (!RECOGNIZED_KEYS.has(key)) {
+      extraMeta[key] = schema[key];
+    }
+  }
+  if (Object.keys(extraMeta).length > 0) {
+    ctx.registry.add(baseSchema, extraMeta);
+  }
+  if (schema.description) {
+    baseSchema = baseSchema.describe(schema.description);
+  }
+  return baseSchema;
+}
+__name(convertSchema, "convertSchema");
+function fromJSONSchema(schema, params) {
+  if (typeof schema === "boolean") {
+    return schema ? z.any() : z.never();
+  }
+  let normalized;
+  try {
+    normalized = JSON.parse(JSON.stringify(schema));
+  } catch {
+    throw new Error("fromJSONSchema input is not valid JSON (possibly cyclic); use $defs/$ref for recursive schemas");
+  }
+  const version2 = detectVersion(normalized, params?.defaultTarget);
+  const defs = normalized.$defs || normalized.definitions || {};
+  const ctx = {
+    version: version2,
+    defs,
+    refs: /* @__PURE__ */ new Map(),
+    processing: /* @__PURE__ */ new Set(),
+    rootSchema: normalized,
+    registry: params?.registry ?? globalRegistry
+  };
+  return convertSchema(normalized, ctx);
+}
+__name(fromJSONSchema, "fromJSONSchema");
+
+// node_modules/zod/v4/classic/coerce.js
+var coerce_exports = {};
+__export(coerce_exports, {
+  bigint: () => bigint3,
+  boolean: () => boolean3,
+  date: () => date4,
+  number: () => number3,
+  string: () => string3
+});
+function string3(params) {
+  return _coercedString(ZodString, params);
+}
+__name(string3, "string");
+function number3(params) {
+  return _coercedNumber(ZodNumber, params);
+}
+__name(number3, "number");
+function boolean3(params) {
+  return _coercedBoolean(ZodBoolean, params);
+}
+__name(boolean3, "boolean");
+function bigint3(params) {
+  return _coercedBigint(ZodBigInt, params);
+}
+__name(bigint3, "bigint");
+function date4(params) {
+  return _coercedDate(ZodDate, params);
+}
+__name(date4, "date");
 
 // node_modules/zod/v4/classic/external.js
 config(en_default());
@@ -18985,7 +33148,7 @@ var IconSchema = object2({
    *
    * If not provided, the client should assume the icon can be used with any theme.
    */
-  theme: _enum(["light", "dark"]).optional()
+  theme: _enum2(["light", "dark"]).optional()
 });
 var IconsSchema = object2({
   /**
@@ -19264,7 +33427,7 @@ var PaginatedResultSchema = ResultSchema.extend({
    */
   nextCursor: CursorSchema.optional()
 });
-var TaskStatusSchema = _enum(["working", "input_required", "completed", "failed", "cancelled"]);
+var TaskStatusSchema = _enum2(["working", "input_required", "completed", "failed", "cancelled"]);
 var TaskSchema = object2({
   taskId: string2(),
   status: TaskStatusSchema,
@@ -19357,7 +33520,7 @@ var BlobResourceContentsSchema = ResourceContentsSchema.extend({
    */
   blob: Base64Schema
 });
-var RoleSchema = _enum(["user", "assistant"]);
+var RoleSchema = _enum2(["user", "assistant"]);
 var AnnotationsSchema = object2({
   /**
    * Intended audience(s) for the resource.
@@ -19700,7 +33863,7 @@ var ToolExecutionSchema = object2({
    *
    * If not present, defaults to "forbidden".
    */
-  taskSupport: _enum(["required", "optional", "forbidden"]).optional()
+  taskSupport: _enum2(["required", "optional", "forbidden"]).optional()
 });
 var ToolSchema = object2({
   ...BaseMetadataSchema.shape,
@@ -19819,7 +33982,7 @@ var ListChangedOptionsBaseSchema = object2({
    */
   debounceMs: number2().int().nonnegative().default(300)
 });
-var LoggingLevelSchema = _enum(["debug", "info", "notice", "warning", "error", "critical", "alert", "emergency"]);
+var LoggingLevelSchema = _enum2(["debug", "info", "notice", "warning", "error", "critical", "alert", "emergency"]);
 var SetLevelRequestParamsSchema = BaseRequestParamsSchema.extend({
   /**
    * The level of logging that the client wants to receive from the server. The server should send all logs at this level and higher (i.e., more severe) to the client as notifications/logging/message.
@@ -19879,7 +34042,7 @@ var ToolChoiceSchema = object2({
    * - "required": Model MUST use at least one tool before completing
    * - "none": Model MUST NOT use any tools
    */
-  mode: _enum(["auto", "required", "none"]).optional()
+  mode: _enum2(["auto", "required", "none"]).optional()
 });
 var ToolResultContentSchema = object2({
   type: literal("tool_result"),
@@ -19927,7 +34090,7 @@ var CreateMessageRequestParamsSchema = TaskAugmentedRequestParamsSchema.extend({
    * Default is "none". Values "thisServer" and "allServers" are soft-deprecated. Servers SHOULD only use these values if the client
    * declares ClientCapabilities.sampling.context. These values may be removed in future spec releases.
    */
-  includeContext: _enum(["none", "thisServer", "allServers"]).optional(),
+  includeContext: _enum2(["none", "thisServer", "allServers"]).optional(),
   temperature: number2().optional(),
   /**
    * The requested maximum number of tokens to sample (to prevent runaway completions).
@@ -19971,7 +34134,7 @@ var CreateMessageResultSchema = ResultSchema.extend({
    *
    * This field is an open string to allow for provider-specific stop reasons.
    */
-  stopReason: optional(_enum(["endTurn", "stopSequence", "maxTokens"]).or(string2())),
+  stopReason: optional(_enum2(["endTurn", "stopSequence", "maxTokens"]).or(string2())),
   role: RoleSchema,
   /**
    * Response content. Single content block (text, image, or audio).
@@ -19994,7 +34157,7 @@ var CreateMessageResultWithToolsSchema = ResultSchema.extend({
    *
    * This field is an open string to allow for provider-specific stop reasons.
    */
-  stopReason: optional(_enum(["endTurn", "stopSequence", "maxTokens", "toolUse"]).or(string2())),
+  stopReason: optional(_enum2(["endTurn", "stopSequence", "maxTokens", "toolUse"]).or(string2())),
   role: RoleSchema,
   /**
    * Response content. May be a single block or array. May include ToolUseContent if stopReason is "toolUse".
@@ -20013,11 +34176,11 @@ var StringSchemaSchema = object2({
   description: string2().optional(),
   minLength: number2().optional(),
   maxLength: number2().optional(),
-  format: _enum(["email", "uri", "date", "date-time"]).optional(),
+  format: _enum2(["email", "uri", "date", "date-time"]).optional(),
   default: string2().optional()
 });
 var NumberSchemaSchema = object2({
-  type: _enum(["number", "integer"]),
+  type: _enum2(["number", "integer"]),
   title: string2().optional(),
   description: string2().optional(),
   minimum: number2().optional(),
@@ -20141,7 +34304,7 @@ var ElicitResultSchema = ResultSchema.extend({
    * - "decline": User explicitly decline the action
    * - "cancel": User dismissed without making an explicit choice
    */
-  action: _enum(["accept", "decline", "cancel"]),
+  action: _enum2(["accept", "decline", "cancel"]),
   /**
    * The submitted form data, only present when action is "accept".
    * Contains values matching the requested schema.
@@ -20430,8 +34593,8 @@ var Protocol = class {
                     resolver(message);
                   } else {
                     const errorMessage = message;
-                    const error2 = new McpError(errorMessage.error.code, errorMessage.error.message, errorMessage.error.data);
-                    resolver(error2);
+                    const error51 = new McpError(errorMessage.error.code, errorMessage.error.message, errorMessage.error.data);
+                    resolver(error51);
                   }
                 } else {
                   const messageType = queuedMessage.type === "response" ? "Response" : "Error";
@@ -20475,8 +34638,8 @@ var Protocol = class {
             nextCursor,
             _meta: {}
           };
-        } catch (error2) {
-          throw new McpError(ErrorCode.InvalidParams, `Failed to list tasks: ${error2 instanceof Error ? error2.message : String(error2)}`);
+        } catch (error51) {
+          throw new McpError(ErrorCode.InvalidParams, `Failed to list tasks: ${error51 instanceof Error ? error51.message : String(error51)}`);
         }
       });
       this.setRequestHandler(CancelTaskRequestSchema, async (request, extra) => {
@@ -20498,11 +34661,11 @@ var Protocol = class {
             _meta: {},
             ...cancelledTask
           };
-        } catch (error2) {
-          if (error2 instanceof McpError) {
-            throw error2;
+        } catch (error51) {
+          if (error51 instanceof McpError) {
+            throw error51;
           }
-          throw new McpError(ErrorCode.InvalidRequest, `Failed to cancel task: ${error2 instanceof Error ? error2.message : String(error2)}`);
+          throw new McpError(ErrorCode.InvalidRequest, `Failed to cancel task: ${error51 instanceof Error ? error51.message : String(error51)}`);
         }
       });
     }
@@ -20563,9 +34726,9 @@ var Protocol = class {
       this._onclose();
     };
     const _onerror = this.transport?.onerror;
-    this._transport.onerror = (error2) => {
-      _onerror?.(error2);
-      this._onerror(error2);
+    this._transport.onerror = (error51) => {
+      _onerror?.(error51);
+      this._onerror(error51);
     };
     const _onmessage = this._transport?.onmessage;
     this._transport.onmessage = (message, extra) => {
@@ -20596,22 +34759,22 @@ var Protocol = class {
       controller.abort();
     }
     this._requestHandlerAbortControllers.clear();
-    const error2 = McpError.fromError(ErrorCode.ConnectionClosed, "Connection closed");
+    const error51 = McpError.fromError(ErrorCode.ConnectionClosed, "Connection closed");
     this._transport = void 0;
     this.onclose?.();
     for (const handler of responseHandlers.values()) {
-      handler(error2);
+      handler(error51);
     }
   }
-  _onerror(error2) {
-    this.onerror?.(error2);
+  _onerror(error51) {
+    this.onerror?.(error51);
   }
   _onnotification(notification) {
     const handler = this._notificationHandlers.get(notification.method) ?? this.fallbackNotificationHandler;
     if (handler === void 0) {
       return;
     }
-    Promise.resolve().then(() => handler(notification)).catch((error2) => this._onerror(new Error(`Uncaught error in notification handler: ${error2}`)));
+    Promise.resolve().then(() => handler(notification)).catch((error51) => this._onerror(new Error(`Uncaught error in notification handler: ${error51}`)));
   }
   _onrequest(request, extra) {
     const handler = this._requestHandlers.get(request.method) ?? this.fallbackRequestHandler;
@@ -20631,9 +34794,9 @@ var Protocol = class {
           type: "error",
           message: errorResponse,
           timestamp: Date.now()
-        }, capturedTransport?.sessionId).catch((error2) => this._onerror(new Error(`Failed to enqueue error response: ${error2}`)));
+        }, capturedTransport?.sessionId).catch((error51) => this._onerror(new Error(`Failed to enqueue error response: ${error51}`)));
       } else {
-        capturedTransport?.send(errorResponse).catch((error2) => this._onerror(new Error(`Failed to send an error response: ${error2}`)));
+        capturedTransport?.send(errorResponse).catch((error51) => this._onerror(new Error(`Failed to send an error response: ${error51}`)));
       }
       return;
     }
@@ -20699,7 +34862,7 @@ var Protocol = class {
       } else {
         await capturedTransport?.send(response);
       }
-    }, async (error2) => {
+    }, async (error51) => {
       if (abortController.signal.aborted) {
         return;
       }
@@ -20707,9 +34870,9 @@ var Protocol = class {
         jsonrpc: "2.0",
         id: request.id,
         error: {
-          code: Number.isSafeInteger(error2["code"]) ? error2["code"] : ErrorCode.InternalError,
-          message: error2.message ?? "Internal error",
-          ...error2["data"] !== void 0 && { data: error2["data"] }
+          code: Number.isSafeInteger(error51["code"]) ? error51["code"] : ErrorCode.InternalError,
+          message: error51.message ?? "Internal error",
+          ...error51["data"] !== void 0 && { data: error51["data"] }
         }
       };
       if (relatedTaskId && this._taskMessageQueue) {
@@ -20721,7 +34884,7 @@ var Protocol = class {
       } else {
         await capturedTransport?.send(errorResponse);
       }
-    }).catch((error2) => this._onerror(new Error(`Failed to send response: ${error2}`))).finally(() => {
+    }).catch((error51) => this._onerror(new Error(`Failed to send response: ${error51}`))).finally(() => {
       if (this._requestHandlerAbortControllers.get(request.id) === abortController) {
         this._requestHandlerAbortControllers.delete(request.id);
       }
@@ -20740,11 +34903,11 @@ var Protocol = class {
     if (timeoutInfo && responseHandler && timeoutInfo.resetTimeoutOnProgress) {
       try {
         this._resetTimeout(messageId);
-      } catch (error2) {
+      } catch (error51) {
         this._responseHandlers.delete(messageId);
         this._progressHandlers.delete(messageId);
         this._cleanupTimeout(messageId);
-        responseHandler(error2);
+        responseHandler(error51);
         return;
       }
     }
@@ -20758,8 +34921,8 @@ var Protocol = class {
       if (isJSONRPCResultResponse(response)) {
         resolver(response);
       } else {
-        const error2 = new McpError(response.error.code, response.error.message, response.error.data);
-        resolver(error2);
+        const error51 = new McpError(response.error.code, response.error.message, response.error.data);
+        resolver(error51);
       }
       return;
     }
@@ -20787,8 +34950,8 @@ var Protocol = class {
     if (isJSONRPCResultResponse(response)) {
       handler(response);
     } else {
-      const error2 = McpError.fromError(response.error.code, response.error.message, response.error.data);
-      handler(error2);
+      const error51 = McpError.fromError(response.error.code, response.error.message, response.error.data);
+      handler(error51);
     }
   }
   get transport() {
@@ -20833,10 +34996,10 @@ var Protocol = class {
       try {
         const result = await this.request(request, resultSchema, options);
         yield { type: "result", result };
-      } catch (error2) {
+      } catch (error51) {
         yield {
           type: "error",
-          error: error2 instanceof McpError ? error2 : new McpError(ErrorCode.InternalError, String(error2))
+          error: error51 instanceof McpError ? error51 : new McpError(ErrorCode.InternalError, String(error51))
         };
       }
       return;
@@ -20876,13 +35039,13 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve) => setTimeout(resolve, pollInterval));
+        await new Promise((resolve7) => setTimeout(resolve7, pollInterval));
         options?.signal?.throwIfAborted();
       }
-    } catch (error2) {
+    } catch (error51) {
       yield {
         type: "error",
-        error: error2 instanceof McpError ? error2 : new McpError(ErrorCode.InternalError, String(error2))
+        error: error51 instanceof McpError ? error51 : new McpError(ErrorCode.InternalError, String(error51))
       };
     }
   }
@@ -20893,9 +35056,9 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-    return new Promise((resolve, reject) => {
-      const earlyReject = /* @__PURE__ */ __name((error2) => {
-        reject(error2);
+    return new Promise((resolve7, reject) => {
+      const earlyReject = /* @__PURE__ */ __name((error51) => {
+        reject(error51);
       }, "earlyReject");
       if (!this._transport) {
         earlyReject(new Error("Not connected"));
@@ -20955,9 +35118,9 @@ var Protocol = class {
             requestId: messageId,
             reason: String(reason)
           }
-        }, { relatedRequestId, resumptionToken, onresumptiontoken }).catch((error3) => this._onerror(new Error(`Failed to send cancellation: ${error3}`)));
-        const error2 = reason instanceof McpError ? reason : new McpError(ErrorCode.RequestTimeout, String(reason));
-        reject(error2);
+        }, { relatedRequestId, resumptionToken, onresumptiontoken }).catch((error52) => this._onerror(new Error(`Failed to send cancellation: ${error52}`)));
+        const error51 = reason instanceof McpError ? reason : new McpError(ErrorCode.RequestTimeout, String(reason));
+        reject(error51);
       }, "cancel");
       this._responseHandlers.set(messageId, (response) => {
         if (options?.signal?.aborted) {
@@ -20971,10 +35134,10 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve(parseResult.data);
+            resolve7(parseResult.data);
           }
-        } catch (error2) {
-          reject(error2);
+        } catch (error51) {
+          reject(error51);
         }
       });
       options?.signal?.addEventListener("abort", () => {
@@ -20998,14 +35161,14 @@ var Protocol = class {
           type: "request",
           message: jsonrpcRequest,
           timestamp: Date.now()
-        }).catch((error2) => {
+        }).catch((error51) => {
           this._cleanupTimeout(messageId);
-          reject(error2);
+          reject(error51);
         });
       } else {
-        this._transport.send(jsonrpcRequest, { relatedRequestId, resumptionToken, onresumptiontoken }).catch((error2) => {
+        this._transport.send(jsonrpcRequest, { relatedRequestId, resumptionToken, onresumptiontoken }).catch((error51) => {
           this._cleanupTimeout(messageId);
-          reject(error2);
+          reject(error51);
         });
       }
     });
@@ -21098,7 +35261,7 @@ var Protocol = class {
             }
           };
         }
-        this._transport?.send(jsonrpcNotification2, options).catch((error2) => this._onerror(error2));
+        this._transport?.send(jsonrpcNotification2, options).catch((error51) => this._onerror(error51));
       });
       return;
     }
@@ -21232,12 +35395,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve7, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve, interval);
+      const timeoutId = setTimeout(resolve7, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -21974,11 +36137,11 @@ var Server = class extends Protocol {
             if (!validationResult.valid) {
               throw new McpError(ErrorCode.InvalidParams, `Elicitation response content does not match requested schema: ${validationResult.errorMessage}`);
             }
-          } catch (error2) {
-            if (error2 instanceof McpError) {
-              throw error2;
+          } catch (error51) {
+            if (error51 instanceof McpError) {
+              throw error51;
             }
-            throw new McpError(ErrorCode.InternalError, `Error validating elicitation response: ${error2 instanceof Error ? error2.message : String(error2)}`);
+            throw new McpError(ErrorCode.InternalError, `Error validating elicitation response: ${error51 instanceof Error ? error51.message : String(error51)}`);
           }
         }
         return result;
@@ -22090,8 +36253,8 @@ var StdioServerTransport = class {
       this._readBuffer.append(chunk);
       this.processReadBuffer();
     };
-    this._onerror = (error2) => {
-      this.onerror?.(error2);
+    this._onerror = (error51) => {
+      this.onerror?.(error51);
     };
   }
   /**
@@ -22113,8 +36276,8 @@ var StdioServerTransport = class {
           break;
         }
         this.onmessage?.(message);
-      } catch (error2) {
-        this.onerror?.(error2);
+      } catch (error51) {
+        this.onerror?.(error51);
       }
     }
   }
@@ -22129,18 +36292,44 @@ var StdioServerTransport = class {
     this.onclose?.();
   }
   send(message) {
-    return new Promise((resolve) => {
-      const json = serializeMessage(message);
-      if (this._stdout.write(json)) {
-        resolve();
+    return new Promise((resolve7) => {
+      const json2 = serializeMessage(message);
+      if (this._stdout.write(json2)) {
+        resolve7();
       } else {
-        this._stdout.once("drain", resolve);
+        this._stdout.once("drain", resolve7);
       }
     });
   }
 };
 
 // packages/core/src/proc/index.ts
+var BUDGET_EXPIRED = /* @__PURE__ */ Symbol("budget-expired");
+async function withBudget(ms, task) {
+  const start = Date.now();
+  const signal = { aborted: false };
+  let timer;
+  const budgetHit = new Promise((resolve7) => {
+    timer = setTimeout(() => {
+      signal.aborted = true;
+      resolve7(BUDGET_EXPIRED);
+    }, ms);
+    timer.unref?.();
+  });
+  const taskP = task(signal);
+  const first = await Promise.race([
+    taskP.then((value2) => ({ value: value2 })),
+    budgetHit
+  ]);
+  if (first !== BUDGET_EXPIRED) {
+    if (timer) clearTimeout(timer);
+    return { value: first.value, budget_exceeded: false, elapsed_ms: Date.now() - start };
+  }
+  const value = await taskP;
+  if (timer) clearTimeout(timer);
+  return { value, budget_exceeded: true, elapsed_ms: Date.now() - start };
+}
+__name(withBudget, "withBudget");
 function installProcessHygiene(options = {}) {
   const idleMs = (options.idleExitMinutes ?? 30) * 6e4;
   const ppidPollMs = options.ppidPollMs ?? 5e3;
@@ -22222,98 +36411,16 @@ function installProcessHygiene(options = {}) {
 }
 __name(installProcessHygiene, "installProcessHygiene");
 
-// packages/core/src/shared/tokens.ts
-var PAYLOAD_CHARS_PER_TOKEN = 3.5;
-function estimatePayloadTokens(payload) {
-  return Math.ceil(payload.length / PAYLOAD_CHARS_PER_TOKEN);
-}
-__name(estimatePayloadTokens, "estimatePayloadTokens");
+// packages/core/src/envelope/index.ts
+init_tokens();
+init_tokens();
 
-// packages/core/src/config/index.ts
-var fs = __toESM(require("fs"), 1);
-var os = __toESM(require("os"), 1);
-var path = __toESM(require("path"), 1);
-var DEFAULT_CONFIG = Object.freeze({
-  mode: "restricted",
-  dangerously_persist_across_sessions: false,
-  idle_exit_minutes: 30,
-  ppid_poll_ms: 5e3,
-  telemetry_enabled: true,
-  cache_max_mb: 200,
-  max_tokens_default: 4e3,
-  budgets: Object.freeze({
-    analyzer_ms: 2e4,
-    search_ms: 15e3,
-    http_default_ms: 3e4,
-    http_max_ms: 12e4,
-    db_query_ms: 3e4,
-    analytics_ms: 2e4
-  })
-});
-var V2_STATE_SEGMENTS = [".goodvibes", "v2"];
-function getStatePath(cwd, ...segments) {
-  return path.join(cwd, ...V2_STATE_SEGMENTS, ...segments);
-}
-__name(getStatePath, "getStatePath");
-function projectConfigPath(cwd = process.cwd()) {
-  return getStatePath(cwd, "config.json");
-}
-__name(projectConfigPath, "projectConfigPath");
-function userConfigPath() {
-  return path.join(os.homedir(), ".claude", ".goodvibes", "config.json");
-}
-__name(userConfigPath, "userConfigPath");
-function readJsonIfPresent(file) {
-  try {
-    return JSON.parse(fs.readFileSync(file, "utf-8"));
-  } catch {
-    return {};
-  }
-}
-__name(readJsonIfPresent, "readJsonIfPresent");
-function mergeBudgets(base, override) {
-  if (!override || typeof override !== "object") return base;
-  const o = override;
-  const pick2 = /* @__PURE__ */ __name((k) => typeof o[k] === "number" && Number.isFinite(o[k]) && o[k] > 0 ? o[k] : base[k], "pick");
-  return {
-    analyzer_ms: pick2("analyzer_ms"),
-    search_ms: pick2("search_ms"),
-    http_default_ms: pick2("http_default_ms"),
-    http_max_ms: pick2("http_max_ms"),
-    db_query_ms: pick2("db_query_ms"),
-    analytics_ms: pick2("analytics_ms")
-  };
-}
-__name(mergeBudgets, "mergeBudgets");
-var cached2 = null;
-function loadConfig(cwd = process.cwd()) {
-  const projFile = projectConfigPath(cwd);
-  const userFile = userConfigPath();
-  const cacheKey = `${userFile}::${projFile}`;
-  if (cached2 && cached2.key === cacheKey) return cached2.value;
-  const user = readJsonIfPresent(userFile);
-  const project = readJsonIfPresent(projFile);
-  const merged = { ...DEFAULT_CONFIG, ...user, ...project };
-  const num = /* @__PURE__ */ __name((k, d) => typeof merged[k] === "number" && Number.isFinite(merged[k]) && merged[k] > 0 ? merged[k] : d, "num");
-  const mode = merged.mode === "open" ? "open" : "restricted";
-  const value = {
-    mode,
-    dangerously_persist_across_sessions: merged.dangerously_persist_across_sessions === true,
-    idle_exit_minutes: num("idle_exit_minutes", DEFAULT_CONFIG.idle_exit_minutes),
-    ppid_poll_ms: num("ppid_poll_ms", DEFAULT_CONFIG.ppid_poll_ms),
-    telemetry_enabled: merged.telemetry_enabled !== false,
-    cache_max_mb: num("cache_max_mb", DEFAULT_CONFIG.cache_max_mb),
-    max_tokens_default: num("max_tokens_default", DEFAULT_CONFIG.max_tokens_default),
-    budgets: mergeBudgets(DEFAULT_CONFIG.budgets, merged.budgets)
-  };
-  cached2 = { key: cacheKey, value };
-  return value;
-}
-__name(loadConfig, "loadConfig");
+// packages/core/src/envelope/overflow.ts
+init_config();
 
 // packages/core/src/envelope/index.ts
-function errorEnvelope(error2, meta2 = {}) {
-  return { success: false, error: error2, meta: { token_estimate: 0, ...meta2 } };
+function errorEnvelope(error51, meta3 = {}) {
+  return { success: false, error: error51, meta: { token_estimate: 0, ...meta3 } };
 }
 __name(errorEnvelope, "errorEnvelope");
 function renderEnvelope(env) {
@@ -22333,35 +36440,3771 @@ function toCallToolResult(env) {
 __name(toCallToolResult, "toCallToolResult");
 
 // packages/analytics/src/index.ts
+init_config();
+
+// packages/analytics/src/engine/index.ts
+init_types();
+init_config2();
+
+// packages/analytics/src/engine/daemon/aggregator.ts
+var import_node_path6 = require("node:path");
+var import_node_os3 = require("node:os");
+var import_node_fs9 = require("node:fs");
+
+// packages/analytics/src/engine/data/telemetry-reader.ts
+var import_sql = __toESM(require("sql.js"), 1);
+var import_node_fs3 = require("node:fs");
+var path3 = __toESM(require("node:path"), 1);
+var import_meta = {};
+var COL = {
+  id: 0,
+  session_id: 1,
+  tool: 2,
+  status: 3,
+  tokens_in: 4,
+  tokens_out: 5,
+  cache_hit: 6,
+  cache_bytes_saved: 7,
+  duration_ms: 8,
+  error: 9,
+  metadata: 10,
+  created_at: 11
+};
+var SELECT_COLS = `
+  id, session_id, tool, status,
+  tokens_in, tokens_out, cache_hit, cache_bytes_saved,
+  duration_ms, error, metadata, created_at
+`;
+var BYTES_PER_TOKEN = 4;
+var TelemetryReader = class _TelemetryReader {
+  static {
+    __name(this, "TelemetryReader");
+  }
+  db = null;
+  _SQL = null;
+  dbPath;
+  _available = false;
+  constructor(goodvibesDir) {
+    this.dbPath = path3.join(goodvibesDir, "telemetry", "telemetry.db");
+  }
+  /**
+   * Initialize sql.js WASM and open the database from the file on disk.
+   *
+   * Safe to call multiple times — subsequent calls are no-ops if already
+   * initialized. If the DB file does not exist, marks as unavailable and
+   * returns without error (callers get empty results).
+   */
+  async initialize() {
+    if (this.db !== null) {
+      return;
+    }
+    if (!(0, import_node_fs3.existsSync)(this.dbPath)) {
+      this._available = false;
+      return;
+    }
+    try {
+      let bundleDir;
+      try {
+        bundleDir = path3.dirname(new URL(import_meta.url).pathname);
+      } catch {
+        bundleDir = typeof __dirname !== "undefined" ? __dirname : path3.dirname(process.argv[1]);
+      }
+      const wasmBesideBundle = path3.join(bundleDir, "sql-wasm.wasm");
+      const sqlConfig = (0, import_node_fs3.existsSync)(wasmBesideBundle) ? { locateFile: /* @__PURE__ */ __name((file2) => path3.join(bundleDir, file2), "locateFile") } : {};
+      this._SQL = await (0, import_sql.default)(sqlConfig);
+      const buffer = (0, import_node_fs3.readFileSync)(this.dbPath);
+      this.db = new this._SQL.Database(buffer);
+      this._available = true;
+    } catch (err) {
+      console.warn("[TelemetryReader] Failed to open database:", String(err));
+      this.db = null;
+      this._available = false;
+    }
+  }
+  /**
+   * Returns true if the DB was opened successfully and is queryable.
+   */
+  isAvailable() {
+    return this._available && this.db !== null;
+  }
+  // ───────────────────────────────────────────────────────────────────────────
+  // Query methods
+  // ───────────────────────────────────────────────────────────────────────────
+  /**
+   * Get records with optional filters.
+   * Returns records in ascending chronological order.
+   * Returns [] if the database is unavailable.
+   */
+  getRecords(filter) {
+    if (!this.db) return [];
+    try {
+      const conditions = [];
+      const params = [];
+      if (filter?.tool) {
+        conditions.push("tool = ?");
+        params.push(filter.tool);
+      }
+      if (filter?.status) {
+        conditions.push("status = ?");
+        params.push(filter.status);
+      }
+      if (filter?.since) {
+        conditions.push("created_at >= ?");
+        params.push(filter.since);
+      }
+      if (filter?.session_id) {
+        conditions.push("session_id = ?");
+        params.push(filter.session_id);
+      }
+      const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+      let sql = `SELECT ${SELECT_COLS} FROM calls ${where} ORDER BY created_at ASC`;
+      if (filter?.limit !== void 0 && filter.limit > 0) {
+        sql += " LIMIT ?";
+        params.push(Math.floor(filter.limit));
+      }
+      const results = this.db.exec(sql, params.length > 0 ? params : void 0);
+      return this.resultsToRecords(results);
+    } catch (err) {
+      console.warn("[TelemetryReader] getRecords error:", String(err));
+      return [];
+    }
+  }
+  /**
+   * Get a summary for the specified session (defaults to current/most recent).
+   * Returns null if the database is unavailable or the session has no records.
+   */
+  getSessionSummary(sessionId) {
+    if (!this.db) return null;
+    const sid = sessionId ?? this.getCurrentSessionId();
+    if (!sid) return null;
+    try {
+      const results = this.db.exec(
+        `SELECT ${SELECT_COLS} FROM calls WHERE session_id = ? ORDER BY created_at ASC`,
+        [sid]
+      );
+      const records = this.resultsToRecords(results);
+      if (records.length === 0) return null;
+      const byTool = {};
+      let totalTokensIn = 0;
+      let totalTokensOut = 0;
+      let totalCacheHits = 0;
+      let totalDurationMs = 0;
+      let successCount = 0;
+      for (const rec of records) {
+        if (!byTool[rec.tool]) {
+          byTool[rec.tool] = { calls: 0, tokens_in: 0, tokens_out: 0, cache_hits: 0, total_ms: 0, success: 0 };
+        }
+        const t = byTool[rec.tool];
+        t.calls++;
+        const ti = rec.tokens_in ?? 0;
+        const to = rec.tokens_out ?? 0;
+        t.tokens_in += ti;
+        t.tokens_out += to;
+        totalTokensIn += ti;
+        totalTokensOut += to;
+        if (rec.cache_hit) {
+          t.cache_hits++;
+          totalCacheHits++;
+        }
+        const ms = rec.duration_ms ?? 0;
+        t.total_ms += ms;
+        totalDurationMs += ms;
+        if (rec.status === "success") {
+          t.success++;
+          successCount++;
+        }
+      }
+      const byToolOut = {};
+      for (const [tool, s] of Object.entries(byTool)) {
+        byToolOut[tool] = {
+          calls: s.calls,
+          avg_ms: s.calls > 0 ? Math.round(s.total_ms / s.calls) : 0,
+          cache_hit_rate: s.calls > 0 ? s.cache_hits / s.calls : 0,
+          tokens_in: s.tokens_in,
+          tokens_out: s.tokens_out,
+          success_rate: s.calls > 0 ? s.success / s.calls : 1
+        };
+      }
+      return {
+        session_id: sid,
+        total_calls: records.length,
+        by_tool: byToolOut,
+        total_tokens_in: totalTokensIn,
+        total_tokens_out: totalTokensOut,
+        total_cache_hits: totalCacheHits,
+        total_duration_ms: totalDurationMs,
+        success_rate: records.length > 0 ? successCount / records.length : 1
+      };
+    } catch (err) {
+      console.warn("[TelemetryReader] getSessionSummary error:", String(err));
+      return null;
+    }
+  }
+  /**
+   * Get the most recent session ID in the database (highest created_at).
+   * Returns null if unavailable or DB is empty.
+   */
+  getCurrentSessionId() {
+    if (!this.db) return null;
+    try {
+      const results = this.db.exec(
+        `SELECT session_id FROM calls ORDER BY created_at DESC LIMIT 1`
+      );
+      if (!results.length || !results[0].values.length) return null;
+      return results[0].values[0][0];
+    } catch (err) {
+      console.warn("[TelemetryReader] getCurrentSessionId error:", String(err));
+      return null;
+    }
+  }
+  /**
+   * List all distinct session IDs in the database, ordered by first appearance.
+   */
+  listSessionIds() {
+    if (!this.db) return [];
+    try {
+      const results = this.db.exec(
+        `SELECT session_id FROM calls GROUP BY session_id ORDER BY MIN(created_at) ASC`
+      );
+      if (!results.length) return [];
+      return results[0].values.map((row) => row[0]);
+    } catch (err) {
+      console.warn("[TelemetryReader] listSessionIds error:", String(err));
+      return [];
+    }
+  }
+  /**
+   * Get all records created within the last `windowMs` milliseconds.
+   * Useful for anomaly detection on recent activity.
+   */
+  getRecordsInWindow(windowMs) {
+    const since = new Date(Date.now() - windowMs).toISOString();
+    return this.getRecords({ since });
+  }
+  /**
+   * Compute token metrics from recorded calls.
+   *
+   * Returns the TokenMetrics shape from types.ts:
+   *   { input, output, total, saved, efficiency }
+   *
+   * If `sessionId` is provided, filters to that session; otherwise uses all records.
+   */
+  getTokenMetrics(sessionId) {
+    const empty = {
+      input: 0,
+      output: 0,
+      total: 0,
+      saved: 0,
+      efficiency: 0,
+      api_input: 0,
+      api_output: 0,
+      cache_read: 0,
+      cache_write: 0
+    };
+    if (!this.db) return empty;
+    try {
+      const sid = sessionId ?? this.getCurrentSessionId();
+      const where = sid ? "WHERE session_id = ?" : "";
+      const params = sid ? [sid] : void 0;
+      const results = this.db.exec(
+        `SELECT tokens_in, tokens_out, cache_bytes_saved FROM calls ${where}`,
+        params
+      );
+      if (!results.length) return empty;
+      let totalIn = 0;
+      let totalOut = 0;
+      let totalSavedBytes = 0;
+      for (const row of results[0].values) {
+        totalIn += row[0] ?? 0;
+        totalOut += row[1] ?? 0;
+        totalSavedBytes += row[2] ?? 0;
+      }
+      const total = totalIn + totalOut;
+      const saved = Math.round(totalSavedBytes / BYTES_PER_TOKEN);
+      const efficiency = total + saved > 0 ? saved / (total + saved) : 0;
+      return {
+        input: totalIn,
+        output: totalOut,
+        total,
+        saved,
+        efficiency: Math.round(efficiency * 1e4) / 1e4,
+        // 4 decimal places
+        // API-level token counts (Phase 2 will populate from JSONL sync)
+        api_input: 0,
+        api_output: 0,
+        cache_read: 0,
+        cache_write: 0
+      };
+    } catch (err) {
+      console.warn("[TelemetryReader] getTokenMetrics error:", String(err));
+      return empty;
+    }
+  }
+  /**
+   * Get the most recent N records in ascending chronological order.
+   * Returns [] if unavailable.
+   */
+  getRecentRecords(limit) {
+    if (!this.db) return [];
+    try {
+      const n = Math.max(1, Math.floor(limit));
+      const results = this.db.exec(
+        `SELECT * FROM (SELECT ${SELECT_COLS} FROM calls ORDER BY created_at DESC LIMIT ?) sub ORDER BY created_at ASC`,
+        [n]
+      );
+      return this.resultsToRecords(results);
+    } catch (err) {
+      console.warn("[TelemetryReader] getRecentRecords error:", String(err));
+      return [];
+    }
+  }
+  /**
+   * Reload the database from disk synchronously.
+   *
+   * Closes the current in-memory DB and re-reads the file. Use this to pick up
+   * records written by precision-engine after the initial `initialize()` call.
+   * If the file no longer exists, marks the reader as unavailable.
+   *
+   * Requires `initialize()` to have been called first (to cache the SqlJsStatic
+   * instance). If called before initialize(), this is a no-op.
+   */
+  reload() {
+    if (this.db) {
+      try {
+        this.db.close();
+      } catch {
+      }
+      this.db = null;
+      this._available = false;
+    }
+    if (!(0, import_node_fs3.existsSync)(this.dbPath)) return;
+    if (!this._SQL) return;
+    try {
+      const buffer = (0, import_node_fs3.readFileSync)(this.dbPath);
+      this.db = new this._SQL.Database(buffer);
+      this._available = true;
+    } catch (err) {
+      console.warn("[TelemetryReader] reload error:", String(err));
+    }
+  }
+  /**
+   * Close the database and release resources.
+   */
+  close() {
+    if (this.db) {
+      try {
+        this.db.close();
+      } catch {
+      }
+      this.db = null;
+      this._available = false;
+    }
+  }
+  // ───────────────────────────────────────────────────────────────────────────
+  // Internal helpers
+  // ───────────────────────────────────────────────────────────────────────────
+  /**
+   * Convert sql.js exec() results to TelemetryRecord[].
+   * sql.js returns rows as value arrays, not objects.
+   */
+  resultsToRecords(results) {
+    if (!results || results.length === 0) return [];
+    const { values } = results[0];
+    return values.map((row) => _TelemetryReader.rowToRecord(row));
+  }
+  /**
+   * Map a raw row array to a typed TelemetryRecord.
+   * Column indices are defined in the COL constant.
+   *
+   * NOTE: The database stores `metadata` as a JSON string (written by precision-engine).
+   * The `TelemetryRecord.metadata` field is typed as `string` to match the stored
+   * representation. Consumers needing a structured object should call
+   * `JSON.parse(record.metadata)` — the interface intentionally does not auto-parse
+   * to avoid the cost on paths that don't need it.
+   */
+  static rowToRecord(row) {
+    const rec = {
+      id: row[COL.id],
+      session_id: row[COL.session_id],
+      tool: row[COL.tool],
+      status: row[COL.status],
+      created_at: row[COL.created_at]
+    };
+    if (row[COL.tokens_in] !== null && row[COL.tokens_in] !== void 0) {
+      rec.tokens_in = row[COL.tokens_in];
+    }
+    if (row[COL.tokens_out] !== null && row[COL.tokens_out] !== void 0) {
+      rec.tokens_out = row[COL.tokens_out];
+    }
+    if (row[COL.cache_hit] !== null && row[COL.cache_hit] !== void 0) {
+      rec.cache_hit = row[COL.cache_hit] !== 0;
+    }
+    if (row[COL.cache_bytes_saved] !== null && row[COL.cache_bytes_saved] !== void 0) {
+      rec.cache_bytes_saved = row[COL.cache_bytes_saved];
+    }
+    if (row[COL.duration_ms] !== null && row[COL.duration_ms] !== void 0) {
+      rec.duration_ms = row[COL.duration_ms];
+    }
+    if (row[COL.error] !== null && row[COL.error] !== void 0) {
+      rec.error = row[COL.error];
+    }
+    if (row[COL.metadata] !== null && row[COL.metadata] !== void 0) {
+      rec.metadata = row[COL.metadata];
+    }
+    return rec;
+  }
+};
+
+// packages/analytics/src/engine/data/session-reader.ts
+var import_node_fs4 = require("node:fs");
+var path4 = __toESM(require("node:path"), 1);
+var SessionReader = class {
+  static {
+    __name(this, "SessionReader");
+  }
+  stateDir;
+  constructor(goodvibesDir) {
+    this.stateDir = path4.join(goodvibesDir, "state");
+  }
+  /**
+   * Find the most recent session file by filesystem mtime.
+   * Returns null if the state directory does not exist or is empty.
+   */
+  getCurrentSessionFile() {
+    const files = this.listSessionFiles();
+    if (files.length === 0) return null;
+    const sorted = files.map((f) => {
+      try {
+        const fullPath = path4.join(this.stateDir, f);
+        const mtime = (0, import_node_fs4.statSync)(fullPath).mtimeMs;
+        return { file: f, mtime };
+      } catch {
+        return null;
+      }
+    }).filter((x) => x !== null).sort((a, b) => b.mtime - a.mtime);
+    return sorted.length > 0 ? path4.join(this.stateDir, sorted[0].file) : null;
+  }
+  /**
+   * Read and parse a session file by session ID.
+   * Returns null if the file does not exist or cannot be parsed.
+   */
+  readSession(sessionId) {
+    const filePath = path4.join(this.stateDir, `session_${sessionId}.json`);
+    return this.parseSessionFile(filePath);
+  }
+  /**
+   * Read and parse the most recent (current) session file.
+   * Returns null if no session files exist.
+   */
+  readCurrentSession() {
+    const filePath = this.getCurrentSessionFile();
+    if (!filePath) return null;
+    return this.parseSessionFile(filePath);
+  }
+  /**
+   * List all available session IDs derived from filenames in the state directory.
+   * Returns an empty array if the directory does not exist.
+   */
+  listSessionIds() {
+    return this.listSessionFiles().map((f) => {
+      const match = f.match(/^session_([0-9a-f]{8})\.json$/);
+      return match ? match[1] : null;
+    }).filter((id) => id !== null);
+  }
+  /**
+   * Retrieve specific KV values from a session file by key name.
+   * Missing keys are present in the result with value `undefined`.
+   */
+  getValues(sessionId, keys) {
+    const session = this.readSession(sessionId);
+    const result = {};
+    if (!session) {
+      for (const key of keys) result[key] = void 0;
+      return result;
+    }
+    for (const key of keys) {
+      result[key] = session.values[key];
+    }
+    return result;
+  }
+  /**
+   * Read the auto-populated session counters from a session file.
+   * Uses the current session when no sessionId is provided.
+   */
+  getSessionCounters(sessionId) {
+    const session = sessionId ? this.readSession(sessionId) : this.readCurrentSession();
+    const values = session?.values ?? {};
+    return {
+      tokens_used: toNumber(values["session.tokens_used"]),
+      files_modified: toStringArray(values["session.files_modified"]),
+      commands_run: toNumber(values["session.commands_run"]),
+      agents_spawned: toNumber(values["session.agents_spawned"])
+    };
+  }
+  // ---------------------------------------------------------------------------
+  // Private helpers
+  // ---------------------------------------------------------------------------
+  /**
+   * List raw session filenames from the state directory.
+   */
+  listSessionFiles() {
+    try {
+      return (0, import_node_fs4.readdirSync)(this.stateDir).filter(
+        (f) => /^session_[0-9a-f]{8}\.json$/.test(f)
+      );
+    } catch {
+      return [];
+    }
+  }
+  /**
+   * Parse a session JSON file into SessionData.
+   * The raw file shape is { id, started_at, ...kvPairs }.
+   * We normalise it by pulling id/started_at out and placing the rest in values.
+   */
+  parseSessionFile(filePath) {
+    try {
+      const raw = (0, import_node_fs4.readFileSync)(filePath, "utf-8");
+      const parsed = JSON.parse(raw);
+      const id = typeof parsed["id"] === "string" ? parsed["id"] : "";
+      const started_at = typeof parsed["started_at"] === "string" ? parsed["started_at"] : "";
+      const values = {};
+      for (const [key, val] of Object.entries(parsed)) {
+        if (key !== "id" && key !== "started_at") {
+          values[key] = val;
+        }
+      }
+      return { id, started_at, values };
+    } catch {
+      return null;
+    }
+  }
+};
+function toNumber(value) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const n = Number(value);
+    if (Number.isFinite(n)) return n;
+  }
+  return 0;
+}
+__name(toNumber, "toNumber");
+function toStringArray(value) {
+  if (Array.isArray(value)) {
+    return value.filter((v) => typeof v === "string");
+  }
+  return [];
+}
+__name(toStringArray, "toStringArray");
+
+// packages/analytics/src/engine/data/index-reader.ts
+var import_fs2 = require("fs");
+var path5 = __toESM(require("path"), 1);
+var IndexReader = class {
+  static {
+    __name(this, "IndexReader");
+  }
+  indexPath;
+  /** Parsed index, null if unread or unavailable. */
+  cache = null;
+  /** Mtime (ms) of the file when it was last parsed. */
+  cacheMtime = -1;
+  constructor(goodvibesDir) {
+    this.indexPath = path5.join(goodvibesDir, "project-index.json");
+  }
+  /**
+   * Read the current project index, using a cached copy when the file
+   * has not been modified since the last read.
+   * Returns null if the index file does not exist or cannot be parsed.
+   */
+  read() {
+    if (!(0, import_fs2.existsSync)(this.indexPath)) {
+      this.cache = null;
+      this.cacheMtime = -1;
+      return null;
+    }
+    try {
+      const mtime = (0, import_fs2.statSync)(this.indexPath).mtimeMs;
+      if (this.cache !== null && mtime === this.cacheMtime) {
+        return this.cache;
+      }
+      const raw = (0, import_fs2.readFileSync)(this.indexPath, "utf-8");
+      const parsed = JSON.parse(raw);
+      if (!parsed || parsed.version !== 4) {
+        this.cache = null;
+        this.cacheMtime = mtime;
+        return null;
+      }
+      this.cache = parsed;
+      this.cacheMtime = mtime;
+      return this.cache;
+    } catch {
+      this.cache = null;
+      return null;
+    }
+  }
+  /**
+   * Returns true when the project-index.json file exists on disk.
+   */
+  isAvailable() {
+    return (0, import_fs2.existsSync)(this.indexPath);
+  }
+  /**
+   * Total file count from the index stats block.
+   * Returns 0 if the index is unavailable.
+   */
+  getTotalFiles() {
+    return this.read()?.stats.total_files ?? 0;
+  }
+  /**
+   * Total estimated token count, summed across all files in the tree.
+   * Returns 0 if the index is unavailable.
+   */
+  getTotalTokens() {
+    const index = this.read();
+    if (!index) return 0;
+    let total = 0;
+    for (const files of Object.values(index.tree)) {
+      for (const tokens of Object.values(files)) {
+        total += tokens;
+      }
+    }
+    return total;
+  }
+  /**
+   * File count broken down by extension category.
+   * Extension categories match the precision-engine's categorizeFileType output:
+   * ts, js, json, md, css, html, py, go, rs, yaml, other.
+   *
+   * Returns an empty object if the index is unavailable.
+   */
+  getTypeCounts() {
+    const index = this.read();
+    if (!index) return {};
+    const counts = {};
+    for (const files of Object.values(index.tree)) {
+      for (const filename of Object.keys(files)) {
+        const ext = path5.extname(filename).toLowerCase().slice(1);
+        const type = extToCategory(ext);
+        counts[type] = (counts[type] ?? 0) + 1;
+      }
+    }
+    return counts;
+  }
+  /**
+   * Return the top N files sorted descending by token count.
+   * Each entry contains the full relative path and its token count.
+   * Returns an empty array if the index is unavailable or n <= 0.
+   */
+  getLargestFiles(n) {
+    if (n <= 0) return [];
+    const index = this.read();
+    if (!index) return [];
+    const entries = [];
+    for (const [dir, files] of Object.entries(index.tree)) {
+      for (const [filename, tokens] of Object.entries(files)) {
+        const filePath = dir ? `${dir}/${filename}` : filename;
+        entries.push({ path: filePath, tokens });
+      }
+    }
+    entries.sort((a, b) => b.tokens - a.tokens || a.path.localeCompare(b.path));
+    return entries.slice(0, n);
+  }
+};
+function extToCategory(ext) {
+  switch (ext) {
+    case "ts":
+    case "tsx":
+      return "ts";
+    case "js":
+    case "jsx":
+    case "mjs":
+    case "cjs":
+      return "js";
+    case "json":
+      return "json";
+    case "md":
+    case "mdx":
+      return "md";
+    case "css":
+    case "scss":
+    case "less":
+      return "css";
+    case "html":
+    case "htm":
+      return "html";
+    case "py":
+      return "py";
+    case "go":
+      return "go";
+    case "rs":
+      return "rs";
+    case "yaml":
+    case "yml":
+      return "yaml";
+    default:
+      return "other";
+  }
+}
+__name(extToCategory, "extToCategory");
+
+// packages/analytics/src/engine/daemon/aggregator.ts
+init_jsonl_reader();
+init_config2();
+init_runtime();
+
+// packages/analytics/src/engine/daemon/anomaly-detector.ts
+var DEFAULT_LOGGER = {
+  warn: /* @__PURE__ */ __name((msg) => console.warn(`[analytics] ${msg}`), "warn")
+};
+var MIN_RECORDS_THRESHOLD = 10;
+var BUILD_CMD_RE = /npm\s+run\s+(build|test|lint|typecheck)|npx\s+tsc|jest|vitest/i;
+function windowKey(type, windowMs, now = Date.now()) {
+  const bucket = Math.floor(now / windowMs);
+  return `${type}:${bucket}`;
+}
+__name(windowKey, "windowKey");
+function anomalyId(type) {
+  return `anomaly_${type}_${Date.now()}`;
+}
+__name(anomalyId, "anomalyId");
+function average(values) {
+  if (values.length === 0) return 0;
+  return values.reduce((a, b) => a + b, 0) / values.length;
+}
+__name(average, "average");
+var WINDOW_5_MIN = 5 * 60 * 1e3;
+var WINDOW_10_MIN = 10 * 60 * 1e3;
+var cacheDegradationRule = {
+  type: "cache_degradation",
+  severity: "warning",
+  windowMs: WINDOW_5_MIN,
+  description: "Precision cache hit rate dropped >15pp vs session average in a 5-min window",
+  check(telemetry, state) {
+    const windowRecords = telemetry.getRecordsInWindow(WINDOW_5_MIN);
+    if (windowRecords.length === 0) return null;
+    const windowHits = windowRecords.filter((r) => r.cache_hit).length;
+    const windowRate = windowHits / windowRecords.length;
+    const sessionRate = state.metrics.cache.hit_rate;
+    const drop = sessionRate - windowRate;
+    if (drop >= 0.15) {
+      return {
+        id: anomalyId("cache_degradation"),
+        type: "cache_degradation",
+        severity: "warning",
+        message: `Cache hit rate degraded: ${(windowRate * 100).toFixed(1)}% in last 5m vs ${(sessionRate * 100).toFixed(1)}% session avg (drop: ${(drop * 100).toFixed(1)}pp)`,
+        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+        details: {
+          window_rate: windowRate,
+          session_rate: sessionRate,
+          drop_pp: drop,
+          window_records: windowRecords.length
+        }
+      };
+    }
+    return null;
+  }
+};
+var errorSpikeRule = {
+  type: "error_spike",
+  severity: "alert",
+  windowMs: WINDOW_5_MIN,
+  description: "Error rate exceeds 25% in a 5-min window",
+  check(telemetry, _state) {
+    const windowRecords = telemetry.getRecordsInWindow(WINDOW_5_MIN);
+    if (windowRecords.length === 0) return null;
+    const failed = windowRecords.filter((r) => r.status === "failed").length;
+    const errorRate = failed / windowRecords.length;
+    if (errorRate > 0.25) {
+      return {
+        id: anomalyId("error_spike"),
+        type: "error_spike",
+        severity: "alert",
+        message: `Error spike detected: ${(errorRate * 100).toFixed(1)}% failure rate in last 5m (${failed}/${windowRecords.length} calls)`,
+        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+        details: {
+          error_rate: errorRate,
+          failed_calls: failed,
+          total_calls: windowRecords.length
+        }
+      };
+    }
+    return null;
+  }
+};
+var tokenBurnRule = {
+  type: "token_burn",
+  severity: "warning",
+  windowMs: WINDOW_5_MIN,
+  description: "Token consumption rate >2x session average in a 5-min window",
+  check(telemetry, state) {
+    const windowRecords = telemetry.getRecordsInWindow(WINDOW_5_MIN);
+    if (windowRecords.length === 0) return null;
+    const windowTokens = windowRecords.reduce(
+      (sum, r) => sum + (r.tokens_in ?? 0) + (r.tokens_out ?? 0),
+      0
+    );
+    const earliest = Math.min(...windowRecords.map((r) => new Date(r.created_at).getTime()));
+    const span = Math.max(Date.now() - earliest, 1);
+    const windowRate = windowTokens / span;
+    const sessionTotalTokens = state.metrics.tokens.total;
+    const sessionUptimeMs = state.uptime_ms;
+    if (sessionUptimeMs <= 0 || sessionTotalTokens <= 0) return null;
+    const sessionRate = sessionTotalTokens / sessionUptimeMs;
+    if (sessionRate <= 0) return null;
+    const ratio = windowRate / sessionRate;
+    if (ratio > 2) {
+      return {
+        id: anomalyId("token_burn"),
+        type: "token_burn",
+        severity: "warning",
+        message: `Token burn rate is ${ratio.toFixed(1)}x session average (${Math.round(windowTokens).toLocaleString()} tokens in last 5m)`,
+        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+        details: {
+          window_tokens: windowTokens,
+          window_rate_per_ms: windowRate,
+          session_rate_per_ms: sessionRate,
+          ratio
+        }
+      };
+    }
+    return null;
+  }
+};
+var buildRegressionRule = {
+  type: "build_regression",
+  severity: "warning",
+  windowMs: WINDOW_5_MIN,
+  description: "Build/test duration >2x session average in a 5-min window",
+  check(telemetry, _state) {
+    const allRecords = telemetry.getRecords();
+    const buildRecords = allRecords.filter(
+      (r) => r.tool === "exec" && r.metadata !== void 0 && isBuildCommand(r.metadata)
+    );
+    if (buildRecords.length < 2) return null;
+    const windowSince = Date.now() - WINDOW_5_MIN;
+    const windowBuildRecords = buildRecords.filter(
+      (r) => new Date(r.created_at).getTime() >= windowSince
+    );
+    if (windowBuildRecords.length === 0) return null;
+    const sessionAvg = average(
+      buildRecords.map((r) => r.duration_ms ?? 0).filter((d) => d > 0)
+    );
+    if (sessionAvg <= 0) return null;
+    const windowAvg = average(
+      windowBuildRecords.map((r) => r.duration_ms ?? 0).filter((d) => d > 0)
+    );
+    if (windowAvg <= 0) return null;
+    const ratio = windowAvg / sessionAvg;
+    if (ratio > 2) {
+      return {
+        id: anomalyId("build_regression"),
+        type: "build_regression",
+        severity: "warning",
+        message: `Build regression: avg ${Math.round(windowAvg)}ms in last 5m vs ${Math.round(sessionAvg)}ms session avg (${ratio.toFixed(1)}x slower)`,
+        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+        details: {
+          window_avg_ms: windowAvg,
+          session_avg_ms: sessionAvg,
+          ratio,
+          window_build_count: windowBuildRecords.length
+        }
+      };
+    }
+    return null;
+  }
+};
+var conflictStormRule = {
+  type: "conflict_storm",
+  severity: "alert",
+  windowMs: WINDOW_5_MIN,
+  description: ">3 file conflicts detected in a 5-min window",
+  check(telemetry, state) {
+    if (state.metrics.files.conflicts === 0) return null;
+    const windowRecords = telemetry.getRecordsInWindow(WINDOW_5_MIN);
+    const conflictRecords = windowRecords.filter((r) => isConflictRecord(r));
+    if (conflictRecords.length > 3) {
+      return {
+        id: anomalyId("conflict_storm"),
+        type: "conflict_storm",
+        severity: "alert",
+        message: `Conflict storm: ${conflictRecords.length} file conflicts in last 5m`,
+        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+        details: {
+          conflict_count: conflictRecords.length,
+          window_ms: WINDOW_5_MIN
+        }
+      };
+    }
+    return null;
+  }
+};
+var agentStallRule = {
+  type: "agent_stall",
+  severity: "warning",
+  windowMs: WINDOW_10_MIN,
+  description: "Agent running >10min without tool call",
+  check(_telemetry, state) {
+    const now = Date.now();
+    const stalledAgents = [];
+    for (const profile of state.agent_profiles) {
+      if (profile.status !== "active") continue;
+      const agentActivity = state.recent_activity.filter(
+        (a) => a.agent_id === profile.agent_id
+      );
+      let lastActivityTime;
+      if (agentActivity.length > 0) {
+        const latest = agentActivity.reduce(
+          (a, b) => new Date(a.timestamp).getTime() > new Date(b.timestamp).getTime() ? a : b
+        );
+        lastActivityTime = new Date(latest.timestamp).getTime();
+      } else {
+        lastActivityTime = now - profile.duration_ms;
+      }
+      const idleMs = now - lastActivityTime;
+      if (idleMs > WINDOW_10_MIN) {
+        stalledAgents.push(profile.agent_id);
+      }
+    }
+    if (stalledAgents.length > 0) {
+      return {
+        id: anomalyId("agent_stall"),
+        type: "agent_stall",
+        severity: "warning",
+        message: `Agent stall: ${stalledAgents.length} agent(s) inactive >10min: ${stalledAgents.slice(0, 3).join(", ")}${stalledAgents.length > 3 ? "..." : ""}`,
+        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+        details: {
+          stalled_agents: stalledAgents,
+          stall_threshold_ms: WINDOW_10_MIN
+        }
+      };
+    }
+    return null;
+  }
+};
+function isBuildCommand(metadata) {
+  try {
+    const parsed = JSON.parse(metadata);
+    const meta3 = typeof parsed === "object" && parsed !== null ? parsed : {};
+    const cmd = typeof meta3["cmd"] === "string" ? meta3["cmd"] : "";
+    return BUILD_CMD_RE.test(cmd);
+  } catch {
+    return BUILD_CMD_RE.test(metadata);
+  }
+}
+__name(isBuildCommand, "isBuildCommand");
+function isConflictRecord(record2) {
+  if (record2.tool === "conflict") return true;
+  if (!record2.metadata) return false;
+  try {
+    const parsed = JSON.parse(record2.metadata);
+    const meta3 = typeof parsed === "object" && parsed !== null ? parsed : {};
+    return meta3["conflict"] === true || meta3["type"] === "conflict" || typeof meta3["conflict_file"] === "string";
+  } catch {
+    return false;
+  }
+}
+__name(isConflictRecord, "isConflictRecord");
+var BUILT_IN_RULES = [
+  cacheDegradationRule,
+  errorSpikeRule,
+  tokenBurnRule,
+  buildRegressionRule,
+  conflictStormRule,
+  agentStallRule
+];
+var AnomalyDetector = class {
+  static {
+    __name(this, "AnomalyDetector");
+  }
+  telemetry;
+  config;
+  rules;
+  logger;
+  /**
+   * In-memory list of detected anomalies (newest last).
+   * Pruned on demand via `pruneStale()`.
+   */
+  anomalies = [];
+  /**
+   * Deduplication map: windowKey(type, windowMs) → timestamp of last fire.
+   * Prevents the same type from firing more than once per window bucket.
+   */
+  fired = /* @__PURE__ */ new Map();
+  /**
+   * @param telemetry - Initialized TelemetryReader (may be unavailable).
+   * @param config    - Analytics configuration (detection can be disabled).
+   * @param logger    - Optional structured logger; defaults to prefixed console.warn.
+   */
+  constructor(telemetry, config2, logger = DEFAULT_LOGGER) {
+    this.telemetry = telemetry;
+    this.config = config2;
+    this.rules = BUILT_IN_RULES;
+    this.logger = logger;
+  }
+  /**
+   * Evaluate all rules against the current state and return any new anomalies.
+   *
+   * Rules that have already fired within their window are skipped (deduplicated).
+   * Anomalies are also appended to the internal list returned by
+   * `getActiveAnomalies()`.
+   *
+   * Returns an empty array if:
+   *   - `config.anomaly_detection` is false, or
+   *   - fewer than 10 total tool-call records exist (early-session protection), or
+   *   - the telemetry reader is unavailable.
+   *
+   * @param state - Current aggregated dashboard state.
+   * @returns Newly detected anomalies (may be empty).
+   */
+  detect(state) {
+    if (!this.config.anomaly_detection) return [];
+    if (!this.telemetry.isAvailable()) return [];
+    const allRecords = this.telemetry.getRecords();
+    if (allRecords.length < MIN_RECORDS_THRESHOLD) return [];
+    this.pruneStale(30 * 60 * 1e3);
+    const newAnomalies = [];
+    const now = Date.now();
+    for (const rule of this.rules) {
+      const key = windowKey(rule.type, rule.windowMs, now);
+      if (this.fired.has(key)) {
+        continue;
+      }
+      let anomaly = null;
+      try {
+        anomaly = rule.check(this.telemetry, state);
+      } catch (err) {
+        this.logger.warn(`Rule '${rule.type}' threw an error: ${String(err)}`);
+        continue;
+      }
+      if (anomaly !== null) {
+        this.fired.set(key, now);
+        this.anomalies.push(anomaly);
+        newAnomalies.push(anomaly);
+      }
+    }
+    return newAnomalies;
+  }
+  /**
+   * Return all anomalies currently held in memory.
+   *
+   * The list includes all anomalies since the last `pruneStale()` call.
+   * Ordered chronologically (oldest first).
+   *
+   * @returns Shallow copy of the active anomaly list.
+   */
+  getActiveAnomalies() {
+    return [...this.anomalies];
+  }
+  /**
+   * Remove anomalies older than `maxAgeMs` milliseconds from the in-memory
+   * list, and clean up stale deduplication entries.
+   *
+   * Safe to call during or between `detect()` cycles. Keys to delete are
+   * collected first to avoid mutating the Map during iteration.
+   *
+   * @param maxAgeMs - Maximum age in milliseconds. Anomalies older than this
+   *                   are discarded.
+   */
+  pruneStale(maxAgeMs) {
+    const cutoff = Date.now() - maxAgeMs;
+    this.anomalies = this.anomalies.filter(
+      (a) => new Date(a.timestamp).getTime() > cutoff
+    );
+    const toDelete = [];
+    for (const [key, ts] of this.fired.entries()) {
+      if (ts < cutoff) toDelete.push(key);
+    }
+    for (const key of toDelete) this.fired.delete(key);
+  }
+};
+
+// packages/analytics/src/engine/daemon/budget-tracker.ts
+var BudgetTracker = class {
+  static {
+    __name(this, "BudgetTracker");
+  }
+  /** Active budget configuration, or null if no budget is set. */
+  budgetAmount = null;
+  budgetUnit = null;
+  /** Sorted ascending warn thresholds (fractions, e.g. [0.5, 0.8, 1.0]). */
+  warnThresholds = [];
+  /** Thresholds (as percentage fractions) that have already been reported. */
+  crossedThresholds = /* @__PURE__ */ new Set();
+  /** Most recently computed BudgetState. */
+  currentState = null;
+  /**
+   * @param config - AnalyticsConfig to read initial budget and thresholds from.
+   */
+  constructor(config2) {
+    this.applyConfig(config2);
+  }
+  // -------------------------------------------------------------------------
+  // Public API
+  // -------------------------------------------------------------------------
+  /**
+   * Override or set a budget amount and unit.
+   * Resets all crossed-threshold tracking when the budget changes.
+   *
+   * @param amount - Budget limit in the given unit.
+   * @param unit   - Either 'dollars' or 'tokens'.
+   */
+  setBudget(amount, unit) {
+    this.budgetAmount = amount;
+    this.budgetUnit = unit;
+    this.crossedThresholds.clear();
+    this.currentState = null;
+  }
+  /**
+   * Clear the active budget. All methods will return null after this call.
+   */
+  clearBudget() {
+    this.budgetAmount = null;
+    this.budgetUnit = null;
+    this.crossedThresholds.clear();
+    this.currentState = null;
+  }
+  /**
+   * Recompute BudgetState from the provided metrics and config.
+   *
+   * @param metrics - Current session metrics snapshot.
+   * @param config  - Current analytics configuration.
+   * @returns The newly computed BudgetState, or null if no budget is configured.
+   */
+  update(metrics, config2) {
+    this.warnThresholds = [...config2.budget_warn_thresholds].sort((a, b) => a - b);
+    const amount = this.budgetAmount ?? config2.budget?.amount ?? null;
+    const unit = this.budgetUnit ?? config2.budget?.unit ?? null;
+    if (amount === null || unit === null) {
+      this.currentState = null;
+      return null;
+    }
+    const used = unit === "dollars" ? metrics.cost.total : metrics.tokens.total;
+    const remaining = Math.max(0, amount - used);
+    const percentage = amount > 0 ? used / amount : 0;
+    const currentThreshold = this.resolveCurrentThreshold(percentage);
+    this.currentState = {
+      amount,
+      unit,
+      used,
+      remaining,
+      percentage,
+      warn_thresholds: [...this.warnThresholds],
+      current_threshold: currentThreshold
+    };
+    return this.currentState;
+  }
+  /**
+   * Return the current BudgetState without recomputing.
+   * Returns null if update() has not been called or no budget is configured.
+   */
+  getState() {
+    return this.currentState;
+  }
+  /**
+   * Check whether any new thresholds have been crossed since the last call.
+   *
+   * A threshold is "crossed" when the current usage percentage equals or
+   * exceeds the threshold fraction. Each threshold is returned at most once
+   * per session — subsequent calls return null for already-reported thresholds.
+   *
+   * @returns The lowest newly-crossed threshold or null if none.
+   */
+  checkThresholds() {
+    if (this.currentState === null) return null;
+    const { percentage } = this.currentState;
+    for (const threshold of this.warnThresholds) {
+      if (percentage >= threshold && !this.crossedThresholds.has(threshold)) {
+        this.crossedThresholds.add(threshold);
+        return { crossed: true, threshold };
+      }
+    }
+    return null;
+  }
+  // -------------------------------------------------------------------------
+  // Private helpers
+  // -------------------------------------------------------------------------
+  /**
+   * Apply budget and threshold settings from a config object.
+   */
+  applyConfig(config2) {
+    if (config2.budget) {
+      this.budgetAmount = config2.budget.amount;
+      this.budgetUnit = config2.budget.unit;
+    }
+    this.warnThresholds = [...config2.budget_warn_thresholds].sort((a, b) => a - b);
+  }
+  /**
+   * Find the highest threshold that the current percentage has reached.
+   * Returns null if no threshold has been crossed.
+   */
+  resolveCurrentThreshold(percentage) {
+    let highest = null;
+    for (const threshold of this.warnThresholds) {
+      if (percentage >= threshold) {
+        highest = threshold;
+      }
+    }
+    return highest;
+  }
+};
+
+// packages/analytics/src/engine/daemon/memory-updater.ts
+var import_node_fs6 = require("node:fs");
+var import_node_path3 = require("node:path");
+var HIGH_READ_COUNT = 5;
+var SLOW_COMMAND_MS = 2e4;
+var GOOD_CACHE_RATE = 0.7;
+var HIGH_CONFLICT_COUNT = 5;
+var MemoryUpdater = class {
+  static {
+    __name(this, "MemoryUpdater");
+  }
+  memoryDir;
+  /**
+   * @param memoryDir - Absolute path to the .goodvibes/memory/ directory.
+   */
+  constructor(memoryDir) {
+    this.memoryDir = memoryDir;
+  }
+  // -------------------------------------------------------------------------
+  // Public API
+  // -------------------------------------------------------------------------
+  /**
+   * Analyse a dashboard state snapshot and produce pattern/preference updates.
+   *
+   * Does NOT write anything to disk — call apply() to persist the results.
+   *
+   * @param state - Current DashboardState from the analytics daemon.
+   * @returns Object with `patterns` and `preferences` arrays.
+   */
+  analyze(state) {
+    const patterns = [];
+    const preferences = [];
+    const hotFiles = state.file_hotspots.filter((h) => h.reads >= HIGH_READ_COUNT);
+    if (hotFiles.length > 0) {
+      patterns.push({
+        id: "pat_analytics_outline_mode",
+        name: "FrequentlyReadFilesOutlineMode",
+        description: `${hotFiles.length} file(s) were read ${HIGH_READ_COUNT}+ times this session. Use extract: outline or extract: symbols for repeated reads to save tokens.`,
+        when_to_use: "When reading the same file more than 5 times in a session to understand its structure.",
+        example_files: hotFiles.slice(0, 3).map((h) => h.path),
+        keywords: ["outline", "symbols", "frequent-reads", "token-efficiency", "precision_read"]
+      });
+      preferences.push({
+        key: "precision.default_extract_mode",
+        value: "outline",
+        reason: `${hotFiles.length} file(s) were read ${HIGH_READ_COUNT}+ times. Defaulting repeated reads to outline mode reduces token consumption.`
+      });
+    }
+    const commands = state.metrics.tools;
+    if (commands.avg_duration_ms > SLOW_COMMAND_MS) {
+      patterns.push({
+        id: "pat_analytics_slow_commands",
+        name: "SlowCommandOptimisation",
+        description: `Commands averaged ${Math.round(commands.avg_duration_ms / 1e3)}s this session. Consider caching results, parallelising steps, or using incremental builds.`,
+        when_to_use: "When command execution is a bottleneck in the development loop.",
+        example_files: [],
+        keywords: ["slow", "commands", "performance", "build", "optimisation"]
+      });
+    }
+    const { cache } = state.metrics;
+    if (cache.hit_rate >= GOOD_CACHE_RATE) {
+      patterns.push({
+        id: "pat_analytics_cache_efficiency",
+        name: "HighCacheHitRate",
+        description: `Cache hit rate was ${Math.round(cache.hit_rate * 100)}% this session. Current precision_read usage patterns are token-efficient \u2014 maintain them.`,
+        when_to_use: "When deciding whether to change file-reading patterns; current approach is working well.",
+        example_files: [],
+        keywords: ["cache", "hit-rate", "efficiency", "precision_read", "positive"]
+      });
+      preferences.push({
+        key: "cache.strategy",
+        value: "with_content",
+        reason: `High cache hit rate (${Math.round(cache.hit_rate * 100)}%) observed. Keep content caching enabled.`
+      });
+    }
+    const { files } = state.metrics;
+    if (files.conflicts >= HIGH_CONFLICT_COUNT) {
+      patterns.push({
+        id: "pat_analytics_conflict_coordination",
+        name: "HighConflictCoordination",
+        description: `${files.conflicts} file conflicts detected this session. Use agent scoping (per-feature subdirectories) to reduce concurrent write contention.`,
+        when_to_use: "When multiple agents are writing to overlapping file paths in the same session.",
+        example_files: [],
+        keywords: ["conflicts", "coordination", "agent", "concurrency", "scoping"]
+      });
+    }
+    return { patterns, preferences };
+  }
+  /**
+   * Persist the provided updates to .goodvibes/memory/patterns.json and
+   * .goodvibes/memory/preferences.json.
+   *
+   * Merge semantics:
+   *   - Existing entries with the same id/key are replaced.
+   *   - New entries are appended.
+   *   - Entries absent from the update are preserved unchanged.
+   *
+   * Writes are atomic: content goes to a .tmp sibling first, then renamed.
+   *
+   * @param updates - Output from analyze().
+   */
+  apply(updates) {
+    try {
+      (0, import_node_fs6.mkdirSync)(this.memoryDir, { recursive: true });
+    } catch (err) {
+      if (err instanceof Error && "code" in err && err.code !== "EEXIST") {
+        throw err;
+      }
+    }
+    if (updates.patterns.length > 0) {
+      this.mergeAndWrite(
+        (0, import_node_path3.join)(this.memoryDir, "patterns.json"),
+        updates.patterns,
+        "id"
+      );
+    }
+    if (updates.preferences.length > 0) {
+      this.mergeAndWrite(
+        (0, import_node_path3.join)(this.memoryDir, "preferences.json"),
+        updates.preferences,
+        "key"
+      );
+    }
+  }
+  // -------------------------------------------------------------------------
+  // Private helpers
+  // -------------------------------------------------------------------------
+  /**
+   * Read an existing JSON array file, merge new entries by key, and atomically
+   * write the result back.
+   *
+   * @param filePath  - Absolute path to the target .json file.
+   * @param updates   - Array of items to merge in.
+   * @param mergeKey  - Property name used as the unique identifier for merging.
+   */
+  mergeAndWrite(filePath, updates, mergeKey) {
+    const existing = this.readJsonArray(filePath);
+    const byKey = /* @__PURE__ */ new Map();
+    for (const entry of existing) {
+      byKey.set(entry[mergeKey], entry);
+    }
+    for (const update of updates) {
+      byKey.set(update[mergeKey], { ...byKey.get(update[mergeKey]), ...update });
+    }
+    const merged = [];
+    for (const entry of existing) {
+      const key = entry[mergeKey];
+      const updated = byKey.get(key);
+      if (updated !== void 0) {
+        merged.push(updated);
+      }
+    }
+    const existingKeys = new Set(existing.map((e) => e[mergeKey]));
+    for (const update of updates) {
+      if (!existingKeys.has(update[mergeKey])) {
+        merged.push(update);
+      }
+    }
+    this.atomicWriteJson(filePath, merged);
+  }
+  /**
+   * Read a JSON array file. Returns an empty array on any read/parse error.
+   */
+  readJsonArray(filePath) {
+    try {
+      const raw = (0, import_node_fs6.readFileSync)(filePath, "utf-8");
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  }
+  /**
+   * Atomically write a JSON-serialisable value to filePath.
+   *
+   * Writes to filePath + '.tmp' within the same directory, then renames.
+   * rename() on the same filesystem is atomic on POSIX systems.
+   *
+   * @throws If the write or rename fails.
+   */
+  atomicWriteJson(filePath, data) {
+    const tmpPath = `${filePath}.${process.pid}.tmp`;
+    const content = JSON.stringify(data, null, 2) + "\n";
+    try {
+      (0, import_node_fs6.writeFileSync)(tmpPath, content, { encoding: "utf-8" });
+      (0, import_node_fs6.renameSync)(tmpPath, filePath);
+    } catch (err) {
+      try {
+        (0, import_node_fs6.unlinkSync)(tmpPath);
+      } catch {
+      }
+      throw err;
+    }
+  }
+};
+
+// packages/analytics/src/engine/daemon/watcher.ts
+var import_node_events2 = require("node:events");
+var import_node_fs8 = require("node:fs");
+var import_node_path5 = require("node:path");
+
+// packages/analytics/src/engine/data/jsonl-watcher.ts
+var import_node_events = require("node:events");
+var import_node_fs7 = require("node:fs");
+var import_node_path4 = require("node:path");
+var import_promises2 = require("node:fs/promises");
+init_jsonl_reader();
+var JSONLWatcher = class extends import_node_events.EventEmitter {
+  static {
+    __name(this, "JSONLWatcher");
+  }
+  projectDir;
+  batchIntervalMs;
+  pollIntervalMs;
+  reader;
+  /** Currently active session JSONL path. */
+  activeSessionPath = null;
+  /** Currently active session ID. */
+  activeSessionId = null;
+  /** All watched files (main session + subagents). */
+  watchedFiles = /* @__PURE__ */ new Map();
+  /** Pending records accumulated between batch flushes. */
+  pendingRecords = [];
+  /** Batch flush interval handle. */
+  batchTimer = null;
+  /** Active session rotation detection interval. */
+  rotationTimer = null;
+  /** Whether the watcher is running. */
+  running = false;
+  /** Watcher for the subagent directory (kept separate from watchedFiles). */
+  subagentDirWatcher = null;
+  /**
+   * @param projectDir - Absolute path to the Claude project directory
+   *                     (e.g. ~/.claude/projects/<project-hash>/).
+   * @param options    - Optional configuration overrides.
+   */
+  constructor(projectDir, options) {
+    super();
+    this.projectDir = projectDir;
+    this.batchIntervalMs = options?.batchIntervalMs ?? 1e3;
+    this.pollIntervalMs = options?.pollIntervalMs ?? 2e3;
+    this.reader = new JSONLReader(
+      options?.costConfig ?? { cost_per_1k_input_tokens: 3e-3, cost_per_1k_output_tokens: 0.015 }
+    );
+  }
+  // -------------------------------------------------------------------------
+  // Public API
+  // -------------------------------------------------------------------------
+  /**
+   * Start watching the project directory for JSONL activity.
+   *
+   * Finds the active session JSONL, begins watching it, sets up subagent
+   * watching, and starts the batch flush interval. Safe to call multiple
+   * times — subsequent calls are no-ops if already running.
+   */
+  start() {
+    if (this.running) return;
+    this.running = true;
+    this.initSessionWatch().catch((err) => {
+      this.emitError(err instanceof Error ? err : new Error(String(err)));
+    });
+    this.batchTimer = setInterval(() => {
+      this.flushPendingRecords();
+    }, this.batchIntervalMs);
+    this.batchTimer.unref?.();
+    this.rotationTimer = setInterval(() => {
+      this.checkSessionRotation().catch((err) => {
+        this.emitError(err instanceof Error ? err : new Error(String(err)));
+      });
+    }, 5e3);
+    this.rotationTimer.unref?.();
+  }
+  /**
+   * Stop all watchers, flush any pending records, and clean up timers.
+   * Safe to call multiple times.
+   */
+  stop() {
+    if (!this.running) return;
+    this.running = false;
+    if (this.batchTimer !== null) {
+      clearInterval(this.batchTimer);
+      this.batchTimer = null;
+    }
+    if (this.rotationTimer !== null) {
+      clearInterval(this.rotationTimer);
+      this.rotationTimer = null;
+    }
+    this.flushPendingRecords();
+    for (const watched of this.watchedFiles.values()) {
+      try {
+        watched.handle.close();
+      } catch {
+      }
+    }
+    this.watchedFiles.clear();
+    if (this.subagentDirWatcher !== null) {
+      try {
+        this.subagentDirWatcher.watcher.close();
+      } catch {
+      }
+      this.subagentDirWatcher = null;
+    }
+    this.activeSessionPath = null;
+    this.activeSessionId = null;
+    this.pendingRecords = [];
+  }
+  /**
+   * Returns the currently active session ID, or null if none has been detected.
+   */
+  getActiveSessionId() {
+    return this.activeSessionId;
+  }
+  // -------------------------------------------------------------------------
+  // Typed emit overrides
+  // -------------------------------------------------------------------------
+  /** Type-safe emit. */
+  emit(event, ...args) {
+    return super.emit(event, ...args);
+  }
+  /** Type-safe on. */
+  on(event, listener) {
+    return super.on(event, listener);
+  }
+  /** Type-safe once. */
+  once(event, listener) {
+    return super.once(event, listener);
+  }
+  /** Type-safe off. */
+  off(event, listener) {
+    return super.off(event, listener);
+  }
+  // -------------------------------------------------------------------------
+  // Session initialisation
+  // -------------------------------------------------------------------------
+  /**
+   * Detect the active session JSONL file and begin watching it.
+   */
+  async initSessionWatch() {
+    const activePath = await findActiveJsonlFile(this.projectDir);
+    if (activePath === null) {
+      this.watchDirectoryForNewSession();
+      return;
+    }
+    await this.switchToSession(activePath);
+  }
+  /**
+   * Switch to watching a new session JSONL file.
+   * Stops watching the previous session file and subagents.
+   */
+  async switchToSession(jsonlPath) {
+    const newSessionId = sessionIdFromPath(jsonlPath);
+    if (this.activeSessionPath !== null && this.activeSessionPath !== jsonlPath) {
+      for (const [path11, watched] of this.watchedFiles.entries()) {
+        try {
+          watched.handle.close();
+        } catch {
+        }
+        this.watchedFiles.delete(path11);
+      }
+      this.emit("session-change", newSessionId);
+    }
+    this.activeSessionPath = jsonlPath;
+    this.activeSessionId = newSessionId;
+    if (!this.watchedFiles.has(jsonlPath)) {
+      this.attachFileWatcher(jsonlPath, false);
+    }
+    await this.watchSubagentFiles(newSessionId);
+  }
+  // -------------------------------------------------------------------------
+  // File watching
+  // -------------------------------------------------------------------------
+  /**
+   * Attach a watcher on a specific JSONL file.
+   * Uses fs.watch with a polling fallback.
+   *
+   * @param filePath   - Absolute path to the JSONL file.
+   * @param isSubagent - Whether this file belongs to a subagent.
+   */
+  attachFileWatcher(filePath, isSubagent) {
+    if (this.watchedFiles.has(filePath)) return;
+    const watched = {
+      path: filePath,
+      offset: 0,
+      handle: { close() {
+      } },
+      // placeholder; replaced below
+      isSubagent
+    };
+    const onFileChange = /* @__PURE__ */ __name(() => {
+      this.readNewLines(watched).catch((err) => {
+        this.emitError(err instanceof Error ? err : new Error(String(err)));
+      });
+    }, "onFileChange");
+    try {
+      const fsWatcher = (0, import_node_fs7.watch)(filePath, { persistent: false }, onFileChange);
+      fsWatcher.on("error", (_err) => {
+        try {
+          fsWatcher.close();
+        } catch {
+        }
+        if (this.watchedFiles.has(filePath)) {
+          const w = this.watchedFiles.get(filePath);
+          w.handle = this.createPollingHandle(filePath, onFileChange);
+        }
+      });
+      watched.handle = fsWatcher;
+    } catch {
+      watched.handle = this.createPollingHandle(filePath, onFileChange);
+    }
+    this.watchedFiles.set(filePath, watched);
+    this.readNewLines(watched).catch((err) => {
+      this.emitError(err instanceof Error ? err : new Error(String(err)));
+    });
+  }
+  /**
+   * Create a polling handle for filesystems that do not support inotify.
+   *
+   * @param filePath - Path to poll.
+   * @param onChange - Callback to invoke when mtime changes.
+   * @returns A { close() } compatible handle.
+   */
+  createPollingHandle(filePath, onChange) {
+    let lastMtime = 0;
+    try {
+      lastMtime = (0, import_node_fs7.statSync)(filePath).mtimeMs;
+    } catch {
+    }
+    const interval = setInterval(() => {
+      if (!this.running) {
+        clearInterval(interval);
+        return;
+      }
+      try {
+        const s = (0, import_node_fs7.statSync)(filePath);
+        if (s.mtimeMs !== lastMtime) {
+          lastMtime = s.mtimeMs;
+          onChange();
+        }
+      } catch {
+      }
+    }, this.pollIntervalMs);
+    interval.unref?.();
+    return { close: /* @__PURE__ */ __name(() => clearInterval(interval), "close") };
+  }
+  /**
+   * Watch the project directory itself for new JSONL files (before any session starts).
+   */
+  watchDirectoryForNewSession() {
+    const dirPath = this.projectDir;
+    if (!(0, import_node_fs7.existsSync)(dirPath)) return;
+    let handle;
+    const onDirChange = /* @__PURE__ */ __name((_eventType, filename) => {
+      if (filename === null || !filename.endsWith(".jsonl")) return;
+      const fullPath = (0, import_node_path4.join)(dirPath, filename);
+      if (!(0, import_node_fs7.existsSync)(fullPath)) return;
+      this.switchToSession(fullPath).catch((err) => {
+        this.emitError(err instanceof Error ? err : new Error(String(err)));
+      });
+      try {
+        handle.close();
+      } catch {
+      }
+    }, "onDirChange");
+    try {
+      handle = (0, import_node_fs7.watch)(dirPath, { persistent: false }, onDirChange);
+    } catch {
+      handle = { close() {
+      } };
+    }
+  }
+  // -------------------------------------------------------------------------
+  // Subagent watching
+  // -------------------------------------------------------------------------
+  /**
+   * Discover and watch subagent JSONL files for a session.
+   *
+   * Subagent files live at: <projectDir>/<sessionId>/subagents/agent-*.jsonl
+   *
+   * @param sessionId - The parent session ID.
+   */
+  async watchSubagentFiles(sessionId) {
+    const subagentDir = (0, import_node_path4.join)(this.projectDir, sessionId, "subagents");
+    if (!(0, import_node_fs7.existsSync)(subagentDir)) return;
+    let entries;
+    try {
+      entries = await (0, import_promises2.readdir)(subagentDir);
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (!entry.startsWith("agent-") || !entry.endsWith(".jsonl")) continue;
+      const fullPath = (0, import_node_path4.join)(subagentDir, entry);
+      if (!this.watchedFiles.has(fullPath)) {
+        this.attachFileWatcher(fullPath, true);
+      }
+    }
+    this.watchSubagentDirectory(subagentDir, sessionId);
+  }
+  /**
+   * Watch a subagent directory for newly created agent JSONL files.
+   *
+   * @param subagentDir - Absolute path to the subagents/ directory.
+   * @param sessionId   - Parent session ID (for validation).
+   */
+  watchSubagentDirectory(subagentDir, sessionId) {
+    if (this.subagentDirWatcher !== null && this.subagentDirWatcher.path === subagentDir) return;
+    const onDirChange = /* @__PURE__ */ __name((_eventType, filename) => {
+      if (this.activeSessionId !== sessionId) return;
+      if (filename === null) return;
+      if (!filename.startsWith("agent-") || !filename.endsWith(".jsonl")) return;
+      const fullPath = (0, import_node_path4.join)(subagentDir, filename);
+      if (!(0, import_node_fs7.existsSync)(fullPath)) return;
+      if (!this.watchedFiles.has(fullPath)) {
+        this.attachFileWatcher(fullPath, true);
+      }
+    }, "onDirChange");
+    let handle;
+    try {
+      handle = (0, import_node_fs7.watch)(subagentDir, { persistent: false }, onDirChange);
+    } catch {
+      handle = { close() {
+      } };
+    }
+    this.subagentDirWatcher = { watcher: handle, path: subagentDir };
+  }
+  // -------------------------------------------------------------------------
+  // Incremental reading
+  // -------------------------------------------------------------------------
+  /**
+   * Read new lines from a watched file starting at its current offset.
+   * Parsed records are accumulated in pendingRecords for batch flush.
+   *
+   * @param watched - The watched file state to read from.
+   */
+  async readNewLines(watched) {
+    if (!this.running) return;
+    try {
+      const result = await this.reader.parseFile(watched.path, watched.offset);
+      watched.offset = result.newOffset;
+      if (result.records.length > 0) {
+        this.pendingRecords.push(...result.records);
+      }
+      for (const error51 of result.errors) {
+        this.emitError(new Error(`[JSONLWatcher] ${error51}`));
+      }
+    } catch (err) {
+      this.emitError(err instanceof Error ? err : new Error(String(err)));
+    }
+  }
+  // -------------------------------------------------------------------------
+  // Batch flush
+  // -------------------------------------------------------------------------
+  /**
+   * Emit and clear the accumulated pending records.
+   * Called by the batch interval timer and on stop().
+   */
+  flushPendingRecords() {
+    if (this.pendingRecords.length === 0) return;
+    const batch = this.pendingRecords.splice(0);
+    this.emit("records", batch);
+  }
+  // -------------------------------------------------------------------------
+  // Session rotation detection
+  // -------------------------------------------------------------------------
+  /**
+   * Check whether a newer JSONL file has appeared (new session started).
+   * Called periodically by the rotation timer.
+   */
+  async checkSessionRotation() {
+    if (!this.running) return;
+    const activePath = await findActiveJsonlFile(this.projectDir);
+    if (activePath === null) return;
+    if (activePath === this.activeSessionPath) return;
+    await this.switchToSession(activePath);
+  }
+  // -------------------------------------------------------------------------
+  // Helpers
+  // -------------------------------------------------------------------------
+  /**
+   * Emit an error event. Per EventEmitter convention, error events must have
+   * a listener or they throw. We guard against this by checking listeners.
+   */
+  emitError(err) {
+    if (this.listenerCount("error") > 0) {
+      this.emit("error", err);
+    }
+  }
+};
+
+// packages/analytics/src/engine/daemon/watcher.ts
+var DEBOUNCE_MS = 100;
+var DataWatcher = class extends import_node_events2.EventEmitter {
+  static {
+    __name(this, "DataWatcher");
+  }
+  goodvibesDir;
+  pollIntervalMs;
+  /** Active FSWatcher handles, keyed by the logical target path. */
+  watchers = /* @__PURE__ */ new Map();
+  /** Debounce timer handles, keyed by no-arg event names (all except 'jsonl-records'). */
+  debounceTimers = /* @__PURE__ */ new Map();
+  /** Whether the watcher is currently running. */
+  running = false;
+  /**
+   * Embedded JSONLWatcher for live JSONL tailing.
+   * Created when jsonlProjectDir is provided in options.
+   * Null if no JSONL project directory is configured.
+   */
+  jsonlWatcher = null;
+  /**
+   * @param goodvibesDir - Absolute path to the .goodvibes directory.
+   * @param options      - Configuration options.
+   */
+  constructor(goodvibesDir, options) {
+    super();
+    this.goodvibesDir = goodvibesDir;
+    this.pollIntervalMs = options?.pollIntervalMs ?? 1e3;
+    if (options?.jsonlProjectDir !== void 0) {
+      this.jsonlWatcher = new JSONLWatcher(options.jsonlProjectDir, {
+        batchIntervalMs: options.jsonlBatchIntervalMs,
+        pollIntervalMs: options.pollIntervalMs,
+        costConfig: options.jsonlCostConfig
+      });
+      this.jsonlWatcher.on("records", (records) => {
+        if (this.running) this.emit("jsonl-records", records);
+      });
+      this.jsonlWatcher.on("error", (err) => {
+        console.warn(`[analytics:watcher] JSONL watcher error: ${err.message}`);
+      });
+    }
+  }
+  // -------------------------------------------------------------------------
+  // Public API
+  // -------------------------------------------------------------------------
+  /**
+   * Start watching all tracked paths.
+   * Safe to call multiple times — subsequent calls are no-ops if already running.
+   */
+  start() {
+    if (this.running) return;
+    this.running = true;
+    this.attachWatchers();
+    if (this.jsonlWatcher !== null) {
+      this.jsonlWatcher.start();
+    }
+  }
+  /**
+   * Stop all active watchers and cancel pending debounce timers.
+   * Safe to call multiple times — subsequent calls on a stopped watcher are no-ops.
+   */
+  stop() {
+    if (!this.running) return;
+    this.running = false;
+    if (this.jsonlWatcher !== null) {
+      try {
+        this.jsonlWatcher.stop();
+      } catch {
+      }
+    }
+    for (const timer of this.debounceTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.debounceTimers.clear();
+    for (const watcher of this.watchers.values()) {
+      try {
+        watcher.close();
+      } catch {
+      }
+    }
+    this.watchers.clear();
+  }
+  /**
+   * Returns true if the watcher is currently active.
+   */
+  isRunning() {
+    return this.running;
+  }
+  // -------------------------------------------------------------------------
+  // Typed emit overrides
+  // -------------------------------------------------------------------------
+  /** Type-safe emit. */
+  emit(event, ...args) {
+    return super.emit(event, ...args);
+  }
+  /** Type-safe on. */
+  on(event, listener) {
+    return super.on(event, listener);
+  }
+  /** Type-safe once. */
+  once(event, listener) {
+    return super.once(event, listener);
+  }
+  /** Type-safe off. */
+  off(event, listener) {
+    return super.off(event, listener);
+  }
+  // -------------------------------------------------------------------------
+  // Private helpers
+  // -------------------------------------------------------------------------
+  /**
+   * Attach FSWatcher instances for each tracked path.
+   * Paths that do not yet exist are watched via their parent directory.
+   */
+  attachWatchers() {
+    const entries = [
+      {
+        targetPath: (0, import_node_path5.join)(this.goodvibesDir, "telemetry", "telemetry.db"),
+        event: "telemetry-change"
+      },
+      {
+        targetPath: (0, import_node_path5.join)(this.goodvibesDir, "state"),
+        event: "session-change"
+      },
+      {
+        targetPath: (0, import_node_path5.join)(this.goodvibesDir, "project-index.json"),
+        event: "index-change"
+      },
+      {
+        targetPath: (0, import_node_path5.join)(this.goodvibesDir, "goodvibes.json"),
+        event: "config-change"
+      }
+    ];
+    for (const entry of entries) {
+      this.watchPath(entry.targetPath, entry.event);
+    }
+  }
+  /**
+   * Attach a single FSWatcher for a path.
+   *
+   * If the target path does not yet exist, watches the parent directory instead
+   * and fires the event when the target filename is created or changed.
+   * For directory targets (e.g. state/), any change within the directory fires.
+   *
+   * Falls back to mtime polling when fs.watch throws (e.g. ENOSYS on some
+   * container filesystems or network mounts).
+   *
+   * @param targetPath - Logical path we care about (file or directory).
+   * @param event      - Watcher event name to emit on change.
+   */
+  watchPath(targetPath, event) {
+    const targetBasename = (0, import_node_path5.basename)(targetPath);
+    const isDir = this.pathIsDirectory(targetPath);
+    const watchTarget = (0, import_node_fs8.existsSync)(targetPath) ? targetPath : (0, import_node_path5.dirname)(targetPath);
+    const handler = /* @__PURE__ */ __name((_eventType, filename) => {
+      if ((0, import_node_fs8.existsSync)(targetPath)) {
+        if (!isDir && filename !== null && filename !== targetBasename) {
+          return;
+        }
+      } else {
+        if (filename !== targetBasename) return;
+        if ((0, import_node_fs8.existsSync)(targetPath)) {
+          this.rewatchPath(targetPath, event);
+          return;
+        }
+      }
+      this.debounceEmit(event);
+    }, "handler");
+    try {
+      const watcher = (0, import_node_fs8.watch)(watchTarget, {
+        persistent: false
+        /* watcher won't keep the Node.js process alive */
+      }, handler);
+      watcher.on("error", (_err) => {
+        try {
+          watcher.close();
+        } catch {
+        }
+        this.watchers.delete(targetPath);
+        this.attachPollingFallback(targetPath, event);
+      });
+      this.watchers.set(targetPath, watcher);
+    } catch {
+      this.attachPollingFallback(targetPath, event);
+    }
+  }
+  /**
+   * Re-attach a direct watcher for a path that has just been created.
+   * Replaces any existing parent-directory watcher and emits the event once.
+   *
+   * @param targetPath - The path that now exists.
+   * @param event      - Event name to emit.
+   */
+  rewatchPath(targetPath, event) {
+    const existing = this.watchers.get(targetPath);
+    if (existing) {
+      try {
+        existing.close();
+      } catch {
+      }
+      this.watchers.delete(targetPath);
+    }
+    this.debounceEmit(event);
+    this.watchPath(targetPath, event);
+  }
+  /**
+   * Polling-based fallback for filesystems that do not support inotify.
+   * Uses setInterval to periodically check the target file's mtime.
+   *
+   * @param targetPath    - Path to poll.
+   * @param event         - Event to emit on change.
+   */
+  attachPollingFallback(targetPath, event) {
+    if (this.watchers.has(targetPath)) return;
+    let lastMtime = 0;
+    try {
+      lastMtime = (0, import_node_fs8.statSync)(targetPath).mtimeMs;
+    } catch {
+    }
+    const interval = setInterval(() => {
+      if (!this.running) {
+        clearInterval(interval);
+        return;
+      }
+      try {
+        const stat2 = (0, import_node_fs8.statSync)(targetPath);
+        if (stat2.mtimeMs !== lastMtime) {
+          lastMtime = stat2.mtimeMs;
+          this.debounceEmit(event);
+        }
+      } catch {
+      }
+    }, this.pollIntervalMs);
+    interval.unref?.();
+    const closeableInterval = {
+      close: /* @__PURE__ */ __name(() => {
+        clearInterval(interval);
+      }, "close")
+    };
+    this.watchers.set(targetPath, closeableInterval);
+  }
+  /**
+   * Returns true if the given path is an existing directory.
+   */
+  pathIsDirectory(targetPath) {
+    try {
+      return (0, import_node_fs8.statSync)(targetPath).isDirectory();
+    } catch {
+      return false;
+    }
+  }
+  /**
+   * Debounce-emit an event. Subsequent calls within DEBOUNCE_MS reset the timer.
+   *
+   * @param event - Event name to emit after the debounce delay.
+   */
+  debounceEmit(event) {
+    const existing = this.debounceTimers.get(event);
+    if (existing !== void 0) {
+      clearTimeout(existing);
+    }
+    const timer = setTimeout(() => {
+      this.debounceTimers.delete(event);
+      if (this.running) {
+        this.emit(event);
+      }
+    }, DEBOUNCE_MS);
+    this.debounceTimers.set(event, timer);
+  }
+};
+
+// packages/analytics/src/engine/daemon/aggregator.ts
+var DEFAULT_LOGGER2 = {
+  warn: /* @__PURE__ */ __name((msg) => engineLogger().warn(`[analytics:aggregator] ${msg}`), "warn")
+};
+var RECENT_ACTIVITY_LIMIT = 50;
+var MEMORY_UPDATER_INTERVAL = 5;
+var MAX_HOTSPOTS = 20;
+var MAX_ANOMALIES = 50;
+var GLOBAL_DB_DEBOUNCE_MS = 1e4;
+var TOKENS_PER_K = 1e3;
+var STATUSLINE_STALENESS_MS = 6e4;
+function emptySessionMetrics() {
+  return {
+    tokens: { input: 0, output: 0, total: 0, saved: 0, efficiency: 0, api_input: 0, api_output: 0, cache_read: 0, cache_write: 0 },
+    cache: { hit_rate: 0, hits: 0, misses: 0, memory_peak_mb: 0, evictions: 0 },
+    cost: { input: 0, output: 0, total: 0, saved: 0 },
+    tools: { total: 0, success_rate: 1, avg_duration_ms: 0, total_duration_ms: 0, failures: 0, slowest: null },
+    agents: { spawned: 0, max_concurrent: 0, total_tokens: 0, active: 0, completed: 0 },
+    files: { unique_read: 0, modified: 0, created: 0, conflicts: 0 }
+  };
+}
+__name(emptySessionMetrics, "emptySessionMetrics");
+function readMaxAgentChains(goodvibesDir) {
+  const DEFAULT = 6;
+  for (const configPath of [
+    (0, import_node_path6.join)(goodvibesDir, "goodvibes.json"),
+    (0, import_node_path6.join)((0, import_node_os3.homedir)(), ".goodvibes", "goodvibes.json")
+  ]) {
+    try {
+      const raw = (0, import_node_fs9.readFileSync)(configPath, "utf8");
+      const parsed = JSON.parse(raw);
+      const val = parsed["max_parallel_agent_chains"];
+      if (typeof val === "number" && val > 0) return val;
+    } catch {
+    }
+  }
+  return DEFAULT;
+}
+__name(readMaxAgentChains, "readMaxAgentChains");
+function emptyDashboardState(sessionId, projectHash, startedAt) {
+  return {
+    session_id: sessionId,
+    project_hash: projectHash,
+    max_agent_chains: 6,
+    started_at: startedAt,
+    uptime_ms: 0,
+    metrics: emptySessionMetrics(),
+    tools_breakdown: {},
+    recent_activity: [],
+    file_hotspots: [],
+    agent_profiles: [],
+    anomalies: [],
+    budget: null,
+    health_status: "healthy",
+    context_percent: 0
+  };
+}
+__name(emptyDashboardState, "emptyDashboardState");
+function computeHealthStatus(anomalies, metrics) {
+  const errorRate = 1 - metrics.tools.success_rate;
+  const hasAlert = anomalies.some((a) => a.severity === "alert");
+  const hasWarning = anomalies.some((a) => a.severity === "warning");
+  if (hasAlert || errorRate > 0.25) return "alert";
+  if (hasWarning || errorRate > 0.1) return "warning";
+  return "healthy";
+}
+__name(computeHealthStatus, "computeHealthStatus");
+var TOOL_TO_ACTIVITY_TYPE = {
+  read: "read",
+  write: "write",
+  edit: "edit",
+  exec: "exec",
+  grep: "grep",
+  glob: "glob",
+  discover: "discover",
+  conflict: "conflict",
+  agent_spawn: "agent_spawn",
+  agent_complete: "agent_complete",
+  fetch: "fetch",
+  symbols: "symbols",
+  notebook: "notebook"
+};
+function toolToActivityType(tool) {
+  return TOOL_TO_ACTIVITY_TYPE[tool] ?? "exec";
+}
+__name(toolToActivityType, "toolToActivityType");
+function resolveJsonlProjectDir(goodvibesDir, jsonlBasePath) {
+  const expandedBase = jsonlBasePath.startsWith("~") ? (0, import_node_path6.join)((0, import_node_os3.homedir)(), jsonlBasePath.slice(1)) : jsonlBasePath;
+  if (!(0, import_node_fs9.existsSync)(expandedBase)) return null;
+  let entries;
+  try {
+    entries = (0, import_node_fs9.readdirSync)(expandedBase);
+  } catch {
+    return null;
+  }
+  const projectRoot = (0, import_node_path6.dirname)((0, import_node_path6.resolve)(goodvibesDir));
+  const dashedPath = projectRoot.replace(/\//g, "-");
+  for (const entry of entries) {
+    if (entry === dashedPath) {
+      const candidate = (0, import_node_path6.join)(expandedBase, entry);
+      if ((0, import_node_fs9.existsSync)(candidate)) return candidate;
+    }
+  }
+  let latestMtime = 0;
+  let latestDir = null;
+  for (const entry of entries) {
+    const dirPath = (0, import_node_path6.join)(expandedBase, entry);
+    try {
+      const s = (0, import_node_fs9.statSync)(dirPath);
+      if (s.isDirectory() && s.mtimeMs > latestMtime) {
+        const subEntries = (0, import_node_fs9.readdirSync)(dirPath);
+        if (subEntries.some((f) => f.endsWith(".jsonl"))) {
+          latestMtime = s.mtimeMs;
+          latestDir = dirPath;
+        }
+      }
+    } catch {
+    }
+  }
+  if (latestDir !== null) {
+    console.warn(
+      `[analytics:aggregator] JSONL project directory not found for primary match; falling back to most recent directory`
+    );
+  }
+  return latestDir;
+}
+__name(resolveJsonlProjectDir, "resolveJsonlProjectDir");
+function emptyJsonlTotals() {
+  return {
+    api_input: 0,
+    api_output: 0,
+    cache_read: 0,
+    cache_write: 0,
+    cost_usd: 0,
+    api_calls: 0,
+    model: "unknown",
+    started_at: null,
+    last_activity_at: null
+  };
+}
+__name(emptyJsonlTotals, "emptyJsonlTotals");
+var Aggregator = class _Aggregator {
+  static {
+    __name(this, "Aggregator");
+  }
+  goodvibesDir;
+  config;
+  logger;
+  // Data readers
+  telemetry;
+  session;
+  index;
+  // Model pricing map — loaded on initialize() from ~/.claude/model-pricing.json.
+  pricingMap = {};
+  // JSONL reader — created in initialize() from config pricing.
+  jsonlReader = null;
+  // Accumulated JSONL records from the current file, merged in batches.
+  jsonlRecords = [];
+  // Cumulative tool counters — never decrease even when sliding window drops old records.
+  cumulativeToolTotal = 0;
+  cumulativeToolFailures = 0;
+  // Resolved path to the active JSONL file (null if not found).
+  activeJsonlPath = null;
+  // Session ID resolved from the active JSONL filename.
+  jsonlSessionId = null;
+  // Aggregated totals from JSONL records (recomputed after each accumulation).
+  jsonlTotals = emptyJsonlTotals();
+  /** Cache for subagent file reads keyed by file path — avoids re-reading unchanged files. */
+  subagentCache = /* @__PURE__ */ new Map();
+  /** Cache for subagent directory listing — avoids re-reading unchanged directories. */
+  subagentDirCache = null;
+  // GlobalDB instance — injected by AnalyticsEngine before initialize().
+  globalDb = null;
+  // Debounce timer for GlobalDB upserts.
+  globalDbSaveTimer = null;
+  // Daemon components
+  anomalyDetector;
+  budgetTracker;
+  memoryUpdater;
+  watcher;
+  /** Cached current state. Updated on every refresh. */
+  state = emptyDashboardState("", "", (/* @__PURE__ */ new Date()).toISOString());
+  /** Timestamp when the aggregator was initialized. */
+  startedAt = (/* @__PURE__ */ new Date()).toISOString();
+  /** Registered state-change callbacks. */
+  callbacks = [];
+  /** Counter tracking how many refresh cycles have run. */
+  refreshCount = 0;
+  /** Whether initialize() has completed. */
+  initialized = false;
+  /** Mutex: true while a refresh() call is in progress. */
+  refreshing = false;
+  /** Whether another refresh was requested while one was already running. */
+  refreshQueued = false;
+  /**
+   * @param goodvibesDir - Absolute path to the .goodvibes directory.
+   * @param config       - Analytics configuration.
+   * @param logger       - Optional structured logger; defaults to prefixed console.warn.
+   */
+  constructor(goodvibesDir, config2, logger = DEFAULT_LOGGER2) {
+    this.goodvibesDir = goodvibesDir;
+    this.config = config2;
+    this.logger = logger;
+  }
+  // ───────────────────────────────────────────────────────────────────────────
+  // Public API
+  // ───────────────────────────────────────────────────────────────────────────
+  /**
+   * Inject the GlobalDB instance from the owning AnalyticsEngine.
+   *
+   * Must be called before `initialize()` if GlobalDB write-back is desired.
+   * Safe to call at any time — if called after initialize(), subsequent
+   * GlobalDB upserts will use the new instance.
+   *
+   * @param db - Initialized GlobalDB instance, or null to disable write-back.
+   */
+  setGlobalDb(db) {
+    this.globalDb = db;
+  }
+  /**
+   * Return the current GlobalDB instance, or null if not initialized.
+   * Allows handlers to access cross-project data without unsafe casts.
+   */
+  getGlobalDb() {
+    return this.globalDb;
+  }
+  /**
+   * Return the current resolved analytics configuration.
+   * Allows handlers to read cost rates and other config without unsafe casts.
+   */
+  getConfig() {
+    return this.config;
+  }
+  /**
+   * Reload configuration without restarting the aggregator.
+   *
+   * Updates the stored config (including token costs) and recreates the
+   * JSONLReader with the new pricing rates. Safe to call at any time after
+   * initialize().
+   *
+   * @param newConfig - Updated analytics configuration.
+   */
+  reloadConfig(newConfig) {
+    this.config = newConfig;
+    this.pricingMap = loadModelPricing();
+    this.jsonlReader = new JSONLReader(
+      {
+        cost_per_1k_input_tokens: newConfig.cost_per_1k_input_tokens,
+        cost_per_1k_output_tokens: newConfig.cost_per_1k_output_tokens
+      },
+      this.pricingMap
+    );
+    this.recomputeJsonlTotals();
+    void this.refresh();
+  }
+  /**
+   * Initialize all readers and start watching for changes.
+   *
+   * Must be called before `getState()` returns meaningful data.
+   * Subsequent calls are no-ops (idempotent).
+   *
+   * @returns Promise that resolves once initialization is complete.
+   */
+  async initialize() {
+    if (this.initialized) return;
+    this.startedAt = (/* @__PURE__ */ new Date()).toISOString();
+    this.telemetry = new TelemetryReader(this.goodvibesDir);
+    this.session = new SessionReader(this.goodvibesDir);
+    this.index = new IndexReader(this.goodvibesDir);
+    await this.telemetry.initialize();
+    this.pricingMap = loadModelPricing();
+    this.jsonlReader = new JSONLReader(
+      {
+        cost_per_1k_input_tokens: this.config.cost_per_1k_input_tokens,
+        cost_per_1k_output_tokens: this.config.cost_per_1k_output_tokens
+      },
+      this.pricingMap
+    );
+    const jsonlProjectDir = resolveJsonlProjectDir(
+      this.goodvibesDir,
+      this.config.jsonl_base_path
+    );
+    if (jsonlProjectDir !== null) {
+      await this.initJsonlFromFile(jsonlProjectDir);
+    }
+    this.anomalyDetector = new AnomalyDetector(this.telemetry, this.config, this.logger);
+    this.budgetTracker = new BudgetTracker(this.config);
+    this.memoryUpdater = new MemoryUpdater((0, import_node_path6.join)(this.goodvibesDir, "memory"));
+    this.watcher = new DataWatcher(this.goodvibesDir, {
+      jsonlProjectDir: jsonlProjectDir ?? void 0,
+      jsonlCostConfig: {
+        cost_per_1k_input_tokens: this.config.cost_per_1k_input_tokens,
+        cost_per_1k_output_tokens: this.config.cost_per_1k_output_tokens
+      }
+    });
+    this.watcher.on("telemetry-change", () => {
+      void this.refresh();
+    });
+    this.watcher.on("session-change", () => {
+      void this.refresh();
+    });
+    this.watcher.on("index-change", () => {
+      void this.refresh();
+    });
+    this.watcher.on("config-change", () => {
+      void this.refresh();
+    });
+    this.watcher.on("jsonl-records", (records) => {
+      this.accumulateJsonlRecords(records);
+      void this.refresh();
+    });
+    this.initialized = true;
+    this.watcher.start();
+    await this.refresh();
+  }
+  /**
+   * Get the current dashboard state.
+   *
+   * Returns the last computed snapshot. Call `refresh()` to force a new
+   * computation, or rely on DataWatcher to trigger automatic updates.
+   *
+   * @returns The current aggregated DashboardState.
+   */
+  getState() {
+    if (this.initialized) {
+      this.state = this.aggregate();
+    }
+    return this.state;
+  }
+  /**
+   * Force a full refresh of all data sources and recompute the state.
+   *
+   * Triggers state-change callbacks if the state was updated.
+   *
+   * @returns Promise that resolves once the refresh is complete.
+   */
+  async refresh() {
+    if (!this.initialized) {
+      this.logger.warn("refresh() called before initialize()");
+      return;
+    }
+    if (this.refreshing) {
+      this.refreshQueued = true;
+      return;
+    }
+    this.refreshing = true;
+    try {
+      const newState = this.aggregate();
+      this.state = newState;
+      this.refreshCount++;
+      if (this.refreshCount % MEMORY_UPDATER_INTERVAL === 0) {
+        try {
+          const updates = this.memoryUpdater.analyze(this.state);
+          if (updates.patterns.length > 0 || updates.preferences.length > 0) {
+            this.memoryUpdater.apply(updates);
+          }
+        } catch (err) {
+          this.logger.warn(`MemoryUpdater analysis failed: ${String(err)}`);
+        }
+      }
+      this.scheduleGlobalDbSave();
+      this.notifyCallbacks();
+    } catch (err) {
+      this.logger.warn(`Aggregation refresh failed: ${String(err)}`);
+    } finally {
+      this.refreshing = false;
+      if (this.refreshQueued) {
+        this.refreshQueued = false;
+        void Promise.resolve().then(() => this.refresh());
+      }
+    }
+  }
+  /**
+   * Register a callback to be invoked whenever the state changes.
+   *
+   * The callback is called synchronously after each refresh cycle with the
+   * new DashboardState.
+   *
+   * @param callback - Function to call with the updated state.
+   * @returns An unsubscribe function that removes the callback when called.
+   */
+  onStateChange(callback) {
+    this.callbacks.push(callback);
+    return () => {
+      const idx = this.callbacks.indexOf(callback);
+      if (idx >= 0) this.callbacks.splice(idx, 1);
+    };
+  }
+  /**
+   * Clean shutdown: stop the DataWatcher, close the TelemetryReader,
+   * and flush any pending GlobalDB write.
+   *
+   * Safe to call multiple times — subsequent calls are no-ops.
+   *
+   * @returns Promise that resolves once shutdown is complete.
+   */
+  async shutdown() {
+    if (this.globalDbSaveTimer !== null) {
+      clearTimeout(this.globalDbSaveTimer);
+      this.globalDbSaveTimer = null;
+      this.writeGlobalDbSession();
+    }
+    if (this.watcher) {
+      this.watcher.stop();
+    }
+    if (this.telemetry) {
+      this.telemetry.close();
+    }
+  }
+  /**
+   * Set a budget constraint for the current session.
+   *
+   * Delegates to BudgetTracker and triggers a state refresh.
+   *
+   * @param amount - Budget amount.
+   * @param unit   - Unit of measurement ('dollars' or 'tokens').
+   */
+  setBudget(amount, unit) {
+    if (!this.initialized) {
+      this.logger.warn("setBudget() called before initialize()");
+      return;
+    }
+    this.budgetTracker.setBudget(amount, unit);
+    void this.refresh();
+  }
+  /**
+   * Clear the current budget constraint.
+   *
+   * Delegates to BudgetTracker and triggers a state refresh.
+   */
+  clearBudget() {
+    if (!this.initialized) {
+      this.logger.warn("clearBudget() called before initialize()");
+      return;
+    }
+    this.budgetTracker.clearBudget();
+    void this.refresh();
+  }
+  // ───────────────────────────────────────────────────────────────────────────
+  // Private: JSONL integration
+  // ───────────────────────────────────────────────────────────────────────────
+  /**
+   * Load the initial JSONL records from the active file in the project dir.
+   *
+   * Parses the entire file from offset 0 on first load to populate
+   * historical data from the current session.
+   *
+   * @param jsonlProjectDir - Absolute path to the JSONL project directory.
+   */
+  async initJsonlFromFile(jsonlProjectDir) {
+    if (this.jsonlReader === null) return;
+    try {
+      const activeFile = await findActiveJsonlFile(jsonlProjectDir);
+      if (activeFile === null) return;
+      this.activeJsonlPath = activeFile;
+      this.jsonlSessionId = sessionIdFromPath(activeFile);
+      const result = await this.jsonlReader.parseFile(activeFile, 0);
+      if (result.records.length > 0) {
+        this.accumulateJsonlRecords(result.records);
+      }
+      if (result.errors.length > 0) {
+        this.logger.warn(
+          `JSONL initial load had ${result.errors.length} parse error(s) in "${activeFile}"`
+        );
+      }
+    } catch (err) {
+      this.logger.warn(`JSONL init failed: ${String(err)}`);
+    }
+  }
+  /**
+   * Accumulate a batch of new JSONL records.
+   *
+   * Appends to the in-memory record list and recomputes JSONL totals.
+   * Called both on initial load (from parseFile) and on live watcher events.
+   *
+   * @param records - New records to append.
+   */
+  static MAX_JSONL_RECORDS = 1e4;
+  accumulateJsonlRecords(records) {
+    if (records.length === 0) return;
+    this.jsonlRecords.push(...records);
+    if (this.jsonlRecords.length > _Aggregator.MAX_JSONL_RECORDS) {
+      this.jsonlRecords = this.jsonlRecords.slice(-_Aggregator.MAX_JSONL_RECORDS);
+    }
+    this.recomputeJsonlTotals();
+  }
+  /**
+   * Recompute all JSONL-sourced totals from the accumulated record list.
+   *
+   * Scans all accumulated records to build aggregate token counts, cost,
+   * and model/timing information. Runs after each batch accumulation.
+   */
+  recomputeJsonlTotals() {
+    if (this.jsonlReader === null) return;
+    const apiCalls = this.jsonlReader.extractApiCalls(this.jsonlRecords);
+    const sessionInfo = this.jsonlReader.extractSessionInfo(this.jsonlRecords);
+    const totals = emptyJsonlTotals();
+    totals.api_calls = apiCalls.length;
+    totals.model = sessionInfo.model;
+    totals.started_at = sessionInfo.startedAt !== "" ? sessionInfo.startedAt : null;
+    totals.last_activity_at = sessionInfo.lastActivityAt !== "" ? sessionInfo.lastActivityAt : null;
+    for (const call of apiCalls) {
+      totals.api_input += call.input_tokens;
+      totals.api_output += call.output_tokens;
+      totals.cache_read += call.cache_read_tokens;
+      totals.cache_write += call.cache_write_tokens;
+      totals.cost_usd += call.cost_usd;
+    }
+    this.jsonlTotals = totals;
+  }
+  // ───────────────────────────────────────────────────────────────────────────
+  // Private: aggregation
+  // ───────────────────────────────────────────────────────────────────────────
+  /**
+   * Compute a fresh DashboardState from all data sources.
+   *
+   * Merges precision telemetry (cache stats, tool timing) with JSONL-sourced
+   * data (API token counts, real cost, agent activity, file hotspots).
+   *
+   * All errors within individual data sources are caught and logged so that
+   * a single reader failure does not crash the entire aggregation.
+   */
+  aggregate() {
+    this.safeCall(() => this.telemetry.reload(), void 0);
+    const now = Date.now();
+    const startedAtMs = new Date(this.startedAt).getTime();
+    const uptimeMs = now - startedAtMs;
+    const sessionId = this.jsonlSessionId ?? this.safeCall(() => this.telemetry?.getCurrentSessionId(), null) ?? this.safeCall(() => this.session?.readCurrentSession()?.id, null) ?? "unknown";
+    const telemetrySummary = this.safeCall(() => this.telemetry.getSessionSummary(), null);
+    const tokenMetrics = this.safeCall(() => this.telemetry.getTokenMetrics(), null);
+    const jsonl = this.jsonlTotals;
+    const hasJsonlData = this.jsonlRecords.length > 0;
+    const tokens = {
+      // Precision telemetry fields (fall back to 0 if unavailable).
+      input: tokenMetrics?.input ?? 0,
+      output: tokenMetrics?.output ?? 0,
+      total: tokenMetrics?.total ?? 0,
+      saved: tokenMetrics?.saved ?? 0,
+      efficiency: tokenMetrics?.efficiency ?? 0,
+      // JSONL API fields: prefer JSONL if available, else precision telemetry.
+      // Use presence check (hasJsonlData) rather than > 0 to distinguish
+      // "no data" from "zero tokens" correctly.
+      api_input: hasJsonlData ? jsonl.api_input : tokenMetrics?.api_input ?? 0,
+      api_output: hasJsonlData ? jsonl.api_output : tokenMetrics?.api_output ?? 0,
+      cache_read: hasJsonlData ? jsonl.cache_read : tokenMetrics?.cache_read ?? 0,
+      cache_write: hasJsonlData ? jsonl.cache_write : tokenMetrics?.cache_write ?? 0
+    };
+    const statuslineData = this.readStatuslineData();
+    if (statuslineData) {
+      tokens.api_input = statuslineData.apiInput;
+      tokens.api_output = statuslineData.apiOutput;
+      tokens.cache_read = statuslineData.cacheRead;
+      tokens.cache_write = statuslineData.cacheWrite;
+    }
+    const cache = this.buildCacheMetrics(telemetrySummary);
+    const cost = (() => {
+      if (jsonl.cost_usd > 0) {
+        const rates = getModelRates(jsonl.model, this.pricingMap);
+        const inputRate = rates.inputPrice / 1e6;
+        const outputRate = rates.outputPrice / 1e6;
+        const rawInputCost = tokens.api_input * inputRate;
+        const rawOutputCost = tokens.api_output * outputRate;
+        const rawTotal = rawInputCost + rawOutputCost;
+        const scale = rawTotal > 0 ? jsonl.cost_usd / rawTotal : 1;
+        const inputCost = rawInputCost * scale;
+        const outputCost = rawOutputCost * scale;
+        const savedRate = rates.inputPrice / 1e6;
+        const saved = tokens.saved * savedRate;
+        return {
+          input: inputCost,
+          output: outputCost,
+          total: jsonl.cost_usd,
+          saved
+        };
+      }
+      return {
+        input: tokens.input / TOKENS_PER_K * this.config.cost_per_1k_input_tokens,
+        output: tokens.output / TOKENS_PER_K * this.config.cost_per_1k_output_tokens,
+        total: tokens.input / TOKENS_PER_K * this.config.cost_per_1k_input_tokens + tokens.output / TOKENS_PER_K * this.config.cost_per_1k_output_tokens,
+        saved: tokens.saved / TOKENS_PER_K * this.config.cost_per_1k_input_tokens
+      };
+    })();
+    if (statuslineData && statuslineData.costUsd > 0) {
+      const prevTotal = cost.total;
+      cost.total = statuslineData.costUsd;
+      if (prevTotal > 0) {
+        const rescale = statuslineData.costUsd / prevTotal;
+        cost.input *= rescale;
+        cost.output *= rescale;
+      }
+    }
+    const agentActivities = this.safeCall(
+      () => this.jsonlReader !== null ? this.jsonlReader.extractAgentActivity(this.jsonlRecords) : [],
+      []
+    );
+    const completedAgents = agentActivities.filter((a) => a.completed).length;
+    const activeAgents = agentActivities.length - completedAgents;
+    const sessionCounters = this.safeCall(() => this.session.getSessionCounters(), null);
+    const nowIso = (/* @__PURE__ */ new Date()).toISOString();
+    const agentWindows = agentActivities.map((a) => ({
+      start: a.spawnedAt,
+      end: a.completedAt ?? nowIso
+    }));
+    const events = [];
+    for (const w of agentWindows) {
+      events.push({ time: w.start, delta: 1 });
+      events.push({ time: w.end, delta: -1 });
+    }
+    events.sort((a, b) => {
+      const cmp = a.time.localeCompare(b.time);
+      if (cmp !== 0) return cmp;
+      return b.delta - a.delta;
+    });
+    let maxConcurrent = 0;
+    let currentConcurrent = 0;
+    for (const { delta } of events) {
+      currentConcurrent += delta;
+      if (currentConcurrent > maxConcurrent) maxConcurrent = currentConcurrent;
+    }
+    const agentProfiles = this.buildAgentProfiles(agentActivities);
+    const agentTotalTokens = agentProfiles.reduce(
+      (sum, p) => sum + p.tokens_in + p.tokens_out,
+      0
+    );
+    const agents = {
+      spawned: agentActivities.length > 0 ? agentActivities.length : sessionCounters?.agents_spawned ?? 0,
+      max_concurrent: maxConcurrent,
+      // peak overlap derived from spawn/complete timestamp windows
+      total_tokens: agentTotalTokens,
+      active: activeAgents,
+      completed: completedAgents
+    };
+    const jsonlToolCalls = this.safeCall(
+      () => this.jsonlReader !== null ? this.jsonlReader.extractToolCalls(this.jsonlRecords) : [],
+      []
+    );
+    const uniqueReadFiles = /* @__PURE__ */ new Set();
+    let createdFiles = 0;
+    for (const tc of jsonlToolCalls) {
+      const toolName = _Aggregator.extractBaseToolName(tc.name ?? "");
+      const inputPath = typeof tc.input["path"] === "string" ? tc.input["path"] : null;
+      if (inputPath !== null) {
+        if (toolName === "read" || toolName === "precision_read") {
+          uniqueReadFiles.add(inputPath);
+        } else if (toolName === "write" || toolName === "precision_write") {
+          createdFiles++;
+        } else if (toolName === "edit" || toolName === "precision_edit") {
+          uniqueReadFiles.add(inputPath);
+        }
+      }
+      if (toolName === "precision_read" || toolName === "precision_write") {
+        const filesArr = tc.input["files"];
+        if (Array.isArray(filesArr)) {
+          for (const f of filesArr) {
+            const p = typeof f === "object" && f !== null && typeof f["path"] === "string" ? f["path"] : null;
+            if (p) {
+              if (toolName === "precision_read") uniqueReadFiles.add(p);
+              else createdFiles++;
+            }
+          }
+        }
+      } else if (toolName === "precision_edit") {
+        const editsArr = tc.input["edits"];
+        if (Array.isArray(editsArr)) {
+          for (const e of editsArr) {
+            if (typeof e === "object" && e !== null) {
+              const editRec = e;
+              const p = typeof editRec["path"] === "string" ? editRec["path"] : typeof editRec["file"] === "string" ? editRec["file"] : null;
+              if (p) uniqueReadFiles.add(p);
+            }
+          }
+        }
+      }
+    }
+    const tools = (() => {
+      let jsonlToolTotal = 0;
+      let jsonlToolFailures = 0;
+      for (const tc of jsonlToolCalls) {
+        const toolName = _Aggregator.extractBaseToolName(tc.name ?? "");
+        if (toolName.startsWith("precision_") || toolName === "discover") {
+          jsonlToolTotal++;
+          if (tc.isError) jsonlToolFailures++;
+        }
+      }
+      if (jsonlToolTotal >= this.cumulativeToolTotal) {
+        this.cumulativeToolTotal = jsonlToolTotal;
+        this.cumulativeToolFailures = jsonlToolFailures;
+      }
+      const effectiveToolTotal = Math.max(jsonlToolTotal, this.cumulativeToolTotal);
+      const effectiveToolFailures = Math.min(this.cumulativeToolFailures, effectiveToolTotal);
+      if (effectiveToolTotal > 0) {
+        const successRate = (effectiveToolTotal - effectiveToolFailures) / effectiveToolTotal;
+        const execBreakdown2 = telemetrySummary?.by_tool["exec"];
+        const avgDuration = execBreakdown2?.avg_ms ?? 0;
+        return {
+          total: effectiveToolTotal,
+          success_rate: successRate,
+          avg_duration_ms: avgDuration,
+          // total_duration_ms is approximate: telemetry avg_ms (all exec calls) × JSONL
+          // tool count (may differ from telemetry count). No per-call duration sum is
+          // exposed by ToolBreakdown, so this is the best available estimate.
+          total_duration_ms: avgDuration * effectiveToolTotal,
+          failures: effectiveToolFailures,
+          slowest: null
+        };
+      }
+      const execBreakdown = telemetrySummary?.by_tool["exec"];
+      if (!execBreakdown) {
+        return { total: 0, success_rate: 1, avg_duration_ms: 0, total_duration_ms: 0, failures: 0, slowest: null };
+      }
+      const total = execBreakdown.calls;
+      const failures = Math.round(total * (1 - execBreakdown.success_rate));
+      return {
+        total,
+        success_rate: execBreakdown.success_rate,
+        avg_duration_ms: execBreakdown.avg_ms,
+        total_duration_ms: execBreakdown.avg_ms * total,
+        failures,
+        slowest: null
+      };
+    })();
+    const files = {
+      unique_read: uniqueReadFiles.size,
+      modified: sessionCounters?.files_modified.length ?? 0,
+      created: createdFiles,
+      conflicts: 0
+    };
+    const metrics = { tokens, cache, cost, tools, agents, files };
+    const toolsBreakdown = telemetrySummary?.by_tool ?? {};
+    const recentActivity = this.buildRecentActivity(jsonlToolCalls, agentActivities);
+    const fileHotspots = this.buildFileHotspots(
+      toolsBreakdown,
+      jsonlToolCalls,
+      sessionCounters
+    );
+    let contextPercent = 0;
+    if (statuslineData) {
+      contextPercent = Math.max(0, Math.min(100, statuslineData.contextPercent));
+    } else {
+      const CONTEXT_WINDOW_SIZE = this.config?.context_window_tokens ?? 2e5;
+      for (let i = this.jsonlRecords.length - 1; i >= 0; i--) {
+        const rec = this.jsonlRecords[i];
+        if (rec.type === "assistant") {
+          const assistantRec = rec;
+          const inputTok = assistantRec.message?.usage?.input_tokens;
+          if (inputTok != null && inputTok > 0) {
+            contextPercent = Math.min(100, inputTok / CONTEXT_WINDOW_SIZE * 100);
+            break;
+          }
+        }
+      }
+    }
+    const maxAgentChains = readMaxAgentChains(this.goodvibesDir);
+    const partialState = {
+      session_id: sessionId,
+      project_hash: (0, import_node_path6.basename)((0, import_node_path6.dirname)(this.goodvibesDir)),
+      max_agent_chains: maxAgentChains,
+      started_at: this.startedAt,
+      uptime_ms: uptimeMs,
+      metrics,
+      tools_breakdown: toolsBreakdown,
+      recent_activity: recentActivity,
+      file_hotspots: fileHotspots,
+      agent_profiles: agentProfiles,
+      anomalies: this.state.anomalies,
+      // carry forward existing anomalies
+      budget: this.state.budget,
+      health_status: this.state.health_status,
+      context_percent: contextPercent
+    };
+    const newAnomalies = this.safeCall(
+      () => this.anomalyDetector.detect(partialState),
+      []
+    );
+    const allAnomalies = [
+      ...this.anomalyDetector.getActiveAnomalies(),
+      ...newAnomalies
+    ].filter((a, i, arr) => arr.findIndex((x) => x.id === a.id) === i).slice(-MAX_ANOMALIES);
+    const budget = this.safeCall(
+      () => this.budgetTracker.update(metrics, this.config),
+      null
+    );
+    const healthStatus = computeHealthStatus(allAnomalies, metrics);
+    return {
+      session_id: sessionId,
+      project_hash: (0, import_node_path6.basename)((0, import_node_path6.dirname)(this.goodvibesDir)),
+      max_agent_chains: maxAgentChains,
+      started_at: this.startedAt,
+      uptime_ms: uptimeMs,
+      metrics,
+      tools_breakdown: toolsBreakdown,
+      recent_activity: recentActivity,
+      file_hotspots: fileHotspots,
+      agent_profiles: agentProfiles,
+      anomalies: allAnomalies,
+      budget,
+      health_status: healthStatus,
+      context_percent: contextPercent
+    };
+  }
+  /**
+   * Build the recent activity list from the most recent telemetry records.
+   */
+  buildRecentActivity(jsonlToolCalls, agentActivities) {
+    const events = [];
+    for (const tc of jsonlToolCalls) {
+      const toolName = _Aggregator.extractBaseToolName(tc.name ?? "");
+      events.push({
+        timestamp: tc.timestamp,
+        type: toolToActivityType(toolName),
+        tool: toolName,
+        description: tc.isError ? "error" : "ok",
+        duration_ms: 0,
+        cache_hit: false,
+        tokens: 0,
+        details: { status: tc.isError ? "error" : "success" }
+      });
+    }
+    for (const a of agentActivities) {
+      events.push({
+        timestamp: a.spawnedAt,
+        type: "agent_spawn",
+        tool: "Task",
+        description: "agent spawned",
+        duration_ms: 0,
+        cache_hit: false,
+        tokens: 0,
+        details: { agent_id: a.agentId }
+      });
+      if (a.completedAt !== void 0) {
+        events.push({
+          timestamp: a.completedAt,
+          type: "agent_complete",
+          tool: "Task",
+          description: a.exitStatus === "error" ? "error" : "completed",
+          duration_ms: 0,
+          cache_hit: false,
+          tokens: 0,
+          details: { agent_id: a.agentId, status: a.exitStatus }
+        });
+      }
+    }
+    const telemetryRecords = this.safeCall(
+      () => this.telemetry.getRecentRecords(RECENT_ACTIVITY_LIMIT),
+      []
+    );
+    for (const r of telemetryRecords) {
+      events.push({
+        timestamp: r.created_at,
+        type: toolToActivityType(r.tool),
+        tool: r.tool,
+        description: r.error ?? (r.status === "success" ? "ok" : r.status),
+        duration_ms: r.duration_ms,
+        cache_hit: r.cache_hit,
+        tokens: (r.tokens_in ?? 0) + (r.tokens_out ?? 0),
+        details: {
+          status: r.status,
+          tokens_in: r.tokens_in,
+          tokens_out: r.tokens_out,
+          cache_bytes_saved: r.cache_bytes_saved
+        }
+      });
+    }
+    events.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+    return events.slice(0, RECENT_ACTIVITY_LIMIT);
+  }
+  /**
+   * Build file hotspot data by merging JSONL tool call file access patterns
+   * with session-reader modified-file data.
+   *
+   * JSONL tool_use blocks contain actual file paths for read/write/edit calls,
+   * enabling per-file access counting. Session-reader provides modified files
+   * as a fallback for files not captured in JSONL.
+   *
+   * @param _breakdown      - Tool breakdown from precision telemetry (reserved).
+   * @param jsonlToolCalls  - Extracted tool calls from JSONL records.
+   * @param sessionCounters - Session counters from the SessionReader.
+   */
+  buildFileHotspots(_breakdown, jsonlToolCalls, sessionCounters) {
+    const fileStats = /* @__PURE__ */ new Map();
+    for (const tc of jsonlToolCalls) {
+      const toolName = _Aggregator.extractBaseToolName(tc.name ?? "");
+      const timestamp = tc.timestamp ?? (/* @__PURE__ */ new Date()).toISOString();
+      const filePaths = [];
+      const singlePath = typeof tc.input["path"] === "string" ? tc.input["path"] : null;
+      if (singlePath !== null) {
+        filePaths.push(singlePath);
+      }
+      if (Array.isArray(tc.input["files"])) {
+        for (const f of tc.input["files"]) {
+          if (typeof f === "object" && f !== null && typeof f["path"] === "string") {
+            filePaths.push(f["path"]);
+          }
+        }
+      }
+      if (Array.isArray(tc.input["edits"])) {
+        for (const e of tc.input["edits"]) {
+          if (typeof e === "object" && e !== null) {
+            const editRec = e;
+            const editPath = typeof editRec["path"] === "string" ? editRec["path"] : typeof editRec["file"] === "string" ? editRec["file"] : null;
+            if (editPath !== null) filePaths.push(editPath);
+          }
+        }
+      }
+      for (const rawPath of filePaths) {
+        const filePath = (0, import_node_path6.resolve)(rawPath);
+        if (!fileStats.has(filePath)) {
+          fileStats.set(filePath, { reads: 0, writes: 0, conflicts: 0, lastAccessed: timestamp });
+        }
+        const stat2 = fileStats.get(filePath);
+        if (timestamp > stat2.lastAccessed) stat2.lastAccessed = timestamp;
+        if (toolName === "read" || toolName === "precision_read" || toolName === "grep" || toolName === "precision_grep" || toolName === "glob" || toolName === "precision_glob" || toolName === "symbols" || toolName === "precision_symbols") {
+          stat2.reads++;
+        } else if (toolName === "write" || toolName === "precision_write" || toolName === "edit" || toolName === "precision_edit") {
+          stat2.writes++;
+        } else if (toolName === "conflict") {
+          stat2.conflicts++;
+        }
+      }
+    }
+    if (sessionCounters) {
+      for (const filePath of sessionCounters.files_modified) {
+        if (!fileStats.has(filePath)) {
+          fileStats.set(filePath, {
+            reads: 0,
+            writes: 1,
+            conflicts: 0,
+            lastAccessed: (/* @__PURE__ */ new Date()).toISOString()
+          });
+        }
+      }
+    }
+    const hotspots = Array.from(fileStats.entries()).map(([path11, stat2]) => ({
+      path: path11,
+      reads: stat2.reads,
+      writes: stat2.writes,
+      conflicts: stat2.conflicts,
+      tokens_saved: 0,
+      // Not derivable without per-file cache tracking
+      last_accessed: stat2.lastAccessed
+    })).sort((a, b) => b.reads + b.writes - (a.reads + a.writes)).slice(0, MAX_HOTSPOTS);
+    return hotspots;
+  }
+  /**
+   * Build agent profile data from JSONL-extracted agent activity.
+   *
+   * Each `AgentActivityInfo` entry corresponds to a Task tool_use block
+   * found in the JSONL records. Status is inferred from completion state.
+   *
+   * @param agentActivities - Agent activity records extracted from JSONL.
+   */
+  buildAgentProfiles(agentActivities) {
+    const sessionDir = this.findSessionDir();
+    return agentActivities.map((a) => {
+      let duration_ms = 0;
+      if (a.completedAt !== void 0) {
+        const spawnMs = new Date(a.spawnedAt).getTime();
+        const completeMs = new Date(a.completedAt).getTime();
+        if (!isNaN(spawnMs) && !isNaN(completeMs) && completeMs >= spawnMs) {
+          duration_ms = completeMs - spawnMs;
+        }
+      }
+      let tokens_in = 0;
+      let tokens_out = 0;
+      let tool_calls = 0;
+      if (sessionDir !== null) {
+        const subagentData = this.parseSubagentFile(sessionDir, a.agentId);
+        if (subagentData !== null) {
+          tokens_in = subagentData.tokens_in;
+          tokens_out = subagentData.tokens_out;
+          tool_calls = subagentData.tool_calls;
+        }
+      }
+      return {
+        agent_id: a.agentId,
+        agent_type: a.taskInput["subagent_type"] ?? a.taskInput["description"] ?? "unknown",
+        tokens_in,
+        tokens_out,
+        tool_calls,
+        success_rate: 1,
+        duration_ms,
+        status: a.completed ? a.exitStatus === "error" ? "failed" : "completed" : "active"
+      };
+    });
+  }
+  /**
+   * Determine the session directory (parent dir of the active JSONL file).
+   * Subagent files live at <session-dir>/subagents/agent-<id>.jsonl
+   */
+  findSessionDir() {
+    if (this.activeJsonlPath === null) return null;
+    return (0, import_node_path6.dirname)(this.activeJsonlPath);
+  }
+  /**
+   * Parse a subagent JSONL file and return aggregated token/tool counts.
+   *
+   * @param sessionDir - Session directory (parent of the main JSONL file).
+   * @param agentId    - Agent ID from the Task tool_use block (may be a prefix).
+   */
+  parseSubagentFile(sessionDir, agentId) {
+    const subagentsDir = (0, import_node_path6.join)(sessionDir, "subagents");
+    if (!(0, import_node_fs9.existsSync)(subagentsDir)) return null;
+    let entries;
+    try {
+      const dirStat = (0, import_node_fs9.statSync)(subagentsDir);
+      if (this.subagentDirCache !== null && this.subagentDirCache.mtime === dirStat.mtimeMs) {
+        entries = this.subagentDirCache.files;
+      } else {
+        entries = (0, import_node_fs9.readdirSync)(subagentsDir);
+        this.subagentDirCache = { mtime: dirStat.mtimeMs, files: entries };
+      }
+    } catch {
+      return null;
+    }
+    let subagentFile = null;
+    for (const entry of entries) {
+      if (!entry.startsWith("agent-") || !entry.endsWith(".jsonl")) continue;
+      const fileId = entry.slice("agent-".length, -".jsonl".length);
+      if (fileId === agentId || fileId.startsWith(agentId)) {
+        subagentFile = (0, import_node_path6.join)(subagentsDir, entry);
+        break;
+      }
+    }
+    if (subagentFile === null) return null;
+    try {
+      const fileStat = (0, import_node_fs9.statSync)(subagentFile);
+      const cached3 = this.subagentCache.get(subagentFile);
+      if (cached3 !== void 0 && cached3.mtime === fileStat.mtimeMs) {
+        return cached3.data;
+      }
+      const content = (0, import_node_fs9.readFileSync)(subagentFile, "utf8");
+      const lines = content.split("\n").filter((l) => l.trim() !== "");
+      let tokens_in = 0;
+      let tokens_out = 0;
+      let tool_calls = 0;
+      for (const line of lines) {
+        try {
+          const entry = JSON.parse(line);
+          if (entry["type"] !== "assistant") continue;
+          const msg = entry["message"];
+          if (msg?.["usage"]) {
+            const usage = msg["usage"];
+            tokens_in += usage["input_tokens"] ?? 0;
+            tokens_out += usage["output_tokens"] ?? 0;
+          }
+          const contentBlocks = msg?.["content"];
+          if (Array.isArray(contentBlocks)) {
+            for (const block of contentBlocks) {
+              if (typeof block === "object" && block !== null && block["type"] === "tool_use") {
+                tool_calls++;
+              }
+            }
+          }
+        } catch {
+        }
+      }
+      const result = { tokens_in, tokens_out, tool_calls };
+      this.subagentCache.set(subagentFile, { mtime: fileStat.mtimeMs, data: result });
+      return result;
+    } catch {
+      return null;
+    }
+  }
+  // ───────────────────────────────────────────────────────────────────────────
+  // Private: GlobalDB write-back
+  // ───────────────────────────────────────────────────────────────────────────
+  /**
+   * Schedule a debounced GlobalDB session-summary upsert.
+   *
+   * Resets the timer on every call. The actual write fires after
+   * GLOBAL_DB_DEBOUNCE_MS of inactivity. This prevents hammering the DB
+   * on rapid-fire refresh cycles.
+   */
+  scheduleGlobalDbSave() {
+    if (this.globalDb === null) return;
+    if (this.globalDbSaveTimer !== null) {
+      clearTimeout(this.globalDbSaveTimer);
+    }
+    this.globalDbSaveTimer = setTimeout(() => {
+      this.globalDbSaveTimer = null;
+      this.writeGlobalDbSession();
+    }, GLOBAL_DB_DEBOUNCE_MS);
+    this.globalDbSaveTimer.unref?.();
+  }
+  /**
+   * Write the current session summary to GlobalDB.
+   *
+   * Constructs a `GlobalSession` record from the current aggregated state
+   * and calls `upsertSession()`. Errors are logged but do not propagate.
+   */
+  writeGlobalDbSession() {
+    if (this.globalDb === null) return;
+    const sessionId = this.state.session_id;
+    if (!sessionId || sessionId === "unknown") return;
+    try {
+      const metrics = this.state.metrics;
+      const jsonl = this.jsonlTotals;
+      const projectHash = (0, import_node_path6.basename)((0, import_node_path6.dirname)(this.goodvibesDir));
+      const jsonlToolCalls = this.jsonlReader !== null ? this.jsonlReader.extractToolCalls(this.jsonlRecords) : [];
+      const precisionCalls = jsonlToolCalls.filter(
+        (tc) => (tc.name ?? "").startsWith("mcp__plugin_goodvibes_precision")
+      ).length;
+      this.globalDb.upsertSession({
+        session_id: sessionId,
+        project_path: this.goodvibesDir,
+        project_hash: projectHash,
+        started_at: this.startedAt,
+        model: jsonl.model !== "unknown" ? jsonl.model : void 0,
+        total_input_tokens: metrics.tokens.api_input,
+        total_output_tokens: metrics.tokens.api_output,
+        total_cache_read_tokens: metrics.tokens.cache_read,
+        total_cache_write_tokens: metrics.tokens.cache_write,
+        total_cost_usd: metrics.cost.total,
+        total_api_calls: jsonl.api_calls,
+        total_tool_calls: Object.values(this.state.tools_breakdown).reduce(
+          (sum, tb) => sum + tb.calls,
+          0
+        ),
+        total_native_tool_calls: jsonlToolCalls.length - precisionCalls,
+        total_precision_tool_calls: precisionCalls,
+        total_agent_spawns: metrics.agents.spawned,
+        status: "active"
+      });
+    } catch (err) {
+      this.logger.warn(`GlobalDB session upsert failed: ${String(err)}`);
+    }
+  }
+  // ───────────────────────────────────────────────────────────────────────────
+  // Private: utilities
+  // ───────────────────────────────────────────────────────────────────────────
+  /**
+   * Build cache metrics from the telemetry summary.
+   *
+   * `hit_rate` is a 0–1 count-based ratio derived from the precision engine:
+   * `cache_hits / total_calls`. It is NOT a percentage and is NOT the Anthropic
+   * API prompt cache ratio (`cache_read_tokens / api_input_tokens`).
+   *
+   * `hits` and `misses` are precision engine call counts, not token counts.
+   * The API prompt cache is tracked separately in `tokens.cache_read`.
+   *
+   * `memory_peak_mb` and `evictions` are not tracked in the telemetry DB;
+   * they are reported as 0 until a richer data source is available.
+   */
+  buildCacheMetrics(telemetrySummary) {
+    const hits = telemetrySummary?.total_cache_hits ?? 0;
+    const total = telemetrySummary?.total_calls ?? 0;
+    const misses = total - hits;
+    const hitRate = total > 0 ? hits / total : 0;
+    return {
+      hit_rate: hitRate,
+      hits,
+      misses,
+      memory_peak_mb: 0,
+      // not tracked in telemetry DB
+      evictions: 0
+      // not tracked in telemetry DB
+    };
+  }
+  /**
+   * Execute a function and return its result, or a fallback value on error.
+   *
+   * Errors are logged at warn level but do not propagate — a single reader
+   * failure must not abort the full aggregation cycle.
+   *
+   * @param fn       - Function to execute.
+   * @param fallback - Value returned if fn throws.
+   */
+  /**
+   * Extract the base tool name from a raw MCP tool name.
+   *
+   * Strips the MCP prefix (e.g. 'mcp__plugin_goodvibes_precision-engine__precision_read'
+   * becomes 'precision_read'). Also lowercases the result.
+   *
+   * @param rawName - Raw tool name from JSONL tool_use block.
+   * @returns Lowercased base tool name without MCP prefix.
+   */
+  static extractBaseToolName(rawName) {
+    const name = rawName.toLowerCase();
+    return name.includes("__") ? name.split("__").pop() : name;
+  }
+  safeCall(fn, fallback) {
+    try {
+      return fn();
+    } catch (err) {
+      this.logger.warn(`safeCall error: ${String(err)}`);
+      return fallback;
+    }
+  }
+  /**
+   * Read authoritative context/cost data from Claude Code's statusline JSON file.
+   *
+   * Claude Code pipes statusline data to hook scripts via stdin. The user's
+   * statusline script dumps this JSON to ~/.claude/debug-statusline-input.json,
+   * making it available for polling by the analytics daemon.
+   *
+   * @returns Parsed statusline data, or null if the file doesn't exist,
+   *          is stale (>60s old), or cannot be parsed.
+   */
+  readStatuslineData() {
+    const filePath = (0, import_node_path6.join)((0, import_node_os3.homedir)(), ".claude", "debug-statusline-input.json");
+    try {
+      const stat2 = (0, import_node_fs9.statSync)(filePath);
+      const ageMs = Date.now() - stat2.mtimeMs;
+      if (ageMs > STATUSLINE_STALENESS_MS) {
+        return null;
+      }
+      const raw = (0, import_node_fs9.readFileSync)(filePath, "utf-8");
+      const json2 = JSON.parse(raw);
+      if (typeof json2?.context_window?.used_percentage !== "number") {
+        return null;
+      }
+      return {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        contextPercent: Number(json2.context_window.used_percentage) || 0,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        contextWindowSize: Number(json2.context_window.context_window_size) || 0,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        apiInput: Number(json2.context_window.total_input_tokens) || 0,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        apiOutput: Number(json2.context_window.total_output_tokens) || 0,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        cacheRead: Number(json2.context_window.current_usage?.cache_read_input_tokens) || 0,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        cacheWrite: Number(json2.context_window.current_usage?.cache_creation_input_tokens) || 0,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        costUsd: Number(json2.cost?.total_cost_usd) || 0
+      };
+    } catch {
+      return null;
+    }
+  }
+  /**
+   * Invoke all registered state-change callbacks with the current state.
+   * Errors in callbacks are caught and logged to avoid cascade failures.
+   */
+  notifyCallbacks() {
+    for (const cb of this.callbacks) {
+      try {
+        cb(this.state);
+      } catch (err) {
+        this.logger.warn(`State-change callback threw: ${String(err)}`);
+      }
+    }
+  }
+};
+
+// packages/analytics/src/engine/index.ts
+init_db_init();
+
+// packages/analytics/src/engine/schemas/tools.ts
+var AnalyticsDashboardInput = external_exports.object({
+  action: external_exports.enum(["start", "stop", "status"]),
+  /**
+   * Target dashboard to operate on.
+   * 'dashboard' is the current name for the full TUI pane; 'full' is accepted
+   * as a backward-compatible alias.
+   */
+  target: external_exports.enum(["mini", "full", "dashboard", "both"]).default("both"),
+  options: external_exports.object({
+    pane_position: external_exports.enum(["bottom", "top", "left", "right"]).optional(),
+    pane_size: external_exports.union([external_exports.number(), external_exports.string()]).optional()
+  }).optional()
+});
+var AnalyticsQueryInput = external_exports.object({
+  /** The data domain to query within the current session. */
+  scope: external_exports.enum(["tokens", "cache", "commands", "agents", "files", "cost", "health", "project", "all"]),
+  time_range: external_exports.enum(["session", "last_5m", "last_30m", "last_1h"]).default("session"),
+  group_by: external_exports.enum(["tool", "agent", "file", "status"]).optional(),
+  filters: external_exports.object({
+    tool: external_exports.string().optional(),
+    status: external_exports.enum(["success", "failed", "partial"]).optional(),
+    agent: external_exports.string().optional(),
+    /** Filter activity events by one or more session tags. */
+    tags: external_exports.array(external_exports.string()).optional()
+  }).optional(),
+  format: external_exports.enum(["standard", "minimal", "verbose"]).default("standard"),
+  /**
+   * Cross-project scope: which set of sessions to include.
+   * Defaults to 'current_session'. Use 'all_projects' to aggregate across
+   * all GlobalDB sessions, or 'tagged' to filter by tags.
+   */
+  data_scope: external_exports.enum(["current_session", "current_project", "all_projects", "tagged"]).default("current_session")
+});
+var AnalyticsBudgetInput = external_exports.object({
+  action: external_exports.enum(["set", "check", "clear"]),
+  amount: external_exports.number().positive().optional(),
+  unit: external_exports.enum(["dollars", "tokens"]).default("dollars"),
+  warn_at: external_exports.array(external_exports.number().min(0).max(1)).optional()
+}).refine(
+  (data) => data.action !== "set" || data.amount !== void 0,
+  { message: 'amount is required when action is "set"', path: ["amount"] }
+);
+var AnalyticsTagInput = external_exports.object({
+  action: external_exports.enum(["add", "remove", "list", "auto"]),
+  value: external_exports.string().min(1).max(100).optional(),
+  // Required for add/remove, optional for list/auto
+  scope: external_exports.enum(["session", "all"]).optional().default("session")
+  // For list action
+}).refine(
+  (data) => !["add", "remove"].includes(data.action) || data.value !== void 0,
+  { message: "value is required for add and remove actions", path: ["value"] }
+);
+var AnalyticsExportInput = external_exports.object({
+  format: external_exports.enum(["json", "csv", "markdown"]),
+  scope: external_exports.string().regex(
+    /^(current|historical|all_projects|session:[a-f0-9-]+)$/,
+    'Must be "current", "historical", "all_projects", or "session:<id>"'
+  ).default("current"),
+  sections: external_exports.array(
+    external_exports.enum(["tokens", "cache", "commands", "agents", "files", "cost", "timeline"])
+  ).optional(),
+  output_path: external_exports.string().optional(),
+  /** Filter exported sessions by tags (applies to historical and all_projects scopes). */
+  tags: external_exports.array(external_exports.string()).optional()
+});
+var AnalyticsConfigInput = external_exports.object({
+  action: external_exports.enum(["get", "set", "reload"]),
+  key: external_exports.string().optional(),
+  value: external_exports.unknown().optional()
+});
+var AnalyticsSyncInput = external_exports.object({
+  /**
+   * Scope of the sync operation.
+   * - 'current': sync only the current project's JSONL files.
+   * - 'all': sync ALL projects discovered under ~/.claude/projects/.
+   */
+  scope: external_exports.enum(["current", "all"]).default("current")
+});
+
+// packages/analytics/src/engine/index.ts
+var SCHEMA_MAP = {
+  analytics_dashboard: AnalyticsDashboardInput,
+  analytics_query: AnalyticsQueryInput,
+  analytics_budget: AnalyticsBudgetInput,
+  analytics_tag: AnalyticsTagInput,
+  analytics_export: AnalyticsExportInput,
+  analytics_config: AnalyticsConfigInput,
+  analytics_sync: AnalyticsSyncInput
+};
+var AnalyticsEngine = class {
+  static {
+    __name(this, "AnalyticsEngine");
+  }
+  aggregator;
+  config;
+  goodvibesDir;
+  initialized = false;
+  globalDb = null;
+  /**
+   * @param goodvibesDir - Path to the .goodvibes directory (absolute or
+   *   relative to process.cwd()). Analytics config is read from here.
+   */
+  constructor(goodvibesDir) {
+    this.goodvibesDir = goodvibesDir;
+    this.config = loadConfig2(goodvibesDir);
+    this.aggregator = new Aggregator(goodvibesDir, this.config);
+  }
+  /**
+   * Initialize the aggregator and underlying data watchers.
+   * Must be called before `handleToolCall()`.
+   *
+   * @throws If the aggregator fails to initialize.
+   */
+  async initialize() {
+    this.globalDb = await initializeGlobalDb();
+    this.aggregator.setGlobalDb(this.globalDb);
+    await this.aggregator.initialize();
+    this.initialized = true;
+  }
+  /**
+   * Dispatch an MCP tool call by name.
+   *
+   * Validates the tool name and input schema before invoking the handler.
+   * Returns a structured `ToolResponse` — never throws.
+   *
+   * @param name - MCP tool name (e.g. `"analytics_query"`).
+   * @param args - Raw (unvalidated) arguments from the MCP client.
+   * @returns Tool response with content and optional `isError` flag.
+   */
+  async handleToolCall(name, args) {
+    if (!this.initialized) {
+      return toolResponse("Analytics engine not initialized. Call initialize() first.", true);
+    }
+    if (!(name in SCHEMA_MAP)) {
+      return toolResponse(`Unknown analytics tool: ${name}`, true);
+    }
+    const schema = SCHEMA_MAP[name];
+    const parseResult = schema.safeParse(args);
+    if (!parseResult.success) {
+      const errors = (parseResult.error?.issues ?? []).map(
+        (i) => `${i.path.join(".")}: ${i.message}`
+      ).join("; ");
+      return toolResponse(`Validation error: ${errors}`, true);
+    }
+    try {
+      const { HANDLER_REGISTRY: HANDLER_REGISTRY2 } = await Promise.resolve().then(() => (init_handlers(), handlers_exports));
+      const handler = HANDLER_REGISTRY2[name];
+      if (!handler) {
+        return toolResponse(`No handler registered for tool: ${name}`, true);
+      }
+      return await handler(this.aggregator, parseResult.data, this.goodvibesDir);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return toolResponse(`Handler error: ${message}`, true);
+    }
+  }
+  /**
+   * Gracefully shut down the aggregator and release all resources.
+   * Safe to call multiple times.
+   */
+  async shutdown() {
+    await this.aggregator.shutdown();
+    this.globalDb?.close();
+    this.globalDb = null;
+    this.initialized = false;
+  }
+  /**
+   * Expose the underlying Aggregator for direct state access by TUI renderers.
+   * @returns The Aggregator instance.
+   */
+  getAggregator() {
+    return this.aggregator;
+  }
+  /**
+   * Return the global analytics database instance.
+   *
+   * @throws {Error} If the engine has not been initialized.
+   */
+  getGlobalDb() {
+    if (!this.globalDb) {
+      throw new Error("AnalyticsEngine: not initialized. Call initialize() first.");
+    }
+    return this.globalDb;
+  }
+  /**
+   * Return the resolved analytics configuration (DEFAULT_CONFIG merged with
+   * any values loaded from `analytics.json`).
+   * @returns The active AnalyticsConfig.
+   */
+  getConfig() {
+    return this.config;
+  }
+};
+
+// packages/analytics/src/tools/query.ts
+var queryTool = {
+  name: "query",
+  engineTool: "analytics_query",
+  description: "Ad-hoc queries against session data: tokens, cache, commands, agents, files, cost, health, or project metrics. Supports time ranges, grouping, filtering, and cross-project scoping via data_scope.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      scope: {
+        type: "string",
+        enum: ["tokens", "cache", "commands", "agents", "files", "cost", "health", "project", "all"],
+        description: "The data domain to query within the current session."
+      },
+      time_range: {
+        type: "string",
+        enum: ["session", "last_5m", "last_30m", "last_1h"],
+        description: "Time window to aggregate over (default: session)."
+      },
+      group_by: { type: "string", enum: ["tool", "agent", "file", "status"] },
+      filters: {
+        type: "object",
+        properties: {
+          tool: { type: "string" },
+          status: { type: "string", enum: ["success", "failed", "partial"] },
+          agent: { type: "string" },
+          tags: { type: "array", items: { type: "string" } }
+        }
+      },
+      format: { type: "string", enum: ["standard", "minimal", "verbose"] },
+      data_scope: {
+        type: "string",
+        enum: ["current_session", "current_project", "all_projects", "tagged"],
+        description: "Which set of sessions to include (default: current_session)."
+      }
+    },
+    required: ["scope"]
+  }
+};
+
+// packages/analytics/src/tools/dashboard.ts
+var dashboardTool = {
+  name: "dashboard",
+  engineTool: "analytics_dashboard",
+  description: "Launch, stop, or check status of the analytics tmux panes. The mini dashboard is an always-on 4-line pane showing live session metrics. (The full interactive TUI is deferred in the alpha.) Calling start on a running target toggles it off; stop on a stopped target is a no-op.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      action: { type: "string", enum: ["start", "stop", "status"] },
+      target: {
+        type: "string",
+        enum: ["mini", "full", "dashboard", "both"],
+        description: "Which pane to operate on (default: both)."
+      },
+      options: {
+        type: "object",
+        properties: {
+          pane_position: { type: "string", enum: ["bottom", "top", "left", "right"] },
+          pane_size: { type: ["number", "string"] }
+        }
+      }
+    },
+    required: ["action"]
+  }
+};
+
+// packages/analytics/src/tools/budget.ts
+var budgetTool = {
+  name: "budget",
+  engineTool: "analytics_budget",
+  description: "Set, check, or clear a session budget (in dollars or tokens). Cost is computed from transcript actuals using the per-model, cache-aware pricing table. When set, the mini dashboard shows remaining budget with color-coded thresholds.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      action: { type: "string", enum: ["set", "check", "clear"] },
+      amount: { type: "number", description: 'Budget limit; required when action is "set".' },
+      unit: { type: "string", enum: ["dollars", "tokens"] },
+      warn_at: {
+        type: "array",
+        items: { type: "number", minimum: 0, maximum: 1 },
+        description: "Warning threshold fractions, e.g. [0.5, 0.8, 1.0]."
+      }
+    },
+    required: ["action"]
+  }
+};
+
+// packages/analytics/src/tools/export.ts
+var exportTool = {
+  name: "export",
+  engineTool: "analytics_export",
+  description: 'Export session data in JSON, CSV, or markdown format. Supports the current session, a specific historical session, all historical data, or all projects (scope="all_projects"). Filter by tags.',
+  inputSchema: {
+    type: "object",
+    properties: {
+      format: { type: "string", enum: ["json", "csv", "markdown"] },
+      scope: {
+        type: "string",
+        description: '"current", "historical", "all_projects", or "session:<id>" (default: current).'
+      },
+      sections: {
+        type: "array",
+        items: {
+          type: "string",
+          enum: ["tokens", "cache", "commands", "agents", "files", "cost", "timeline"]
+        }
+      },
+      output_path: { type: "string" },
+      tags: { type: "array", items: { type: "string" } }
+    },
+    required: ["format"]
+  }
+};
+
+// packages/analytics/src/tools/tag.ts
+var tagTool = {
+  name: "tag",
+  engineTool: "analytics_tag",
+  description: 'Add, remove, or list tags on the current session. Tags are persisted in the global SQLite DB and support multi-tag arrays. Use action="auto" for heuristic tag suggestions from JSONL analysis.',
+  inputSchema: {
+    type: "object",
+    properties: {
+      action: { type: "string", enum: ["add", "remove", "list", "auto"] },
+      value: { type: "string", minLength: 1, maxLength: 100, description: "Required for add/remove." },
+      scope: { type: "string", enum: ["session", "all"], description: "For the list action (default: session)." }
+    },
+    required: ["action"]
+  }
+};
+
+// packages/analytics/src/tools/sync.ts
+var syncTool = {
+  name: "sync",
+  engineTool: "analytics_sync",
+  description: 'Sync Claude JSONL session files into the global analytics SQLite database. Use scope="current" for the current project or scope="all" for every project under ~/.claude/projects/. Incremental via byte-offset tracking.',
+  inputSchema: {
+    type: "object",
+    properties: {
+      scope: { type: "string", enum: ["current", "all"], description: "Sync scope (default: current)." }
+    }
+  }
+};
+
+// packages/analytics/src/tools/config.ts
+var configTool = {
+  name: "config",
+  engineTool: "analytics_config",
+  description: 'View, update, or reload analytics engine settings. Supports dot-notation keys. Use action="reload" to hot-reload configuration from disk without restarting.',
+  inputSchema: {
+    type: "object",
+    properties: {
+      action: { type: "string", enum: ["get", "set", "reload"] },
+      key: { type: "string" },
+      value: {}
+    },
+    required: ["action"]
+  }
+};
+
+// packages/analytics/src/index.ts
 var SERVER_NAME = "goodvibes-analytics";
 var SERVER_VERSION = "2.0.0-alpha.1";
-function createServer(onActivity) {
+var TOOL_MODULES = [
+  queryTool,
+  dashboardTool,
+  budgetTool,
+  exportTool,
+  tagTool,
+  syncTool,
+  configTool
+];
+function createServer(options = {}) {
   const server = new Server(
     { name: SERVER_NAME, version: SERVER_VERSION },
     { capabilities: { tools: {} } }
   );
+  const goodvibesDir = options.goodvibesDir ?? statePath();
+  if (!process.env.GOODVIBES_DIR) process.env.GOODVIBES_DIR = goodvibesDir;
+  const budgetMs = loadConfig().budgets.analytics_ms;
+  const byName = new Map(TOOL_MODULES.map((m) => [m.name, m]));
+  let engine = null;
+  let initPromise = null;
+  async function getEngine() {
+    if (!engine) {
+      engine = new AnalyticsEngine(goodvibesDir);
+      options.onEngine?.(engine);
+    }
+    if (!initPromise) initPromise = engine.initialize();
+    await initPromise;
+    return engine;
+  }
+  __name(getEngine, "getEngine");
   server.setRequestHandler(ListToolsRequestSchema, async () => {
-    onActivity?.();
-    return { tools: [] };
+    options.onActivity?.();
+    return {
+      tools: TOOL_MODULES.map((m) => ({
+        name: m.name,
+        description: m.description,
+        inputSchema: m.inputSchema
+      }))
+    };
   });
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    onActivity?.();
-    return toCallToolResult(
-      errorEnvelope(
-        `Unknown tool: ${request.params.name}. The goodvibes-analytics alpha skeleton serves no tools yet.`
-      )
-    );
+    options.onActivity?.();
+    const mod = byName.get(request.params.name);
+    if (!mod) {
+      return toCallToolResult(errorEnvelope(`Unknown tool: ${request.params.name}`));
+    }
+    try {
+      const eng = await getEngine();
+      const outcome = await withBudget(
+        budgetMs,
+        async () => eng.handleToolCall(mod.engineTool, request.params.arguments ?? {})
+      );
+      const resp = outcome.value;
+      const content = [...resp.content];
+      if (outcome.budget_exceeded) {
+        content.push({
+          type: "text",
+          text: `
+[budget_exceeded: analytics time budget of ${budgetMs}ms elapsed after ${outcome.elapsed_ms}ms]`
+        });
+      }
+      return { content, isError: resp.isError };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return toCallToolResult(errorEnvelope(`Tool ${mod.name} failed: ${message}`));
+    }
   });
   return server;
 }
 __name(createServer, "createServer");
 async function main() {
   const cfg = loadConfig();
+  let engineRef = null;
   const hygiene = installProcessHygiene({
     idleExitMinutes: cfg.idle_exit_minutes,
-    ppidPollMs: cfg.ppid_poll_ms
+    ppidPollMs: cfg.ppid_poll_ms,
+    onShutdown: /* @__PURE__ */ __name(async () => {
+      try {
+        await engineRef?.shutdown();
+      } catch {
+      }
+    }, "onShutdown")
   });
-  const server = createServer(() => hygiene.noteActivity());
+  const server = createServer({
+    onActivity: /* @__PURE__ */ __name(() => hygiene.noteActivity(), "onActivity"),
+    onEngine: /* @__PURE__ */ __name((e) => {
+      engineRef = e;
+    }, "onEngine")
+  });
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }
@@ -22376,6 +40219,7 @@ if (!process.env.VITEST) {
 0 && (module.exports = {
   SERVER_NAME,
   SERVER_VERSION,
+  TOOL_MODULES,
   createServer,
   main
 });

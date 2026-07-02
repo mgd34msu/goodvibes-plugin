@@ -5,7 +5,7 @@ export default defineConfig({
     name: 'analytics',
     globals: true,
     environment: 'node',
-    include: ['src/__tests__/**/*.test.ts'],
+    include: ['src/**/*.test.ts'],
     testTimeout: 30000,
   },
 });

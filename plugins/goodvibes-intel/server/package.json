@@ -6,6 +6,7 @@
   "dependencies": {
     "@ast-grep/napi": "^0.40.5",
     "@vscode/ripgrep": "^1.17.0",
-    "sql.js": "^1.12.0"
+    "sql.js": "^1.12.0",
+    "web-tree-sitter": "0.26.10"
   }
 }

@@ -1,8 +1,10 @@
 {
-  "outputStyle": "goodvibes:justvibes",
   "permissions": {
     "allow": [
       "mcp__plugin_goodvibes_precision-engine__precision_read"
     ]
-  }
+  },
+  "enabledPlugins": {},
+  "extraKnownMarketplaces": {},
+  "outputStyle": "goodvibes:justvibes"
 }
