@@ -1,7 +1,7 @@
 # GoodVibes v2.0 — Complete Disposition Plan
 
 Date: 2026-07-01
-Inputs: the 38-agent deep review (`docs/deep-review-2026-07-01.md`), the field-issues report (`docs/precision-engine-field-issues-2026-07-01.md`), the directive-loop field report (`docs/runtime-engine-directive-loop-2026-07-01.md`), the prior hygiene review (`gv-plugin-plan.md`), and the design decisions settled in review discussion (WRFC reshape, cache verdict, fetch split, open-mode toggle design, hooks triage, daemon strategy).
+Inputs: the 38-agent deep review (`docs/deep-review-2026-07-01.md`), the field-issues report (`docs/precision-engine-field-issues-2026-07-01.md`), the directive-loop field report (`docs/runtime-engine-directive-loop-2026-07-01.md`), the prior hygiene review (`gv-plugin-plan.md`), the design decisions settled in review discussion (WRFC reshape, cache verdict, fetch split, open-mode toggle design, hooks triage, daemon strategy), and the **Alpha-0 tribunal verdicts (29/29 subjects ruled with evidence, 2026-07-02)** — every EVALUATE below is now resolved and marked accordingly.
 
 Every tool, hook, skill, agent, command, style, template, and background process in the plugin gets a disposition below. Nothing is waved at in bulk; composite features are dissected into parts where the parts deserve different fates.
 
@@ -13,7 +13,7 @@ v1 is a replacement harness: six MCP servers, 77 tools, an always-on prompt chai
 
 **v2 is three opt-in products on one engineering base:**
 
-1. **`goodvibes-intel`** — one MCP server: structure-aware code search/read plus the verified static analyzers. The winning configuration is the default. (~13–17 tools)
+1. **`goodvibes-intel`** — one MCP server: structure-aware code search/read plus the verified static analyzers. The winning configuration is the default. (14 tools, tribunal-final)
 2. **`goodvibes-analytics`** — session/cost telemetry, budgets, dashboards. Unique data the harness doesn't expose. (~7 tools)
 3. **`goodvibes-connect`** — the API workbench: `api_request` + the service registry with the restricted/open-mode toggle design. (~3 tools)
 
@@ -26,7 +26,7 @@ Everything else — the blocking hooks, the prompt chain, the output styles, the
 - **REBUILD** — the concept survives; the implementation is replaced
 - **ABSORB** — functionality moves into another component; the standalone thing disappears
 - **EXTRACT** — dissected; named parts survive in new homes, the rest retires
-- **EVALUATE** — survival test defined below; decided during v2 alpha with evidence
+- **EVALUATE** — survival test defined below; decided during v2 alpha with evidence *(all resolved 2026-07-02 by the Alpha-0 tribunal — resolutions inline)*
 - **RETIRE** — deleted
 - **BUILD NEW** — capability with no v1 counterpart, built for v2
 - **FIX** — mechanical correction; no design change
@@ -45,7 +45,7 @@ The flagship, dissected hardest because it contains both the best and the worst 
 | `extract:lines` + `range` | **KEEP** → intel `code_read` | Verified excellent. Fix: honor `include_line_numbers` (currently ignored in lines mode); key batch results by entry, not path (same-path range reads currently collapse). |
 | `extract:content` (full-file) | **RETIRE** | Native Read wins at every size at defaults; even tuned it wins only ≥14.9% on large files. Not worth carrying a second full-file reader for that margin — outline+ranges is the product. |
 | `extract:symbols` | **RETIRE** | Output larger than the raw file, wrong export flags. Native LSP owns symbol truth. |
-| `extract:ast` | **EVALUATE** | Test: does any real workflow use raw AST dumps that structural grep doesn't serve better? If no evidence by alpha end, retire. |
+| `extract:ast` | **RETIRE** *(tribunal 2026-07-02)* | Probed on two real structural questions; ast-grep queries answered both better and cheaper than raw tree dumps. Nothing ports. |
 | PDF/notebook/image branches | **RETIRE** | Native Read handles all three natively now. |
 | `token_budget` pagination | **REBUILD** | Concept useful for huge files; implementation double-pays (content + lines arrays). One representation per response. |
 | Size gate | **KEEP** with fix | UTF-8-safe truncation (currently can split multi-byte chars mid-character). |
@@ -56,7 +56,7 @@ The flagship, dissected hardest because it contains both the best and the worst 
 
 Keeps: multi-query batched execution with keyed results, `count_only`/`files_only`/`locations`/`matches`/`context` formats, `expand_to` (block/function/class), AST structural queries (ast-grep), `preview_replace`, `negate`, `max_line_length`, per-file `match_count`.
 
-Fixes (all root-caused): per-file `--max-count` leaking into `count_only` totals; `max_total_matches` ceiling making `max_results` unreachable in `files_only`; `truncated` computed against the wrong cap (false-positives on nearly every search, hardcoded `false` in negate); `match_count` counting submatches while caps count lines; real `.gitignore` reading. `ranked` (doubles output for near-zero signal) and `relationships` (analyzes the wrong symbol): **EVALUATE** — survival test: correct, cheap signal demonstrated by alpha end, else both retire.
+Fixes (all root-caused): per-file `--max-count` leaking into `count_only` totals; `max_total_matches` ceiling making `max_results` unreachable in `files_only`; `truncated` computed against the wrong cap (false-positives on nearly every search, hardcoded `false` in negate); `match_count` counting submatches while caps count lines; real `.gitignore` reading. `ranked`: **REBUILD** *(tribunal 2026-07-02)* — cheap version clears the bar: sort the existing result array in place, attach one `relevance` scalar per entry, never duplicate match content. `relationships`: **RETIRE** *(tribunal)* — confirmed analyzing the wrong symbol; any future rebuild must derive the symbol from the actual match span.
 
 ### 1.3 `precision_glob` — KEEP
 
@@ -112,29 +112,29 @@ Survival test applied to every tool: *"Would a competent 2026 agent get an equal
 | Tool | Disposition | Rationale |
 |---|---|---|
 | `project_code_surface` | **KEEP** → intel | TS-compiler API-surface mapping; differentiated, audit-verified real. |
-| `project_code_dead` | **EVALUATE** → intel | Keep only if accuracy-tested against knip on 3 real repos during alpha; the deep review itself used its output (529/37 export figures) successfully, but precision matters here. |
+| `project_code_dead` | **RETIRE** *(tribunal 2026-07-02)* | Accuracy-tested against knip and manual verification: its only finding was a false positive while knip caught the two real dead exports it missed. Fails the wrong-answer bar. |
 | `project_code_safe_delete` | **KEEP** → intel | Reference-checked deletion is a real agent workflow win. Verify its reference engine is compiler-based, not regex. |
 | `project_code_preview_edits` | **ABSORB** | Redundant with grep `preview_replace`; fold any unique diff-preview capability there. |
 | `project_code_breaking` | **RETIRE** | Spawns nested `claude` CLI sessions from inside the MCP server — wrong layer, unpredictable cost; a workflow template does this properly. |
 | `project_code_semantic_diff` | **RETIRE** | Same nested-session architecture. |
 | `project_api_routes` | **KEEP** → intel | Multi-framework parsers (express/fastify/hono/next) are real and differentiated. |
 | `project_api_spec` | **KEEP** → intel | Spec generation from parsed routes — pairs with routes. |
-| `project_api_validate` | **EVALUATE** | Keep if validation is spec-driven and accurate; retire if it duplicates what running the app's own validators gives. |
+| `project_api_validate` | **KEEP** → intel *(tribunal 2026-07-02)* | Live-probed against a fixture with planted contract mismatches: caught both with JSONPath-precise reporting, zero false alarms on correct routes. Rides the same parser infrastructure as api_routes/api_spec. |
 | `project_api_sync` | **RETIRE** | Writes code — v2 intel is read-only by design; sync belongs to an agent using native Edit guided by `api_spec` output. |
 | `project_db_schema` | **KEEP** → intel | Schema intelligence is read-only structure analysis — on-thesis. |
-| `project_db_prisma` | **EVALUATE** | Keep if it does more than wrap `prisma` CLI invocations an agent could run. |
+| `project_db_prisma` | **MERGE** → intel `db_schema` *(tribunal 2026-07-02)* | Passed its own survival test: real TS-compiler analysis (prisma call-chain mapping, query-in-loop detection, usage frequency) — not CLI wrapping. Ships as an opt-in analysis mode of db_schema; accuracy spot-check on a fixture required during porting. |
 | `project_db_query` | **KEEP** → connect (not intel) | It talks to live databases with credentials — that's connect's job and connect's trust model: registered connection, read-only default, writes opt-in, same open-mode toggle. Praised behavior (loads drivers from target project, honest install hints) carries over. |
-| `project_deps_analyze` | **EVALUATE** | Survival test vs `npm ls`/`npm outdated` + native reasoning. |
+| `project_deps_analyze` | **RETIRE** *(tribunal 2026-07-02)* | Completed in 441ms on a quiet host (clearing the tool of the earlier stalls), but its headline unused-dependency signal had a 100% false-positive rate — flagged typescript, eslint, and coverage providers as unused. Wrong-edit-inducing; npm ls/outdated win. |
 | `project_deps_circular` | **RETIRE** | Fabricated a cycle from a doc comment (regex import parsing). `madge` exists. |
 | `project_deps_upgrade` | **RETIRE** | Mutating action wrapping `npm`; agents do this natively. |
 | `project_runtime_logs` | **RETIRE** (decided 2026-07-02) | Was contingent on automation, which is cut. |
 | `project_runtime_profile` | **RETIRE** | Executes target-project code inside the shared MCP server process; documented TS path fails. |
 | `project_runtime_memory` | **RETIRE** | Same in-process execution problem. |
-| `project_security_env` | **EVALUATE** | Keep if it does real env-file/exposure analysis; retire if substring theater (same bar as the commit guard). |
-| `project_security_permissions` | **EVALUATE** | Same bar. |
-| `project_security_secrets` | **REBUILD or RETIRE** | Prior review's 7 findings were doc examples — detection quality unproven. Either rebuild on entropy + provider-pattern detection with tests (**→ intel**, joining the §11 EVALUATE pool), or retire in favor of gitleaks in CI. No placebo ships in v2. |
+| `project_security_env` | **RETIRE** *(tribunal 2026-07-02)* | Pattern-matching without the argument analysis that established linters bring; if wanted at all later, demote to a config-hygiene helper (missing/unused env vars) without the pass/fail framing. |
+| `project_security_permissions` | **RETIRE** *(tribunal 2026-07-02)* | API-name inventory duplicating what established lint rulesets do with real argument analysis; a semgrep recipe supersedes it. |
+| `project_security_secrets` | **RETIRE** *(tribunal 2026-07-02)* | Ship a gitleaks-in-CI recipe instead of owning a scanner; the two genuinely novel detection patterns ride along as a custom `.gitleaks.toml`, as configuration rather than code. |
 | `project_test_coverage` | **RETIRE** | Parses reports an agent can read after running coverage itself. |
-| `project_test_find` | **EVALUATE** | Cheap test-file mapping; keep only if measurably better than one glob. |
+| `project_test_find` | **RETIRE** *(tribunal 2026-07-02)* | Implementation confirmed as a recursive filename matcher — one glob call replaces it. |
 | `bundle_analyze` | **RETIRE** | Missed the repo's actual 12MB bundle; treats any path as a build dir. |
 | `scaffold` | **KEEP** → intel (or plugin command) | Real, consumed by templates. Fix template manifests (§9.5). |
 
@@ -149,19 +149,19 @@ The engine as a process retires (one node process, one bundled TS compiler in v2
 | `frontend_component_tree` | **KEEP** | Verified accurate live with no running app. |
 | `frontend_hook_dependencies` | **KEEP** | Differentiated React static analysis; LSP doesn't do this. |
 | `frontend_client_boundary` | **KEEP** | Server/client boundary mapping — real RSC-era value. |
-| `frontend_render_triggers` | **KEEP** (verify depth) | Audit classed it real; confirm on 2 external repos in alpha. |
-| `frontend_component_state` | **EVALUATE** | Overlaps hook_dependencies; merge if >50% shared output. |
-| `frontend_error_boundaries` | **EVALUATE** | Cheap if it's the same AST pass; keep as a mode of component_tree rather than a tool. |
-| `frontend_event_flow` | **EVALUATE** | Verify accuracy; fold into component_tree output if shallow. |
-| `frontend_accessibility_tree` | **EVALUATE** | Static a11y trees are easy to get wrong; test against axe on real components before keeping. |
-| `frontend_layout_hierarchy` | **EVALUATE** (as one merged `layout_analysis` tool with the next three) | Static CSS/layout analysis has value only if accurate against Tailwind v4 reality — the audit found v3-era hardcoded tables in this family. |
-| `frontend_overflow` | **EVALUATE** | → merged layout_analysis candidate. |
-| `frontend_sizing_strategy` | **EVALUATE** | → merged layout_analysis candidate. |
-| `frontend_stacking_context` | **EVALUATE** | → merged layout_analysis candidate. |
-| `frontend_responsive_breakpoints` | **EVALUATE** | JS-config-only breakpoint detection is stale (v4 is CSS-first); rebuild or fold. |
+| `frontend_render_triggers` | **RETIRE** *(tribunal 2026-07-02 — reverses the earlier keep)* | Failed the planted-bug probe: missed a known unnecessary-rerender. Do not port; a future rebuild needs real intra-file dataflow (tracking const-assigned unstable values), not the current heuristics. |
+| `frontend_component_state` | **MERGE** → `component_tree` annotation *(tribunal)* | Opt-in state-flow mode: per-component state enumeration mapped to which child prop each value flows into; fix the passed-to-children mapping during the merge. |
+| `frontend_error_boundaries` | **MERGE** → `component_tree` annotation *(tribunal)* | Boundary flags (getDerivedStateFromError/componentDidCatch/library wrappers) with hasFallback/hasReset booleans. |
+| `frontend_event_flow` | **MERGE** → `component_tree` annotation *(tribunal)* | Keep only the accurate predicates: nested-interactive double-fire risk, handlers on non-interactive elements. |
+| `frontend_accessibility_tree` | **MERGE** → `component_tree` annotation *(tribunal)* | Salvage the verified-correct checks (role/tree construction, missing-alt, click-without-role, ARIA required-attribute presence) as an attributes overlay; static analysis cannot see computed styles and must not claim to. |
+| `frontend_layout_hierarchy` | **MERGE** — tree backbone of the new `layout_analysis` tool *(tribunal spec)* | Inputs: file (required) + optional selector focusing sizing/constraint analysis on one node. |
+| `frontend_overflow` | **MERGE** → `layout_analysis` overflow section *(tribunal)* | Keep the nested-flex min-height detector and fix-option list; guard the absolute-positioning heuristic. |
+| `frontend_sizing_strategy` | **MERGE** → `layout_analysis` sizing section *(tribunal)* | Active only with a selector; emits the ancestor constraint chain using the shared, corrected class dictionary. |
+| `frontend_stacking_context` | **MERGE** → `layout_analysis` stacking section *(tribunal)* | Ships essentially unchanged (the accurate one); enhancement: list all context-creation triggers per element. |
+| `frontend_responsive_breakpoints` | **REBUILD** then merge *(tribunal)* | Must become CSS-first (read `@theme` breakpoint variables, merge with config) before it may contribute the responsive section; current JS-config-only detection does not ship. |
 | `frontend_tailwind_conflicts` | **RETIRE** | Confirmed false positives instructing deletion of legitimate classes. Wrong-edit-inducing. |
 
-Net: 4 keeps, 1 retire, 9 evaluations that should collapse into ≤3 merged tools.
+Net *(tribunal-final)*: 3 keeps (component_tree, hook_dependencies, client_boundary), 2 retires (tailwind_conflicts, render_triggers), and 9 tools collapsing into exactly 2 surfaces — an annotated `component_tree` and the merged `layout_analysis`.
 
 ---
 
@@ -259,13 +259,13 @@ Memory JSONs (decisions/patterns/failures/preferences) are genuinely useful cros
 | PreToolUse · `Bash` · `secrets-commit-guard.mjs` | **REBUILD or RETIRE** | Current substring matching is a placebo. If rebuilt: real detection with tests, **warn-only by default**, with deny available solely as a user-enabled strict mode — preserving the §11 no-blocking invariant except where the user opts in. Otherwise delete and run gitleaks in CI. Nothing placebo ships. |
 | PostToolUseFailure · `Bash` · `dist/post-tool-use-failure.js` | **KEEP** | Model hook citizen: ~330B, fires only on real failures, useful suggestions. |
 | SessionStart · `*` · `dist/session-start.js` | **EXTRACT** | Context-gathering half KEEPs (conditional health/TODO/memory injection — verified disciplined); CLAUDE.md/prompt-chain writing half moves to an explicit `/goodvibes:plugin install-prompts` command with uninstall. Gather in background/cache to fix the 10s-timeout silent loss; fix the injection schema (`hookSpecificOutput.additionalContext`). Gains the open-mode announcement duty (§1.8). |
-| Setup · `init` · `dist/setup.js` | **KEEP** (verify) | Legitimate one-time setup home — and the consent point for anything that writes outside the project. |
+| Setup · `init` · `dist/setup.js` | **REBUILD** *(tribunal 2026-07-02)* | Legitimate consent point, wrong behavior today: it writes to the global home directory silently and re-writes differing files. Re-scope to run once (marker-guarded), write only missing files, and gate anything outside the project behind explicit confirmation. |
 | SessionEnd · `*` · `dist/session-end.js` | **KEEP** (slim) | Flush state/telemetry; nothing else. |
 | SubagentStart · `*` · `dist/subagent-start.js` | **KEEP+FIX** | Role-scoped injection shrinks from ~1.8KB of doctrine to pointers ("load skill X for task Y"). |
-| SubagentStop · `*` · `dist/subagent-stop.js` | **EVALUATE** | Justify its ~1.5KB injection or slim to telemetry-only. |
-| PreCompact · `*` · `dist/pre-compact.js` | **EVALUATE** | Pre-compaction state snapshot is a reasonable idea; verify it does that and only that. |
-| Stop · `*` · `dist/stop.js` | **EVALUATE** | Directive-completion bookkeeping; retires or moves under automation with the queue. |
-| Notification · `*` · `dist/notification.js` | **EVALUATE** | Justify per the same bar: observe/inform only. |
+| SubagentStop · `*` · `dist/subagent-stop.js` | **REBUILD** *(tribunal 2026-07-02)* | The telemetry/validation/test-verification pipeline is legitimate and feeds analytics — keep it; delete the ~1.5KB orchestrator injection entirely. Telemetry-only, silent. |
+| PreCompact · `*` · `dist/pre-compact.js` | **REBUILD** *(tribunal 2026-07-02)* | Session summary + analytics backup survive as observe-only behavior; the automatic git checkpoint commit is removed — hooks inform, never mutate. |
+| Stop · `*` · `dist/stop.js` | **KEEP** *(tribunal 2026-07-02)* | Session-close telemetry writer touching only its own cache namespace; no changes needed. |
+| Notification · `*` · `dist/notification.js` | **RETIRE** *(tribunal 2026-07-02)* | Confirmed effectively a no-op — it writes nothing anything consumes. If notification telemetry is ever wanted it must be built, not kept. |
 | UserPromptSubmit · `*` · `dist/user-prompt-submit.js` | **RETIRE** | Confirmed no-op that spawns a node process per prompt. |
 | UserPromptSubmit · `*` · `user-prompt-submit-directives.mjs` | **REBUILD** with the drain hook (or RETIRE with it) | Same scoping fix. |
 
@@ -300,9 +300,9 @@ Cross-cutting hook fixes: `agent-tracking.json` writes become atomic (feeds anal
 | reviewer | **REBUILD** — refutation-based (defect list + severity, tries to disprove the work), shipped as the WRFC template's reviewer. |
 | tester | **KEEP+FIX** — drop the "100% coverage, no skips" absolutism for honest risk-based coverage language. |
 | architect + planner | **ABSORB** into one `architect` — audit confirmed near-identical delegation descriptions. |
-| deployer | **EVALUATE** — native agents + deployment skill may cover it. |
+| deployer | **RETIRE** *(tribunal 2026-07-02)* — base-model deployment knowledge covers it; the guardrails checklist survives as a few bullets in a future deployment note, not an agent. |
 | integrator-ai / integrator-services / integrator-state | **RETIRE** as agents — they are domain prompts wearing agent frontmatter; surviving content folds into the corresponding outcome skills. |
-| agent-factory / skill-factory | **EVALUATE** — keep only if they produce spec-current output (audit found agent-factory instructing WebFetch use against the plugin's own policy — symptomatic of drift). |
+| agent-factory / skill-factory | **RETIRE** *(tribunal 2026-07-02)* — both drifted from current spec (agent-factory instructs retired-tool usage); skill-factory's SKILL.md template and quality checklist are salvaged as reference text for a future skill-authoring doc, not as agents. |
 
 ### 9.3 Commands (7 + 1 backup)
 
@@ -346,8 +346,8 @@ Installed only by explicit command, removed by explicit command, and even then: 
 | `update/update.sh` (+ the referenced-but-nonexistent `update.ps1`) | **REBUILD** — one cross-platform update path, or defer entirely to marketplace updates. |
 | `bin/` (mcp-cli-auto.cjs, mcp-cli.cmd, test-auto-escape.sh) | **RETIRE** — unreferenced payload. |
 | `scripts/build-registries.ts` | **RETIRE** with registry-engine (timestamp fix ships in v1.x regardless). |
-| `plugins/goodvibes/scripts/validate.ts` | **EVALUATE** — keep as a CI content-validation check if it validates things v2 still ships; otherwise it retires with the registry pipeline. |
-| `npm run migrate` (`__dirname` ESM crash) | **FIX or RETIRE** with whatever it migrates. |
+| `plugins/goodvibes/scripts/validate.ts` | **KEEP** *(tribunal 2026-07-02)* — referenced and functional (validates agents/skills/tools/commands counts); becomes a CI content check, updated for the v2 inventory. |
+| `npm run migrate` (`__dirname` ESM crash) | **RETIRE** *(tribunal 2026-07-02)* — confirmed crash-on-run, nothing depends on it. |
 | Root `src/` placeholders, tracked `.backup`/`.tmp`/`temp_check` files | **RETIRE** (prior review's list; still true). |
 | Version drift (root 1.2.0 / plugin 1.10.4 / badges 1.9.0 & 1.4.0 / RELEASE.md 1.10.0 / engines assorted) | **FIX** — single source of truth + CI consistency check. |
 | Vitest v2/v4 skew, TS version skew across packages | **FIX** — workspace-level dependency policy. |
@@ -363,7 +363,7 @@ Installed only by explicit command, removed by explicit command, and even then: 
 
 ## 11. Resulting v2.0 surface
 
-**goodvibes-intel (13 named + up to ~4 EVALUATE survivors ≈ 13–17 tools):** `code_read` (outline/lines), `code_grep`, `code_glob`, `code_surface`, `code_safe_delete`, `api_routes`, `api_spec`, `db_schema`, `component_tree`, `hook_dependencies`, `client_boundary`, `render_triggers`, `scaffold`, plus whichever EVALUATE candidates pass their survival tests — expected to be dominated by the merged `layout_analysis`, `code_dead`, and a rebuilt `security_secrets`. The frontend EVALUATEs collapse into at most 3 merged tools and count against this same allowance. (The project-onboarding pairing lives under Skills, not the tool pool.)
+**goodvibes-intel (14 tools, final — tribunal-resolved 2026-07-02):** `code_read` (outline/lines), `code_grep` (incl. rebuilt `ranked`), `code_glob`, `code_surface`, `code_safe_delete`, `api_routes`, `api_spec`, `api_validate`, `db_schema` (incl. the merged prisma-usage analysis mode), `component_tree` (with state/boundary/event/attribute annotation modes), `hook_dependencies`, `client_boundary`, `layout_analysis` (merged: tree backbone + overflow/sizing/stacking sections; responsive section only after its CSS-first rebuild), `scaffold`. Notable exits from the earlier draft list: `render_triggers` (failed its planted-bug probe) and `code_dead` (lost to knip on accuracy).
 
 **goodvibes-analytics (7 tools):** unchanged surface, fixed inputs and pricing.
 
@@ -371,9 +371,9 @@ Installed only by explicit command, removed by explicit command, and even then: 
 
 **goodvibes-automation: CUT (decided 2026-07-02).** Does not reach alpha. runtime-engine retires whole; WRFC ships as a workflow template only.
 
-**Skills:** ~6–8 flat, on-demand. **Agents:** ~4. **Commands:** 4–5. **Hooks:** 5–8 (5 unconditional keeps + up to 3 survivors of the EVALUATE/conditional set), all observe/inform/assist — zero block/rewrite/steer, with one user-opted exception (the secrets guard's strict deny mode, if rebuilt and enabled). **Output styles:** 0. **Always-on prompt:** ≤1,500 tokens. **Processes per session:** 2 (intel, analytics) + connect on demand, vs 6 today.
+**Skills:** 6 flat, on-demand (precision-mastery successor, goodvibes-memory, review-scoring successor, task-orchestration rebuild, service-integration, project-onboarding). **Agents:** 4 (engineer, refutation-reviewer, tester, architect). **Commands:** 4–5. **Hooks:** 8 (5 keeps: post-tool-use-failure, session-start context, session-end, subagent-start pointers, stop · 3 rebuilds: setup run-once, pre-compact observe-only, subagent-stop telemetry-only · +1 if the commit guard is rebuilt warn-first), all observe/inform/assist — zero block/rewrite/steer, with that one user-opted strict-mode exception. **Output styles:** 0. **Always-on prompt:** ≤1,500 tokens. **Processes per session:** 2 (intel, analytics) + connect on demand, vs 6 today.
 
-Headline math: 77 tools → ~23–27 (plus automation's ~7–10 only if it ships). Six servers → three, with two always-on processes per session. Fixed tax 13,530 → ≤1,500. Every kept claim measured, every kept tool tested.
+Headline math *(tribunal-final)*: 77 tools → **24** (14 intel + 7 analytics + 3 connect). Six servers → three, with two always-on processes per session. Fixed tax 13,530 → ≤1,500. Every kept claim measured, every kept tool tested — 29 of 29 conditional dispositions resolved with evidence.
 
 ---
 
@@ -381,7 +381,7 @@ Headline math: 77 tools → ~23–27 (plus automation's ~7–10 only if it ships
 
 **v1.11 (maintenance, ~1 week):** the trust items (CLAUDE.md rewrite → explicit command; remove the hardcoded permissions-skip flag; delete tool-update.mjs; scope directives by session id), registry timestamp, defaults flip + compact envelope + honest accounting (these help v1 users immediately and de-risk v2), unbreak root test, CI skeleton.
 
-**v2.0-alpha (~3–4 weeks):** carve out intel/connect/analytics into their packages; run every EVALUATE with its written survival test; flatten skills; build the WRFC workflow template; port the measurement suite as the regression harness.
+**v2.0-alpha (~3–4 weeks):** ~~run every EVALUATE with its written survival test~~ *(done 2026-07-02 — Alpha-0 tribunal, 29/29)*; carve out intel/connect/analytics into their packages; flatten skills; build the WRFC workflow template; port the measurement suite as the regression harness.
 
 **v2.0:** retire everything in the RETIRE column, ship the three products, rewrite the README around what is true: *structure-aware code intelligence, session cost telemetry, and a proper API workbench — opt-in, measured, and honest about when native tools are the right choice.*
 
