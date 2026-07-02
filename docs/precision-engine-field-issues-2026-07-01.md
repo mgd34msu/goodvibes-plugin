@@ -107,6 +107,14 @@ The Claude Code Workflow tool worktree isolation snapshots the repository at wor
 
 ---
 
+## Issue 8 — precision_edit rejects calls carrying both plain and base64 fields (LOW, added 2026-07-02)
+
+**Observed (two independent agents, Phase 0.5 session):** an edits[] entry containing both `find`/`replace` and `find_base64`/`replace_base64` is rejected outright, even though the schema documents the plain fields as required and the base64 fields as the escape hatch for content with single quotes/backticks. Callers following the schema (always include the required fields, add base64 when needed) hit a validation error; the working pattern is to send ONLY the base64 fields, which contradicts the documented requirement.
+
+**Suggested fix:** treat the pairs as mutually exclusive alternates in validation (exactly one of find/find_base64), update the schema's required-fields declaration to match, and when both arrive prefer base64 with a warning instead of rejecting.
+
+---
+
 ## What worked well (keep these)
 
 - Batched edits with atomic transactions (when the find patterns are fresh) — the rollback itself behaved correctly in Issue 7; only the reporting is wrong.
