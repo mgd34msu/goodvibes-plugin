@@ -17,7 +17,7 @@ v1 is a replacement harness: six MCP servers, 77 tools, an always-on prompt chai
 2. **`goodvibes-analytics`** — session/cost telemetry, budgets, dashboards. Unique data the harness doesn't expose. (~7 tools)
 3. **`goodvibes-connect`** — the API workbench: `api_request` + the service registry with the restricted/open-mode toggle design. (~3 tools)
 
-Optional fourth, gated on real usage evidence: **`goodvibes-automation`** — webhooks/scheduler/watcher extracted from the runtime daemon.
+**DECIDED 2026-07-02: `goodvibes-automation` is cut** — it does not reach alpha. No standing usage depends on the daemon's webhooks/scheduler/watcher, native scheduling and triggers cover the observed needs, and the delivery layer fights the platform (see the directive-loop report). The runtime daemon retires whole; the WRFC workflow template — which needs no daemon — is the sole orchestration survivor. The gateway ambition remains deferred (question 3).
 
 Everything else — the blocking hooks, the prompt chain, the output styles, the WRFC daemon core, the native-tool replacements — either converts to on-demand skills/workflow templates or retires.
 
@@ -127,7 +127,7 @@ Survival test applied to every tool: *"Would a competent 2026 agent get an equal
 | `project_deps_analyze` | **EVALUATE** | Survival test vs `npm ls`/`npm outdated` + native reasoning. |
 | `project_deps_circular` | **RETIRE** | Fabricated a cycle from a doc comment (regex import parsing). `madge` exists. |
 | `project_deps_upgrade` | **RETIRE** | Mutating action wrapping `npm`; agents do this natively. |
-| `project_runtime_logs` | **EVALUATE** → automation | Dev-server log reading pairs with the watcher/daemon if automation ships; otherwise retire. |
+| `project_runtime_logs` | **RETIRE** (decided 2026-07-02) | Was contingent on automation, which is cut. |
 | `project_runtime_profile` | **RETIRE** | Executes target-project code inside the shared MCP server process; documented TS path fails. |
 | `project_runtime_memory` | **RETIRE** | Same in-process execution problem. |
 | `project_security_env` | **EVALUATE** | Keep if it does real env-file/exposure analysis; retire if substring theater (same bar as the commit guard). |
@@ -222,7 +222,7 @@ Its reason to exist — 77 deferred tools and 25 undiscoverable skills — is de
 | `runtime_workflow` | **RETIRE** (native Workflow tool + the WRFC template own this). |
 | `runtime_agents` | **RETIRE** (agent tracking moves to the hook + analytics pipeline). |
 
-If the EVALUATEs come back negative and webhooks/scheduler don't earn their keep against native equivalents, `goodvibes-automation` doesn't ship and this section collapses to "WRFC template + event log for analytics." That outcome is acceptable; the daemon must win its place with evidence.
+**DECIDED 2026-07-02:** automation is cut before alpha, so this section collapses as anticipated. The WRFC template ships (no daemon required); every KEEP/REBUILD/EVALUATE above that pointed at automation moves to RETIRE. The v1.11 directive-scoping fixes stay in place for as long as v1 runs; the gateway ambition stays deferred (question 3).
 
 ---
 
@@ -286,11 +286,11 @@ Cross-cutting hook fixes: `agent-tracking.json` writes become atomic (feeds anal
 | goodvibes-memory | **KEEP+FIX** — documents the `.goodvibes/memory` feature that survives (§7.5). |
 | error-recovery | **RETIRE** — its useful content is two paragraphs; fold into precision-mastery's successor. |
 
-**Orchestration tier:** task-orchestration — **REBUILD** around native Workflow + the WRFC template (v1 text predates native workflows). fullstack-feature — **EVALUATE**: refresh or retire; a 2026 model doesn't need a generic feature checklist.
+**Orchestration tier:** task-orchestration — **REBUILD** around native Workflow + the WRFC template (v1 text predates native workflows). fullstack-feature — **RETIRE** (decided 2026-07-02): a generic feature checklist a 2026 model doesn't need.
 
-**Outcome tier** (ai-integration, api-design, authentication, component-architecture, database-layer, deployment, payment-integration, service-integration, state-management, styling-system, testing-strategy) — **EVALUATE each** against one bar: *does it contain project-tested, current, non-obvious guidance a 2026 model lacks?* The audit found stale 2024/2025 model and API guidance across this tier. Expected outcome: 3–4 survive after refresh (service-integration pairs naturally with connect; testing-strategy and api-design have real reference content), the rest retire. No skill ships with a stale model table.
+**Outcome tier** (ai-integration, api-design, authentication, component-architecture, database-layer, deployment, payment-integration, service-integration, state-management, styling-system, testing-strategy) — **DECIDED 2026-07-02:** these skills existed to serve the v1 agent roster, which consolidates to ~4. The outcome tier **retires except `service-integration`**, which is rewritten for connect. A 2026 model doesn't need the rest, and nothing ships with a stale model table.
 
-**Quality tier:** code-review — **RETIRE** (native /code-review + the WRFC template). security-audit, accessibility-audit, performance-audit, debugging, refactoring, project-onboarding — **EVALUATE** per the same bar; project-onboarding is the strongest candidate to keep (pairs with intel's analyzers). Validation scripts across all tiers: **RETIRE** the keyword-presence checks (confirmed theater); keep only scripts that run real commands with real assertions.
+**Quality tier:** code-review — **RETIRE** (native /code-review + the WRFC template). **DECIDED 2026-07-02: `project-onboarding` survives**, rewritten around intel's analyzers; security-audit, accessibility-audit, performance-audit, debugging, and refactoring **retire** — they served the v1 agents, and the consolidated roster doesn't need them. Validation scripts across all tiers: **RETIRE** the keyword-presence checks (confirmed theater); keep only scripts that run real commands with real assertions.
 
 ### 9.2 Agents (11) — consolidate to ~4
 
@@ -369,11 +369,11 @@ Installed only by explicit command, removed by explicit command, and even then: 
 
 **goodvibes-connect (~3 tools):** `api_request`, `service` (registry CRUD), `db_query`; plus `/goodvibes:services` UX and the restricted/open toggle system.
 
-**goodvibes-automation (0 or ~7–10 tools, conditional):** ships whole or not at all — §6.2 commits at least 7 tools (status, daemon, state, config, external, triggers, events) plus up to 3 EVALUATEs (schedule, emit, runtime_logs), and only if webhooks/scheduler/watcher beat native equivalents in alpha testing.
+**goodvibes-automation: CUT (decided 2026-07-02).** Does not reach alpha. runtime-engine retires whole; WRFC ships as a workflow template only.
 
 **Skills:** ~6–8 flat, on-demand. **Agents:** ~4. **Commands:** 4–5. **Hooks:** 5–8 (5 unconditional keeps + up to 3 survivors of the EVALUATE/conditional set), all observe/inform/assist — zero block/rewrite/steer, with one user-opted exception (the secrets guard's strict deny mode, if rebuilt and enabled). **Output styles:** 0. **Always-on prompt:** ≤1,500 tokens. **Processes per session:** 2 (intel, analytics) + connect on demand, vs 6 today.
 
-Headline math: 77 tools → ~23–27 (plus automation's ~7–10 only if it ships). Six servers → three (four if automation ships), with two always-on processes per session. Fixed tax 13,530 → ≤1,500. Every kept claim measured, every kept tool tested.
+Headline math: 77 tools → ~23–27 (plus automation's ~7–10 only if it ships). Six servers → three, with two always-on processes per session. Fixed tax 13,530 → ≤1,500. Every kept claim measured, every kept tool tested.
 
 ---
 
@@ -387,7 +387,7 @@ Headline math: 77 tools → ~23–27 (plus automation's ~7–10 only if it ships
 
 ## 13. Open questions for Mike
 
-1. Does automation ship? Bring evidence: which webhooks/schedules do you actually run today that native CronCreate/RemoteTrigger can't replace?
+1. ~~Does automation ship?~~ **ANSWERED 2026-07-02: cut.** Mike delegated the call with no standing usage to defend it; ruling recorded in §0/§6/§11.
 2. `structural_edit` in v2.1 — is AST-pattern editing worth re-entering the write path for, given the reporting/newline lessons?
 3. The gateway ambition (the OpenClaw conversation): deferred, not rejected — revisit after v2.0 ships, on the Agent SDK if at all.
-4. Which outcome/quality skills do you personally reach for? Your usage decides the EVALUATE pool faster than any audit.
+4. ~~Which outcome/quality skills do you reach for?~~ **ANSWERED 2026-07-02:** the skills existed for the agents; with the roster consolidating, only `service-integration` and `project-onboarding` survive (rewritten). Ruling recorded in §9.1.
