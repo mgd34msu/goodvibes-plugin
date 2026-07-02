@@ -166,3 +166,71 @@ describe('goodvibes-intel hooks: schema and content', () => {
     expect(escalated.systemMessage).toMatch(/official documentation/i);
   });
 });
+
+describe('goodvibes-intel hooks: host-health nudge (lane 9 loose coupling)', () => {
+  function writeHealthState(cwd: string, state: object): void {
+    const dir = path.join(cwd, '.goodvibes', 'v2', 'health');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'health-state.json'), JSON.stringify(state));
+  }
+
+  it('session-start surfaces a nudge when the analytics sampler flags a threshold', () => {
+    const cwd = makeTmpCwd();
+    writeHealthState(cwd, {
+      schema: 1,
+      sampled_at: Date.now(),
+      proc_available: true,
+      loadavg: [4, 3, 2],
+      cpu_count: 1,
+      load_per_core: 4.0,
+      session_root_pid: 1,
+      session_child_count: 2,
+      orphans: [
+        {
+          pid: 4242,
+          ppid: 1,
+          reparented_to: 'init',
+          cpu_percent: 88,
+          sustained_windows: 3,
+          cmdline: 'node /home/u/.claude/plugins/goodvibes-analytics/server/index.cjs',
+          kill_command: 'kill -TERM 4242',
+        },
+      ],
+      degraded: null,
+    });
+    const { stdout } = runHook('session-start.mjs', { session_id: 'abc12345', cwd, hook_event_name: 'SessionStart' });
+    const parsed = JSON.parse(stdout);
+    const ctx = parsed.hookSpecificOutput.additionalContext as string;
+    expect(ctx).toMatch(/Host health/);
+    expect(ctx).toMatch(/orphaned plugin process/);
+    expect(ctx).toMatch(/mode=doctor/);
+    expect(parsed.systemMessage).toMatch(/host health alert/);
+  });
+
+  it('session-start stays silent about health when no state file exists (graceful)', () => {
+    const cwd = makeTmpCwd();
+    const { stdout } = runHook('session-start.mjs', { session_id: 'abc12345', cwd, hook_event_name: 'SessionStart' });
+    const parsed = JSON.parse(stdout);
+    expect(parsed.continue).toBe(true);
+    expect(parsed.hookSpecificOutput.additionalContext).not.toMatch(/Host health/);
+  });
+
+  it('session-start does not nudge when thresholds are not tripped', () => {
+    const cwd = makeTmpCwd();
+    writeHealthState(cwd, {
+      schema: 1,
+      sampled_at: Date.now(),
+      proc_available: true,
+      loadavg: [0.2, 0.1, 0.1],
+      cpu_count: 8,
+      load_per_core: 0.025,
+      session_root_pid: 1,
+      session_child_count: 1,
+      orphans: [],
+      degraded: null,
+    });
+    const { stdout } = runHook('session-start.mjs', { session_id: 'abc12345', cwd, hook_event_name: 'SessionStart' });
+    const parsed = JSON.parse(stdout);
+    expect(parsed.hookSpecificOutput.additionalContext).not.toMatch(/Host health/);
+  });
+});

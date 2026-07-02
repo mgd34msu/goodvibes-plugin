@@ -20,6 +20,7 @@ import { TmuxManager } from '../tmux/manager.js';
 import { getFallbackMode, detectTmux } from '../tmux/detect.js';
 import { DEFAULT_CONFIG } from '../types.js';
 import { type HandlerResponse, text } from './types.js';
+import { runDoctor, runAgents } from './observability.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -29,6 +30,7 @@ import { type HandlerResponse, text } from './types.js';
 export type DashboardHandler = (
   aggregator: Aggregator,
   input: AnalyticsDashboardInput,
+  goodvibesDir?: string,
 ) => Promise<HandlerResponse>;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -148,8 +150,15 @@ function buildCommand(target: 'mini' | 'full'): string {
 export const handleDashboard: DashboardHandler = async (
   aggregator: Aggregator,
   input: AnalyticsDashboardInput,
+  goodvibesDir?: string,
 ): Promise<HandlerResponse> => {
   try {
+    // 'doctor' is a read-only observability view — no tmux, no pane, no session
+    // normalisation needed. Combines host-health and agent-liveness sections.
+    if (input.action === 'doctor') {
+      return handleDoctor(aggregator, goodvibesDir);
+    }
+
     // Normalize 'dashboard' → 'full' for the canonical pane key
     const normalizedInput: AnalyticsDashboardInput = {
       ...input,
@@ -165,6 +174,8 @@ export const handleDashboard: DashboardHandler = async (
         return handleStop(normalizedInput, sessionId);
       case 'status':
         return handleStatus();
+      case 'doctor':
+        return handleDoctor(aggregator, goodvibesDir);
       default: {
         const _exhaustive: never = normalizedInput.action;
         return text(`Unknown action: ${_exhaustive as string}`);
@@ -261,6 +272,18 @@ function handleStop(input: AnalyticsDashboardInput, sessionId: string): HandlerR
   persistPaneState(sessionId);
 
   return text(lines.join('\n'));
+}
+
+/**
+ * Read-only host-health + agent-liveness report (lane 9). Never launches a pane
+ * and never kills a process — orphan offenders are listed with ready-to-run
+ * kill commands the human runs (or doesn't).
+ */
+function handleDoctor(aggregator: Aggregator, goodvibesDir?: string): HandlerResponse {
+  const dir = goodvibesDir ?? resolve(process.env['GOODVIBES_DIR'] ?? '.goodvibes');
+  const health = runDoctor(dir);
+  const agents = runAgents(aggregator);
+  return text(`${health}\n\n${agents}`);
 }
 
 /**

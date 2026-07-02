@@ -7,11 +7,14 @@ export const dashboardTool: ToolModule = {
   description:
     'Launch, stop, or check status of the analytics tmux panes. The mini dashboard is an always-on ' +
     '4-line pane showing live session metrics. (The full interactive TUI is deferred in the alpha.) ' +
-    'Calling start on a running target toggles it off; stop on a stopped target is a no-op.',
+    'Calling start on a running target toggles it off; stop on a stopped target is a no-op. ' +
+    'action="doctor" prints a read-only host-health + agent-liveness report (load, session children, ' +
+    'orphaned busy-loop plugin processes with ready-to-run kill commands, background-agent states) ' +
+    'without launching a pane and never killing anything.',
   inputSchema: {
     type: 'object',
     properties: {
-      action: { type: 'string', enum: ['start', 'stop', 'status'] },
+      action: { type: 'string', enum: ['start', 'stop', 'status', 'doctor'] },
       target: {
         type: 'string',
         enum: ['mini', 'full', 'dashboard', 'both'],

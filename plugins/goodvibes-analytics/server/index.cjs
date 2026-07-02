@@ -15562,207 +15562,6 @@ var init_types2 = __esm({
   }
 });
 
-// packages/analytics/src/engine/handlers/dashboard.ts
-function persistPaneState(sessionId) {
-  try {
-    const goodvibesDir = (0, import_node_path9.resolve)(process.env["GOODVIBES_DIR"] ?? ".goodvibes");
-    const stateFile = (0, import_node_path9.join)(goodvibesDir, "active-panes.json");
-    let allState = {};
-    try {
-      const raw = fs2.readFileSync(stateFile, "utf-8");
-      allState = JSON.parse(raw);
-    } catch {
-    }
-    const status = getManager().getStatus();
-    const mini = status.mini !== null ? { paneId: status.mini.paneId, pid: status.mini.pid } : null;
-    const full = status.full !== null ? { paneId: status.full.paneId, pid: status.full.pid } : null;
-    if (mini === null && full === null) {
-      delete allState[sessionId];
-    } else {
-      allState[sessionId] = { mini, full };
-    }
-    atomicWriteJson(stateFile, allState);
-  } catch {
-  }
-}
-function getManager() {
-  if (_manager === null) {
-    _manager = new TmuxManager(DEFAULT_CONFIG2.tmux);
-  }
-  return _manager;
-}
-function normalizeTarget(target) {
-  if (target === "dashboard") return "full";
-  return target;
-}
-function buildCommand(target) {
-  let distDir;
-  if (typeof __dirname !== "undefined") {
-    distDir = __dirname;
-  } else {
-    const pluginRoot = process.env.PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || "";
-    distDir = (0, import_node_path9.join)(pluginRoot, "tools", "implementations", "analytics-engine", "dist");
-  }
-  const ext = target === "full" ? "mjs" : "cjs";
-  const absGoodvibesDir = (0, import_node_path9.resolve)(process.env["GOODVIBES_DIR"] ?? ".goodvibes");
-  if (/[\x00-\x1f\x7f]/.test(absGoodvibesDir)) {
-    throw new Error("GOODVIBES_DIR contains invalid control characters");
-  }
-  const safeDir = absGoodvibesDir.replace(/["\`$]/g, "$&");
-  return `GOODVIBES_DIR="${safeDir}" node "${(0, import_node_path9.join)(distDir, `${target}.${ext}`)}"`;
-}
-function handleStart(input, sessionId) {
-  const detection = detectTmux();
-  if (!detection.inSession) {
-    const fallback = getFallbackMode();
-    const reason = !detection.available ? "tmux is not available on PATH" : "not running inside a tmux session";
-    let fallbackMsg;
-    if (fallback === "file") {
-      fallbackMsg = "Analytics data is being written to disk; use analytics_query to read it.";
-    } else if (fallback === "terminal") {
-      fallbackMsg = "Use analytics_query to query metrics directly in the terminal.";
-    } else {
-      fallbackMsg = "Dashboard display is not available in this environment.";
-    }
-    return text(
-      `Cannot start dashboard pane: ${reason}.
-Fallback mode: ${fallback}.
-` + fallbackMsg
-    );
-  }
-  const manager = getManager();
-  const targets = resolveTargets(input.target);
-  const lines = [];
-  for (const target of targets) {
-    try {
-      if (manager.isPaneAlive(target)) {
-        manager.closePane(target);
-        lines.push(`Stopped ${target} dashboard (toggled off).`);
-        persistPaneState(sessionId);
-        continue;
-      }
-      const paneInfo = manager.createPane(target, buildCommand(target));
-      if (input.options?.pane_size != null) {
-        manager.resizePane(target, input.options.pane_size);
-      }
-      lines.push(
-        `Started ${target} dashboard in pane ${paneInfo.paneId} (PID ${paneInfo.pid}).`
-      );
-      persistPaneState(sessionId);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      lines.push(`Failed to toggle ${target} dashboard: ${message}`);
-    }
-  }
-  return text(lines.join("\n"));
-}
-function handleStop(input, sessionId) {
-  const manager = getManager();
-  const targets = resolveTargets(input.target);
-  const lines = [];
-  for (const target of targets) {
-    const wasAlive = manager.isPaneAlive(target);
-    manager.closePane(target);
-    if (wasAlive) {
-      lines.push(`Stopped ${target} dashboard.`);
-    } else {
-      lines.push(`${target} dashboard was not running.`);
-    }
-  }
-  persistPaneState(sessionId);
-  return text(lines.join("\n"));
-}
-function handleStatus() {
-  const detection = detectTmux();
-  if (!detection.inSession) {
-    const fallback = getFallbackMode();
-    return text(
-      `tmux status: not in a session (fallback mode: ${fallback}).
-Dashboard panes are only available inside a tmux session.`
-    );
-  }
-  const manager = getManager();
-  const status = manager.getStatus();
-  const lines = [
-    `tmux session: ${detection.sessionName ?? "unknown"} (${detection.version ?? "version unknown"})`
-  ];
-  for (const target of ["mini", "full"]) {
-    const info = status[target];
-    if (info === null) {
-      lines.push(`${target}: not running`);
-    } else {
-      const alive = manager.isPaneAlive(target);
-      lines.push(
-        `${target}: pane ${info.paneId}, PID ${info.pid} \u2014 ${alive ? "alive" : "dead (process exited)"}`
-      );
-    }
-  }
-  return text(lines.join("\n"));
-}
-function resolveTargets(target) {
-  switch (target) {
-    case "mini":
-      return ["mini"];
-    case "full":
-      return ["full"];
-    case "dashboard":
-      return ["full"];
-    // backward-compat safety (already normalized above)
-    case "both":
-      return ["mini", "full"];
-    default: {
-      const _exhaustive = target;
-      return [_exhaustive];
-    }
-  }
-}
-var fs2, import_node_path9, _manager, handleDashboard;
-var init_dashboard = __esm({
-  "packages/analytics/src/engine/handlers/dashboard.ts"() {
-    "use strict";
-    fs2 = __toESM(require("node:fs"), 1);
-    import_node_path9 = require("node:path");
-    init_runtime();
-    init_manager();
-    init_detect();
-    init_types();
-    init_types2();
-    __name(persistPaneState, "persistPaneState");
-    _manager = null;
-    __name(getManager, "getManager");
-    __name(normalizeTarget, "normalizeTarget");
-    __name(buildCommand, "buildCommand");
-    handleDashboard = /* @__PURE__ */ __name(async (aggregator, input) => {
-      try {
-        const normalizedInput = {
-          ...input,
-          target: normalizeTarget(input.target)
-        };
-        const sessionId = aggregator.getState().session_id;
-        switch (normalizedInput.action) {
-          case "start":
-            return handleStart(normalizedInput, sessionId);
-          case "stop":
-            return handleStop(normalizedInput, sessionId);
-          case "status":
-            return handleStatus();
-          default: {
-            const _exhaustive = normalizedInput.action;
-            return text(`Unknown action: ${_exhaustive}`);
-          }
-        }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        return text(`analytics_dashboard error: ${message}`);
-      }
-    }, "handleDashboard");
-    __name(handleStart, "handleStart");
-    __name(handleStop, "handleStop");
-    __name(handleStatus, "handleStatus");
-    __name(resolveTargets, "resolveTargets");
-  }
-});
-
 // packages/analytics/src/engine/tui/mini/format.ts
 function formatNumber(n) {
   if (!isFinite(n)) return "0";
@@ -15857,6 +15656,939 @@ var init_format = __esm({
       }
     };
     BOX_CHARS = ansi.box;
+  }
+});
+
+// packages/analytics/src/engine/observability/live-cost.ts
+async function costTranscript(reader, filePath, label) {
+  const parsed = await reader.parseFile(filePath, 0);
+  const apiCalls = reader.extractApiCalls(parsed.records);
+  const byModel = /* @__PURE__ */ new Map();
+  let total = 0;
+  for (const call of apiCalls) {
+    const model = call.model ?? "unknown";
+    let row = byModel.get(model);
+    if (!row) {
+      row = { model, input: 0, output: 0, cache_read: 0, cache_write: 0, api_calls: 0, cost_usd: 0 };
+      byModel.set(model, row);
+    }
+    row.input += call.input_tokens;
+    row.output += call.output_tokens;
+    row.cache_read += call.cache_read_tokens;
+    row.cache_write += call.cache_write_tokens;
+    row.api_calls += 1;
+    row.cost_usd += call.cost_usd;
+    total += call.cost_usd;
+  }
+  const rows = [...byModel.values()].sort((a, b) => b.cost_usd - a.cost_usd);
+  return {
+    label,
+    rows,
+    api_calls: apiCalls.length,
+    total_usd: total,
+    parse_warnings: parsed.errors.length
+  };
+}
+function collectSubagentTranscripts(sessionDir) {
+  const files = [];
+  const subagentsDir = (0, import_node_path9.join)(sessionDir, "subagents");
+  try {
+    for (const e of (0, import_node_fs12.readdirSync)(subagentsDir)) {
+      if (e.startsWith("agent-") && e.endsWith(".jsonl")) files.push((0, import_node_path9.join)(subagentsDir, e));
+    }
+  } catch {
+  }
+  const tasksDir = (0, import_node_path9.join)(sessionDir, "tasks");
+  const walk = /* @__PURE__ */ __name((dir, depth) => {
+    if (depth > 2) return;
+    let entries;
+    try {
+      entries = (0, import_node_fs12.readdirSync)(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const ent of entries) {
+      const full = (0, import_node_path9.join)(dir, ent.name);
+      if (ent.isDirectory()) walk(full, depth + 1);
+      else if (ent.isFile() && ent.name.endsWith(".jsonl")) files.push(full);
+    }
+  }, "walk");
+  walk(tasksDir, 0);
+  return files;
+}
+function labelForSubagent(file2) {
+  const name = (0, import_node_path9.basename)(file2);
+  const idMatch = /^agent-(.+)\.jsonl$/.exec(name);
+  const id = idMatch ? idMatch[1] : (0, import_node_path9.basename)(name, ".jsonl");
+  const metaPath = file2.replace(/\.jsonl$/, ".meta.json");
+  try {
+    const parsed = JSON.parse((0, import_node_fs12.readFileSync)(metaPath, "utf8"));
+    const type = typeof parsed["agentType"] === "string" ? parsed["agentType"] : null;
+    return type ? `${id} (${type})` : id;
+  } catch {
+    return id;
+  }
+}
+async function computeLiveSessionCost(options) {
+  if (!options.transcriptPath) {
+    return {
+      transcript_path: null,
+      main: null,
+      subagents: [],
+      grand_total_usd: 0,
+      degraded: "no active session transcript found \u2014 live cost unavailable"
+    };
+  }
+  const reader = new JSONLReader(options.costConfig, options.pricingMap);
+  let main2 = null;
+  try {
+    main2 = await costTranscript(reader, options.transcriptPath, "main-loop");
+  } catch (err) {
+    return {
+      transcript_path: options.transcriptPath,
+      main: null,
+      subagents: [],
+      grand_total_usd: 0,
+      degraded: `could not read transcript: ${err instanceof Error ? err.message : String(err)}`
+    };
+  }
+  const sessionId = (0, import_node_path9.basename)(options.transcriptPath, ".jsonl");
+  const sessionDir = (0, import_node_path9.join)((0, import_node_path9.dirname)(options.transcriptPath), sessionId);
+  const subagentFiles = collectSubagentTranscripts(sessionDir);
+  const subagents = [];
+  for (const file2 of subagentFiles) {
+    try {
+      const cost = await costTranscript(reader, file2, labelForSubagent(file2));
+      if (cost.api_calls > 0) subagents.push(cost);
+    } catch {
+    }
+  }
+  subagents.sort((a, b) => b.total_usd - a.total_usd);
+  const grand = main2.total_usd + subagents.reduce((s, a) => s + a.total_usd, 0);
+  return {
+    transcript_path: options.transcriptPath,
+    main: main2,
+    subagents,
+    grand_total_usd: grand,
+    degraded: null
+  };
+}
+function renderRows(cost) {
+  const lines = [];
+  if (cost.rows.length === 0) {
+    lines.push("    (no priced API activity yet)");
+    return lines;
+  }
+  for (const r of cost.rows) {
+    lines.push(
+      `    ${r.model.padEnd(22)} in=${formatNumber(r.input).padStart(7)} out=${formatNumber(r.output).padStart(7)} cr=${formatNumber(r.cache_read).padStart(7)} cw=${formatNumber(r.cache_write).padStart(7)} calls=${String(r.api_calls).padStart(4)} ${formatDollars(r.cost_usd).padStart(9)}`
+    );
+  }
+  return lines;
+}
+function renderLiveCostReport(report) {
+  const lines = ["=== Live Session Cost ==="];
+  if (report.degraded) {
+    lines.push(`(${report.degraded})`);
+    return lines.join("\n");
+  }
+  if (report.main) {
+    const warn = report.main.parse_warnings > 0 ? ` (${report.main.parse_warnings} line(s) skipped)` : "";
+    lines.push(`Main loop: ${formatDollars(report.main.total_usd)} over ${report.main.api_calls} API call(s)${warn}`);
+    lines.push(...renderRows(report.main));
+  }
+  if (report.subagents.length > 0) {
+    const subTotal = report.subagents.reduce((s, a) => s + a.total_usd, 0);
+    lines.push("");
+    lines.push(`Subagents: ${formatDollars(subTotal)} across ${report.subagents.length} agent(s)`);
+    for (const sub of report.subagents) {
+      lines.push(`  ${sub.label}: ${formatDollars(sub.total_usd)} over ${sub.api_calls} call(s)`);
+      lines.push(...renderRows(sub));
+    }
+  } else {
+    lines.push("");
+    lines.push("Subagents: none with priced activity this session");
+  }
+  lines.push("");
+  lines.push(`Grand total: ${formatDollars(report.grand_total_usd)}`);
+  return lines.join("\n");
+}
+var import_node_fs12, import_node_path9;
+var init_live_cost = __esm({
+  "packages/analytics/src/engine/observability/live-cost.ts"() {
+    "use strict";
+    import_node_fs12 = require("node:fs");
+    import_node_path9 = require("node:path");
+    init_jsonl_reader();
+    init_format();
+    __name(costTranscript, "costTranscript");
+    __name(collectSubagentTranscripts, "collectSubagentTranscripts");
+    __name(labelForSubagent, "labelForSubagent");
+    __name(computeLiveSessionCost, "computeLiveSessionCost");
+    __name(renderRows, "renderRows");
+    __name(renderLiveCostReport, "renderLiveCostReport");
+  }
+});
+
+// packages/analytics/src/engine/observability/host-health.ts
+function parseStat(content) {
+  const open = content.indexOf("(");
+  const close = content.lastIndexOf(")");
+  if (open < 0 || close < 0 || close < open) return null;
+  const pid = Number(content.slice(0, open).trim());
+  const comm = content.slice(open + 1, close);
+  const rest = content.slice(close + 1).trim().split(/\s+/);
+  const ppid = Number(rest[1]);
+  const utime = Number(rest[11]);
+  const stime = Number(rest[12]);
+  if (!Number.isFinite(pid) || !Number.isFinite(ppid)) return null;
+  const cpuJiffies = (Number.isFinite(utime) ? utime : 0) + (Number.isFinite(stime) ? stime : 0);
+  return { pid, comm, ppid, cpuJiffies };
+}
+function readCmdline(procRoot, pid) {
+  try {
+    const raw = (0, import_node_fs13.readFileSync)((0, import_node_path10.join)(procRoot, String(pid), "cmdline"), "utf8");
+    return raw.replace(/\0+/g, " ").trim();
+  } catch {
+    return "";
+  }
+}
+function readLoadavg(procRoot) {
+  try {
+    const raw = (0, import_node_fs13.readFileSync)((0, import_node_path10.join)(procRoot, "loadavg"), "utf8").trim();
+    const parts = raw.split(/\s+/);
+    const l1 = Number(parts[0]);
+    const l5 = Number(parts[1]);
+    const l15 = Number(parts[2]);
+    if (![l1, l5, l15].every(Number.isFinite)) return null;
+    return [l1, l5, l15];
+  } catch {
+    return null;
+  }
+}
+function renderDoctorReport(state, opts = {}) {
+  const lines = ["=== Host Health (doctor) ==="];
+  if (state.loadavg) {
+    const perCore = state.load_per_core ?? 0;
+    const flag = perCore > LOAD_PER_CORE_NUDGE ? "  [HIGH]" : "";
+    lines.push(
+      `Load:     ${state.loadavg[0].toFixed(2)} ${state.loadavg[1].toFixed(2)} ${state.loadavg[2].toFixed(2)} over ${state.cpu_count} cores = ${perCore.toFixed(2)}/core${flag}`
+    );
+  } else {
+    lines.push("Load:     unavailable");
+  }
+  lines.push(`Children: ${state.session_child_count} live (session root pid ${state.session_root_pid})`);
+  if (opts.stale_ms != null && opts.stale_ms >= 0) {
+    const ageS = Math.round(opts.stale_ms / 1e3);
+    lines.push(`Sampled:  ${ageS}s ago`);
+  }
+  if (state.degraded) {
+    lines.push(`Degraded: ${state.degraded}`);
+  }
+  if (state.orphans.length === 0) {
+    lines.push("Orphans:  none detected");
+  } else {
+    lines.push(`Orphans:  ${state.orphans.length} sustained-CPU plugin process(es) reparented away from this session:`);
+    for (const o of state.orphans) {
+      lines.push(
+        `  pid ${o.pid} (ppid ${o.ppid}, ${o.reparented_to}) ${o.cpu_percent}% CPU x${o.sustained_windows} windows`
+      );
+      lines.push(`    cmd: ${o.cmdline}`);
+      lines.push(`    run: ${o.kill_command}   # review first \u2014 goodvibes never kills processes for you`);
+    }
+  }
+  return lines.join("\n");
+}
+var import_node_fs13, import_node_path10, import_node_os5, SAMPLE_INTERVAL_MS, DEFAULT_CLK_TCK, CPU_THRESHOLD_PCT, DEFAULT_SUSTAINED_SAMPLES, LOAD_PER_CORE_NUDGE, HEALTH_STATE_SEGMENTS, DEFAULT_PLUGIN_PATH_RE, HostHealthSampler;
+var init_host_health = __esm({
+  "packages/analytics/src/engine/observability/host-health.ts"() {
+    "use strict";
+    import_node_fs13 = require("node:fs");
+    import_node_path10 = require("node:path");
+    import_node_os5 = require("node:os");
+    init_runtime();
+    SAMPLE_INTERVAL_MS = 6e4;
+    DEFAULT_CLK_TCK = 100;
+    CPU_THRESHOLD_PCT = 50;
+    DEFAULT_SUSTAINED_SAMPLES = 2;
+    LOAD_PER_CORE_NUDGE = 1.5;
+    HEALTH_STATE_SEGMENTS = ["health", "health-state.json"];
+    DEFAULT_PLUGIN_PATH_RE = /(?:\.claude\/plugins|\/plugins\/[^/]+\/server|goodvibes-(?:intel|analytics|connect)\/server|plugin[-_]?cache|tools\/implementations\/[^/]+\/dist)/i;
+    __name(parseStat, "parseStat");
+    __name(readCmdline, "readCmdline");
+    __name(readLoadavg, "readLoadavg");
+    HostHealthSampler = class {
+      static {
+        __name(this, "HostHealthSampler");
+      }
+      goodvibesDir;
+      procRoot;
+      sessionRootPid;
+      clkTck;
+      sustainedSamples;
+      pluginPathRe;
+      now;
+      /** Previous CPU reading per pid, for delta computation. */
+      prevCpu = /* @__PURE__ */ new Map();
+      /** Consecutive over-threshold window count per pid. */
+      sustained = /* @__PURE__ */ new Map();
+      timer = null;
+      lastState = null;
+      constructor(options) {
+        this.goodvibesDir = options.goodvibesDir;
+        this.procRoot = options.procRoot ?? "/proc";
+        this.sessionRootPid = options.sessionRootPid ?? process.ppid;
+        this.clkTck = options.clkTck ?? DEFAULT_CLK_TCK;
+        this.sustainedSamples = options.sustainedSamples ?? DEFAULT_SUSTAINED_SAMPLES;
+        this.pluginPathRe = options.pluginPathRe ?? DEFAULT_PLUGIN_PATH_RE;
+        this.now = options.now ?? (() => Date.now());
+      }
+      /** Absolute path to the state file this sampler owns. */
+      stateFilePath() {
+        return (0, import_node_path10.join)(this.goodvibesDir, ...HEALTH_STATE_SEGMENTS);
+      }
+      /**
+       * Start the slow sampler. The interval is `unref()`ed so it never keeps the
+       * process alive on its own (field issue 9 — this feature must not become the
+       * bug it hunts). Takes one sample immediately so a state file exists promptly.
+       */
+      start() {
+        if (this.timer) return;
+        this.tick();
+        this.timer = setInterval(() => this.tick(), SAMPLE_INTERVAL_MS);
+        this.timer.unref?.();
+      }
+      /** Stop the sampler and release its timer. Safe to call repeatedly. */
+      stop() {
+        if (this.timer) {
+          clearInterval(this.timer);
+          this.timer = null;
+        }
+      }
+      /** Sample once and best-effort persist. Never throws. */
+      tick() {
+        try {
+          const state = this.sampleOnce();
+          this.writeState(state);
+        } catch {
+        }
+      }
+      /** The most recently computed state (for in-process readers like the doctor view). */
+      getLastState() {
+        return this.lastState;
+      }
+      /**
+       * Take one health sample. Pure aside from advancing the internal CPU-delta
+       * history; safe to call directly in tests.
+       */
+      sampleOnce() {
+        const sampledAt = this.now();
+        const cpuCount = Math.max(1, (0, import_node_os5.cpus)().length || 1);
+        const loadavg = readLoadavg(this.procRoot);
+        const loadPerCore = loadavg ? loadavg[0] / cpuCount : null;
+        let entries;
+        try {
+          entries = (0, import_node_fs13.readdirSync)(this.procRoot);
+        } catch {
+          const degraded = {
+            schema: 1,
+            sampled_at: sampledAt,
+            proc_available: false,
+            loadavg,
+            cpu_count: cpuCount,
+            load_per_core: loadPerCore,
+            session_root_pid: this.sessionRootPid,
+            session_child_count: 0,
+            orphans: [],
+            degraded: `process table unavailable at ${this.procRoot} \u2014 orphan detection offline`
+          };
+          this.lastState = degraded;
+          return degraded;
+        }
+        const pids = entries.filter((e) => /^\d+$/.test(e)).map(Number);
+        const stats = /* @__PURE__ */ new Map();
+        const systemdUserPids = /* @__PURE__ */ new Set();
+        for (const pid of pids) {
+          let statRaw;
+          try {
+            statRaw = (0, import_node_fs13.readFileSync)((0, import_node_path10.join)(this.procRoot, String(pid), "stat"), "utf8");
+          } catch {
+            continue;
+          }
+          const stat2 = parseStat(statRaw);
+          if (!stat2) continue;
+          stats.set(pid, stat2);
+          if (stat2.comm === "systemd") {
+            const cmd = readCmdline(this.procRoot, pid);
+            if (/systemd\s+--user|--user/.test(cmd) || stat2.ppid === 1) {
+              systemdUserPids.add(pid);
+            }
+          }
+        }
+        let sessionChildCount = 0;
+        const seenPids = /* @__PURE__ */ new Set();
+        const orphans = [];
+        for (const stat2 of stats.values()) {
+          seenPids.add(stat2.pid);
+          if (stat2.ppid === this.sessionRootPid) sessionChildCount++;
+          const prev = this.prevCpu.get(stat2.pid);
+          this.prevCpu.set(stat2.pid, { jiffies: stat2.cpuJiffies, atMs: sampledAt });
+          let cpuPercent = 0;
+          if (prev) {
+            const dJiffies = stat2.cpuJiffies - prev.jiffies;
+            const dSeconds = (sampledAt - prev.atMs) / 1e3;
+            if (dSeconds > 0 && dJiffies >= 0) {
+              cpuPercent = dJiffies / this.clkTck / dSeconds * 100;
+            }
+          }
+          const reparentedInit = stat2.ppid === 1;
+          const reparentedSystemd = systemdUserPids.has(stat2.ppid);
+          const reparented = reparentedInit || reparentedSystemd;
+          const over = prev != null && cpuPercent > CPU_THRESHOLD_PCT;
+          const streak = over ? (this.sustained.get(stat2.pid) ?? 0) + 1 : 0;
+          this.sustained.set(stat2.pid, streak);
+          if (!reparented) continue;
+          const cmdline = readCmdline(this.procRoot, stat2.pid);
+          if (!this.pluginPathRe.test(cmdline)) continue;
+          if (streak < this.sustainedSamples) continue;
+          orphans.push({
+            pid: stat2.pid,
+            ppid: stat2.ppid,
+            reparented_to: reparentedInit ? "init" : "systemd-user",
+            cpu_percent: Math.round(cpuPercent * 10) / 10,
+            sustained_windows: streak,
+            cmdline: cmdline.length > 160 ? cmdline.slice(0, 157) + "..." : cmdline,
+            kill_command: `kill -TERM ${stat2.pid}`
+          });
+        }
+        for (const pid of this.prevCpu.keys()) if (!seenPids.has(pid)) this.prevCpu.delete(pid);
+        for (const pid of this.sustained.keys()) if (!seenPids.has(pid)) this.sustained.delete(pid);
+        const state = {
+          schema: 1,
+          sampled_at: sampledAt,
+          proc_available: true,
+          loadavg,
+          cpu_count: cpuCount,
+          load_per_core: loadPerCore,
+          session_root_pid: this.sessionRootPid,
+          session_child_count: sessionChildCount,
+          orphans,
+          degraded: loadavg ? null : `loadavg unavailable at ${this.procRoot}/loadavg`
+        };
+        this.lastState = state;
+        return state;
+      }
+      /** Persist a snapshot atomically. Best-effort; never throws. */
+      writeState(state) {
+        try {
+          (0, import_node_fs13.mkdirSync)((0, import_node_path10.dirname)(this.stateFilePath()), { recursive: true });
+          atomicWriteJson(this.stateFilePath(), state);
+        } catch {
+        }
+      }
+    };
+    __name(renderDoctorReport, "renderDoctorReport");
+  }
+});
+
+// packages/analytics/src/engine/observability/agent-liveness.ts
+function analyseTail(records) {
+  if (records.length === 0) {
+    return { pendingCallAtMs: null, pendingCallName: null, lastHadThinkingOrText: false, hasRecords: false };
+  }
+  const resolved = /* @__PURE__ */ new Set();
+  for (const rec of records) {
+    if (rec.type !== "user") continue;
+    const content = rec.message?.content;
+    if (!Array.isArray(content)) continue;
+    for (const block of content) {
+      const b = block;
+      if (b?.type === "tool_result" && b.tool_use_id) resolved.add(b.tool_use_id);
+    }
+  }
+  let pendingCallAtMs = null;
+  let pendingCallName = null;
+  for (const rec of records) {
+    if (rec.type !== "assistant") continue;
+    const assistant = rec;
+    const content = assistant.message?.content;
+    if (!Array.isArray(content)) continue;
+    const ts = assistant.timestamp ? new Date(assistant.timestamp).getTime() : NaN;
+    for (const block of content) {
+      const b = block;
+      if (b?.type !== "tool_use" || !b.id) continue;
+      if (resolved.has(b.id)) continue;
+      if (Number.isFinite(ts) && (pendingCallAtMs === null || ts >= pendingCallAtMs)) {
+        pendingCallAtMs = ts;
+        pendingCallName = b.name ?? "tool";
+      }
+    }
+  }
+  let lastHadThinkingOrText = false;
+  for (let i = records.length - 1; i >= 0; i--) {
+    const rec = records[i];
+    if (rec.type !== "assistant") continue;
+    const content = rec.message?.content;
+    if (Array.isArray(content)) {
+      lastHadThinkingOrText = content.some(
+        (b) => b?.type === "thinking" || b?.type === "text"
+      );
+    }
+    break;
+  }
+  return { pendingCallAtMs, pendingCallName, lastHadThinkingOrText, hasRecords: true };
+}
+function collectAgentFiles(sessionDir) {
+  const files = [];
+  const subagentsDir = (0, import_node_path11.join)(sessionDir, "subagents");
+  try {
+    for (const e of (0, import_node_fs14.readdirSync)(subagentsDir)) {
+      if (e.startsWith("agent-") && e.endsWith(".jsonl")) files.push((0, import_node_path11.join)(subagentsDir, e));
+    }
+  } catch {
+  }
+  const tasksDir = (0, import_node_path11.join)(sessionDir, "tasks");
+  const walk = /* @__PURE__ */ __name((dir, depth) => {
+    if (depth > 2) return;
+    let entries;
+    try {
+      entries = (0, import_node_fs14.readdirSync)(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const ent of entries) {
+      const full = (0, import_node_path11.join)(dir, ent.name);
+      if (ent.isDirectory()) walk(full, depth + 1);
+      else if (ent.isFile() && ent.name.endsWith(".jsonl")) files.push(full);
+    }
+  }, "walk");
+  walk(tasksDir, 0);
+  return files;
+}
+function readMeta(agentFile) {
+  const metaPath = agentFile.replace(/\.jsonl$/, ".meta.json");
+  try {
+    const parsed = JSON.parse((0, import_node_fs14.readFileSync)(metaPath, "utf8"));
+    return {
+      agent_type: typeof parsed["agentType"] === "string" ? parsed["agentType"] : null,
+      description: typeof parsed["description"] === "string" ? parsed["description"] : null
+    };
+  } catch {
+    return { agent_type: null, description: null };
+  }
+}
+function agentIdFromFile(file2) {
+  const name = (0, import_node_path11.basename)(file2);
+  const m = /^agent-(.+)\.jsonl$/.exec(name);
+  return m ? m[1] : (0, import_node_path11.basename)(name, ".jsonl");
+}
+function scanAgentLiveness(options) {
+  const now = options.now ?? (() => Date.now());
+  const wedgedMs = (options.wedgedMinutes ?? DEFAULT_WEDGED_MINUTES) * 6e4;
+  const liveChildren = options.liveChildAgentIds ?? /* @__PURE__ */ new Set();
+  const prevSizes = options.prevSizes;
+  if (!options.sessionDir) {
+    return { session_dir: null, agents: [], degraded: "no active session directory \u2014 agent liveness unavailable" };
+  }
+  const files = collectAgentFiles(options.sessionDir);
+  if (files.length === 0) {
+    return { session_dir: options.sessionDir, agents: [], degraded: null };
+  }
+  const reader = new JSONLReader({ cost_per_1k_input_tokens: 0, cost_per_1k_output_tokens: 0 });
+  const agents = [];
+  for (const file2 of files) {
+    const agentId = agentIdFromFile(file2);
+    const meta3 = readMeta(file2);
+    let sizeBytes = 0;
+    let mtimeMs = now();
+    let content = "";
+    let readable = true;
+    try {
+      const st = (0, import_node_fs14.statSync)(file2);
+      sizeBytes = st.size;
+      mtimeMs = st.mtimeMs;
+      content = (0, import_node_fs14.readFileSync)(file2, "utf8");
+    } catch {
+      readable = false;
+    }
+    let writeRate = null;
+    if (prevSizes) {
+      const prev = prevSizes.get(file2);
+      if (prev && now() > prev.atMs) {
+        const dBytes = sizeBytes - prev.size;
+        const dMin = (now() - prev.atMs) / 6e4;
+        if (dMin > 0) writeRate = Math.max(0, Math.round(dBytes / dMin));
+      }
+      prevSizes.set(file2, { size: sizeBytes, atMs: now() });
+    }
+    if (!readable) {
+      agents.push({
+        file: (0, import_node_path11.basename)(file2),
+        agent_id: agentId,
+        agent_type: meta3.agent_type,
+        description: meta3.description,
+        mtime_age_ms: 0,
+        write_rate_bpm: writeRate,
+        state: "unknown",
+        detail: "transcript unreadable"
+      });
+      continue;
+    }
+    const records = reader.parseLines(content.split("\n"));
+    const tail = analyseTail(records);
+    const ageMs = Math.max(0, now() - mtimeMs);
+    const recent = ageMs <= wedgedMs;
+    const hasLiveChild = liveChildren.has(agentId);
+    let state;
+    let detail;
+    if (!tail.hasRecords) {
+      state = "unknown";
+      detail = "no parseable records yet";
+    } else if (tail.pendingCallAtMs !== null) {
+      const callAgeMs = Math.max(0, now() - tail.pendingCallAtMs);
+      if (hasLiveChild || recent) {
+        state = "executing";
+        detail = hasLiveChild ? `live child running ${tail.pendingCallName}` : `tool ${tail.pendingCallName} in flight, transcript still growing`;
+      } else {
+        state = "wedged";
+        detail = `tool ${tail.pendingCallName} issued ${Math.round(callAgeMs / 6e4)}m ago, no result, no live child`;
+      }
+    } else if (hasLiveChild) {
+      state = "executing";
+      detail = "live child running";
+    } else if (recent && tail.lastHadThinkingOrText) {
+      state = "thinking";
+      detail = "recent assistant/thinking output, no tool outstanding";
+    } else if (recent) {
+      state = "thinking";
+      detail = "recently active, no tool outstanding";
+    } else {
+      state = "idle";
+      detail = `quiet for ${Math.round(ageMs / 6e4)}m, nothing outstanding`;
+    }
+    agents.push({
+      file: (0, import_node_path11.basename)(file2),
+      agent_id: agentId,
+      agent_type: meta3.agent_type,
+      description: meta3.description,
+      mtime_age_ms: ageMs,
+      write_rate_bpm: writeRate,
+      state,
+      detail
+    });
+  }
+  const order = { wedged: 0, executing: 1, thinking: 2, idle: 3, unknown: 4 };
+  agents.sort((a, b) => order[a.state] - order[b.state] || a.file.localeCompare(b.file));
+  return { session_dir: options.sessionDir, agents, degraded: null };
+}
+function renderAgentLiveness(report) {
+  const lines = ["=== Agent Liveness ==="];
+  if (report.degraded) {
+    lines.push(`(${report.degraded})`);
+    return lines.join("\n");
+  }
+  if (report.agents.length === 0) {
+    lines.push("No background agent transcripts found for this session.");
+    return lines.join("\n");
+  }
+  for (const a of report.agents) {
+    const label = a.agent_type ? `${a.agent_id} (${a.agent_type})` : a.agent_id;
+    const ageMin = (a.mtime_age_ms / 6e4).toFixed(1);
+    const rate = a.write_rate_bpm != null ? ` ${a.write_rate_bpm}B/min` : "";
+    lines.push(`  [${a.state.toUpperCase().padEnd(9)}] ${label}  age=${ageMin}m${rate}`);
+    lines.push(`      ${a.detail}`);
+  }
+  return lines.join("\n");
+}
+var import_node_fs14, import_node_path11, DEFAULT_WEDGED_MINUTES;
+var init_agent_liveness = __esm({
+  "packages/analytics/src/engine/observability/agent-liveness.ts"() {
+    "use strict";
+    import_node_fs14 = require("node:fs");
+    import_node_path11 = require("node:path");
+    init_jsonl_reader();
+    DEFAULT_WEDGED_MINUTES = 3;
+    __name(analyseTail, "analyseTail");
+    __name(collectAgentFiles, "collectAgentFiles");
+    __name(readMeta, "readMeta");
+    __name(agentIdFromFile, "agentIdFromFile");
+    __name(scanAgentLiveness, "scanAgentLiveness");
+    __name(renderAgentLiveness, "renderAgentLiveness");
+  }
+});
+
+// packages/analytics/src/engine/observability/index.ts
+var init_observability = __esm({
+  "packages/analytics/src/engine/observability/index.ts"() {
+    "use strict";
+    init_live_cost();
+    init_host_health();
+    init_agent_liveness();
+  }
+});
+
+// packages/analytics/src/engine/handlers/observability.ts
+async function runLiveCost(aggregator) {
+  const cfg = aggregator.getConfig();
+  const report = await computeLiveSessionCost({
+    transcriptPath: aggregator.getActiveJsonlPath(),
+    pricingMap: loadModelPricing(),
+    costConfig: {
+      cost_per_1k_input_tokens: cfg.cost_per_1k_input_tokens,
+      cost_per_1k_output_tokens: cfg.cost_per_1k_output_tokens
+    }
+  });
+  return renderLiveCostReport(report);
+}
+function runDoctor(goodvibesDir) {
+  const stateFile = (0, import_node_path12.join)(goodvibesDir, ...HEALTH_STATE_SEGMENTS);
+  try {
+    const state2 = JSON.parse((0, import_node_fs15.readFileSync)(stateFile, "utf8"));
+    if (state2 && typeof state2.sampled_at === "number") {
+      const staleMs = Date.now() - state2.sampled_at;
+      return renderDoctorReport(state2, { stale_ms: staleMs });
+    }
+  } catch {
+  }
+  const sampler = new HostHealthSampler({ goodvibesDir });
+  const state = sampler.sampleOnce();
+  const rendered = renderDoctorReport(state);
+  return rendered + "\nNote: sustained-CPU orphan detection needs the background sampler (it writes health-state.json every 60s); showing a one-shot snapshot only.";
+}
+function runAgents(aggregator) {
+  const transcript = aggregator.getActiveJsonlPath();
+  const sessionDir = transcript ? (0, import_node_path12.join)((0, import_node_path13.dirname)(transcript), (0, import_node_path13.basename)(transcript, ".jsonl")) : null;
+  const report = scanAgentLiveness({ sessionDir });
+  return renderAgentLiveness(report);
+}
+var import_node_fs15, import_node_path12, import_node_path13;
+var init_observability2 = __esm({
+  "packages/analytics/src/engine/handlers/observability.ts"() {
+    "use strict";
+    import_node_fs15 = require("node:fs");
+    import_node_path12 = require("node:path");
+    init_config2();
+    init_observability();
+    import_node_path13 = require("node:path");
+    __name(runLiveCost, "runLiveCost");
+    __name(runDoctor, "runDoctor");
+    __name(runAgents, "runAgents");
+  }
+});
+
+// packages/analytics/src/engine/handlers/dashboard.ts
+function persistPaneState(sessionId) {
+  try {
+    const goodvibesDir = (0, import_node_path14.resolve)(process.env["GOODVIBES_DIR"] ?? ".goodvibes");
+    const stateFile = (0, import_node_path14.join)(goodvibesDir, "active-panes.json");
+    let allState = {};
+    try {
+      const raw = fs2.readFileSync(stateFile, "utf-8");
+      allState = JSON.parse(raw);
+    } catch {
+    }
+    const status = getManager().getStatus();
+    const mini = status.mini !== null ? { paneId: status.mini.paneId, pid: status.mini.pid } : null;
+    const full = status.full !== null ? { paneId: status.full.paneId, pid: status.full.pid } : null;
+    if (mini === null && full === null) {
+      delete allState[sessionId];
+    } else {
+      allState[sessionId] = { mini, full };
+    }
+    atomicWriteJson(stateFile, allState);
+  } catch {
+  }
+}
+function getManager() {
+  if (_manager === null) {
+    _manager = new TmuxManager(DEFAULT_CONFIG2.tmux);
+  }
+  return _manager;
+}
+function normalizeTarget(target) {
+  if (target === "dashboard") return "full";
+  return target;
+}
+function buildCommand(target) {
+  let distDir;
+  if (typeof __dirname !== "undefined") {
+    distDir = __dirname;
+  } else {
+    const pluginRoot = process.env.PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || "";
+    distDir = (0, import_node_path14.join)(pluginRoot, "tools", "implementations", "analytics-engine", "dist");
+  }
+  const ext = target === "full" ? "mjs" : "cjs";
+  const absGoodvibesDir = (0, import_node_path14.resolve)(process.env["GOODVIBES_DIR"] ?? ".goodvibes");
+  if (/[\x00-\x1f\x7f]/.test(absGoodvibesDir)) {
+    throw new Error("GOODVIBES_DIR contains invalid control characters");
+  }
+  const safeDir = absGoodvibesDir.replace(/["\`$]/g, "$&");
+  return `GOODVIBES_DIR="${safeDir}" node "${(0, import_node_path14.join)(distDir, `${target}.${ext}`)}"`;
+}
+function handleStart(input, sessionId) {
+  const detection = detectTmux();
+  if (!detection.inSession) {
+    const fallback = getFallbackMode();
+    const reason = !detection.available ? "tmux is not available on PATH" : "not running inside a tmux session";
+    let fallbackMsg;
+    if (fallback === "file") {
+      fallbackMsg = "Analytics data is being written to disk; use analytics_query to read it.";
+    } else if (fallback === "terminal") {
+      fallbackMsg = "Use analytics_query to query metrics directly in the terminal.";
+    } else {
+      fallbackMsg = "Dashboard display is not available in this environment.";
+    }
+    return text(
+      `Cannot start dashboard pane: ${reason}.
+Fallback mode: ${fallback}.
+` + fallbackMsg
+    );
+  }
+  const manager = getManager();
+  const targets = resolveTargets(input.target);
+  const lines = [];
+  for (const target of targets) {
+    try {
+      if (manager.isPaneAlive(target)) {
+        manager.closePane(target);
+        lines.push(`Stopped ${target} dashboard (toggled off).`);
+        persistPaneState(sessionId);
+        continue;
+      }
+      const paneInfo = manager.createPane(target, buildCommand(target));
+      if (input.options?.pane_size != null) {
+        manager.resizePane(target, input.options.pane_size);
+      }
+      lines.push(
+        `Started ${target} dashboard in pane ${paneInfo.paneId} (PID ${paneInfo.pid}).`
+      );
+      persistPaneState(sessionId);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      lines.push(`Failed to toggle ${target} dashboard: ${message}`);
+    }
+  }
+  return text(lines.join("\n"));
+}
+function handleStop(input, sessionId) {
+  const manager = getManager();
+  const targets = resolveTargets(input.target);
+  const lines = [];
+  for (const target of targets) {
+    const wasAlive = manager.isPaneAlive(target);
+    manager.closePane(target);
+    if (wasAlive) {
+      lines.push(`Stopped ${target} dashboard.`);
+    } else {
+      lines.push(`${target} dashboard was not running.`);
+    }
+  }
+  persistPaneState(sessionId);
+  return text(lines.join("\n"));
+}
+function handleDoctor(aggregator, goodvibesDir) {
+  const dir = goodvibesDir ?? (0, import_node_path14.resolve)(process.env["GOODVIBES_DIR"] ?? ".goodvibes");
+  const health = runDoctor(dir);
+  const agents = runAgents(aggregator);
+  return text(`${health}
+
+${agents}`);
+}
+function handleStatus() {
+  const detection = detectTmux();
+  if (!detection.inSession) {
+    const fallback = getFallbackMode();
+    return text(
+      `tmux status: not in a session (fallback mode: ${fallback}).
+Dashboard panes are only available inside a tmux session.`
+    );
+  }
+  const manager = getManager();
+  const status = manager.getStatus();
+  const lines = [
+    `tmux session: ${detection.sessionName ?? "unknown"} (${detection.version ?? "version unknown"})`
+  ];
+  for (const target of ["mini", "full"]) {
+    const info = status[target];
+    if (info === null) {
+      lines.push(`${target}: not running`);
+    } else {
+      const alive = manager.isPaneAlive(target);
+      lines.push(
+        `${target}: pane ${info.paneId}, PID ${info.pid} \u2014 ${alive ? "alive" : "dead (process exited)"}`
+      );
+    }
+  }
+  return text(lines.join("\n"));
+}
+function resolveTargets(target) {
+  switch (target) {
+    case "mini":
+      return ["mini"];
+    case "full":
+      return ["full"];
+    case "dashboard":
+      return ["full"];
+    // backward-compat safety (already normalized above)
+    case "both":
+      return ["mini", "full"];
+    default: {
+      const _exhaustive = target;
+      return [_exhaustive];
+    }
+  }
+}
+var fs2, import_node_path14, _manager, handleDashboard;
+var init_dashboard = __esm({
+  "packages/analytics/src/engine/handlers/dashboard.ts"() {
+    "use strict";
+    fs2 = __toESM(require("node:fs"), 1);
+    import_node_path14 = require("node:path");
+    init_runtime();
+    init_manager();
+    init_detect();
+    init_types();
+    init_types2();
+    init_observability2();
+    __name(persistPaneState, "persistPaneState");
+    _manager = null;
+    __name(getManager, "getManager");
+    __name(normalizeTarget, "normalizeTarget");
+    __name(buildCommand, "buildCommand");
+    handleDashboard = /* @__PURE__ */ __name(async (aggregator, input, goodvibesDir) => {
+      try {
+        if (input.action === "doctor") {
+          return handleDoctor(aggregator, goodvibesDir);
+        }
+        const normalizedInput = {
+          ...input,
+          target: normalizeTarget(input.target)
+        };
+        const sessionId = aggregator.getState().session_id;
+        switch (normalizedInput.action) {
+          case "start":
+            return handleStart(normalizedInput, sessionId);
+          case "stop":
+            return handleStop(normalizedInput, sessionId);
+          case "status":
+            return handleStatus();
+          case "doctor":
+            return handleDoctor(aggregator, goodvibesDir);
+          default: {
+            const _exhaustive = normalizedInput.action;
+            return text(`Unknown action: ${_exhaustive}`);
+          }
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return text(`analytics_dashboard error: ${message}`);
+      }
+    }, "handleDashboard");
+    __name(handleStart, "handleStart");
+    __name(handleStop, "handleStop");
+    __name(handleDoctor, "handleDoctor");
+    __name(handleStatus, "handleStatus");
+    __name(resolveTargets, "resolveTargets");
   }
 });
 
@@ -16191,7 +16923,27 @@ var init_query = __esm({
     "use strict";
     init_format();
     init_types2();
-    handleQuery = /* @__PURE__ */ __name(async (aggregator, input) => {
+    init_observability2();
+    handleQuery = /* @__PURE__ */ __name(async (aggregator, input, goodvibesDir) => {
+      if (input.mode) {
+        try {
+          switch (input.mode) {
+            case "live_cost":
+              return text(await runLiveCost(aggregator));
+            case "doctor":
+              return text(runDoctor(goodvibesDir ?? process.env["GOODVIBES_DIR"] ?? ".goodvibes"));
+            case "agents":
+              return text(runAgents(aggregator));
+            default: {
+              const _exhaustive = input.mode;
+              return text(`Unknown query mode: ${_exhaustive}`);
+            }
+          }
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return text(`analytics_query (${input.mode}) error: ${message}`);
+        }
+      }
       try {
         const state = aggregator.getState();
         const filteredActivity = filterByTimeRange(state.recent_activity, input.time_range);
@@ -16384,20 +17136,20 @@ var init_budget = __esm({
 });
 
 // packages/analytics/src/engine/data/tag-store.ts
-function resolveJsonlPath(sessionId, jsonlBase = (0, import_node_path10.join)((0, import_node_os5.homedir)(), ".claude", "projects")) {
+function resolveJsonlPath(sessionId, jsonlBase = (0, import_node_path15.join)((0, import_node_os6.homedir)(), ".claude", "projects")) {
   const targetFile = `${sessionId}.jsonl`;
-  if (!(0, import_node_fs12.existsSync)(jsonlBase)) return null;
+  if (!(0, import_node_fs16.existsSync)(jsonlBase)) return null;
   try {
-    const projectDirs = (0, import_node_fs12.readdirSync)(jsonlBase).filter((entry) => {
+    const projectDirs = (0, import_node_fs16.readdirSync)(jsonlBase).filter((entry) => {
       try {
-        return (0, import_node_fs12.statSync)((0, import_node_path10.join)(jsonlBase, entry)).isDirectory();
+        return (0, import_node_fs16.statSync)((0, import_node_path15.join)(jsonlBase, entry)).isDirectory();
       } catch {
         return false;
       }
     });
     for (const projectDir of projectDirs) {
-      const candidate = (0, import_node_path10.resolve)((0, import_node_path10.join)(jsonlBase, projectDir, targetFile));
-      if ((0, import_node_fs12.existsSync)(candidate)) {
+      const candidate = (0, import_node_path15.resolve)((0, import_node_path15.join)(jsonlBase, projectDir, targetFile));
+      if ((0, import_node_fs16.existsSync)(candidate)) {
         return candidate;
       }
     }
@@ -16405,13 +17157,13 @@ function resolveJsonlPath(sessionId, jsonlBase = (0, import_node_path10.join)((0
   }
   return null;
 }
-var import_node_fs12, import_node_path10, import_node_os5, SCAN_HEAD_LINES, SCAN_TAIL_LINES, DOMAIN_PATTERNS, FRAMEWORK_PATTERNS, ACTIVITY_PATTERNS, TagStore;
+var import_node_fs16, import_node_path15, import_node_os6, SCAN_HEAD_LINES, SCAN_TAIL_LINES, DOMAIN_PATTERNS, FRAMEWORK_PATTERNS, ACTIVITY_PATTERNS, TagStore;
 var init_tag_store = __esm({
   "packages/analytics/src/engine/data/tag-store.ts"() {
     "use strict";
-    import_node_fs12 = require("node:fs");
-    import_node_path10 = require("node:path");
-    import_node_os5 = require("node:os");
+    import_node_fs16 = require("node:fs");
+    import_node_path15 = require("node:path");
+    import_node_os6 = require("node:os");
     SCAN_HEAD_LINES = 200;
     SCAN_TAIL_LINES = 100;
     DOMAIN_PATTERNS = [
@@ -16647,10 +17399,10 @@ ${tailText}`;
        * @param jsonlPath - Absolute path to the JSONL file.
        */
       _readJsonlCorpus(jsonlPath) {
-        if (!(0, import_node_fs12.existsSync)(jsonlPath)) return null;
+        if (!(0, import_node_fs16.existsSync)(jsonlPath)) return null;
         let rawContent;
         try {
-          rawContent = (0, import_node_fs12.readFileSync)(jsonlPath, "utf-8");
+          rawContent = (0, import_node_fs16.readFileSync)(jsonlPath, "utf-8");
         } catch {
           return null;
         }
@@ -16896,11 +17648,11 @@ function _flattenMetrics(m) {
     "files.conflicts": m.files.conflicts
   };
 }
-var import_node_fs13, path6, DEFAULT_MAX_SESSIONS, HistoricalStore;
+var import_node_fs17, path6, DEFAULT_MAX_SESSIONS, HistoricalStore;
 var init_historical_store = __esm({
   "packages/analytics/src/engine/data/historical-store.ts"() {
     "use strict";
-    import_node_fs13 = require("node:fs");
+    import_node_fs17 = require("node:fs");
     path6 = __toESM(require("node:path"), 1);
     DEFAULT_MAX_SESSIONS = 10;
     HistoricalStore = class {
@@ -16915,8 +17667,8 @@ var init_historical_store = __esm({
       }
       /** Ensure the sessions directory exists, creating it if necessary. */
       ensureDir() {
-        if (!(0, import_node_fs13.existsSync)(this.sessionsDir)) {
-          (0, import_node_fs13.mkdirSync)(this.sessionsDir, { recursive: true });
+        if (!(0, import_node_fs17.existsSync)(this.sessionsDir)) {
+          (0, import_node_fs17.mkdirSync)(this.sessionsDir, { recursive: true });
         }
       }
       /**
@@ -16929,8 +17681,8 @@ var init_historical_store = __esm({
         const filePath = path6.join(this.sessionsDir, `${archive.session_id}.json`);
         const content = JSON.stringify(archive, null, 2);
         const tmpPath = path6.join(this.sessionsDir, `.tmp-${archive.session_id}-${Date.now()}.json`);
-        (0, import_node_fs13.writeFileSync)(tmpPath, content, "utf-8");
-        (0, import_node_fs13.renameSync)(tmpPath, filePath);
+        (0, import_node_fs17.writeFileSync)(tmpPath, content, "utf-8");
+        (0, import_node_fs17.renameSync)(tmpPath, filePath);
         this.prune();
       }
       /**
@@ -16945,12 +17697,12 @@ var init_historical_store = __esm({
        * List all stored session archives, sorted newest first.
        */
       list() {
-        if (!(0, import_node_fs13.existsSync)(this.sessionsDir)) {
+        if (!(0, import_node_fs17.existsSync)(this.sessionsDir)) {
           return [];
         }
         let files;
         try {
-          files = (0, import_node_fs13.readdirSync)(this.sessionsDir).filter((f) => f.endsWith(".json") && !f.startsWith(".tmp-"));
+          files = (0, import_node_fs17.readdirSync)(this.sessionsDir).filter((f) => f.endsWith(".json") && !f.startsWith(".tmp-"));
         } catch {
           return [];
         }
@@ -16978,7 +17730,7 @@ var init_historical_store = __esm({
        * Call this explicitly when needed (e.g. on session-start startup).
        */
       prune() {
-        if (!(0, import_node_fs13.existsSync)(this.sessionsDir)) {
+        if (!(0, import_node_fs17.existsSync)(this.sessionsDir)) {
           return 0;
         }
         const archives = this.list();
@@ -16990,7 +17742,7 @@ var init_historical_store = __esm({
         for (const archive of toRemove) {
           const filePath = path6.join(this.sessionsDir, `${archive.session_id}.json`);
           try {
-            (0, import_node_fs13.unlinkSync)(filePath);
+            (0, import_node_fs17.unlinkSync)(filePath);
             pruned++;
           } catch {
           }
@@ -17142,12 +17894,12 @@ var init_historical_store = __esm({
         this.ensureDir();
         const filePath = path6.join(this.sessionsDir, `${sessionId}.json`);
         const tmpPath = path6.join(this.sessionsDir, `.tmp-${sessionId}-${Date.now()}.json`);
-        (0, import_node_fs13.writeFileSync)(tmpPath, JSON.stringify(archive, null, 2), "utf-8");
-        (0, import_node_fs13.renameSync)(tmpPath, filePath);
+        (0, import_node_fs17.writeFileSync)(tmpPath, JSON.stringify(archive, null, 2), "utf-8");
+        (0, import_node_fs17.renameSync)(tmpPath, filePath);
       }
       _readFile(filePath) {
         try {
-          const raw = (0, import_node_fs13.readFileSync)(filePath, "utf-8");
+          const raw = (0, import_node_fs17.readFileSync)(filePath, "utf-8");
           const parsed = JSON.parse(raw);
           if (!parsed || typeof parsed.session_id !== "string" || typeof parsed.started_at !== "string") {
             return null;
@@ -17469,13 +18221,13 @@ var init_config3 = __esm({
 });
 
 // packages/analytics/src/engine/data/jsonl-scanner.ts
-var fs5, path9, import_node_os6, JSONLScanner;
+var fs5, path9, import_node_os7, JSONLScanner;
 var init_jsonl_scanner = __esm({
   "packages/analytics/src/engine/data/jsonl-scanner.ts"() {
     "use strict";
     fs5 = __toESM(require("node:fs"), 1);
     path9 = __toESM(require("node:path"), 1);
-    import_node_os6 = require("node:os");
+    import_node_os7 = require("node:os");
     init_jsonl_reader();
     JSONLScanner = class {
       static {
@@ -17629,7 +18381,7 @@ var init_jsonl_scanner = __esm({
        */
       expandTilde(inputPath) {
         if (inputPath.startsWith("~/") || inputPath === "~") {
-          return path9.join((0, import_node_os6.homedir)(), inputPath.slice(2));
+          return path9.join((0, import_node_os7.homedir)(), inputPath.slice(2));
         }
         return inputPath;
       }
@@ -38745,6 +39497,14 @@ var Aggregator = class _Aggregator {
     return this.config;
   }
   /**
+   * Return the resolved path to the current session's active JSONL transcript,
+   * or null if none was found. The live-cost and agent-liveness observability
+   * modes read from here (and its sibling `<session-id>/` directory).
+   */
+  getActiveJsonlPath() {
+    return this.activeJsonlPath;
+  }
+  /**
    * Reload configuration without restarting the aggregator.
    *
    * Updates the stored config (including token costs) and recreates the
@@ -39762,7 +40522,7 @@ init_db_init();
 
 // packages/analytics/src/engine/schemas/tools.ts
 var AnalyticsDashboardInput = external_exports.object({
-  action: external_exports.enum(["start", "stop", "status"]),
+  action: external_exports.enum(["start", "stop", "status", "doctor"]),
   /**
    * Target dashboard to operate on.
    * 'dashboard' is the current name for the full TUI pane; 'full' is accepted
@@ -39775,8 +40535,22 @@ var AnalyticsDashboardInput = external_exports.object({
   }).optional()
 });
 var AnalyticsQueryInput = external_exports.object({
-  /** The data domain to query within the current session. */
-  scope: external_exports.enum(["tokens", "cache", "commands", "agents", "files", "cost", "health", "project", "all"]),
+  /**
+   * The data domain to query within the current session. Defaults to 'all'.
+   * Ignored when an observability `mode` is set.
+   */
+  scope: external_exports.enum(["tokens", "cache", "commands", "agents", "files", "cost", "health", "project", "all"]).default("all"),
+  /**
+   * Observability mode (lane 9) — a MODE of `query`, not a new tool. When set,
+   * it overrides `scope`:
+   *   - 'live_cost': price the current session's still-growing transcript,
+   *                  per model, split main-loop vs per-subagent.
+   *   - 'doctor':    host-health report — load, session children, and any
+   *                  orphaned sustained-CPU plugin processes with ready-to-run
+   *                  kill commands (never executed).
+   *   - 'agents':    background-agent liveness — thinking / executing / wedged.
+   */
+  mode: external_exports.enum(["live_cost", "doctor", "agents"]).optional(),
   time_range: external_exports.enum(["session", "last_5m", "last_30m", "last_1h"]).default("session"),
   group_by: external_exports.enum(["tool", "agent", "file", "status"]).optional(),
   filters: external_exports.object({
@@ -39955,18 +40729,26 @@ var AnalyticsEngine = class {
   }
 };
 
+// packages/analytics/src/index.ts
+init_observability();
+
 // packages/analytics/src/tools/query.ts
 var queryTool = {
   name: "query",
   engineTool: "analytics_query",
-  description: "Ad-hoc queries against session data: tokens, cache, commands, agents, files, cost, health, or project metrics. Supports time ranges, grouping, filtering, and cross-project scoping via data_scope.",
+  description: "Ad-hoc queries against session data: tokens, cache, commands, agents, files, cost, health, or project metrics. Supports time ranges, grouping, filtering, and cross-project scoping via data_scope. Observability modes (mode=): 'live_cost' prices the live transcript per model (main-loop vs subagents), 'doctor' reports host load + orphaned busy-loop plugin processes with kill commands, 'agents' classifies background agents (thinking / executing / wedged).",
   inputSchema: {
     type: "object",
     properties: {
       scope: {
         type: "string",
         enum: ["tokens", "cache", "commands", "agents", "files", "cost", "health", "project", "all"],
-        description: "The data domain to query within the current session."
+        description: "The data domain to query within the current session (default: all). Ignored when mode is set."
+      },
+      mode: {
+        type: "string",
+        enum: ["live_cost", "doctor", "agents"],
+        description: "Observability mode; overrides scope. live_cost = live per-model transcript cost (main vs subagents); doctor = host health + orphan busy-loop detection with kill commands; agents = background-agent liveness."
       },
       time_range: {
         type: "string",
@@ -39990,7 +40772,7 @@ var queryTool = {
         description: "Which set of sessions to include (default: current_session)."
       }
     },
-    required: ["scope"]
+    required: []
   }
 };
 
@@ -39998,11 +40780,11 @@ var queryTool = {
 var dashboardTool = {
   name: "dashboard",
   engineTool: "analytics_dashboard",
-  description: "Launch, stop, or check status of the analytics tmux panes. The mini dashboard is an always-on 4-line pane showing live session metrics. (The full interactive TUI is deferred in the alpha.) Calling start on a running target toggles it off; stop on a stopped target is a no-op.",
+  description: 'Launch, stop, or check status of the analytics tmux panes. The mini dashboard is an always-on 4-line pane showing live session metrics. (The full interactive TUI is deferred in the alpha.) Calling start on a running target toggles it off; stop on a stopped target is a no-op. action="doctor" prints a read-only host-health + agent-liveness report (load, session children, orphaned busy-loop plugin processes with ready-to-run kill commands, background-agent states) without launching a pane and never killing anything.',
   inputSchema: {
     type: "object",
     properties: {
-      action: { type: "string", enum: ["start", "stop", "status"] },
+      action: { type: "string", enum: ["start", "stop", "status", "doctor"] },
       target: {
         type: "string",
         enum: ["mini", "full", "dashboard", "both"],
@@ -40188,11 +40970,15 @@ function createServer(options = {}) {
 __name(createServer, "createServer");
 async function main() {
   const cfg = loadConfig();
+  const goodvibesDir = process.env.GOODVIBES_DIR ?? statePath();
   let engineRef = null;
+  const healthSampler = new HostHealthSampler({ goodvibesDir });
+  healthSampler.start();
   const hygiene = installProcessHygiene({
     idleExitMinutes: cfg.idle_exit_minutes,
     ppidPollMs: cfg.ppid_poll_ms,
     onShutdown: /* @__PURE__ */ __name(async () => {
+      healthSampler.stop();
       try {
         await engineRef?.shutdown();
       } catch {
@@ -40200,6 +40986,7 @@ async function main() {
     }, "onShutdown")
   });
   const server = createServer({
+    goodvibesDir,
     onActivity: /* @__PURE__ */ __name(() => hygiene.noteActivity(), "onActivity"),
     onEngine: /* @__PURE__ */ __name((e) => {
       engineRef = e;

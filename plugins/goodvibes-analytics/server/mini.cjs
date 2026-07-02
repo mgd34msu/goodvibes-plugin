@@ -3147,6 +3147,14 @@ var Aggregator = class _Aggregator {
     return this.config;
   }
   /**
+   * Return the resolved path to the current session's active JSONL transcript,
+   * or null if none was found. The live-cost and agent-liveness observability
+   * modes read from here (and its sibling `<session-id>/` directory).
+   */
+  getActiveJsonlPath() {
+    return this.activeJsonlPath;
+  }
+  /**
    * Reload configuration without restarting the aggregator.
    *
    * Updates the stored config (including token costs) and recreates the

@@ -6,14 +6,24 @@ export const queryTool: ToolModule = {
   engineTool: 'analytics_query',
   description:
     'Ad-hoc queries against session data: tokens, cache, commands, agents, files, cost, health, ' +
-    'or project metrics. Supports time ranges, grouping, filtering, and cross-project scoping via data_scope.',
+    'or project metrics. Supports time ranges, grouping, filtering, and cross-project scoping via data_scope. ' +
+    "Observability modes (mode=): 'live_cost' prices the live transcript per model (main-loop vs subagents), " +
+    "'doctor' reports host load + orphaned busy-loop plugin processes with kill commands, " +
+    "'agents' classifies background agents (thinking / executing / wedged).",
   inputSchema: {
     type: 'object',
     properties: {
       scope: {
         type: 'string',
         enum: ['tokens', 'cache', 'commands', 'agents', 'files', 'cost', 'health', 'project', 'all'],
-        description: 'The data domain to query within the current session.',
+        description: 'The data domain to query within the current session (default: all). Ignored when mode is set.',
+      },
+      mode: {
+        type: 'string',
+        enum: ['live_cost', 'doctor', 'agents'],
+        description:
+          'Observability mode; overrides scope. live_cost = live per-model transcript cost (main vs subagents); ' +
+          'doctor = host health + orphan busy-loop detection with kill commands; agents = background-agent liveness.',
       },
       time_range: {
         type: 'string',
@@ -37,6 +47,6 @@ export const queryTool: ToolModule = {
         description: 'Which set of sessions to include (default: current_session).',
       },
     },
-    required: ['scope'],
+    required: [],
   },
 };

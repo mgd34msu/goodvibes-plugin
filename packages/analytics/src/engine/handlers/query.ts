@@ -18,6 +18,7 @@ import {
   formatUptime,
 } from '../tui/mini/format.js';
 import { type HandlerResponse, text } from './types.js';
+import { runLiveCost, runDoctor, runAgents } from './observability.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -27,6 +28,7 @@ import { type HandlerResponse, text } from './types.js';
 export type QueryHandler = (
   aggregator: Aggregator,
   input: AnalyticsQueryInput,
+  goodvibesDir?: string,
 ) => Promise<HandlerResponse>;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -48,7 +50,26 @@ export type QueryHandler = (
 export const handleQuery: QueryHandler = async (
   aggregator: Aggregator,
   input: AnalyticsQueryInput,
+  goodvibesDir?: string,
 ): Promise<HandlerResponse> => {
+  // Observability modes (lane 9) override scope-based rendering.
+  if (input.mode) {
+    try {
+      switch (input.mode) {
+        case 'live_cost': return text(await runLiveCost(aggregator));
+        case 'doctor':    return text(runDoctor(goodvibesDir ?? process.env['GOODVIBES_DIR'] ?? '.goodvibes'));
+        case 'agents':    return text(runAgents(aggregator));
+        default: {
+          const _exhaustive: never = input.mode;
+          return text(`Unknown query mode: ${_exhaustive as string}`);
+        }
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return text(`analytics_query (${input.mode}) error: ${message}`);
+    }
+  }
+
   try {
     const state = aggregator.getState();
 

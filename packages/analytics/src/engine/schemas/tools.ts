@@ -3,7 +3,7 @@ import { z } from 'zod';
 // === Input Schemas ===
 
 export const AnalyticsDashboardInput = z.object({
-  action: z.enum(['start', 'stop', 'status']),
+  action: z.enum(['start', 'stop', 'status', 'doctor']),
   /**
    * Target dashboard to operate on.
    * 'dashboard' is the current name for the full TUI pane; 'full' is accepted
@@ -19,8 +19,22 @@ export const AnalyticsDashboardInput = z.object({
 });
 
 export const AnalyticsQueryInput = z.object({
-  /** The data domain to query within the current session. */
-  scope: z.enum(['tokens', 'cache', 'commands', 'agents', 'files', 'cost', 'health', 'project', 'all']),
+  /**
+   * The data domain to query within the current session. Defaults to 'all'.
+   * Ignored when an observability `mode` is set.
+   */
+  scope: z.enum(['tokens', 'cache', 'commands', 'agents', 'files', 'cost', 'health', 'project', 'all']).default('all'),
+  /**
+   * Observability mode (lane 9) — a MODE of `query`, not a new tool. When set,
+   * it overrides `scope`:
+   *   - 'live_cost': price the current session's still-growing transcript,
+   *                  per model, split main-loop vs per-subagent.
+   *   - 'doctor':    host-health report — load, session children, and any
+   *                  orphaned sustained-CPU plugin processes with ready-to-run
+   *                  kill commands (never executed).
+   *   - 'agents':    background-agent liveness — thinking / executing / wedged.
+   */
+  mode: z.enum(['live_cost', 'doctor', 'agents']).optional(),
   time_range: z.enum(['session', 'last_5m', 'last_30m', 'last_1h']).default('session'),
   group_by: z.enum(['tool', 'agent', 'file', 'status']).optional(),
   filters: z
@@ -115,14 +129,20 @@ export const TOOL_DEFINITIONS = {
       'Launch, stop, or check status of the analytics TUI and mini dashboard. ' +
       'The mini dashboard is a 4-line always-on tmux pane showing session metrics. ' +
       'The full TUI (target="dashboard") is a 3-page interactive dashboard. ' +
-      'Calling start on a running target toggles it off (stop); calling stop on a stopped target is a no-op.',
+      'Calling start on a running target toggles it off (stop); calling stop on a stopped target is a no-op. ' +
+      'action="doctor" prints a read-only host-health + agent-liveness report ' +
+      '(load, session children, orphaned busy-loop plugin processes with ready-to-run kill commands, ' +
+      'and background-agent states) without launching any pane and never killing anything.',
     inputSchema: AnalyticsDashboardInput,
   },
   analytics_query: {
     name: 'analytics_query',
     description:
       'Ad-hoc queries against session data. Query tokens, cache, commands, agents, files, cost, health, ' +
-      'or project metrics. Supports time ranges, grouping, filtering, and cross-project scoping via data_scope.',
+      'or project metrics. Supports time ranges, grouping, filtering, and cross-project scoping via data_scope. ' +
+      "Observability modes (set mode=): 'live_cost' prices the live transcript per model split main-loop vs " +
+      "subagents; 'doctor' reports host load and orphaned busy-loop plugin processes with kill commands; " +
+      "'agents' classifies background agents as thinking / executing / wedged.",
     inputSchema: AnalyticsQueryInput,
   },
   analytics_budget: {

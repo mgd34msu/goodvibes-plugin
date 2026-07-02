@@ -24,6 +24,7 @@ import { installProcessHygiene, withBudget } from '@goodvibes/core/proc';
 import { toCallToolResult, errorEnvelope } from '@goodvibes/core/envelope';
 import { loadConfig, statePath } from '@goodvibes/core/config';
 import { AnalyticsEngine } from './engine/index.js';
+import { HostHealthSampler } from './engine/observability/index.js';
 import type { ToolModule } from './tools/types.js';
 import { queryTool } from './tools/query.js';
 import { dashboardTool } from './tools/dashboard.js';
@@ -132,12 +133,21 @@ export function createServer(options: CreateServerOptions = {}): Server {
 /** Boot over stdio with the process-hygiene watchdogs installed. */
 export async function main(): Promise<void> {
   const cfg = loadConfig();
+  const goodvibesDir = process.env.GOODVIBES_DIR ?? statePath();
   let engineRef: AnalyticsEngine | null = null;
+
+  // Host-health sampler (lane 9): slow, unref'd, zero-dep /proc reader that
+  // maintains `.goodvibes/v2/health/health-state.json` for the doctor view and
+  // intel's SessionStart nudge. Its interval is unref'd, so it can never be the
+  // thing that keeps a dead server alive (field issue 9 — the sin it hunts).
+  const healthSampler = new HostHealthSampler({ goodvibesDir });
+  healthSampler.start();
 
   const hygiene = installProcessHygiene({
     idleExitMinutes: cfg.idle_exit_minutes,
     ppidPollMs: cfg.ppid_poll_ms,
     onShutdown: async () => {
+      healthSampler.stop();
       // Best-effort: flush and release the engine's DB/watchers before exit.
       try {
         await engineRef?.shutdown();
@@ -148,6 +158,7 @@ export async function main(): Promise<void> {
   });
 
   const server = createServer({
+    goodvibesDir,
     onActivity: () => hygiene.noteActivity(),
     onEngine: (e) => {
       engineRef = e;

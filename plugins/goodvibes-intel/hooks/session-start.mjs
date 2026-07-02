@@ -133,6 +133,37 @@ function quickHealth(cwd) {
   return notes;
 }
 
+/** Per-core load above this trips the host-health nudge (matches the analytics sampler). */
+const HEALTH_LOAD_PER_CORE = 1.5;
+
+/**
+ * Loose file coupling to the analytics host-health sampler (lane 9): when its
+ * state file exists and a threshold trips (per-core load above 1.5, or any
+ * orphaned busy-loop plugin process detected), surface a single nudge line.
+ * Fully graceful when the file is absent — analytics may not be installed.
+ * Returns a one-line string or null.
+ */
+function healthNudge(cwd) {
+  const state = readJsonSafe(v2StatePath(cwd, 'health', 'health-state.json'), null);
+  if (!state) return null;
+  try {
+    const orphans = Array.isArray(state.orphans) ? state.orphans.length : 0;
+    const loadPerCore = typeof state.load_per_core === 'number' ? state.load_per_core : null;
+    const highLoad = loadPerCore != null && loadPerCore > HEALTH_LOAD_PER_CORE;
+    if (orphans === 0 && !highLoad) return null;
+    const bits = [];
+    if (orphans > 0) {
+      bits.push(`${orphans} orphaned plugin process(es) spinning`);
+    }
+    if (highLoad) {
+      bits.push(`host load ${loadPerCore.toFixed(2)}/core`);
+    }
+    return `Host health: ${bits.join(', ')} — run analytics query mode=doctor (or dashboard action=doctor) for kill commands.`;
+  } catch {
+    return null;
+  }
+}
+
 /** Entry point for the detached background-refresh child (`--background-refresh <cwd> <cachePath>`). */
 async function runBackgroundRefresh(cwd, cachePath) {
   const deadlineAt = Date.now() + BACKGROUND_DEADLINE_MS;
@@ -195,6 +226,10 @@ async function handleSessionStart(input) {
   if (cache?.healthNotes?.length) {
     lines.push(`Health: ${cache.healthNotes.join('; ')}`);
   }
+  const nudge = healthNudge(cwd);
+  if (nudge) {
+    lines.push(nudge);
+  }
   if (!cache) {
     lines.push('(First session seen for this project — TODO/health data is being gathered in the background for next time.)');
   }
@@ -202,7 +237,7 @@ async function handleSessionStart(input) {
   const summaryBits = [...stackBits];
   if (fastData.branch) summaryBits.push(`on ${fastData.branch}`);
   if (todoCount) summaryBits.push(`${todoCount} TODOs`);
-  const systemMessage = `goodvibes-intel ready.${summaryBits.length ? ' ' + summaryBits.join(' | ') : ''}`;
+  const systemMessage = `goodvibes-intel ready.${summaryBits.length ? ' ' + summaryBits.join(' | ') : ''}${nudge ? ' | host health alert' : ''}`;
 
   return createHookResponse({
     hookEventName: HOOK_EVENT,
@@ -220,4 +255,4 @@ if (process.argv[2] === '--background-refresh') {
   await runHook(HOOK_EVENT, handleSessionStart);
 }
 
-export { gatherFast, scanTodosBounded, quickHealth, handleSessionStart };
+export { gatherFast, scanTodosBounded, quickHealth, healthNudge, handleSessionStart };
