@@ -614,19 +614,30 @@ var RuntimeClient = class _RuntimeClient {
    */
   static probeSocket(socketPath) {
     return new Promise((resolve2) => {
-      const timeout = setTimeout(() => {
-        socket.destroy();
-        resolve2(false);
-      }, 100);
-      const socket = net.createConnection(socketPath, () => {
+      let socket;
+      let settled = false;
+      const done = (result) => {
+        if (settled) return;
+        settled = true;
         clearTimeout(timeout);
-        socket.destroy();
-        resolve2(true);
-      });
-      socket.on("error", () => {
-        clearTimeout(timeout);
-        resolve2(false);
-      });
+        try {
+          socket?.destroy();
+        } catch {
+        }
+        resolve2(result);
+      };
+      const timeout = setTimeout(() => done(false), 100);
+      try {
+        socket = net.createConnection(socketPath, () => done(true));
+      } catch {
+        done(false);
+        return;
+      }
+      if (!socket || typeof socket.on !== "function") {
+        done(false);
+        return;
+      }
+      socket.on("error", () => done(false));
     });
   }
   /**

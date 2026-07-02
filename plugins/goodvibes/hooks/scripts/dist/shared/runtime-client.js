@@ -115,19 +115,36 @@ export class RuntimeClient {
      */
     static probeSocket(socketPath) {
         return new Promise((resolve) => {
-            const timeout = setTimeout(() => {
-                socket.destroy();
-                resolve(false);
-            }, 100);
-            const socket = net.createConnection(socketPath, () => {
+            let socket;
+            let settled = false;
+            const done = (result) => {
+                if (settled)
+                    return;
+                settled = true;
                 clearTimeout(timeout);
-                socket.destroy();
-                resolve(true);
-            });
-            socket.on('error', () => {
-                clearTimeout(timeout);
-                resolve(false);
-            });
+                try {
+                    socket?.destroy();
+                }
+                catch { /* ignore */ }
+                resolve(result);
+            };
+            const timeout = setTimeout(() => done(false), 100);
+            try {
+                socket = net.createConnection(socketPath, () => done(true));
+            }
+            catch {
+                // createConnection threw synchronously (bad path, broken impl) —
+                // never leave the promise unresolved or the timer throwing.
+                done(false);
+                return;
+            }
+            // Defensive: a broken (or test-mocked) net implementation may return
+            // undefined instead of a socket. Treat it as an unreachable engine.
+            if (!socket || typeof socket.on !== 'function') {
+                done(false);
+                return;
+            }
+            socket.on('error', () => done(false));
         });
     }
     /**

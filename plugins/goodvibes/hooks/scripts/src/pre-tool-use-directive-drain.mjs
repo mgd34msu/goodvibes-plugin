@@ -26,7 +26,7 @@
  */
 
 import * as net from 'node:net';
-import { existsSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -198,7 +198,10 @@ async function drainAllDirectives(socketPath, sessionId) {
 
 // ─── Urgent file fallback ────────────────────────────────────────────────────
 
-function checkUrgentFile(projectDir) {
+function checkUrgentFile(projectDir, sessionId) {
+  // Session scoping: without a session id we cannot prove ownership of any
+  // directive, so leave the urgent file untouched for the owning session.
+  if (!sessionId) return null;
   const urgentPath = join(projectDir || process.cwd(), '.goodvibes', 'state', 'urgent-directives.json');
   const claimedPath = urgentPath + `.claimed.${process.pid}`;
   try {
@@ -206,14 +209,36 @@ function checkUrgentFile(projectDir) {
   } catch {
     return null;
   }
+  let data;
   try {
-    const data = JSON.parse(readFileSync(claimedPath, 'utf-8'));
-    unlinkSync(claimedPath);
-    return data.directives || [];
+    data = JSON.parse(readFileSync(claimedPath, 'utf-8'));
   } catch {
     try { unlinkSync(claimedPath); } catch { /* ignore */ }
     return null;
   }
+  const directives = Array.isArray(data?.directives) ? data.directives : [];
+  // Deliver only directives explicitly tagged for THIS session.
+  const matched = directives.filter((d) => d && d.session_id === sessionId);
+  const remaining = directives.filter((d) => !(d && d.session_id === sessionId));
+  try {
+    if (remaining.length > 0) {
+      // Leave non-matching directives queued untouched: write them back for
+      // their owning sessions, merging with any urgent file recreated since
+      // our atomic claim.
+      let merged = remaining;
+      try {
+        const current = JSON.parse(readFileSync(urgentPath, 'utf-8'));
+        if (Array.isArray(current?.directives)) {
+          merged = [...current.directives, ...remaining];
+        }
+      } catch { /* no new urgent file — write remaining as-is */ }
+      writeFileSync(urgentPath, JSON.stringify({ ...data, directives: merged }), 'utf-8');
+    }
+    unlinkSync(claimedPath);
+  } catch {
+    try { unlinkSync(claimedPath); } catch { /* ignore */ }
+  }
+  return matched;
 }
 
 // ─── Stdin reader ────────────────────────────────────────────────────────────
@@ -267,6 +292,14 @@ async function main() {
 
   const projectDir = hookInput?.cwd || null;
   const sessionId = hookInput?.session_id || null;
+
+  // Session scoping guard: without a session id we cannot match directives to
+  // this session, so never drain — an unscoped drain would steal directives
+  // queued for other sessions (see docs/runtime-engine-directive-loop-2026-07-01.md).
+  if (!sessionId) {
+    return respond(allowResponse());
+  }
+
   const socketPath = discoverSocket(projectDir, sessionId);
 
   // Fast path: no runtime engine running
@@ -274,15 +307,25 @@ async function main() {
     return respond(allowResponse());
   }
 
-  // Drain ALL pending directives from the queue (scoped to this session)
+  // Drain pending directives scoped to this session (the runtime queue leaves
+  // directives for other sessions queued untouched)
   const result = await drainAllDirectives(socketPath, sessionId);
 
-  // Also check urgent file fallback
-  const urgentDirectives = checkUrgentFile(projectDir);
+  // Also check urgent file fallback (session-scoped: non-matching directives
+  // are written back untouched)
+  const urgentDirectives = checkUrgentFile(projectDir, sessionId);
 
   const allDirectives = [];
   if (result?.directives?.length > 0) {
-    allDirectives.push(...result.directives);
+    for (const d of result.directives) {
+      // Deliver only directives explicitly tagged for this session, even if
+      // the runtime returned more (defense-in-depth).
+      if (d && d.session_id === sessionId) {
+        allDirectives.push(d);
+      } else {
+        process.stderr.write(`[directive-drain] dropped directive not scoped to session ${sessionId} (directive session_id=${d?.session_id ?? 'none'})\n`);
+      }
+    }
   }
   if (urgentDirectives?.length > 0) {
     allDirectives.push(...urgentDirectives);

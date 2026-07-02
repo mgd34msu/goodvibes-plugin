@@ -286,6 +286,13 @@ describe('session-start hook', () => {
     // Mock claude-md-manager module
     vi.doMock('../session-start/claude-md-manager.js', () => ({
       ensureClaudeMdImports: vi.fn().mockResolvedValue(undefined),
+      detectPromptInstallation: vi.fn().mockResolvedValue({
+        installed: false,
+        targetDir: null,
+        importPresent: false,
+        goodvibesMdPresent: false,
+        promptDirPresent: false,
+      }),
     }));
 
     // Mock runtime-client module
@@ -402,7 +409,8 @@ describe('session-start hook', () => {
         expect.any(Object)
       );
       expect(mockCreateResponse).toHaveBeenCalledWith({
-        systemMessage: 'GoodVibes plugin v2.1.0 initialized.',
+        systemMessage:
+          'GoodVibes plugin v2.1.0 initialized.\nGoodVibes prompts: not installed (opt in with /goodvibes:plugin install-prompts)',
         additionalContext: 'test context',
       });
       expect(mockRespond).toHaveBeenCalled();
@@ -479,7 +487,8 @@ describe('session-start hook', () => {
 
       // When additionalContext is empty string, it should be undefined in response
       expect(mockCreateResponse).toHaveBeenCalledWith({
-        systemMessage: 'GoodVibes plugin v2.1.0 initialized.',
+        systemMessage:
+          'GoodVibes plugin v2.1.0 initialized.\nGoodVibes prompts: not installed (opt in with /goodvibes:plugin install-prompts)',
         additionalContext: undefined,
       });
     });

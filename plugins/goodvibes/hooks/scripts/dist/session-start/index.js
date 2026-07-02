@@ -23,7 +23,7 @@ import { checkCrashRecovery, } from './crash-recovery.js';
 import { buildSystemMessage } from './response-formatter.js';
 import { checkForUpdates } from './version-checker.js';
 import { fetchPricingIfStale } from './pricing-fetcher.js';
-import { ensureClaudeMdImports } from './claude-md-manager.js';
+import { detectPromptInstallation } from './claude-md-manager.js';
 import { buildProjectIndex } from './project-indexer.js';
 import { RuntimeClient } from '../shared/runtime-client.js';
 import { readFileSync } from 'fs';
@@ -234,15 +234,27 @@ async function runSessionStartHook() {
         catch (err) {
             logError('Project indexer failed', err instanceof Error ? err : new Error(String(err)));
         }
-        // Step 5.5: Ensure CLAUDE.md import architecture is installed
-        await ensureClaudeMdImports(projectDir);
+        // Step 5.5: Detect prompt-chain installation state (READ-ONLY).
+        // SessionStart never writes outside the project directory; prompt-chain
+        // installation is explicit opt-in via /goodvibes:plugin install-prompts
+        // (removal via uninstall-prompts).
+        let promptInstallNote = '';
+        try {
+            const promptInstall = await detectPromptInstallation(projectDir);
+            promptInstallNote = promptInstall.installed
+                ? `\nGoodVibes prompts: installed at ${promptInstall.targetDir}`
+                : '\nGoodVibes prompts: not installed (opt in with /goodvibes:plugin install-prompts)';
+        }
+        catch (err) {
+            logError('Prompt install detection', err);
+        }
         // Step 6: Initialize analytics
         initializeAnalytics(sessionId, contextResult);
         // Step 7: Check for plugin updates
         const versionCheck = await checkForUpdates();
         debug('Version check', { isUpToDate: versionCheck.isUpToDate, local: versionCheck.localVersion, remote: versionCheck.remoteVersion });
-        // Build system message
-        const systemMessage = buildSystemMessage(sessionId, contextResult, versionCheck);
+        // Build system message (with read-only prompt installation state appended)
+        const systemMessage = buildSystemMessage(sessionId, contextResult, versionCheck) + promptInstallNote;
         // Success response with context injection
         respond(createResponse({
             systemMessage,

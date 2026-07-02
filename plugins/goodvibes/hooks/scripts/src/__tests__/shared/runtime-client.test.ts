@@ -219,9 +219,15 @@ describe('RuntimeClient', () => {
       mockedStatSync.mockReturnValue({ mtimeMs: 1000 } as unknown as ReturnType<typeof statSync>);
       mockedReadFileSync.mockReturnValue(socketPath as unknown as Buffer);
 
-      const client = new RuntimeClient();
-      expect(client.isAvailable()).toBe(true);
-      expect(mockedReaddirSync).toHaveBeenCalledWith('/project/.goodvibes/state');
+      // Phase 1C liveness check: make PID 12345 look alive regardless of host
+      const aliveSpy = vi.spyOn(RuntimeClient, 'isProcessAlive').mockReturnValue(true);
+      try {
+        const client = new RuntimeClient();
+        expect(client.isAvailable()).toBe(true);
+        expect(mockedReaddirSync).toHaveBeenCalledWith('/project/.goodvibes/state');
+      } finally {
+        aliveSpy.mockRestore();
+      }
     });
 
     it('skips entries with wrong prefix or extension', () => {
@@ -304,12 +310,18 @@ describe('RuntimeClient', () => {
         return olderSocketPath as unknown as Buffer;
       });
 
-      const client = new RuntimeClient();
-      // isAvailable uses existsSync on the discovered socket path
-      mockedExistsSync.mockImplementation((p) => p === newerSocketPath);
-      // The client should have discovered newerSocketPath (highest mtimeMs)
-      expect(client.isAvailable()).toBe(true);
-      expect(mockedExistsSync).toHaveBeenCalledWith(newerSocketPath);
+      // Phase 1C liveness check: make both pointer PIDs look alive
+      const aliveSpy = vi.spyOn(RuntimeClient, 'isProcessAlive').mockReturnValue(true);
+      try {
+        const client = new RuntimeClient();
+        // isAvailable uses existsSync on the discovered socket path
+        mockedExistsSync.mockImplementation((p) => p === newerSocketPath);
+        // The client should have discovered newerSocketPath (highest mtimeMs)
+        expect(client.isAvailable()).toBe(true);
+        expect(mockedExistsSync).toHaveBeenCalledWith(newerSocketPath);
+      } finally {
+        aliveSpy.mockRestore();
+      }
     });
 
     it('falls through to Strategy 4 when all pointer files point to dead sockets', () => {
@@ -540,6 +552,8 @@ describe('RuntimeClient', () => {
       // existsSync returns false for the isAvailable check
       mockedExistsSync.mockReturnValue(false);
       const client = new RuntimeClient();
+      // Force the self-heal retry off so the unavailable path is deterministic
+      vi.spyOn(client, 'isAvailableAsync').mockResolvedValue(false);
       const result = await client.sendHookEvent('session:started', {});
       expect(result).toBeNull();
     });
@@ -639,6 +653,7 @@ describe('RuntimeClient', () => {
       mockedCreateConnection.mockReturnValue(socket as unknown as net.Socket);
 
       const client = new RuntimeClient();
+      vi.spyOn(client, 'isAvailableAsync').mockResolvedValue(false);
       const resultPromise = client.sendHookEvent('session:started', {});
 
       // Simulate a socket error with correct .code property (source checks err.code === 'ECONNREFUSED')
@@ -658,6 +673,9 @@ describe('RuntimeClient', () => {
         mockedCreateConnection.mockReturnValue(socket as unknown as net.Socket);
 
         const client = new RuntimeClient();
+        // The self-heal retry would start a probe timer that fake timers never
+        // advance — the promise would never settle. Force the retry off.
+        vi.spyOn(client, 'isAvailableAsync').mockResolvedValue(false);
         const resultPromise = client.sendHookEvent('session:started', {});
 
         // Advance time past HOOK_EVENT_TIMEOUT_MS (500ms)
@@ -718,6 +736,7 @@ describe('RuntimeClient', () => {
       const ipcResponse = { id: 'x', status: 'error' as const, error: 'not found' };
 
       const client = new RuntimeClient();
+      vi.spyOn(client, 'isAvailableAsync').mockResolvedValue(false);
       const resultPromise = client.query({ kind: 'get_directives' });
 
       emit('connect');
@@ -772,6 +791,9 @@ describe('RuntimeClient', () => {
         mockedCreateConnection.mockReturnValue(socket as unknown as net.Socket);
 
         const client = new RuntimeClient();
+        // The self-heal retry would start a probe timer that fake timers never
+        // advance — the promise would never settle. Force the retry off.
+        vi.spyOn(client, 'isAvailableAsync').mockResolvedValue(false);
         const resultPromise = client.query({ kind: 'get_workflow_state', workflow_id: 'wf-1' });
 
         vi.advanceTimersByTime(600);
@@ -910,6 +932,7 @@ describe('RuntimeClient', () => {
       mockedCreateConnection.mockReturnValue(socket as unknown as net.Socket);
 
       const client = new RuntimeClient();
+      vi.spyOn(client, 'isAvailableAsync').mockResolvedValue(false);
       const resultPromise = client.sendHookEvent('hook', {});
 
       emit('connect');
@@ -928,6 +951,7 @@ describe('RuntimeClient', () => {
       mockedCreateConnection.mockReturnValue(socket as unknown as net.Socket);
 
       const client = new RuntimeClient();
+      vi.spyOn(client, 'isAvailableAsync').mockResolvedValue(false);
       const resultPromise = client.sendHookEvent('hook', {});
 
       // Socket closes without sending data
@@ -988,6 +1012,7 @@ describe('RuntimeClient', () => {
       mockedCreateConnection.mockReturnValue(socket as unknown as net.Socket);
 
       const client = new RuntimeClient();
+      vi.spyOn(client, 'isAvailableAsync').mockResolvedValue(false);
       const resultPromise = client.sendHookEvent('session:started', {});
 
       // Emit ECONNREFUSED error with proper .code property
@@ -1007,6 +1032,7 @@ describe('RuntimeClient', () => {
       mockedCreateConnection.mockReturnValue(socket as unknown as net.Socket);
 
       const client = new RuntimeClient();
+      vi.spyOn(client, 'isAvailableAsync').mockResolvedValue(false);
       const resultPromise = client.sendHookEvent('session:started', {});
 
       // Emit ENOENT error — socket was deleted between isAvailable() and connect attempt
@@ -1026,6 +1052,9 @@ describe('RuntimeClient', () => {
       mockedCreateConnection.mockReturnValue(socket as unknown as net.Socket);
 
       const client = new RuntimeClient();
+      // The self-heal retry itself calls tryCleanStaleSocket (unlinkSync) on a
+      // failed probe — force it off; this test targets the sendMessage path only.
+      vi.spyOn(client, 'isAvailableAsync').mockResolvedValue(false);
       const resultPromise = client.sendHookEvent('session:started', {});
 
       emit('error', Object.assign(new Error('connection reset'), { code: 'ECONNRESET' }));

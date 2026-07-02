@@ -234,7 +234,14 @@ async function ensurePromptFiles(targetDir: string): Promise<void> {
 }
 
 /**
- * Main export: Ensure CLAUDE.md import architecture is installed
+ * Main export: Ensure CLAUDE.md import architecture is installed.
+ *
+ * CONSENT BOUNDARY: this function writes files, potentially OUTSIDE the
+ * project directory (~/.claude). It must only run from explicit user-consented
+ * entry points: the Setup hook (`claude init`) and the
+ * `/goodvibes:plugin install-prompts` command. It must NEVER be called from
+ * SessionStart, which is restricted to read-only detection
+ * (see detectPromptInstallation below).
  */
 export async function ensureClaudeMdImports(projectDir: string): Promise<void> {
   try {
@@ -246,5 +253,218 @@ export async function ensureClaudeMdImports(projectDir: string): Promise<void> {
     ]);
   } catch (err) {
     logError('Failed to ensure CLAUDE.md imports', err instanceof Error ? err : new Error(String(err)));
+  }
+}
+
+/**
+ * Prompt-chain installation state, as detected (read-only) at session start.
+ */
+export interface PromptInstallState {
+  /** True when a GoodVibes prompt-chain installation was found */
+  installed: boolean;
+  /** Directory the installation was found in (null when not installed) */
+  targetDir: string | null;
+  /** CLAUDE.md in targetDir contains the GOODVIBES IMPORTS marker */
+  importPresent: boolean;
+  /** .goodvibes/GOODVIBES.md exists in targetDir */
+  goodvibesMdPresent: boolean;
+  /** .goodvibes/prompt/ directory exists in targetDir */
+  promptDirPresent: boolean;
+}
+
+const NOT_INSTALLED: PromptInstallState = {
+  installed: false,
+  targetDir: null,
+  importPresent: false,
+  goodvibesMdPresent: false,
+  promptDirPresent: false,
+};
+
+/** Read-only inspection of a single candidate directory for install markers. */
+async function inspectCandidate(dir: string): Promise<PromptInstallState> {
+  let importPresent = false;
+  try {
+    const content = await fs.promises.readFile(path.join(dir, 'CLAUDE.md'), 'utf-8');
+    importPresent = content.includes('<!-- GOODVIBES IMPORTS -->');
+  } catch {
+    // No readable CLAUDE.md here
+  }
+
+  let goodvibesMdPresent = false;
+  try {
+    await fs.promises.access(path.join(dir, '.goodvibes', 'GOODVIBES.md'), fs.constants.R_OK);
+    goodvibesMdPresent = true;
+  } catch {
+    // Absent
+  }
+
+  let promptDirPresent = false;
+  try {
+    const stat = await fs.promises.stat(path.join(dir, '.goodvibes', 'prompt'));
+    promptDirPresent = stat.isDirectory();
+  } catch {
+    // Absent
+  }
+
+  const installed = importPresent || goodvibesMdPresent;
+  return {
+    installed,
+    targetDir: installed ? dir : null,
+    importPresent,
+    goodvibesMdPresent,
+    promptDirPresent,
+  };
+}
+
+/**
+ * Detect (read-only) whether the GoodVibes prompt chain is installed.
+ *
+ * SessionStart must NOT write outside the project — installation happens only
+ * through the explicit `/goodvibes:plugin install-prompts` command (removal
+ * via `uninstall-prompts`) or the Setup hook. This function performs ZERO
+ * writes; it only inspects the same candidate locations the installer uses.
+ */
+export async function detectPromptInstallation(projectDir: string): Promise<PromptInstallState> {
+  try {
+    const candidates: string[] = [];
+
+    // Candidate 1: ~/.claude (unless the project is inside it)
+    const claudeHome = path.join(os.homedir(), '.claude');
+    const resolvedProject = path.resolve(projectDir);
+    if (resolvedProject !== claudeHome && !resolvedProject.startsWith(claudeHome + path.sep)) {
+      candidates.push(claudeHome);
+    }
+
+    // Candidate 2: highest ancestor directory with a CLAUDE.md
+    const ancestorDir = await findHighestAncestorClaudeMd(projectDir);
+    if (ancestorDir) {
+      candidates.push(ancestorDir);
+    }
+
+    // Candidate 3: the project itself
+    candidates.push(resolvedProject);
+
+    for (const dir of candidates) {
+      const state = await inspectCandidate(dir);
+      if (state.installed) {
+        return state;
+      }
+    }
+    return { ...NOT_INSTALLED };
+  } catch (err) {
+    logError('Failed to detect prompt installation', err instanceof Error ? err : new Error(String(err)));
+    return { ...NOT_INSTALLED };
+  }
+}
+
+/**
+ * Result of an explicit prompt-chain removal (uninstall-prompts).
+ */
+export interface PromptRemovalResult {
+  /** True when an installation was found and removed */
+  removed: boolean;
+  /** Directory the installation was removed from (null when nothing found) */
+  targetDir: string | null;
+  /** True when the GOODVIBES IMPORTS block was dropped from CLAUDE.md */
+  importRemoved: boolean;
+  /** Absolute paths of files deleted during removal */
+  removedFiles: string[];
+}
+
+/** All prompt filenames the installer may have written (templates + fallbacks). */
+async function installedPromptFileNames(): Promise<string[]> {
+  const names = new Set(Object.keys(FALLBACK_PROMPT_FILES));
+  try {
+    const templatesDir = path.join(PLUGIN_ROOT, 'templates', 'prompt');
+    const files = await fs.promises.readdir(templatesDir);
+    for (const f of files) {
+      if (f.endsWith('.md')) names.add(f);
+    }
+  } catch {
+    // Templates unavailable — fallback names cover the minimal install
+  }
+  return [...names];
+}
+
+/**
+ * Explicit opt-out: cleanly remove a prompt-chain installation.
+ *
+ * Invoked by `/goodvibes:plugin uninstall-prompts` (via the prompt-installer
+ * CLI). Drops the GOODVIBES IMPORTS block from CLAUDE.md (deleting the file
+ * only when nothing else remains in it), deletes .goodvibes/GOODVIBES.md and
+ * the installed .goodvibes/prompt/*.md files, and prunes the directories if
+ * they end up empty. Files not written by the installer are never touched.
+ */
+export async function removeClaudeMdImports(projectDir: string): Promise<PromptRemovalResult> {
+  const none: PromptRemovalResult = {
+    removed: false,
+    targetDir: null,
+    importRemoved: false,
+    removedFiles: [],
+  };
+  try {
+    const state = await detectPromptInstallation(projectDir);
+    if (!state.installed || !state.targetDir) {
+      return none;
+    }
+    const targetDir = state.targetDir;
+    const removedFiles: string[] = [];
+    let importRemoved = false;
+
+    // 1. Drop the import block from CLAUDE.md
+    const claudeMdPath = path.join(targetDir, 'CLAUDE.md');
+    try {
+      const existing = await fs.promises.readFile(claudeMdPath, 'utf-8');
+      if (existing.includes('<!-- GOODVIBES IMPORTS -->')) {
+        const updated = existing
+          .replace(/[ \t]*<!-- GOODVIBES IMPORTS -->\s*\n@\.goodvibes\/GOODVIBES\.md[ \t]*\n?/g, '')
+          .replace(/\n{3,}/g, '\n\n');
+        if (updated.trim().length === 0) {
+          // The file contained nothing but our import — remove it entirely
+          await fs.promises.unlink(claudeMdPath);
+          removedFiles.push(claudeMdPath);
+        } else {
+          await fs.promises.writeFile(claudeMdPath, updated, 'utf-8');
+        }
+        importRemoved = true;
+      }
+    } catch {
+      // No CLAUDE.md — nothing to drop
+    }
+
+    // 2. Delete installed prompt files (only names the installer writes)
+    const promptDir = path.join(targetDir, '.goodvibes', 'prompt');
+    for (const name of await installedPromptFileNames()) {
+      const filePath = path.join(promptDir, name);
+      try {
+        await fs.promises.unlink(filePath);
+        removedFiles.push(filePath);
+      } catch {
+        // Not present — fine
+      }
+    }
+
+    // 3. Delete .goodvibes/GOODVIBES.md
+    const goodvibesMdPath = path.join(targetDir, '.goodvibes', 'GOODVIBES.md');
+    try {
+      await fs.promises.unlink(goodvibesMdPath);
+      removedFiles.push(goodvibesMdPath);
+    } catch {
+      // Not present — fine
+    }
+
+    // 4. Prune now-empty directories (rmdir fails on non-empty — intended)
+    for (const dir of [promptDir, path.join(targetDir, '.goodvibes')]) {
+      try {
+        await fs.promises.rmdir(dir);
+      } catch {
+        // Directory not empty or missing — leave it alone
+      }
+    }
+
+    return { removed: true, targetDir, importRemoved, removedFiles };
+  } catch (err) {
+    logError('Failed to remove CLAUDE.md imports', err instanceof Error ? err : new Error(String(err)));
+    return none;
   }
 }
