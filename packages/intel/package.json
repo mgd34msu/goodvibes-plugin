@@ -12,7 +12,8 @@
   "dependencies": {
     "@goodvibes/core": "*",
     "@modelcontextprotocol/sdk": "^1.12.1",
-    "typescript": "^5.9.3"
+    "typescript": "5.9.3",
+    "web-tree-sitter": "0.26.10"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

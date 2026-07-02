@@ -16,7 +16,11 @@
   "devDependencies": {
     "@types/node": "^20.10.0",
     "esbuild": "^0.27.2",
+    "ink": "^7.1.0",
+    "react": "^19.2.7",
+    "react-devtools-core": "^7.0.1",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.17"
+    "vitest": "^4.0.17",
+    "yoga-wasm-web": "^0.3.3"
   }
 }
