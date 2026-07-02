@@ -1,7 +1,7 @@
 # GoodVibes v2.0 — Complete Disposition Plan
 
 Date: 2026-07-01
-Inputs: the 38-agent deep review (`docs/deep-review-2026-07-01.md`), the field-issues report (`docs/precision-engine-field-issues-2026-07-01.md`), the prior hygiene review (`gv-plugin-plan.md`), and the design decisions settled in review discussion (WRFC reshape, cache verdict, fetch split, open-mode toggle design, hooks triage, daemon strategy).
+Inputs: the 38-agent deep review (`docs/deep-review-2026-07-01.md`), the field-issues report (`docs/precision-engine-field-issues-2026-07-01.md`), the directive-loop field report (`docs/runtime-engine-directive-loop-2026-07-01.md`), the prior hygiene review (`gv-plugin-plan.md`), and the design decisions settled in review discussion (WRFC reshape, cache verdict, fetch split, open-mode toggle design, hooks triage, daemon strategy).
 
 Every tool, hook, skill, agent, command, style, template, and background process in the plugin gets a disposition below. Nothing is waved at in bulk; composite features are dissected into parts where the parts deserve different fates.
 
@@ -194,7 +194,7 @@ Its reason to exist — 77 deferred tools and 25 undiscoverable skills — is de
 | Subsystem | Disposition | Notes |
 |---|---|---|
 | WRFC loop (phase machine, score gates, fix budgets) | **REBUILD** as an opt-in **workflow template** | In-band loop; refutation-based verdicts (defect list + severity gate) instead of scalar 10/10; grounded checks (tests/typecheck/run) weighted above model opinion; triggered by non-empty diff, never by agent type; capped attempts with the off-by-one fixed (final fix gets reviewed). The well-tested phase-machine logic informs the template design. |
-| Directive queue + hook drain | **REBUILD** (only if automation ships) | Disk-backed durable queue; recipient scoping via session id (present in payloads today — use it); provenance on every directive; consumers validate rather than mechanically obey. |
+| Directive queue + hook drain | **REBUILD** (only if automation ships) | Disk-backed durable queue; recipient scoping via session id (present in payloads today — use it); provenance on every directive; consumers validate rather than mechanically obey. Acceptance criteria come from the live directive-loop report (`docs/runtime-engine-directive-loop-2026-07-01.md`): emit on completion events only (never PreToolUse in arbitrary sessions), debounce/dedupe wids to one pending chain per work unit, never emit for zero-file chains, cap chain depth so a spawned reviewer cannot mint a new chain without new work. |
 | IPC transport (sockets, pointer files, lockfile mutex, hold-drain) | **KEEP** as plumbing under automation | The verified-good engineering. Fix: `session:started` must not wipe sibling state; `killOrphanDaemons` must match on project identity before killing anything. |
 | External webhook listener + normalizers (github/slack/ci) | **KEEP** → automation, behind the new trust boundary | Authenticated ingress, per-source scoping, no path from inbound payload to mechanical execution. |
 | Time plugin (cron scheduler, active-hours) | **EVALUATE** vs native CronCreate/scheduled agents | Keep only for what native scheduling can't do locally (active-hours windows, offline-local runs). |
