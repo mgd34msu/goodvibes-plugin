@@ -51,6 +51,8 @@ retire sweep migrates `.goodvibes/v2/` up to the top-level paths once v1 is gone
 
 ### 1.3 v2.0 tree after the retire sweep
 
+**The `v1` git branch is a permanent archive and is NEVER deleted, by Mike's explicit direction (2026-07-02)** — the sweep below is a commit on the v2/main line only; the complete v1 plugin remains forever recoverable at the `v1` branch.
+
 Delete `plugins/goodvibes/` wholesale (all six engines, prompt chain, output styles, registry
 pipeline, broken installers, `bin/`, root `src/` placeholders per plan §10). Delete the v1 entry
 from `marketplace.json`. What remains: `packages/{core,intel,analytics,connect}`,

@@ -263801,7 +263801,7 @@ function astGrepLangFor(filePath) {
   return key ? AST_GREP_LANG[key] ?? null : null;
 }
 __name(astGrepLangFor, "astGrepLangFor");
-async function astPatternSpans(filePath, original, pattern, languageOverride) {
+async function astPatternSpans(filePath, original, pattern, replaceTemplate, languageOverride) {
   const napi = await loadAstGrep();
   if (!napi) {
     return {
@@ -263823,12 +263823,31 @@ async function astPatternSpans(filePath, original, pattern, languageOverride) {
     }
     const root = napi.parse(langEnum, norm);
     const matches = root.root().findAll(toLf(pattern));
+    const offsetOf = /* @__PURE__ */ __name((p) => (normLineStarts[p.line] ?? 0) + p.column, "offsetOf");
+    const substitute2 = /* @__PURE__ */ __name((m) => toLf(replaceTemplate).replace(
+      /\$\$\$([A-Za-z_][A-Za-z0-9_]*)|\$([A-Za-z_][A-Za-z0-9_]*)/g,
+      (raw, multi, single) => {
+        if (multi !== void 0) {
+          const nodes = m.getMultipleMatches(multi);
+          if (nodes.length === 0) return "";
+          const start = offsetOf(nodes[0].range().start);
+          const end = offsetOf(nodes[nodes.length - 1].range().end);
+          return norm.slice(start, end);
+        }
+        const node = single !== void 0 ? m.getMatch(single) : null;
+        return node ? node.text() : raw;
+      }
+    ), "substitute");
     const spans = [];
     for (const m of matches) {
       const r = m.range().start;
       const normStart = (normLineStarts[r.line] ?? 0) + r.column;
       const normEnd = normStart + toLf(m.text()).length;
-      spans.push({ start: map2[normStart] ?? normStart, end: map2[normEnd] ?? normEnd });
+      spans.push({
+        start: map2[normStart] ?? normStart,
+        end: map2[normEnd] ?? normEnd,
+        replacement: substitute2(m)
+      });
     }
     return { spans, available: true };
   } catch (err) {
@@ -263850,9 +263869,11 @@ function selectSpans(spans, occurrence) {
 __name(selectSpans, "selectSpans");
 function applySpans(original, spans, replace) {
   const eol = detectEol(original);
-  const replacement = toLf(replace).replace(/\n/g, eol);
+  const render = /* @__PURE__ */ __name((text) => toLf(text).replace(/\n/g, eol), "render");
+  const defaultReplacement = render(replace);
   let out = original;
   for (const span of [...spans].sort((a, b) => b.start - a.start)) {
+    const replacement = span.replacement !== void 0 ? render(span.replacement) : defaultReplacement;
     out = out.slice(0, span.start) + replacement + out.slice(span.end);
   }
   return out;
@@ -263870,7 +263891,7 @@ async function computeEdit(content, req) {
     }
     spans = astMatchSpans(req.filePath, content, req.find);
   } else if (req.mode === "ast_pattern") {
-    const result = await astPatternSpans(req.filePath, content, req.find, req.language);
+    const result = await astPatternSpans(req.filePath, content, req.find, req.replace, req.language);
     if (!result.available) {
       return { status: "error", matchCount: 0, error: result.reason };
     }

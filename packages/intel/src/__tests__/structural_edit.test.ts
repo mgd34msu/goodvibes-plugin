@@ -10,6 +10,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { createRequire } from 'node:module';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { getStatePath } from '@goodvibes/core/config';
@@ -254,8 +255,17 @@ describe('structural_edit — token expiry (10-minute TTL)', () => {
   });
 });
 
-describe('structural_edit — ast_pattern degrades honestly when @ast-grep/napi is absent', () => {
-  it('reports the entry as error with an "unavailable" message, not a crash', async () => {
+describe('structural_edit — ast_pattern behavior tracks @ast-grep/napi availability', () => {
+  const astGrepAvailable = (() => {
+    try {
+      createRequire(import.meta.url).resolve('@ast-grep/napi');
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+
+  it.runIf(!astGrepAvailable)('degrades honestly with an "unavailable" error, not a crash, when absent', async () => {
     await writeFile(dir, 'g.ts', 'console.log(1);\n');
     const preview = expectSuccess<{ entries: Record<string, { status: string; error: string | null }>; summary: { error: number; ready: number } }>(
       await call({
@@ -268,6 +278,29 @@ describe('structural_edit — ast_pattern degrades honestly when @ast-grep/napi 
     expect(preview.data!.summary.ready).toBe(0);
     expect(preview.data!.entries.p.status).toBe('error');
     expect(preview.data!.entries.p.error).toMatch(/unavailable|not installed/i);
+  });
+
+  it.runIf(astGrepAvailable)('matches and rewrites structurally when installed (full round trip)', async () => {
+    await writeFile(dir, 'g.ts', 'console.log(1);\nconsole.log(a, b);\nother(2);\n');
+    const preview = expectSuccess<{ preview_token: string; entries: Record<string, { status: string; match_count: number }>; summary: { ready: number } }>(
+      await call({
+        action: 'preview',
+        base_path: dir,
+        match: { mode: 'ast_pattern' },
+        edits: [{ id: 'p', path: 'g.ts', find: 'console.log($$$A)', replace: 'logger.info($$$A)', occurrence: 'all' }],
+      }),
+    );
+    expect(preview.data!.summary.ready).toBe(1);
+    expect(preview.data!.entries.p.status).toBe('ready');
+    expect(preview.data!.entries.p.match_count).toBe(2);
+    const apply = expectSuccess<{ entries: Record<string, { status: string }> }>(
+      await call({ action: 'apply', preview_token: preview.data!.preview_token }),
+    );
+    expect(apply.data!.entries.p.status).toBe('applied');
+    const after = await fs.readFile(path.join(dir, 'g.ts'), 'utf8');
+    expect(after).toContain('logger.info(1);');
+    expect(after).toContain('logger.info(a, b);');
+    expect(after).toContain('other(2);');
   });
 });
 

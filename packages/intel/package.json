@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@ast-grep/napi": "0.40.5",
     "@goodvibes/core": "*",
     "@modelcontextprotocol/sdk": "^1.12.1",
     "@vscode/ripgrep": "1.15.14",

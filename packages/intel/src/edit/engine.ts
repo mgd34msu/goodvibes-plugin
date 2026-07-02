@@ -34,10 +34,13 @@ export type EditMatchMode = 'exact' | 'ast' | 'ast_pattern';
 /** Which matched occurrences an entry replaces. */
 export type Occurrence = 'first' | 'last' | 'all' | number;
 
-/** A half-open character span `[start, end)` in the ORIGINAL file content. */
+/** A half-open character span `[start, end)` in the ORIGINAL file content.
+ *  `replacement`, when present, overrides the entry-level replace template —
+ *  ast_pattern uses it to carry per-match metavariable substitutions. */
 interface Span {
   start: number;
   end: number;
+  replacement?: string;
 }
 
 /** The result of computing one entry's edit against a file's current content. */
@@ -216,8 +219,19 @@ function astMatchSpans(filePath: string, original: string, find: string): Span[]
  * computed specifier keeps `import()` dynamic; a load failure returns null so
  * `ast_pattern` degrades to an honest error instead of crashing the server.
  */
+interface SgPos {
+  line: number;
+  column: number;
+}
+interface SgNodeLike {
+  range: () => { start: SgPos; end: SgPos };
+  text: () => string;
+  getMatch: (mvar: string) => SgNodeLike | null;
+  getMultipleMatches: (mvar: string) => SgNodeLike[];
+}
+
 async function loadAstGrep(): Promise<{
-  parse: (lang: unknown, src: string) => { root: () => { findAll: (p: string) => Array<{ range: () => { start: { line: number; column: number } }; text: () => string }> } };
+  parse: (lang: unknown, src: string) => { root: () => { findAll: (p: string) => SgNodeLike[] } };
   Lang: Record<string, unknown>;
 } | null> {
   try {
@@ -264,6 +278,7 @@ async function astPatternSpans(
   filePath: string,
   original: string,
   pattern: string,
+  replaceTemplate: string,
   languageOverride?: string,
 ): Promise<{ spans: Span[]; available: boolean; reason?: string }> {
   const napi = await loadAstGrep();
@@ -293,12 +308,38 @@ async function astPatternSpans(
     }
     const root = napi.parse(langEnum, norm);
     const matches = root.root().findAll(toLf(pattern));
+    const offsetOf = (p: SgPos): number => (normLineStarts[p.line] ?? 0) + p.column;
+
+    // Substitute $NAME / $$$NAME metavariables in the replacement template with
+    // each match's captured source text. Multi captures slice the normalized
+    // source between the first and last captured node, preserving the original
+    // separators. Unresolved tokens are left verbatim.
+    const substitute = (m: SgNodeLike): string =>
+      toLf(replaceTemplate).replace(
+        /\$\$\$([A-Za-z_][A-Za-z0-9_]*)|\$([A-Za-z_][A-Za-z0-9_]*)/g,
+        (raw, multi: string | undefined, single: string | undefined) => {
+          if (multi !== undefined) {
+            const nodes = m.getMultipleMatches(multi);
+            if (nodes.length === 0) return '';
+            const start = offsetOf(nodes[0].range().start);
+            const end = offsetOf(nodes[nodes.length - 1].range().end);
+            return norm.slice(start, end);
+          }
+          const node = single !== undefined ? m.getMatch(single) : null;
+          return node ? node.text() : raw;
+        },
+      );
+
     const spans: Span[] = [];
     for (const m of matches) {
       const r = m.range().start;
       const normStart = (normLineStarts[r.line] ?? 0) + r.column;
       const normEnd = normStart + toLf(m.text()).length;
-      spans.push({ start: map[normStart] ?? normStart, end: map[normEnd] ?? normEnd });
+      spans.push({
+        start: map[normStart] ?? normStart,
+        end: map[normEnd] ?? normEnd,
+        replacement: substitute(m),
+      });
     }
     return { spans, available: true };
   } catch (err) {
@@ -324,9 +365,11 @@ function selectSpans(spans: Span[], occurrence: Occurrence): Span[] {
  *  offsets stay valid. The replacement's newlines are rendered in the file's EOL. */
 function applySpans(original: string, spans: Span[], replace: string): string {
   const eol = detectEol(original);
-  const replacement = toLf(replace).replace(/\n/g, eol);
+  const render = (text: string): string => toLf(text).replace(/\n/g, eol);
+  const defaultReplacement = render(replace);
   let out = original;
   for (const span of [...spans].sort((a, b) => b.start - a.start)) {
+    const replacement = span.replacement !== undefined ? render(span.replacement) : defaultReplacement;
     out = out.slice(0, span.start) + replacement + out.slice(span.end);
   }
   return out;
@@ -361,7 +404,7 @@ export async function computeEdit(content: string, req: EditRequest): Promise<Co
     }
     spans = astMatchSpans(req.filePath, content, req.find);
   } else if (req.mode === 'ast_pattern') {
-    const result = await astPatternSpans(req.filePath, content, req.find, req.language);
+    const result = await astPatternSpans(req.filePath, content, req.find, req.replace, req.language);
     if (!result.available) {
       return { status: 'error', matchCount: 0, error: result.reason };
     }
