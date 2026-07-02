@@ -46,6 +46,10 @@ inputSchema:
         max_tokens:
           type: ["integer", "null"]
           description: Maximum tokens — placeholder for future budget engine.
+        skip_permissions:
+          type: boolean
+          default: false
+          description: Pass --dangerously-skip-permissions to the spawned CLI (claude provider only). Default false — the spawned session keeps its normal permission prompts.
         background:
           type: boolean
           description: Run in background (non-blocking). Default true in main conversation, false in subagent context.

@@ -51,15 +51,23 @@ vi.mock('../../state/dossier.js', () => ({
   })),
 }));
 
-// Mock PrecisionRuntime to return null (graceful degradation path)
-vi.mock('../../state/precision-runtime.js', () => ({
-  PrecisionRuntime: {
-    get: vi.fn().mockReturnValue(null),
-    resetInstance: vi.fn(),
-  },
-}));
+// Mock PrecisionRuntime to return null (graceful degradation path).
+// Partial mock via importOriginal: state/index.ts re-exports extractMetadata,
+// extractCacheHit, and extractCacheInfo from this module, so those exports
+// must stay defined or module collection fails.
+vi.mock('../../state/precision-runtime.js', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    PrecisionRuntime: {
+      get: vi.fn().mockReturnValue(null),
+      resetInstance: vi.fn(),
+    },
+  };
+});
 
-// Mock ProjectIndex singleton
+// Mock ProjectIndex singleton. Must also provide the `projectIndex` export
+// (re-exported by state/index.ts) or module collection fails.
 vi.mock('../../state/project-index.js', () => ({
   ProjectIndex: {
     getInstance: vi.fn().mockReturnValue({
@@ -68,6 +76,11 @@ vi.mock('../../state/project-index.js', () => ({
       getTypeCounts: vi.fn().mockReturnValue({}),
     }),
     resetInstance: vi.fn(),
+  },
+  projectIndex: {
+    load: vi.fn().mockResolvedValue(undefined),
+    getFiles: vi.fn().mockReturnValue([]),
+    getTypeCounts: vi.fn().mockReturnValue({}),
   },
 }));
 
@@ -130,11 +143,17 @@ describe('generateAgentId', () => {
 });
 
 describe('buildClaudeCommand', () => {
-  it('should include --print and --dangerously-skip-permissions', () => {
+  it('should include --print and omit --dangerously-skip-permissions by default', () => {
     const [exe, args] = buildClaudeCommand();
     expect(exe).toBe('claude');
     expect(args).toContain('--print');
+    expect(args).not.toContain('--dangerously-skip-permissions');
+  });
+
+  it('should include --dangerously-skip-permissions only when skipPermissions is true', () => {
+    const [, args] = buildClaudeCommand(undefined, undefined, true);
     expect(args).toContain('--dangerously-skip-permissions');
+    expect(args).toContain('--print');
   });
 
   it('should include --max-turns with default value', () => {
@@ -518,6 +537,26 @@ describe('handlePrecisionAgent background mode', () => {
     expect(spawnArgs).toContain('opus');
     // Prompt must NOT be in args (passes via stdin)
     expect(spawnArgs).not.toContain('analyze security vulnerabilities in the codebase');
+  });
+
+  it('should not pass --dangerously-skip-permissions to spawn by default', async () => {
+    const result = await handlePrecisionAgent({
+      prompt: 'task',
+      options: { dossier: { include: false } },
+    });
+    expectSuccess(result);
+    const [, spawnArgs] = mockProcessManagerSpawn.mock.calls[0];
+    expect(spawnArgs).not.toContain('--dangerously-skip-permissions');
+  });
+
+  it('should pass --dangerously-skip-permissions to spawn when skip_permissions is true', async () => {
+    const result = await handlePrecisionAgent({
+      prompt: 'task',
+      options: { skip_permissions: true, dossier: { include: false } },
+    });
+    expectSuccess(result);
+    const [, spawnArgs] = mockProcessManagerSpawn.mock.calls[0];
+    expect(spawnArgs).toContain('--dangerously-skip-permissions');
   });
 
   it('should include hint in response', async () => {

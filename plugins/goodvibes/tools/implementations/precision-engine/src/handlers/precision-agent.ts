@@ -80,6 +80,8 @@ export interface AgentOptions {
   model?: string;
   /** Provider-specific CLI flags passed through as-is. */
   cli_flags?: Record<string, unknown>;
+  /** Pass --dangerously-skip-permissions to the spawned CLI (claude only). Default false. */
+  skip_permissions?: boolean;
   /** Maximum cost USD — placeholder for future budget engine. */
   max_cost?: number | null;
   /** Maximum tokens — placeholder for future budget engine. */
@@ -272,22 +274,25 @@ export function buildGenericCommand(
 
 /**
  * Build the Claude CLI command and arguments array.
- * Requires --print for headless mode, --dangerously-skip-permissions to prevent stalling.
+ * Requires --print for headless mode. --dangerously-skip-permissions is added
+ * only when skipPermissions is true (consent default: false).
  * Prompt is NOT included in args — pass via stdin to avoid ARG_MAX limits.
  * @param model - Model override (e.g. "sonnet", "opus")
  * @param cliFlags - Additional CLI flags
+ * @param skipPermissions - Pass --dangerously-skip-permissions (default false)
  * @returns [executable, args[]] tuple
  */
 export function buildClaudeCommand(
   model?: string,
-  cliFlags?: Record<string, unknown>
+  cliFlags?: Record<string, unknown>,
+  skipPermissions = false
 ): [string, string[]] {
-  return buildGenericCommand('claude', model, cliFlags, [
-    '--print',
-    '--dangerously-skip-permissions',
-    '--max-turns',
-    String(CLAUDE_DEFAULT_MAX_TURNS),
-  ]);
+  const baseArgs = ['--print'];
+  if (skipPermissions) {
+    baseArgs.push('--dangerously-skip-permissions');
+  }
+  baseArgs.push('--max-turns', String(CLAUDE_DEFAULT_MAX_TURNS));
+  return buildGenericCommand('claude', model, cliFlags, baseArgs);
 }
 
 /**
@@ -328,16 +333,18 @@ export function buildCodexCommand(
  * @param provider - Provider identifier
  * @param model - Optional model override
  * @param cliFlags - Optional passthrough CLI flags
+ * @param skipPermissions - Pass --dangerously-skip-permissions (claude only, default false)
  * @returns [executable, args[]] tuple
  */
 export function buildCommand(
   provider: Provider,
   model?: string,
-  cliFlags?: Record<string, unknown>
+  cliFlags?: Record<string, unknown>,
+  skipPermissions = false
 ): [string, string[]] {
   switch (provider) {
     case 'claude':
-      return buildClaudeCommand(model, cliFlags);
+      return buildClaudeCommand(model, cliFlags, skipPermissions);
     case 'gemini':
       return buildGeminiCommand(model, cliFlags);
     case 'codex':
@@ -485,7 +492,7 @@ export const handlePrecisionAgent: ToolHandler = async (args) => {
   // ─── Build Provider Command ──────────────────────────────────────────────
   // Pass the resolved `model` (not raw options.model) so --model is always set explicitly.
   // Prompt is passed via stdin to avoid ARG_MAX OS limits on large prompts.
-  const [executable, cmdArgs] = buildCommand(provider, model, cliFlags);
+  const [executable, cmdArgs] = buildCommand(provider, model, cliFlags, options.skip_permissions === true);
 
   logger.debug('[precision_agent] Spawning agent', {
     agentId,

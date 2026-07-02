@@ -79,7 +79,7 @@ inputSchema:
           description: Output verbosity
         include_line_numbers:
           type: boolean
-          default: true
+          default: false
           description: Include line numbers
         include_metadata:
           type: boolean

@@ -349,7 +349,7 @@ export const precisionGrepSchema: Tool = {
  * IMPORTANT: Handlers must apply schema defaults at runtime, not just define them here.
  * - extract: defaults to "content" if not provided
  * - output.format: defaults to "standard" if not provided
- * - output.include_line_numbers: defaults to true
+ * - output.include_line_numbers: defaults to false
  * - output.include_metadata: defaults to false
  */
 export const precisionReadSchema: Tool = {
@@ -402,7 +402,7 @@ export const precisionReadSchema: Tool = {
         type: 'object',
         properties: {
           format: { type: 'string', enum: ['count_only', 'minimal', 'standard', 'verbose'], default: 'standard', description: 'Output data format' },
-          include_line_numbers: { type: 'boolean', default: true },
+          include_line_numbers: { type: 'boolean', default: false },
           include_metadata: { type: 'boolean', default: false },
           max_per_item: { type: 'integer', minimum: 1, description: 'Max lines per file (alias for max_lines_per_file)' },
           max_lines_per_file: { type: 'integer', minimum: 1, description: 'DEPRECATED: Use max_per_item. Max lines per file' },
@@ -844,6 +844,11 @@ export const precisionAgentSchema: Tool = {
           max_tokens: {
             type: ['integer', 'null'],
             description: 'Maximum tokens — placeholder for future budget engine.',
+          },
+          skip_permissions: {
+            type: 'boolean',
+            default: false,
+            description: 'Pass --dangerously-skip-permissions to the spawned CLI (claude provider only). Default false — the spawned session keeps its normal permission prompts.',
           },
           dossier: {
             type: 'object',

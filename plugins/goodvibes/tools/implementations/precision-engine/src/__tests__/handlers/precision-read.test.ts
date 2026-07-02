@@ -39,11 +39,22 @@ describe('precision_read handler', () => {
       expect(parsed.data.files['file.ts'].content).toContain('line 1');
     });
 
-    it('should include line numbers by default', async () => {
+    it('should exclude line numbers by default (v1.11 default flip)', async () => {
       const result = await handlePrecisionRead({
         files: ['file.ts'],
         extract: 'content',
         output: { mode: 'standard' },
+      });
+
+      const parsed = expectSuccess(result);
+      expect(parsed.data.files['file.ts'].content).not.toMatch(/\d+\s*\|/);
+    });
+
+    it('should include line numbers when explicitly enabled', async () => {
+      const result = await handlePrecisionRead({
+        files: ['file.ts'],
+        extract: 'content',
+        output: { mode: 'standard', include_line_numbers: true },
       });
 
       const parsed = expectSuccess(result);
@@ -562,6 +573,74 @@ describe('precision_read handler', () => {
         const fsType: 'slow' | 'fast' | 'network' | 'local' = fileResult.metadata.filesystem;
         expect(['slow', 'fast', 'network', 'local']).toContain(fsType);
       }
+    });
+  });
+
+  describe('output.max_tokens enforcement for outline/symbols (v1.11)', () => {
+    // ~600 exported functions -> outline/symbols JSON far larger than 8000 tokens.
+    const FN_COUNT = 600;
+    const bigSource = Array.from(
+      { length: FN_COUNT },
+      (_, i) =>
+        'export function generatedFunction_' +
+        String(i).padStart(4, '0') +
+        '(argumentOne: string, argumentTwo: number): string {\n  return argumentOne + String(argumentTwo);\n}'
+    ).join('\n\n');
+
+    interface TruncatableFile {
+      truncated?: boolean;
+      outline?: unknown[];
+      symbols?: unknown[];
+    }
+    interface TruncatableData {
+      files: Record<string, TruncatableFile>;
+      summary: { truncated: boolean };
+    }
+
+    function payloadText(result: { content?: unknown[] }): string {
+      return (result.content?.[0] as { text: string }).text;
+    }
+
+    it('outline extract never returns a payload larger than max_tokens 8000', async () => {
+      await createTestFile('big-outline.ts', bigSource);
+      const result = await handlePrecisionRead({
+        files: [{ path: 'big-outline.ts', force: true }],
+        extract: 'outline',
+        output: { mode: 'standard', max_tokens: 8000 },
+      });
+      const data = expectSuccess<TruncatableData>(result).data!;
+      // Enforced on the final rendered payload: chars / 3.5 must fit the cap.
+      expect(Math.ceil(payloadText(result).length / 3.5)).toBeLessThanOrEqual(8000);
+      // Explicit truncation flags instead of oversized output.
+      expect(data.files['big-outline.ts'].truncated).toBe(true);
+      expect(data.summary.truncated).toBe(true);
+      // Items were trimmed, not deleted wholesale.
+      expect((data.files['big-outline.ts'].outline ?? []).length).toBeGreaterThan(0);
+    });
+
+    it('symbols extract never returns a payload larger than max_tokens 8000', async () => {
+      await createTestFile('big-symbols.ts', bigSource);
+      const result = await handlePrecisionRead({
+        files: [{ path: 'big-symbols.ts', force: true }],
+        extract: 'symbols',
+        output: { mode: 'standard', max_tokens: 8000 },
+      });
+      const data = expectSuccess<TruncatableData>(result).data!;
+      expect(Math.ceil(payloadText(result).length / 3.5)).toBeLessThanOrEqual(8000);
+      expect(data.files['big-symbols.ts'].truncated).toBe(true);
+      expect(data.summary.truncated).toBe(true);
+    });
+
+    it('does not flag truncation when output fits within max_tokens', async () => {
+      await createTestFile('small-outline.ts', SAMPLE_TS_CODE);
+      const result = await handlePrecisionRead({
+        files: ['small-outline.ts'],
+        extract: 'outline',
+        output: { mode: 'standard', max_tokens: 8000 },
+      });
+      const data = expectSuccess<TruncatableData>(result).data!;
+      expect(data.files['small-outline.ts'].truncated).toBeUndefined();
+      expect(data.summary.truncated).toBe(false);
     });
   });
 });

@@ -18,14 +18,43 @@ import { warnDeprecatedParam } from './deprecation.js';
 export type ToolHandler = (args: unknown) => Promise<CallToolResult>;
 
 /**
- * Convert a PrecisionResult to MCP CallToolResult format.
- * @param result - The precision result to convert
- * @returns MCP CallToolResult with JSON-serialized result
+ * Characters-per-token divisor for payload-based token estimates.
+ * Calibrated so meta.token_estimate lands within ~10% of payload length / 3.5.
  */
+const PAYLOAD_CHARS_PER_TOKEN = 3.5;
+
+/**
+ * Estimate token count from the final rendered payload string.
+ * @param payload - The rendered payload string actually returned to the caller
+ * @returns Estimated token count (~3.5 characters per token)
+ */
+export function estimatePayloadTokens(payload: string): number {
+  return Math.ceil(payload.length / PAYLOAD_CHARS_PER_TOKEN);
+}
+
+/**
+ * Render a PrecisionResult to its final compact JSON payload with honest
+ * accounting: meta.token_estimate is recomputed from the rendered payload
+ * string that is actually returned, not from pre-serialization estimates.
+ * @param result - The precision result to render
+ * @returns Compact JSON string with payload-accurate meta.token_estimate
+ */
+function renderPrecisionResult<T>(result: PrecisionResult<T>): string {
+  if (!result.meta) {
+    return JSON.stringify(result);
+  }
+  const provisional = JSON.stringify(result);
+  const honest: PrecisionResult<T> = {
+    ...result,
+    meta: { ...result.meta, token_estimate: estimatePayloadTokens(provisional) },
+  };
+  return JSON.stringify(honest);
+}
+
 export function toCallToolResult<T>(result: PrecisionResult<T>): CallToolResult {
   const content: TextContent = {
     type: 'text',
-    text: JSON.stringify(result, null, 2),
+    text: renderPrecisionResult(result),
   };
 
   return {
@@ -47,7 +76,7 @@ export function toMixedCallToolResult<T>(
 ): CallToolResult {
   const textBlock: TextContent = {
     type: 'text',
-    text: JSON.stringify(result, null, 2),
+    text: renderPrecisionResult(result),
   };
 
   return {

@@ -1444,7 +1444,7 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
     const output: ReadOutput = {
       ...parsedOutput,
       mode: parsedOutput?.format ?? parsedOutput?.mode ?? 'standard',
-      include_line_numbers: parsedOutput?.include_line_numbers ?? true,
+      include_line_numbers: parsedOutput?.include_line_numbers ?? false,
       include_metadata: parsedOutput?.include_metadata ?? false,
     };
 
@@ -1604,6 +1604,52 @@ export const handlePrecisionRead: ToolHandler = async (args: unknown) => {
           summary,
           tokens_used: estimateTokens(JSON.stringify(paginatedResults)),
         };
+    }
+
+    // Enforce output.max_tokens for outline/symbols extract paths (v1.11):
+    // trim item lists and flag truncation instead of returning oversized output.
+    if (output.max_tokens !== undefined && output.max_tokens > 0) {
+      const maxTokens = output.max_tokens;
+      // Reserve headroom for the envelope wrapper (success/meta) added at serialization.
+      const ENVELOPE_OVERHEAD_CHARS = 220;
+      const estimateRendered = (): number =>
+        Math.ceil((JSON.stringify(data).length + ENVELOPE_OVERHEAD_CHARS) / 3.5);
+      let trimmedAny = false;
+      while (estimateRendered() > maxTokens) {
+        // Find the longest outline/symbols item list that still has items.
+        let largest: OutlineItem[] | SymbolInfo[] | undefined;
+        let owner: FileReadResult | undefined;
+        for (const r of paginatedResults) {
+          if (r.outline && r.outline.length > 0 && (!largest || r.outline.length > largest.length)) {
+            largest = r.outline;
+            owner = r;
+          }
+          if (r.symbols && r.symbols.length > 0 && (!largest || r.symbols.length > largest.length)) {
+            largest = r.symbols;
+            owner = r;
+          }
+        }
+        if (!largest || !owner) break; // nothing trimmable (non-outline/symbols payload)
+        // Drop the tail half (at least one item). The arrays are shared by
+        // reference with the already-built response data, so trimming propagates.
+        largest.length = Math.floor(largest.length / 2);
+        owner.truncated = true;
+        trimmedAny = true;
+      }
+      if (trimmedAny) {
+        summary.truncated = true;
+        const dataObj = data as { files?: Record<string, Record<string, unknown>>; tokens_used?: number };
+        if (dataObj.files) {
+          for (const r of paginatedResults) {
+            if (r.truncated && dataObj.files[r.path]) {
+              dataObj.files[r.path].truncated = true;
+            }
+          }
+        }
+        if (dataObj.tokens_used !== undefined) {
+          dataObj.tokens_used = estimateTokens(JSON.stringify(paginatedResults));
+        }
+      }
     }
 
     // Check if any results contain images
