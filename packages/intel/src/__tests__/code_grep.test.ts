@@ -106,7 +106,7 @@ describe('code_grep — F2 cap honesty in every output format', () => {
 
   it('files_only file list is not ceilinged by max_total_matches', async () => {
     const files: Record<string, string> = {};
-    for (let i = 0; i < 15; i++) files[`f${String(i).padStart(2, '0')}.ts`] = Array(20).fill('needle').join('\n');
+    for (let i = 0; i < 15; i++) {files[`f${String(i).padStart(2, '0')}.ts`] = Array(20).fill('needle').join('\n');}
     await writeFiles(dir, files);
     const result = await handler({ queries: [{ id: 'q1', pattern: 'needle' }], base_path: dir, output: { mode: 'files_only' } });
     const data = expectSuccess<GrepData>(result).data!;
@@ -120,7 +120,7 @@ describe('code_grep — F2 cap honesty in every output format', () => {
 
   it('files_only reports effective_caps only when max_results actually trims', async () => {
     const files: Record<string, string> = {};
-    for (let i = 0; i < 15; i++) files[`f${String(i).padStart(2, '0')}.ts`] = Array(20).fill('needle').join('\n');
+    for (let i = 0; i < 15; i++) {files[`f${String(i).padStart(2, '0')}.ts`] = Array(20).fill('needle').join('\n');}
     await writeFiles(dir, files);
     const result = await handler({
       queries: [{ id: 'q1', pattern: 'needle' }],
@@ -162,7 +162,7 @@ describe('code_grep — F2 cap honesty in every output format', () => {
 
   it('deterministic file list membership across identical runs', async () => {
     const files: Record<string, string> = {};
-    for (let i = 0; i < 12; i++) files[`f${String(i).padStart(2, '0')}.ts`] = Array(15).fill('needle').join('\n');
+    for (let i = 0; i < 12; i++) {files[`f${String(i).padStart(2, '0')}.ts`] = Array(15).fill('needle').join('\n');}
     await writeFiles(dir, files);
     const run = async () => {
       const result = await handler({ queries: [{ id: 'q1', pattern: 'needle' }], base_path: dir, output: { mode: 'files_only', max_results: 6 } });
@@ -233,7 +233,7 @@ describe('code_grep — ranked', () => {
     const data = expectSuccess<GrepData>(result).data!;
     const q = data.queries.q1 as unknown as { files: GrepFile[]; ranked_files?: unknown };
     expect(q.ranked_files).toBeUndefined();
-    for (const f of q.files) expect(typeof f.relevance).toBe('number');
+    for (const f of q.files) {expect(typeof f.relevance).toBe('number');}
   });
 });
 

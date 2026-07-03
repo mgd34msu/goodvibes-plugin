@@ -6,8 +6,8 @@ export const budgetTool: ToolModule = {
   engineTool: 'analytics_budget',
   description:
     'Set, check, or clear a session budget (in dollars or tokens). Cost is computed from transcript ' +
-    'actuals using the per-model, cache-aware pricing table. When set, the mini dashboard shows ' +
-    'remaining budget with color-coded thresholds.',
+    'actuals using the per-model, cache-aware pricing table. action="check" reports the amount set, ' +
+    'used, remaining, and percent consumed.',
   inputSchema: {
     type: 'object',
     properties: {

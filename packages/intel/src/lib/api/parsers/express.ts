@@ -61,7 +61,7 @@ export function extractExpressMiddleware(content: string, startIndex: number): s
   const middleware: string[] = [];
 
   const routeStart = content.indexOf('(', startIndex);
-  if (routeStart === -1) return middleware;
+  if (routeStart === -1) {return middleware;}
 
   const lineEnd = content.indexOf('\n', routeStart);
   const routeLine = content.substring(routeStart, lineEnd > -1 ? lineEnd : undefined);

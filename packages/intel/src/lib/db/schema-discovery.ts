@@ -39,7 +39,7 @@ export async function discoverSchema(projectPath: string, source: SchemaSource |
       const content = await fs.readFile(prismaPath, 'utf-8');
       return parsePrismaSchema(content, prismaPath);
     }
-    if (source === 'prisma') return null;
+    if (source === 'prisma') {return null;}
   }
 
   if (source === 'drizzle' || source === 'auto') {
@@ -59,7 +59,7 @@ export async function discoverSchema(projectPath: string, source: SchemaSource |
 
     const globDirs = [path.join(projectPath, 'drizzle'), path.join(projectPath, 'src', 'db'), path.join(projectPath, 'db')];
     for (const dir of globDirs) {
-      if (!(await fileExists(dir))) continue;
+      if (!(await fileExists(dir))) {continue;}
       const entries = await fs.readdir(dir).catch(() => [] as string[]);
       const found = entries.filter((f) => f.endsWith('.schema.ts')).sort()[0];
       if (found) {
@@ -68,7 +68,7 @@ export async function discoverSchema(projectPath: string, source: SchemaSource |
         return parseDrizzleSchema(content, p);
       }
     }
-    if (source === 'drizzle') return null;
+    if (source === 'drizzle') {return null;}
   }
 
   if (source === 'sql' || source === 'auto') {

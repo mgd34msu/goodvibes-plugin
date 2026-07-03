@@ -13,7 +13,7 @@ session that started it.
 | Server | Tools | Role |
 |---|---|---|
 | `intel` | 15 | Structure-aware code search/read + verified static analyzers, plus one preview-gated editor. Read-only except `structural_edit`. |
-| `analytics` | 7 | Token and cost analytics with a tmux TUI dashboard. Observe-and-report only. |
+| `analytics` | 7 | Token and cost analytics with a self-contained HTML report. Observe-and-report only. |
 | `connect` | 3 | Registered HTTP and database access under an explicit trust boundary — the only server that holds credentials. |
 
 Tools surface under the `.mcp.json` server key: `mcp__intel__code_grep`, `mcp__analytics__query`,
@@ -59,7 +59,7 @@ is installed) — no fuzzy, no regex.
 | Tool | What it does |
 |---|---|
 | `query` | Query recorded usage (tokens, calls, timings) from the telemetry store |
-| `dashboard` | Launch / drive the tmux TUI dashboard |
+| `dashboard` | `action: report` writes a self-contained HTML analytics report to `.goodvibes/reports/analytics-report.html`; `doctor` reports host health and orphaned processes; `status` reports engine state |
 | `budget` | Cost against a per-model, cache-aware pricing table |
 | `export` | Export usage data |
 | `tag` | Tag sessions / spans for grouping |
@@ -67,7 +67,8 @@ is installed) — no fuzzy, no regex.
 | `config` | Read analytics configuration |
 
 Analytics is purely additive — it observes and reports token/cost history (which Claude Code does
-not track natively) and never changes model behavior. The tmux dashboard needs `tmux` on PATH.
+not track natively) and never changes model behavior. The HTML report is fully self-contained
+(inline CSS/JS/SVG, no external URLs) and follows the viewer's light/dark preference.
 
 ### connect — 3 tools
 
@@ -143,12 +144,11 @@ Be honest with yourself about the operation:
 - **Agents:** engineer, refutation-reviewer, tester, architect (auto-discovered from `agents/`).
 - **Skills:** intel-mastery, project-onboarding, goodvibes-memory, task-orchestration,
   review-scoring, service-integration (loaded on demand by name).
-- **Hooks:** SessionStart context + open-mode announcement, run-once Setup, SubagentStart pointers,
-  PostToolUseFailure, a warn-first commit guard, and the analytics SessionEnd / Stop / SubagentStop /
-  PreCompact telemetry hooks — all observe/inform only. Each yields silently if the v1 `goodvibes`
-  plugin is installed alongside, so nothing double-fires during the coexistence window. State is
-  written under the namespaced `.goodvibes/` directory so v1 and v2 never fight over the same
-  files.
+- **Hooks:** SessionStart context + open-mode announcement + silent native-dependency
+  relink/background install, Setup (kicks the same background installer on `claude init`),
+  SubagentStart pointers, PostToolUseFailure, a warn-first commit guard, and the analytics
+  SessionEnd / Stop / SubagentStop / PreCompact telemetry hooks — all observe/inform only and
+  fail open. Project state is written under the `.goodvibes/` directory.
 
 ## Install
 
@@ -157,12 +157,14 @@ claude plugin marketplace add mgd34msu/goodvibes-plugin
 claude plugin install goodvibes@goodvibes-market
 ```
 
-Native dependencies are **not** installed automatically — run `/goodvibes:setup` to install
-them with explicit consent, once. Installs land in `~/.claude/.goodvibes/deps/` and survive
-plugin updates: the SessionStart hook relinks them automatically, so setup only comes back if
-an update changes a server's dependency list. Until setup runs, the servers still boot and
-every non-native capability works; native-backed capabilities return an honest
-"run /goodvibes:setup" message rather than crashing. Database drivers for `db_query` are resolved from your target project (per the v1
+Native dependencies install automatically in the background: the first session after install
+spawns a detached installer (nothing blocks, one line tells you it started), installs land in
+`~/.claude/.goodvibes/deps/` and survive plugin updates — the SessionStart hook relinks them
+after an update. If the background install fails, one line points at
+`~/.claude/.goodvibes/deps/install.log` and `/goodvibes:setup`, the manual foreground repair
+path. Until an install lands, the servers still boot and every non-native capability works;
+native-backed capabilities return an honest "run /goodvibes:setup" message rather than
+crashing. Database drivers for `db_query` are resolved from your target project (per the v1
 pattern), so they are not bundled; `db_query` prints an honest install hint when a driver is
 missing.
 

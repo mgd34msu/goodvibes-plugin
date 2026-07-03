@@ -115,7 +115,7 @@ export class RateLimiter {
 
     if (response) {
       const retryAfter = this.parseRetryAfter(response);
-      if (retryAfter) state.retry_after = Date.now() + retryAfter;
+      if (retryAfter) {state.retry_after = Date.now() + retryAfter;}
     }
 
     this.processQueue(domain);
@@ -123,10 +123,10 @@ export class RateLimiter {
 
   private parseRetryAfter(response: Response): number | null {
     const retryAfter = response.headers.get('retry-after');
-    if (!retryAfter) return null;
+    if (!retryAfter) {return null;}
 
     const seconds = parseInt(retryAfter, 10);
-    if (!isNaN(seconds) && seconds > 0) return seconds * 1000;
+    if (!isNaN(seconds) && seconds > 0) {return seconds * 1000;}
 
     const date = new Date(retryAfter);
     const delay = date.getTime() - Date.now();
@@ -172,7 +172,7 @@ export class RateLimiter {
   /** Clear all rate-limit state (rejecting queued waiters). */
   reset(): void {
     for (const state of this.domainStates.values()) {
-      for (const item of state.queue) item.reject(new Error('Rate limiter was reset'));
+      for (const item of state.queue) {item.reject(new Error('Rate limiter was reset'));}
     }
     this.domainStates.clear();
   }
@@ -197,6 +197,6 @@ export async function rateLimitedFetch(
   options?: RequestInit,
   config?: Partial<RateLimitConfig>,
 ): Promise<Response> {
-  if (config) globalRateLimiter.updateConfig(config);
+  if (config) {globalRateLimiter.updateConfig(config);}
   return globalRateLimiter.execute(url, () => fetch(url, options));
 }

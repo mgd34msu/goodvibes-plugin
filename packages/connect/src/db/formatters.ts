@@ -11,8 +11,8 @@ export const MAX_COLUMN_DISPLAY_WIDTH = 50;
 
 /** Format a single cell value for display. */
 export function formatCellValue(value: unknown): string {
-  if (value === null || value === undefined) return 'NULL';
-  if (typeof value === 'object') return JSON.stringify(value);
+  if (value === null || value === undefined) {return 'NULL';}
+  if (typeof value === 'object') {return JSON.stringify(value);}
   return String(value);
 }
 
@@ -22,10 +22,10 @@ export function formatCellValue(value: unknown): string {
  * @param columns - column metadata
  */
 export function formatQueryResult(rows: unknown[], columns: ColumnInfo[]): string {
-  if (rows.length === 0) return '(no rows)';
+  if (rows.length === 0) {return '(no rows)';}
 
   const colWidths: Record<string, number> = {};
-  for (const col of columns) colWidths[col.name] = col.name.length;
+  for (const col of columns) {colWidths[col.name] = col.name.length;}
 
   type RowData = Record<string, unknown>;
 

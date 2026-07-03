@@ -22159,11 +22159,15 @@ async function withBudget(ms, task) {
     budgetHit
   ]);
   if (first !== BUDGET_EXPIRED) {
-    if (timer) clearTimeout(timer);
+    if (timer) {
+      clearTimeout(timer);
+    }
     return { value: first.value, budget_exceeded: false, elapsed_ms: Date.now() - start };
   }
   const value = await taskP;
-  if (timer) clearTimeout(timer);
+  if (timer) {
+    clearTimeout(timer);
+  }
   return { value, budget_exceeded: true, elapsed_ms: Date.now() - start };
 }
 __name(withBudget, "withBudget");
@@ -22177,9 +22181,13 @@ function installProcessHygiene(options = {}) {
   let shuttingDown = false;
   const timers = [];
   function stop() {
-    if (stopped) return;
+    if (stopped) {
+      return;
+    }
     stopped = true;
-    for (const t of timers) clearInterval(t);
+    for (const t of timers) {
+      clearInterval(t);
+    }
     if (watchStdin) {
       try {
         process.stdin.off("end", onStdinEnd);
@@ -22194,7 +22202,9 @@ function installProcessHygiene(options = {}) {
   }
   __name(stop, "stop");
   async function shutdown(reason) {
-    if (shuttingDown) return;
+    if (shuttingDown) {
+      return;
+    }
     shuttingDown = true;
     stop();
     try {
@@ -22214,7 +22224,9 @@ function installProcessHygiene(options = {}) {
   __name(onSignal, "onSignal");
   const ppidTimer = setInterval(() => {
     const p = process.ppid;
-    if (p !== initialPpid || p === 1) void shutdown("reparented");
+    if (p !== initialPpid || p === 1) {
+      void shutdown("reparented");
+    }
   }, ppidPollMs);
   ppidTimer.unref?.();
   timers.push(ppidTimer);
@@ -22247,8 +22259,12 @@ __name(estimatePayloadTokens, "estimatePayloadTokens");
 
 // packages/core/src/shared/utf8.ts
 function utf8SafeSlice(input, maxUnits) {
-  if (maxUnits <= 0) return "";
-  if (input.length <= maxUnits) return input;
+  if (maxUnits <= 0) {
+    return "";
+  }
+  if (input.length <= maxUnits) {
+    return input;
+  }
   let end = maxUnits;
   const lastKept = input.charCodeAt(end - 1);
   if (lastKept >= 55296 && lastKept <= 56319) {
@@ -22304,7 +22320,9 @@ function mergeMoveDir(src, dst) {
 }
 __name(mergeMoveDir, "mergeMoveDir");
 function migrateLegacyStateDir(root) {
-  if (migratedRoots.has(root)) return;
+  if (migratedRoots.has(root)) {
+    return;
+  }
   migratedRoots.add(root);
   try {
     const legacy = path.join(root, "v2");
@@ -22342,7 +22360,9 @@ function readJsonIfPresent(file) {
 }
 __name(readJsonIfPresent, "readJsonIfPresent");
 function mergeBudgets(base, override) {
-  if (!override || typeof override !== "object") return base;
+  if (!override || typeof override !== "object") {
+    return base;
+  }
   const o = override;
   const pick2 = /* @__PURE__ */ __name((k) => typeof o[k] === "number" && Number.isFinite(o[k]) && o[k] > 0 ? o[k] : base[k], "pick");
   return {
@@ -22360,7 +22380,9 @@ function loadConfig(cwd = process.cwd()) {
   const projFile = projectConfigPath(cwd);
   const userFile = userConfigPath();
   const cacheKey = `${userFile}::${projFile}`;
-  if (cached2 && cached2.key === cacheKey) return cached2.value;
+  if (cached2 && cached2.key === cacheKey) {
+    return cached2.value;
+  }
   const user = readJsonIfPresent(userFile);
   const project = readJsonIfPresent(projFile);
   const merged = { ...DEFAULT_CONFIG, ...user, ...project };
@@ -22394,7 +22416,9 @@ function errorEnvelope(error2, meta2 = {}) {
 }
 __name(errorEnvelope, "errorEnvelope");
 function renderEnvelope(env) {
-  if (!env.meta) return JSON.stringify(env);
+  if (!env.meta) {
+    return JSON.stringify(env);
+  }
   const provisional = JSON.stringify(env);
   const honest = {
     ...env,
@@ -22525,43 +22549,84 @@ function isEnvRef(value) {
 }
 __name(isEnvRef, "isEnvRef");
 function resolveSecretValue(value) {
-  if (value === void 0) return void 0;
-  if (typeof value === "string") return value;
-  if (isEnvRef(value)) return process.env[value.$env];
+  if (value === void 0) {
+    return void 0;
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  if (isEnvRef(value)) {
+    return process.env[value.$env];
+  }
   return void 0;
 }
 __name(resolveSecretValue, "resolveSecretValue");
 function resolveAuthConfig(auth) {
   const resolved = { type: auth.type };
-  if (auth.token !== void 0) resolved.token = resolveSecretValue(auth.token);
-  if (auth.username !== void 0) resolved.username = resolveSecretValue(auth.username);
-  if (auth.password !== void 0) resolved.password = resolveSecretValue(auth.password);
-  if (auth.key !== void 0) resolved.key = resolveSecretValue(auth.key);
-  if (auth.client_id !== void 0) resolved.client_id = resolveSecretValue(auth.client_id);
-  if (auth.client_secret !== void 0)
+  if (auth.token !== void 0) {
+    resolved.token = resolveSecretValue(auth.token);
+  }
+  if (auth.username !== void 0) {
+    resolved.username = resolveSecretValue(auth.username);
+  }
+  if (auth.password !== void 0) {
+    resolved.password = resolveSecretValue(auth.password);
+  }
+  if (auth.key !== void 0) {
+    resolved.key = resolveSecretValue(auth.key);
+  }
+  if (auth.client_id !== void 0) {
+    resolved.client_id = resolveSecretValue(auth.client_id);
+  }
+  if (auth.client_secret !== void 0) {
     resolved.client_secret = resolveSecretValue(auth.client_secret);
-  if (auth.access_token !== void 0) resolved.access_token = auth.access_token;
-  if (auth.refresh_token !== void 0) resolved.refresh_token = auth.refresh_token;
-  if (auth.header !== void 0) resolved.header = auth.header;
-  if (auth.token_url !== void 0) resolved.token_url = auth.token_url;
-  if (auth.authorize_url !== void 0) resolved.authorize_url = auth.authorize_url;
-  if (auth.redirect_uri !== void 0) resolved.redirect_uri = auth.redirect_uri;
-  if (auth.scopes !== void 0) resolved.scopes = [...auth.scopes];
-  if (auth.expires_at !== void 0) resolved.expires_at = auth.expires_at;
-  if (auth.login_url !== void 0) resolved.login_url = auth.login_url;
-  if (auth.token_path !== void 0) resolved.token_path = auth.token_path;
+  }
+  if (auth.access_token !== void 0) {
+    resolved.access_token = auth.access_token;
+  }
+  if (auth.refresh_token !== void 0) {
+    resolved.refresh_token = auth.refresh_token;
+  }
+  if (auth.header !== void 0) {
+    resolved.header = auth.header;
+  }
+  if (auth.token_url !== void 0) {
+    resolved.token_url = auth.token_url;
+  }
+  if (auth.authorize_url !== void 0) {
+    resolved.authorize_url = auth.authorize_url;
+  }
+  if (auth.redirect_uri !== void 0) {
+    resolved.redirect_uri = auth.redirect_uri;
+  }
+  if (auth.scopes !== void 0) {
+    resolved.scopes = [...auth.scopes];
+  }
+  if (auth.expires_at !== void 0) {
+    resolved.expires_at = auth.expires_at;
+  }
+  if (auth.login_url !== void 0) {
+    resolved.login_url = auth.login_url;
+  }
+  if (auth.token_path !== void 0) {
+    resolved.token_path = auth.token_path;
+  }
   if (auth.headers) {
     resolved.headers = {};
     for (const [key, value] of Object.entries(auth.headers)) {
       const resolvedVal = resolveSecretValue(value);
-      if (resolvedVal !== void 0) resolved.headers[key] = resolvedVal;
+      if (resolvedVal !== void 0) {
+        resolved.headers[key] = resolvedVal;
+      }
     }
   }
   if (auth.login_body) {
     resolved.login_body = {};
     for (const [key, value] of Object.entries(auth.login_body)) {
       const resolvedVal = resolveSecretValue(value);
-      if (resolvedVal !== void 0) resolved.login_body[key] = resolvedVal;
+      if (resolvedVal !== void 0) {
+        resolved.login_body[key] = resolvedVal;
+      }
     }
   }
   return resolved;
@@ -22665,7 +22730,9 @@ __name(addAllowlistHost, "addAllowlistHost");
 async function removeAllowlistHost(hostname) {
   const fetchConfig = { ...getFetchConfig() };
   const before = fetchConfig.allowlist ?? [];
-  if (!before.includes(hostname)) return false;
+  if (!before.includes(hostname)) {
+    return false;
+  }
   fetchConfig.allowlist = before.filter((h) => h !== hostname);
   await saveRegistry(fetchConfig);
   return true;
@@ -22697,7 +22764,9 @@ __name(addConnection, "addConnection");
 async function removeConnection(name) {
   const fetchConfig = { ...getFetchConfig() };
   const connections = { ...fetchConfig.connections ?? {} };
-  if (!(name in connections)) return false;
+  if (!(name in connections)) {
+    return false;
+  }
   delete connections[name];
   fetchConfig.connections = connections;
   await saveRegistry(fetchConfig);
@@ -22706,7 +22775,9 @@ async function removeConnection(name) {
 __name(removeConnection, "removeConnection");
 function getConnectionSummary(name) {
   const conn = getConnection(name);
-  if (!conn) return void 0;
+  if (!conn) {
+    return void 0;
+  }
   return {
     name,
     kind: conn.url_env ? "url_env" : "url",
@@ -22717,7 +22788,9 @@ function getConnectionSummary(name) {
 __name(getConnectionSummary, "getConnectionSummary");
 function getServiceSummary(name) {
   const service = getService(name);
-  if (!service) return void 0;
+  if (!service) {
+    return void 0;
+  }
   return {
     name,
     base_url: service.base_url,
@@ -22741,12 +22814,18 @@ async function resolveService(nameOrUrl) {
   let serviceName;
   let config2;
   config2 = getService(nameOrUrl);
-  if (config2) serviceName = nameOrUrl;
+  if (config2) {
+    serviceName = nameOrUrl;
+  }
   if (!serviceName) {
     serviceName = matchServiceByUrl(nameOrUrl);
-    if (serviceName) config2 = getService(serviceName);
+    if (serviceName) {
+      config2 = getService(serviceName);
+    }
   }
-  if (!serviceName || !config2) return void 0;
+  if (!serviceName || !config2) {
+    return void 0;
+  }
   const rawAuth = await getServiceSecrets(serviceName);
   const auth = rawAuth ? resolveAuthConfig(rawAuth) : void 0;
   return {
@@ -22760,10 +22839,18 @@ __name(resolveService, "resolveService");
 function buildServiceHeaders(service, requestHeaders) {
   const headers = {};
   const globalDefaults = getFetchGlobalDefaults();
-  if (globalDefaults?.headers) Object.assign(headers, globalDefaults.headers);
-  if (globalDefaults?.user_agent) headers["User-Agent"] = globalDefaults.user_agent;
-  if (service?.config.default_headers) Object.assign(headers, service.config.default_headers);
-  if (requestHeaders) Object.assign(headers, requestHeaders);
+  if (globalDefaults?.headers) {
+    Object.assign(headers, globalDefaults.headers);
+  }
+  if (globalDefaults?.user_agent) {
+    headers["User-Agent"] = globalDefaults.user_agent;
+  }
+  if (service?.config.default_headers) {
+    Object.assign(headers, service.config.default_headers);
+  }
+  if (requestHeaders) {
+    Object.assign(headers, requestHeaders);
+  }
   return headers;
 }
 __name(buildServiceHeaders, "buildServiceHeaders");
@@ -22854,7 +22941,9 @@ function buildRequestHeaders(spec, service, autoContentType) {
   if (autoContentType && !hasContentType) {
     headers["Content-Type"] = autoContentType;
   }
-  if (spec.auth) applyRequestAuth(headers, spec.auth);
+  if (spec.auth) {
+    applyRequestAuth(headers, spec.auth);
+  }
   return headers;
 }
 __name(buildRequestHeaders, "buildRequestHeaders");
@@ -22978,15 +23067,21 @@ var RateLimiter = class {
     state.active = Math.max(0, state.active - 1);
     if (response) {
       const retryAfter = this.parseRetryAfter(response);
-      if (retryAfter) state.retry_after = Date.now() + retryAfter;
+      if (retryAfter) {
+        state.retry_after = Date.now() + retryAfter;
+      }
     }
     this.processQueue(domain);
   }
   parseRetryAfter(response) {
     const retryAfter = response.headers.get("retry-after");
-    if (!retryAfter) return null;
+    if (!retryAfter) {
+      return null;
+    }
     const seconds = parseInt(retryAfter, 10);
-    if (!isNaN(seconds) && seconds > 0) return seconds * 1e3;
+    if (!isNaN(seconds) && seconds > 0) {
+      return seconds * 1e3;
+    }
     const date3 = new Date(retryAfter);
     const delay = date3.getTime() - Date.now();
     return delay > 0 ? delay : null;
@@ -23022,7 +23117,9 @@ var RateLimiter = class {
   /** Clear all rate-limit state (rejecting queued waiters). */
   reset() {
     for (const state of this.domainStates.values()) {
-      for (const item of state.queue) item.reject(new Error("Rate limiter was reset"));
+      for (const item of state.queue) {
+        item.reject(new Error("Rate limiter was reset"));
+      }
     }
     this.domainStates.clear();
   }
@@ -23033,7 +23130,9 @@ var RateLimiter = class {
 };
 var globalRateLimiter = new RateLimiter();
 async function rateLimitedFetch(url, options, config2) {
-  if (config2) globalRateLimiter.updateConfig(config2);
+  if (config2) {
+    globalRateLimiter.updateConfig(config2);
+  }
   return globalRateLimiter.execute(url, () => fetch(url, options));
 }
 __name(rateLimitedFetch, "rateLimitedFetch");
@@ -23041,7 +23140,9 @@ __name(rateLimitedFetch, "rateLimitedFetch");
 // packages/connect/src/fetch/auth/static-auth.ts
 function applyBearerAuth(headers, token) {
   const resolved = resolveSecretValue(token);
-  if (!resolved?.trim()) return false;
+  if (!resolved?.trim()) {
+    return false;
+  }
   headers["Authorization"] = `Bearer ${resolved}`;
   return true;
 }
@@ -23049,7 +23150,9 @@ __name(applyBearerAuth, "applyBearerAuth");
 function applyBasicAuth(headers, username, password) {
   const user = resolveSecretValue(username);
   const pass = resolveSecretValue(password);
-  if (!user?.trim() || !pass?.trim()) return false;
+  if (!user?.trim() || !pass?.trim()) {
+    return false;
+  }
   const encoded = Buffer.from(`${user}:${pass}`, "utf-8").toString("base64");
   headers["Authorization"] = `Basic ${encoded}`;
   return true;
@@ -23057,13 +23160,17 @@ function applyBasicAuth(headers, username, password) {
 __name(applyBasicAuth, "applyBasicAuth");
 function applyApiKeyAuth(headers, headerName, key) {
   const resolved = resolveSecretValue(key);
-  if (!resolved?.trim()) return false;
+  if (!resolved?.trim()) {
+    return false;
+  }
   headers[headerName] = resolved;
   return true;
 }
 __name(applyApiKeyAuth, "applyApiKeyAuth");
 function applyCustomHeaders(headers, customHeaders) {
-  if (Object.keys(customHeaders).length === 0) return false;
+  if (Object.keys(customHeaders).length === 0) {
+    return false;
+  }
   let applied = false;
   for (const [key, value] of Object.entries(customHeaders)) {
     const resolved = resolveSecretValue(value);
@@ -23078,16 +23185,24 @@ __name(applyCustomHeaders, "applyCustomHeaders");
 function applyStaticAuth(headers, auth) {
   switch (auth.type) {
     case "bearer":
-      if (!auth.token) return false;
+      if (!auth.token) {
+        return false;
+      }
       return applyBearerAuth(headers, auth.token);
     case "basic":
-      if (!auth.username || !auth.password) return false;
+      if (!auth.username || !auth.password) {
+        return false;
+      }
       return applyBasicAuth(headers, auth.username, auth.password);
     case "api-key":
-      if (!auth.header || !auth.key) return false;
+      if (!auth.header || !auth.key) {
+        return false;
+      }
       return applyApiKeyAuth(headers, auth.header, auth.key);
     case "custom-headers":
-      if (!auth.headers) return false;
+      if (!auth.headers) {
+        return false;
+      }
       return applyCustomHeaders(headers, auth.headers);
     case "none":
       return true;
@@ -23099,7 +23214,9 @@ __name(applyStaticAuth, "applyStaticAuth");
 
 // packages/connect/src/fetch/auth/oauth2-refresh.ts
 function isTokenExpired(auth) {
-  if (!auth.expires_at) return false;
+  if (!auth.expires_at) {
+    return false;
+  }
   const buffer = 60 * 1e3;
   return Date.now() + buffer >= auth.expires_at;
 }
@@ -23163,7 +23280,9 @@ async function refreshAccessToken(auth) {
 __name(refreshAccessToken, "refreshAccessToken");
 async function refreshAndStore(serviceName, currentAuth) {
   const result = await refreshAccessToken(currentAuth);
-  if (!result.success || !result.access_token) return null;
+  if (!result.success || !result.access_token) {
+    return null;
+  }
   const updatedAuth = {
     ...currentAuth,
     access_token: result.access_token,
@@ -23196,7 +23315,9 @@ function resolveLoginBody(body) {
   const resolved = {};
   for (const [key, value] of Object.entries(body)) {
     const resolvedValue = resolveSecretValue(value);
-    if (resolvedValue !== void 0) resolved[key] = resolvedValue;
+    if (resolvedValue !== void 0) {
+      resolved[key] = resolvedValue;
+    }
   }
   return resolved;
 }
@@ -23232,7 +23353,9 @@ async function acquireSessionToken(auth) {
     }
     let expiresAt;
     const expiresIn = extractFromPath(data, "expires_in");
-    if (typeof expiresIn === "number") expiresAt = Date.now() + expiresIn * 1e3;
+    if (typeof expiresIn === "number") {
+      expiresAt = Date.now() + expiresIn * 1e3;
+    }
     return { success: true, token, expires_at: expiresAt };
   } catch (error2) {
     return {
@@ -23244,7 +23367,9 @@ async function acquireSessionToken(auth) {
 __name(acquireSessionToken, "acquireSessionToken");
 async function acquireAndStore(serviceName, currentAuth) {
   const result = await acquireSessionToken(currentAuth);
-  if (!result.success || !result.token) return null;
+  if (!result.success || !result.token) {
+    return null;
+  }
   const updatedAuth = {
     ...currentAuth,
     access_token: result.token,
@@ -23299,7 +23424,9 @@ var CookieJar = class {
   }
   /** Save cookies to disk with 0600 permissions and size-based eviction. */
   async save() {
-    if (!this.dirty) return;
+    if (!this.dirty) {
+      return;
+    }
     const cookiePath = this.getCookiePath();
     const cookieDir = path5.dirname(cookiePath);
     await ensureGitignore(this.projectRoot);
@@ -23323,7 +23450,9 @@ var CookieJar = class {
     this.dirty = false;
   }
   async ensureLoaded() {
-    if (!this.loaded) await this.load();
+    if (!this.loaded) {
+      await this.load();
+    }
   }
   /** Parse Set-Cookie headers and store the cookies. */
   async setCookies(url, setCookieHeaders) {
@@ -23331,7 +23460,9 @@ var CookieJar = class {
     const domain = new URL(url).hostname;
     for (const header of setCookieHeaders) {
       const cookie = this.parseSetCookie(header, domain);
-      if (!cookie) continue;
+      if (!cookie) {
+        continue;
+      }
       this.cookies = this.cookies.filter(
         (c) => !(c.name === cookie.name && c.domain === cookie.domain && c.path === cookie.path)
       );
@@ -23353,15 +23484,23 @@ var CookieJar = class {
     await this.ensureLoaded();
     const wasDirty = this.dirty;
     this.pruneExpired();
-    if (!wasDirty && this.dirty) await this.save();
+    if (!wasDirty && this.dirty) {
+      await this.save();
+    }
     const urlObj = new URL(url);
     const domain = urlObj.hostname;
     const urlPath = urlObj.pathname;
     const isSecure = urlObj.protocol === "https:";
     return this.cookies.filter((cookie) => {
-      if (!this.domainMatches(domain, cookie.domain)) return false;
-      if (!urlPath.startsWith(cookie.path)) return false;
-      if (cookie.secure && !isSecure) return false;
+      if (!this.domainMatches(domain, cookie.domain)) {
+        return false;
+      }
+      if (!urlPath.startsWith(cookie.path)) {
+        return false;
+      }
+      if (cookie.secure && !isSecure) {
+        return false;
+      }
       return true;
     });
   }
@@ -23387,13 +23526,19 @@ var CookieJar = class {
   }
   parseSetCookie(header, defaultDomain) {
     const parts = header.split(";").map((s) => s.trim());
-    if (parts.length === 0) return null;
+    if (parts.length === 0) {
+      return null;
+    }
     const [nameValue, ...attributes] = parts;
     const eqIndex = nameValue.indexOf("=");
-    if (eqIndex < 0) return null;
+    if (eqIndex < 0) {
+      return null;
+    }
     const name = nameValue.slice(0, eqIndex).trim();
     const value = nameValue.slice(eqIndex + 1).trim();
-    if (!name) return null;
+    if (!name) {
+      return null;
+    }
     const cookie = { name, value, domain: defaultDomain, path: "/" };
     for (const attr of attributes) {
       const [attrName, ...attrValueParts] = attr.split("=");
@@ -23413,7 +23558,9 @@ var CookieJar = class {
           break;
         case "expires": {
           const date3 = new Date(attrValue);
-          if (!isNaN(date3.getTime())) cookie.expires = date3.getTime();
+          if (!isNaN(date3.getTime())) {
+            cookie.expires = date3.getTime();
+          }
           break;
         }
         case "max-age": {
@@ -23437,14 +23584,18 @@ var CookieJar = class {
     return cookie;
   }
   domainMatches(hostname, cookieDomain) {
-    if (hostname === cookieDomain) return true;
+    if (hostname === cookieDomain) {
+      return true;
+    }
     return hostname.endsWith("." + cookieDomain);
   }
   pruneExpired() {
     const now = Date.now();
     const before = this.cookies.length;
     this.cookies = this.cookies.filter((c) => !c.expires || c.expires > now);
-    if (this.cookies.length !== before) this.dirty = true;
+    if (this.cookies.length !== before) {
+      this.dirty = true;
+    }
   }
 };
 var globalCookieJar = new CookieJar();
@@ -23490,7 +23641,9 @@ async function applyAuth(headers, url, requestAuth, serviceName) {
         let currentAuth = auth;
         if (isTokenExpired(currentAuth) && canRefreshToken(currentAuth)) {
           const refreshedAuth = await refreshAndStore(serviceName, currentAuth);
-          if (refreshedAuth) currentAuth = refreshedAuth;
+          if (refreshedAuth) {
+            currentAuth = refreshedAuth;
+          }
         }
         if (currentAuth.access_token?.trim()) {
           headers["Authorization"] = `Bearer ${currentAuth.access_token}`;
@@ -23522,22 +23675,32 @@ async function applyAuth(headers, url, requestAuth, serviceName) {
 }
 __name(applyAuth, "applyAuth");
 async function handleAuthFailure(response, serviceName) {
-  if (response.status !== 401) return { retry: false };
-  if (!serviceName) return { retry: false };
+  if (response.status !== 401) {
+    return { retry: false };
+  }
+  if (!serviceName) {
+    return { retry: false };
+  }
   try {
     const auth = await getServiceSecrets(serviceName);
-    if (!auth) return { retry: false };
+    if (!auth) {
+      return { retry: false };
+    }
     if (auth.type === "oauth2") {
       if (canRefreshToken(auth)) {
         const refreshed = await refreshAndStore(serviceName, auth);
-        if (refreshed) return { retry: true };
+        if (refreshed) {
+          return { retry: true };
+        }
       }
       return { retry: false, hint: "needs_browser_auth" };
     }
     if (auth.type === "session") {
       if (canAcquireSession(auth)) {
         const acquired = await acquireAndStore(serviceName, auth);
-        if (acquired) return { retry: true };
+        if (acquired) {
+          return { retry: true };
+        }
       }
       return { retry: false };
     }
@@ -23550,7 +23713,9 @@ __name(handleAuthFailure, "handleAuthFailure");
 async function getAuthStatus(serviceName) {
   try {
     const auth = await getServiceSecrets(serviceName);
-    if (!auth) return "no_auth_configured";
+    if (!auth) {
+      return "no_auth_configured";
+    }
     const hasCredentials = (() => {
       switch (auth.type) {
         case "bearer":
@@ -23571,16 +23736,22 @@ async function getAuthStatus(serviceName) {
           return false;
       }
     })();
-    if (!hasCredentials) return "no_credentials";
+    if (!hasCredentials) {
+      return "no_credentials";
+    }
     if (auth.type === "oauth2") {
       if (isTokenExpired(auth)) {
-        if (canRefreshToken(auth)) return "needs_refresh";
+        if (canRefreshToken(auth)) {
+          return "needs_refresh";
+        }
         return "needs_browser_auth";
       }
     }
     if ("expires_at" in auth && typeof auth.expires_at === "number") {
       if (auth.expires_at < Date.now()) {
-        if (auth.type !== "oauth2" && !("login_url" in auth)) return "expired";
+        if (auth.type !== "oauth2" && !("login_url" in auth)) {
+          return "expired";
+        }
       }
     }
     return "valid";
@@ -23641,17 +23812,23 @@ function isCredentialAttachAllowed(finalUrl, serviceBaseUrl) {
 }
 __name(isCredentialAttachAllowed, "isCredentialAttachAllowed");
 function isMethodAllowed(method, opts) {
-  if (isSafeMethod(method)) return { allowed: true };
+  if (isSafeMethod(method)) {
+    return { allowed: true };
+  }
   const upper = method.toUpperCase();
   if (opts.hasService) {
     const opted = (opts.writeMethods ?? []).map((m) => m.toUpperCase());
-    if (opted.includes(upper)) return { allowed: true };
+    if (opted.includes(upper)) {
+      return { allowed: true };
+    }
     return {
       allowed: false,
       reason: `Method ${upper} is a write and this service is read-only by default. Add ${upper} to the service's write_methods to opt in.`
     };
   }
-  if (opts.mode === "open") return { allowed: true };
+  if (opts.mode === "open") {
+    return { allowed: true };
+  }
   return {
     allowed: false,
     reason: `Method ${upper} is a write to an unregistered URL. Register the target as a service with a write_methods opt-in, or open the trust mode (human-only).`
@@ -23661,9 +23838,13 @@ __name(isMethodAllowed, "isMethodAllowed");
 function collectSecretValues(auth) {
   const out = /* @__PURE__ */ new Set();
   const add = /* @__PURE__ */ __name((v) => {
-    if (typeof v === "string" && v.trim().length >= 4) out.add(v);
+    if (typeof v === "string" && v.trim().length >= 4) {
+      out.add(v);
+    }
   }, "add");
-  if (!auth) return [];
+  if (!auth) {
+    return [];
+  }
   add(auth.token);
   add(auth.key);
   add(auth.password);
@@ -23674,7 +23855,9 @@ function collectSecretValues(auth) {
     add(Buffer.from(`${auth.username}:${auth.password}`, "utf-8").toString("base64"));
   }
   if (auth.headers) {
-    for (const value of Object.values(auth.headers)) add(value);
+    for (const value of Object.values(auth.headers)) {
+      add(value);
+    }
   }
   return [...out];
 }
@@ -23683,16 +23866,24 @@ var REDACTION = "***REDACTED***";
 function redactString(text, secrets) {
   let out = text;
   for (const secret of secrets) {
-    if (!secret) continue;
+    if (!secret) {
+      continue;
+    }
     out = out.split(secret).join(REDACTION);
   }
   return out;
 }
 __name(redactString, "redactString");
 function redactValue(value, secrets) {
-  if (secrets.length === 0) return value;
-  if (typeof value === "string") return redactString(value, secrets);
-  if (Array.isArray(value)) return value.map((v) => redactValue(v, secrets));
+  if (secrets.length === 0) {
+    return value;
+  }
+  if (typeof value === "string") {
+    return redactString(value, secrets);
+  }
+  if (Array.isArray(value)) {
+    return value.map((v) => redactValue(v, secrets));
+  }
   if (value && typeof value === "object") {
     const out = {};
     for (const [k, v] of Object.entries(value)) {
@@ -23737,6 +23928,10 @@ var apiRequestTool = {
             body_base64: {
               type: "string",
               description: "Base64 body (alternate of body_plain; preferred when both present)."
+            },
+            auth: {
+              type: "object",
+              description: 'Per-request auth override, applied to the headers when the request is built. One of: {type:"none"} | {type:"bearer",token} | {type:"basic",username,password} | {type:"api-key",header,key} | {type:"custom-headers",headers}. When the entry names a registered service whose origin matches the final URL, the stored service credential is applied after this override and wins on the same header (usually Authorization).'
             },
             timeout_ms: { type: "number" },
             extract: { type: "string", enum: ["json", "text", "headers", "status"] }
@@ -23923,22 +24118,30 @@ async function runEntry(entry, mode) {
 __name(runEntry, "runEntry");
 function capToBudget(results, mode, maxTokens) {
   const render = /* @__PURE__ */ __name(() => estimatePayloadTokens(JSON.stringify({ mode, results })), "render");
-  if (render() <= maxTokens) return { truncated: false };
+  if (render() <= maxTokens) {
+    return { truncated: false };
+  }
   let trimmedAny = false;
   for (let i = 0; i < 64; i++) {
     const est = render();
-    if (est <= maxTokens) break;
+    if (est <= maxTokens) {
+      break;
+    }
     let pickKey = null;
     let pickLen = 0;
     for (const [key, r2] of Object.entries(results)) {
-      if (r2.body === void 0) continue;
+      if (r2.body === void 0) {
+        continue;
+      }
       const text2 = typeof r2.body === "string" ? r2.body : JSON.stringify(r2.body);
       if (text2.length > pickLen) {
         pickLen = text2.length;
         pickKey = key;
       }
     }
-    if (pickKey === null || pickLen === 0) break;
+    if (pickKey === null || pickLen === 0) {
+      break;
+    }
     const r = results[pickKey];
     const text = typeof r.body === "string" ? r.body : JSON.stringify(r.body);
     const over = est - maxTokens;
@@ -24082,15 +24285,23 @@ async function handleService(args) {
           mode
         });
       case "get": {
-        if (!input.name) return fail("`get` requires a service `name`.");
+        if (!input.name) {
+          return fail("`get` requires a service `name`.");
+        }
         const summary = getServiceSummary(input.name);
-        if (!summary) return fail(`Service "${input.name}" is not registered.`);
+        if (!summary) {
+          return fail(`Service "${input.name}" is not registered.`);
+        }
         const auth_status = await getAuthStatus(input.name);
         return ok({ ...summary, auth_status });
       }
       case "register": {
-        if (!input.name) return fail("`register` requires a service `name`.");
-        if (!input.config?.base_url) return fail("`register` requires `config.base_url`.");
+        if (!input.name) {
+          return fail("`register` requires a service `name`.");
+        }
+        if (!input.config?.base_url) {
+          return fail("`register` requires `config.base_url`.");
+        }
         if (!originValid(input.config.base_url)) {
           return fail(`base_url "${input.config.base_url}" is not a valid absolute URL.`);
         }
@@ -24098,13 +24309,19 @@ async function handleService(args) {
         return ok({ registered: input.name, summary: getServiceSummary(input.name) });
       }
       case "remove": {
-        if (!input.name) return fail("`remove` requires a service `name`.");
+        if (!input.name) {
+          return fail("`remove` requires a service `name`.");
+        }
         const removed = await removeService(input.name);
         return ok({ removed, name: input.name });
       }
       case "set_auth": {
-        if (!input.name) return fail("`set_auth` requires a service `name`.");
-        if (!input.auth) return fail("`set_auth` requires an `auth` config.");
+        if (!input.name) {
+          return fail("`set_auth` requires a service `name`.");
+        }
+        if (!input.auth) {
+          return fail("`set_auth` requires an `auth` config.");
+        }
         await setServiceSecret(input.name, input.auth);
         const auth_status = await getAuthStatus(input.name);
         return ok({ name: input.name, stored: true, auth_status });
@@ -24117,17 +24334,23 @@ async function handleService(args) {
         return ok({ hostname: input.hostname, service: input.name });
       }
       case "allow": {
-        if (!input.hostname) return fail("`allow` requires a `hostname`.");
+        if (!input.hostname) {
+          return fail("`allow` requires a `hostname`.");
+        }
         await addAllowlistHost(input.hostname);
         return ok({ allowlist: getAllowlist() });
       }
       case "unallow": {
-        if (!input.hostname) return fail("`unallow` requires a `hostname`.");
+        if (!input.hostname) {
+          return fail("`unallow` requires a `hostname`.");
+        }
         const removed = await removeAllowlistHost(input.hostname);
         return ok({ removed, allowlist: getAllowlist() });
       }
       case "register_connection": {
-        if (!input.name) return fail("`register_connection` requires a `name`.");
+        if (!input.name) {
+          return fail("`register_connection` requires a `name`.");
+        }
         if (!input.connection || !input.connection.url && !input.connection.url_env) {
           return fail("`register_connection` requires `connection.url` or `connection.url_env`.");
         }
@@ -24135,7 +24358,9 @@ async function handleService(args) {
         return ok({ registered_connection: input.name, summary: getConnectionSummary(input.name) });
       }
       case "remove_connection": {
-        if (!input.name) return fail("`remove_connection` requires a `name`.");
+        if (!input.name) {
+          return fail("`remove_connection` requires a `name`.");
+        }
         const removed = await removeConnection(input.name);
         return ok({ removed, name: input.name });
       }
@@ -24223,7 +24448,9 @@ function parseConnectionUrl(url) {
         password: parsed.password || void 0
       };
     } catch (err) {
-      if (err instanceof Error && err.message.startsWith("Invalid")) throw err;
+      if (err instanceof Error && err.message.startsWith("Invalid")) {
+        throw err;
+      }
       return { type: "unknown", database: "" };
     }
   }
@@ -24243,7 +24470,9 @@ function parseConnectionUrl(url) {
         password: parsed.password || void 0
       };
     } catch (err) {
-      if (err instanceof Error && err.message.startsWith("Invalid")) throw err;
+      if (err instanceof Error && err.message.startsWith("Invalid")) {
+        throw err;
+      }
       return { type: "unknown", database: "" };
     }
   }
@@ -24287,11 +24516,15 @@ function isWriteOperation(query) {
   const normalizedQuery = query.trim().toUpperCase();
   const withoutComments = stripLeadingComments(normalizedQuery);
   for (const keyword of WRITE_KEYWORDS) {
-    if (withoutComments.startsWith(keyword)) return true;
+    if (withoutComments.startsWith(keyword)) {
+      return true;
+    }
   }
   if (withoutComments.startsWith("WITH")) {
     for (const keyword of WRITE_KEYWORDS) {
-      if (getCteEndPattern(keyword).test(withoutComments)) return true;
+      if (getCteEndPattern(keyword).test(withoutComments)) {
+        return true;
+      }
     }
   }
   return false;
@@ -24319,8 +24552,12 @@ function hasLimitClause(query) {
 __name(hasLimitClause, "hasLimitClause");
 function addLimitClause(query, limit) {
   const trimmedQuery = query.trim();
-  if (!/^(SELECT|WITH)/i.test(trimmedQuery)) return trimmedQuery;
-  if (hasLimitClause(trimmedQuery)) return trimmedQuery;
+  if (!/^(SELECT|WITH)/i.test(trimmedQuery)) {
+    return trimmedQuery;
+  }
+  if (hasLimitClause(trimmedQuery)) {
+    return trimmedQuery;
+  }
   const withoutSemicolon = trimmedQuery.replace(/;\s*$/, "");
   return `${withoutSemicolon} LIMIT ${limit}`;
 }
@@ -24329,15 +24566,23 @@ __name(addLimitClause, "addLimitClause");
 // packages/connect/src/db/formatters.ts
 var MAX_COLUMN_DISPLAY_WIDTH = 50;
 function formatCellValue(value) {
-  if (value === null || value === void 0) return "NULL";
-  if (typeof value === "object") return JSON.stringify(value);
+  if (value === null || value === void 0) {
+    return "NULL";
+  }
+  if (typeof value === "object") {
+    return JSON.stringify(value);
+  }
   return String(value);
 }
 __name(formatCellValue, "formatCellValue");
 function formatQueryResult(rows, columns) {
-  if (rows.length === 0) return "(no rows)";
+  if (rows.length === 0) {
+    return "(no rows)";
+  }
   const colWidths = {};
-  for (const col of columns) colWidths[col.name] = col.name.length;
+  for (const col of columns) {
+    colWidths[col.name] = col.name.length;
+  }
   for (const row of rows) {
     const rowObj = row;
     for (const col of columns) {
@@ -24410,7 +24655,9 @@ Hint: A NOT NULL constraint was violated. Provide a value for the required colum
 Hint: The database user lacks permission for this operation.`]
     ];
     for (const [pattern, enhanced] of pgEnhancements) {
-      if (pattern.test(message)) return enhanced;
+      if (pattern.test(message)) {
+        return enhanced;
+      }
     }
     return message;
   }
@@ -24430,11 +24677,15 @@ Hint: The database user lacks permission for this operation.`],
 Hint: The column does not exist. Use 'DESCRIBE table_name' to see columns.`]
     ];
     for (const [pattern, enhanced] of mysqlEnhancements) {
-      if (pattern.test(message)) return enhanced;
+      if (pattern.test(message)) {
+        return enhanced;
+      }
     }
     return message;
   }
-  if (dbType !== "sqlite") return message;
+  if (dbType !== "sqlite") {
+    return message;
+  }
   const enhancements = [
     [/SQLITE_READONLY/i, `${message}
 
@@ -24459,7 +24710,9 @@ Hint: The database file appears corrupted. Restore from a backup.`],
 Hint: Cannot open the database file. Check the path and permissions.`]
   ];
   for (const [pattern, enhanced] of enhancements) {
-    if (pattern.test(message)) return enhanced;
+    if (pattern.test(message)) {
+      return enhanced;
+    }
   }
   return message;
 }
@@ -24480,9 +24733,13 @@ function resolveFromTarget(moduleName) {
 }
 __name(resolveFromTarget, "resolveFromTarget");
 async function dynamicImport(moduleName) {
-  if (moduleName in mockDrivers) return mockDrivers[moduleName];
+  if (moduleName in mockDrivers) {
+    return mockDrivers[moduleName];
+  }
   const resolved = resolveFromTarget(moduleName);
-  if (!resolved) return null;
+  if (!resolved) {
+    return null;
+  }
   try {
     return await import((0, import_url.pathToFileURL)(resolved).href);
   } catch {
@@ -24643,7 +24900,9 @@ __name(logWarn, "logWarn");
 var sqlJsInstance = null;
 function sqlConfig() {
   const dir = typeof __dirname === "string" ? __dirname : "";
-  if (!dir) return {};
+  if (!dir) {
+    return {};
+  }
   const candidates = [
     nodePath.join(dir, "sql-wasm.wasm"),
     nodePath.join(dir, "wasm", "sql-wasm.wasm")
@@ -24658,7 +24917,9 @@ function sqlConfig() {
 }
 __name(sqlConfig, "sqlConfig");
 async function getSqlJs() {
-  if (sqlJsInstance) return sqlJsInstance;
+  if (sqlJsInstance) {
+    return sqlJsInstance;
+  }
   try {
     const initSqlJs = (await import("sql.js")).default;
     sqlJsInstance = await initSqlJs(sqlConfig());
@@ -24719,7 +24980,9 @@ var SqliteConnectionPool = class {
         const keyWaiters = this.waiters.get(key);
         if (keyWaiters) {
           const idx = keyWaiters.indexOf(waiter);
-          if (idx !== -1) keyWaiters.splice(idx, 1);
+          if (idx !== -1) {
+            keyWaiters.splice(idx, 1);
+          }
         }
         reject(new Error(`SQLite connection timeout after ${timeout}ms`));
       }, timeout);
@@ -24736,7 +24999,9 @@ var SqliteConnectionPool = class {
         resolve(immediate);
         return;
       }
-      if (!this.waiters.has(key)) this.waiters.set(key, []);
+      if (!this.waiters.has(key)) {
+        this.waiters.set(key, []);
+      }
       this.waiters.get(key).push(waiter);
     });
   }
@@ -24753,7 +25018,9 @@ var SqliteConnectionPool = class {
     connection.lastUsed = Date.now();
   }
   async saveToFile(connection) {
-    if (connection.filepath === ":memory:" || connection.readonly) return;
+    if (connection.filepath === ":memory:" || connection.readonly) {
+      return;
+    }
     const data = connection.database.export();
     await (0, import_promises.writeFile)(connection.filepath, Buffer.from(data));
   }
@@ -24773,7 +25040,9 @@ var SqliteConnectionPool = class {
       }
     }
     try {
-      if (options.foreignKeys !== false) db.run("PRAGMA foreign_keys = ON");
+      if (options.foreignKeys !== false) {
+        db.run("PRAGMA foreign_keys = ON");
+      }
       db.run("PRAGMA busy_timeout = 5000");
     } catch (err) {
       logWarn("SQLite PRAGMA setup failed", err);
@@ -24824,7 +25093,9 @@ var SqliteConnectionPool = class {
 };
 var poolInstance = null;
 function getConnectionPool() {
-  if (!poolInstance) poolInstance = new SqliteConnectionPool();
+  if (!poolInstance) {
+    poolInstance = new SqliteConnectionPool();
+  }
   return poolInstance;
 }
 __name(getConnectionPool, "getConnectionPool");
@@ -24833,7 +25104,9 @@ async function withConnection(options, callback) {
   const connection = await pool.acquire(options);
   try {
     const result = await callback(connection.database);
-    if (!options.readonly) await pool.saveToFile(connection);
+    if (!options.readonly) {
+      await pool.saveToFile(connection);
+    }
     return result;
   } finally {
     pool.release(connection);
@@ -24843,11 +25116,21 @@ __name(withConnection, "withConnection");
 
 // packages/connect/src/db/executors/sqlite.ts
 function inferSqliteType(value) {
-  if (value === null) return "null";
-  if (typeof value === "number") return Number.isInteger(value) ? "integer" : "real";
-  if (typeof value === "string") return "text";
-  if (typeof value === "boolean") return "integer";
-  if (Buffer.isBuffer(value)) return "blob";
+  if (value === null) {
+    return "null";
+  }
+  if (typeof value === "number") {
+    return Number.isInteger(value) ? "integer" : "real";
+  }
+  if (typeof value === "string") {
+    return "text";
+  }
+  if (typeof value === "boolean") {
+    return "integer";
+  }
+  if (Buffer.isBuffer(value)) {
+    return "blob";
+  }
   return "unknown";
 }
 __name(inferSqliteType, "inferSqliteType");
@@ -24869,10 +25152,14 @@ async function executeSqlite(connectionInfo, query, params = [], readonly2 = tru
       const isSelect = isReadOnlyQuery(query);
       if (isSelect) {
         const stmt = db.prepare(query);
-        if (params.length > 0) stmt.bind(params);
+        if (params.length > 0) {
+          stmt.bind(params);
+        }
         const rows = [];
         const columnNames = stmt.getColumnNames();
-        while (stmt.step()) rows.push(stmt.getAsObject());
+        while (stmt.step()) {
+          rows.push(stmt.getAsObject());
+        }
         stmt.free();
         const columns = [];
         if (rows.length > 0) {
@@ -24880,7 +25167,9 @@ async function executeSqlite(connectionInfo, query, params = [], readonly2 = tru
             columns.push({ name: key, type: inferSqliteType(value) });
           }
         } else if (columnNames.length > 0) {
-          for (const name of columnNames) columns.push({ name, type: "unknown" });
+          for (const name of columnNames) {
+            columns.push({ name, type: "unknown" });
+          }
         }
         return { rows, columns };
       }
@@ -24895,7 +25184,9 @@ async function executeSqlite(connectionInfo, query, params = [], readonly2 = tru
       return { rows: [], columns: [], changes, lastInsertRowid };
     });
   } catch (cause) {
-    if (cause instanceof ConnectionError || cause instanceof QueryError) throw cause;
+    if (cause instanceof ConnectionError || cause instanceof QueryError) {
+      throw cause;
+    }
     throw new QueryError(
       `SQLite query failed: ${cause instanceof Error ? cause.message : String(cause)}`,
       cause
@@ -24966,7 +25257,9 @@ function resolveTarget(input, mode) {
 __name(resolveTarget, "resolveTarget");
 function capRows(data, maxTokens) {
   const render = /* @__PURE__ */ __name(() => estimatePayloadTokens(JSON.stringify(data)), "render");
-  if (render() <= maxTokens) return false;
+  if (render() <= maxTokens) {
+    return false;
+  }
   let trimmed = false;
   while (data.rows.length > 0 && render() > maxTokens) {
     const drop = Math.max(1, Math.floor(data.rows.length * 0.1));
@@ -24986,7 +25279,9 @@ async function handleDbQuery(args) {
     return fail("db_query requires a `query` string.");
   }
   const target = resolveTarget(input, mode);
-  if ("error" in target) return fail(target.error);
+  if ("error" in target) {
+    return fail(target.error);
+  }
   const connectionInfo = parseConnectionUrl(target.url);
   if (connectionInfo.type === "unknown") {
     return fail(
@@ -25043,7 +25338,9 @@ async function handleDbQuery(args) {
     const msg = error2 instanceof Error ? error2.message : String(error2);
     return { error: enhanceDatabaseError(msg, connectionInfo.type) };
   });
-  if ("error" in outcome) return fail(outcome.error);
+  if ("error" in outcome) {
+    return fail(outcome.error);
+  }
   const { value } = outcome;
   const { executionResult, queryToExecute, truncated, explainOutput } = value;
   if (format === "table") {
@@ -25061,12 +25358,16 @@ Last insert row ID: ${executionResult.lastInsertRowid}`;
       outputText = `${tableOutput}
 
 ${executionResult.rows.length} row(s) returned`;
-      if (truncated) outputText += ` (limited to ${limit})`;
+      if (truncated) {
+        outputText += ` (limited to ${limit})`;
+      }
     }
-    if (explainOutput) outputText += `
+    if (explainOutput) {
+      outputText += `
 
 EXPLAIN:
 ${explainOutput}`;
+    }
     const env2 = successEnvelope(
       {
         database_type: connectionInfo.type,
@@ -25089,12 +25390,16 @@ ${explainOutput}`;
     query_executed: queryToExecute,
     truncated
   };
-  if (executionResult.changes !== void 0) data.changes = executionResult.changes;
+  if (executionResult.changes !== void 0) {
+    data.changes = executionResult.changes;
+  }
   if (executionResult.lastInsertRowid !== void 0) {
     const rid = executionResult.lastInsertRowid;
     data.last_insert_rowid = typeof rid === "bigint" ? Number(rid) : rid;
   }
-  if (explainOutput) data.explain_output = explainOutput;
+  if (explainOutput) {
+    data.explain_output = explainOutput;
+  }
   const capped = capRows(data, maxTokens);
   const env = successEnvelope(data, {
     mode,

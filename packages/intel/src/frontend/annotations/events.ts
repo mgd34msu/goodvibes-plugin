@@ -54,12 +54,12 @@ function isEventProp(prop: string): boolean {
 
 /** Resolve a handler expression to its function body (inline or named in-file). */
 function resolveHandlerBody(handlerExpr: ts.Expression, sourceFile: ts.SourceFile): ts.Node | null {
-  if (ts.isArrowFunction(handlerExpr) || ts.isFunctionExpression(handlerExpr)) return handlerExpr.body;
+  if (ts.isArrowFunction(handlerExpr) || ts.isFunctionExpression(handlerExpr)) {return handlerExpr.body;}
   if (ts.isIdentifier(handlerExpr)) {
     const handlerName = handlerExpr.getText(sourceFile);
     let foundBody: ts.Node | null = null;
     function find(node: ts.Node): void {
-      if (foundBody) return;
+      if (foundBody) {return;}
       if (ts.isFunctionDeclaration(node) && node.name?.getText(sourceFile) === handlerName && node.body) {
         foundBody = node.body;
         return;
@@ -85,7 +85,7 @@ function resolveHandlerBody(handlerExpr: ts.Expression, sourceFile: ts.SourceFil
 function containsStopPropagation(node: ts.Node, sourceFile: ts.SourceFile): boolean {
   let found = false;
   function visit(n: ts.Node): void {
-    if (found) return;
+    if (found) {return;}
     if (ts.isCallExpression(n)) {
       const callText = n.expression.getText(sourceFile);
       if (
@@ -125,7 +125,7 @@ export function annotateEvents(componentNode: ts.Node, sourceFile: ts.SourceFile
     for (const attr of attrsHost.attributes.properties) {
       if (ts.isJsxAttribute(attr) && attr.name && attr.initializer) {
         const prop = attr.name.getText(sourceFile);
-        if (!isEventProp(prop)) continue;
+        if (!isEventProp(prop)) {continue;}
         let stops = false;
         if (ts.isJsxExpression(attr.initializer) && attr.initializer.expression) {
           const expr = attr.initializer.expression;
@@ -145,7 +145,7 @@ export function annotateEvents(componentNode: ts.Node, sourceFile: ts.SourceFile
       const el: ElNode = { tag, line, parent, handlers: [] };
       allElements.push(el);
       processAttributes(opening, el);
-      for (const child of node.children) walk(child, el);
+      for (const child of node.children) {walk(child, el);}
       return;
     }
     if (ts.isJsxSelfClosingElement(node)) {
@@ -165,7 +165,7 @@ export function annotateEvents(componentNode: ts.Node, sourceFile: ts.SourceFile
   function ancestorHasClick(el: ElNode): boolean {
     let cur = el.parent;
     while (cur) {
-      if (cur.handlers.some((h) => h.event === 'click')) return true;
+      if (cur.handlers.some((h) => h.event === 'click')) {return true;}
       cur = cur.parent;
     }
     return false;

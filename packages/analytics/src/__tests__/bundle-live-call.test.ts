@@ -46,10 +46,10 @@ describe('analytics bundle — real tool call over stdio', () => {
           while ((idx = buffer.indexOf('\n')) >= 0) {
             const line = buffer.slice(0, idx).trim();
             buffer = buffer.slice(idx + 1);
-            if (!line) continue;
+            if (!line) {continue;}
             try {
               const msg = JSON.parse(line) as { id?: number };
-              if (typeof msg.id === 'number') responses.set(msg.id, msg);
+              if (typeof msg.id === 'number') {responses.set(msg.id, msg);}
             } catch {
               /* non-JSON noise is not this test's concern */
             }

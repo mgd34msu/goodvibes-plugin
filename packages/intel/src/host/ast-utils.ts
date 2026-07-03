@@ -43,7 +43,7 @@ export function getExportKind(kind: ts.ScriptElementKind): string {
  */
 export function getJsDoc(node: ts.Node): string | null {
   const jsDocs = ts.getJSDocCommentsAndTags(node);
-  if (jsDocs.length === 0) return null;
+  if (jsDocs.length === 0) {return null;}
 
   const comments: string[] = [];
   for (const doc of jsDocs) {

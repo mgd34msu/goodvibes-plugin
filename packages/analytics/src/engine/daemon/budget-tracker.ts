@@ -133,7 +133,7 @@ export class BudgetTracker {
    * @returns The lowest newly-crossed threshold or null if none.
    */
   checkThresholds(): { crossed: boolean; threshold: number } | null {
-    if (this.currentState === null) return null;
+    if (this.currentState === null) {return null;}
 
     const { percentage } = this.currentState;
 

@@ -23,8 +23,8 @@ export function utf8ByteLength(input: string): number {
  * @returns the truncated string (never longer than `input`)
  */
 export function utf8SafeSlice(input: string, maxUnits: number): string {
-  if (maxUnits <= 0) return '';
-  if (input.length <= maxUnits) return input;
+  if (maxUnits <= 0) {return '';}
+  if (input.length <= maxUnits) {return input;}
 
   let end = maxUnits;
   const lastKept = input.charCodeAt(end - 1);
@@ -46,8 +46,8 @@ export function utf8SafeSlice(input: string, maxUnits: number): string {
  * @returns the truncated string whose UTF-8 encoding is at most `maxBytes`
  */
 export function utf8SafeSliceBytes(input: string, maxBytes: number): string {
-  if (maxBytes <= 0) return '';
-  if (utf8ByteLength(input) <= maxBytes) return input;
+  if (maxBytes <= 0) {return '';}
+  if (utf8ByteLength(input) <= maxBytes) {return input;}
 
   // Binary search the largest prefix (in code units) that fits the byte budget.
   let lo = 0;

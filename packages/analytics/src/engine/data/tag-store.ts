@@ -157,7 +157,7 @@ export class TagStore {
     source: 'manual' | 'auto' = 'manual',
   ): void {
     const normalized = tag.trim().toLowerCase();
-    if (!normalized) return;
+    if (!normalized) {return;}
     this.db.addTag(sessionId, normalized, source);
   }
 
@@ -190,7 +190,7 @@ export class TagStore {
    */
   removeTag(sessionId: string, tag: string): void {
     const normalized = tag.trim().toLowerCase();
-    if (!normalized) return;
+    if (!normalized) {return;}
     this.db.removeTag(sessionId, normalized);
   }
 
@@ -274,7 +274,7 @@ export class TagStore {
 
     // 1. Framework / language detection
     for (const { tag, patterns } of FRAMEWORK_PATTERNS) {
-      if (existing.has(tag)) continue;
+      if (existing.has(tag)) {continue;}
       const matchedPattern = patterns.find((p) => p.test(fullText));
       if (matchedPattern) {
         suggestions.set(tag, { confidence: 'high', reason: `file paths match ${matchedPattern.source}` });
@@ -283,7 +283,7 @@ export class TagStore {
 
     // 2. Domain inference
     for (const { tag, patterns, confidence } of DOMAIN_PATTERNS) {
-      if (existing.has(tag)) continue;
+      if (existing.has(tag)) {continue;}
       const matchedPattern = patterns.find((p) => p.test(fullText));
       if (matchedPattern) {
         const existingEntry = suggestions.get(tag);
@@ -296,10 +296,10 @@ export class TagStore {
 
     // 3. Activity type from tool usage patterns
     for (const { tag, toolPatterns, minCount } of ACTIVITY_PATTERNS) {
-      if (existing.has(tag)) continue;
+      if (existing.has(tag)) {continue;}
       const totalMatchCount = toolPatterns.reduce((sum, p) => {
         for (const [toolName, count] of toolCounts) {
-          if (p.test(toolName)) sum += count;
+          if (p.test(toolName)) {sum += count;}
         }
         return sum;
       }, 0);
@@ -339,7 +339,7 @@ export class TagStore {
     tailText: string;
     toolCounts: Map<string, number>;
   } | null {
-    if (!existsSync(jsonlPath)) return null;
+    if (!existsSync(jsonlPath)) {return null;}
 
     let rawContent: string;
     try {
@@ -418,7 +418,7 @@ export function resolveJsonlPath(
 ): string | null {
   const targetFile = `${sessionId}.jsonl`;
 
-  if (!existsSync(jsonlBase)) return null;
+  if (!existsSync(jsonlBase)) {return null;}
 
   try {
     const projectDirs = readdirSync(jsonlBase).filter((entry) => {

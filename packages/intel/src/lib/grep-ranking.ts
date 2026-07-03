@@ -31,25 +31,25 @@ export interface RankableFile {
 
 /** Score exact matches: pattern text appears verbatim in a match. */
 function scoreExactMatch(matches: RankableMatch[] | undefined, pattern: string): number {
-  if (!matches || matches.length === 0) return 0;
+  if (!matches || matches.length === 0) {return 0;}
   for (const match of matches) {
-    if (!match.content) continue;
+    if (!match.content) {continue;}
     if (match.highlight) {
       const [start, end] = match.highlight;
-      if (match.content.substring(start, end) === pattern) return 1;
+      if (match.content.substring(start, end) === pattern) {return 1;}
     }
-    if (match.content.trim() === pattern.trim()) return 1;
+    if (match.content.trim() === pattern.trim()) {return 1;}
   }
   return 0;
 }
 
 /** Score exported symbols: any matched line starts with/contains `export`. */
 function scoreExported(matches: RankableMatch[] | undefined): number {
-  if (!matches || matches.length === 0) return 0;
+  if (!matches || matches.length === 0) {return 0;}
   for (const match of matches) {
-    if (!match.content) continue;
+    if (!match.content) {continue;}
     const trimmed = match.content.trim();
-    if (trimmed.startsWith('export ') || trimmed.includes(' export ')) return 1;
+    if (trimmed.startsWith('export ') || trimmed.includes(' export ')) {return 1;}
   }
   return 0;
 }
@@ -57,8 +57,8 @@ function scoreExported(matches: RankableMatch[] | undefined): number {
 /** Score path depth: shallower paths score higher (1.0 at depth 1, 0.0 at depth 5+). */
 function scorePathDepth(filePath: string): number {
   const depth = filePath.split('/').length;
-  if (depth <= 1) return 1;
-  if (depth >= 5) return 0;
+  if (depth <= 1) {return 1;}
+  if (depth >= 5) {return 0;}
   return 1 - (depth - 1) / 4;
 }
 

@@ -1,11 +1,11 @@
 /**
  * Build the goodvibes-analytics server bundle.
  *
- * esbuild pattern per §5.1 with analytics' proven external list — ink, react,
- * react-devtools-core, yoga-wasm-web, sql.js (none bundle cleanly; they ship as
- * runtime deps in server/package.json). sql-wasm.wasm is copied to server/wasm/
- * (sql.js loads its WASM at runtime; every server imports core/telemetry).
- * Output is committed under plugins/goodvibes/server/analytics/.
+ * esbuild pattern per §5.1 with a single external — sql.js (does not bundle
+ * cleanly; it ships as a runtime dep in server/package.json). sql-wasm.wasm is
+ * copied to server/wasm/ (sql.js loads its WASM at runtime; every server
+ * imports core/telemetry). Output is committed under
+ * plugins/goodvibes/server/analytics/.
  */
 
 import * as esbuild from 'esbuild';
@@ -51,7 +51,7 @@ const SHARED = {
   minify: false,
   keepNames: true,
   define: { __GV_VERSION__: JSON.stringify(PLUGIN_VERSION) },
-  external: ['ink', 'react', 'react-devtools-core', 'yoga-wasm-web', 'sql.js'],
+  external: ['sql.js'],
 };
 
 async function build() {
@@ -64,15 +64,6 @@ async function build() {
     outfile: join(serverDir, 'index.cjs'),
   });
   console.log('Build completed: plugins/goodvibes/server/analytics/index.cjs');
-
-  // Mini-dashboard pane bundle, spawned by the `dashboard` tool via tmux.
-  // (The full interactive ink TUI is deferred in the alpha — no @types/react.)
-  await esbuild.build({
-    ...SHARED,
-    entryPoints: [join(__dirname, 'src/engine/mini.ts')],
-    outfile: join(serverDir, 'mini.cjs'),
-  });
-  console.log('Build completed: plugins/goodvibes/server/analytics/mini.cjs');
 
   await tryCopy('sql.js/dist/sql-wasm.wasm', 'sql-wasm.wasm');
 }

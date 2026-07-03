@@ -154,7 +154,7 @@ const MAX_BINARY_PROBE_BYTES = 8192;
 function isBinaryFile(buffer: Buffer): boolean {
   const checkLength = Math.min(buffer.length, MAX_BINARY_PROBE_BYTES);
   for (let i = 0; i < checkLength; i++) {
-    if (buffer[i] === 0) return true;
+    if (buffer[i] === 0) {return true;}
   }
   return false;
 }
@@ -171,19 +171,19 @@ function decodeUtf8Prefix(buf: Buffer): string {
   if (i >= 0) {
     const lead = buf[i];
     let seqLen = 0;
-    if ((lead & 0x80) === 0x00) seqLen = 1;
-    else if ((lead & 0xe0) === 0xc0) seqLen = 2;
-    else if ((lead & 0xf0) === 0xe0) seqLen = 3;
-    else if ((lead & 0xf8) === 0xf0) seqLen = 4;
-    if (seqLen > 1 && continuationBytes + 1 < seqLen) end = i;
+    if ((lead & 0x80) === 0x00) {seqLen = 1;}
+    else if ((lead & 0xe0) === 0xc0) {seqLen = 2;}
+    else if ((lead & 0xf0) === 0xe0) {seqLen = 3;}
+    else if ((lead & 0xf8) === 0xf0) {seqLen = 4;}
+    if (seqLen > 1 && continuationBytes + 1 < seqLen) {end = i;}
   }
   return buf.subarray(0, end).toString('utf-8');
 }
 
 function formatTimeAgo(timestamp: number): string {
   const seconds = Math.max(0, Math.round((Date.now() - timestamp) / 1000));
-  if (seconds < 60) return `${seconds}s ago`;
-  if (seconds < 3600) return `${Math.round(seconds / 60)}m ago`;
+  if (seconds < 60) {return `${seconds}s ago`;}
+  if (seconds < 3600) {return `${Math.round(seconds / 60)}m ago`;}
   return `${Math.round(seconds / 3600)}h ago`;
 }
 
@@ -261,11 +261,11 @@ async function readSingleFile(
       read_count: lookup.entry.readCount,
       hash: lookup.entry.contentHash.substring(0, 8),
     };
-    if (lookup.previousReadAt !== undefined) result.cache.last_read = formatTimeAgo(lookup.previousReadAt);
+    if (lookup.previousReadAt !== undefined) {result.cache.last_read = formatTimeAgo(lookup.previousReadAt);}
     if (lookup.status === 'modified') {
       result.cache.previous_lines = lookup.previousLineCount;
-      if (lookup.changes) result.cache.changes = lookup.changes;
-      if (lookup.modifiedBy) result.cache.modified_by = lookup.modifiedBy;
+      if (lookup.changes) {result.cache.changes = lookup.changes;}
+      if (lookup.modifiedBy) {result.cache.modified_by = lookup.modifiedBy;}
     }
     return result;
   }
@@ -328,7 +328,7 @@ async function readSingleFile(
       read_count: lookup.entry.readCount,
       hash: lookup.entry.contentHash.substring(0, 8),
     };
-    if (lookup.previousReadAt !== undefined) result.cache.last_read = formatTimeAgo(lookup.previousReadAt);
+    if (lookup.previousReadAt !== undefined) {result.cache.last_read = formatTimeAgo(lookup.previousReadAt);}
   } else if (!spec.force && lookup.status === 'modified') {
     result.cache = {
       status: 'modified',
@@ -420,7 +420,7 @@ function paginateSingleResult(
       currentTokens = itemTokens;
     }
   }
-  if (current.length > 0) pages.push(current);
+  if (current.length > 0) {pages.push(current);}
 
   const totalPages = Math.max(pages.length, 1);
   const pageIndex = Math.min(Math.max(requestedPage, 1), totalPages) - 1;
@@ -432,8 +432,8 @@ function paginateSingleResult(
   pageResult.token_cost = tokensUsed;
 
   let warning: string | undefined;
-  if (requestedPage > totalPages) warning = `Requested page ${requestedPage} exceeds total pages (${totalPages}). Showing page ${totalPages} instead.`;
-  else if (requestedPage < 1) warning = `Requested page ${requestedPage} is invalid. Showing page 1 instead.`;
+  if (requestedPage > totalPages) {warning = `Requested page ${requestedPage} exceeds total pages (${totalPages}). Showing page ${totalPages} instead.`;}
+  else if (requestedPage < 1) {warning = `Requested page ${requestedPage} is invalid. Showing page 1 instead.`;}
 
   return { page: pageResult, meta: { page: pageIndex + 1, total_pages: totalPages, tokens_used: tokensUsed, warning } };
 }
@@ -475,7 +475,7 @@ function paginateByTokenBudget(
       currentCost += cost;
     }
   }
-  if (current.length > 0) pageGroups.push(current);
+  if (current.length > 0) {pageGroups.push(current);}
 
   const totalPages = pageGroups.length || 1;
   const pageIndex = Math.min(requestedPage, totalPages) - 1;
@@ -483,7 +483,7 @@ function paginateByTokenBudget(
   const budgetExceeded = selectedPage.length === 1 && (costs[selectedPage[0]] ?? 0) > tokenBudget;
 
   let warning: string | undefined;
-  if (requestedPage > totalPages) warning = `Requested page ${requestedPage} exceeds total pages (${totalPages}). Showing page ${totalPages} instead.`;
+  if (requestedPage > totalPages) {warning = `Requested page ${requestedPage} exceeds total pages (${totalPages}). Showing page ${totalPages} instead.`;}
 
   const selectedSet = new Set(selectedPage);
   const pendingFiles = results.filter((_, i) => !selectedSet.has(i)).map((r) => r.path);
@@ -611,7 +611,7 @@ async function runCodeRead(args: unknown): Promise<CallToolResult> {
     // Key batch results by ENTRY, not path (field issue 3): a repeated path
     // with a different range/extract is a legitimate distinct entry.
     const pathCounts = new Map<string, number>();
-    for (const r of results) pathCounts.set(r.path, (pathCounts.get(r.path) ?? 0) + 1);
+    for (const r of results) {pathCounts.set(r.path, (pathCounts.get(r.path) ?? 0) + 1);}
     const usedKeys = new Set<string>();
     results.forEach((r, i) => {
       let key = r.path;
@@ -623,7 +623,7 @@ async function runCodeRead(args: unknown): Promise<CallToolResult> {
       }
       let uniqueKey = key;
       let suffix = 2;
-      while (usedKeys.has(uniqueKey)) uniqueKey = `${key}#${suffix++}`;
+      while (usedKeys.has(uniqueKey)) {uniqueKey = `${key}#${suffix++}`;}
       usedKeys.add(uniqueKey);
       r.result_key = uniqueKey;
     });
@@ -655,25 +655,25 @@ async function runCodeRead(args: unknown): Promise<CallToolResult> {
       truncated: anyTruncated,
       total_bytes: paginatedResults.reduce((sum, r) => sum + (r.size_bytes ?? 0), 0),
     };
-    if (paginationMeta) summary.pagination = paginationMeta;
-    if (paginationWarning) summary.warning = paginationWarning;
+    if (paginationMeta) {summary.pagination = paginationMeta;}
+    if (paginationWarning) {summary.warning = paginationWarning;}
 
     const buildEntry = (r: FileReadResult, verbose: boolean): Record<string, unknown> => {
       const entry: Record<string, unknown> = { exists: r.exists };
-      if (r.lines !== undefined) entry.lines = r.lines;
-      if (r.outline !== undefined) entry.outline = r.outline;
-      if (r.line_count !== undefined) entry.line_count = r.line_count;
-      if (r.error) entry.error = r.error;
-      if (r.status !== undefined) entry.status = r.status;
-      if (r.truncated) entry.truncated = true;
-      if (r.size_bytes !== undefined) entry.size_bytes = r.size_bytes;
-      if (r.warning) entry.warning = r.warning;
-      if (r.pagination) entry.pagination = r.pagination;
-      if (r.cache) entry.cache = r.cache;
-      if (r.cache_hit !== undefined) entry.cache_hit = r.cache_hit;
-      if (r.probe) entry.probe = true;
-      if (r.metadata) entry.metadata = r.metadata;
-      if (verbose && r.token_cost !== undefined) entry.token_cost = r.token_cost;
+      if (r.lines !== undefined) {entry.lines = r.lines;}
+      if (r.outline !== undefined) {entry.outline = r.outline;}
+      if (r.line_count !== undefined) {entry.line_count = r.line_count;}
+      if (r.error) {entry.error = r.error;}
+      if (r.status !== undefined) {entry.status = r.status;}
+      if (r.truncated) {entry.truncated = true;}
+      if (r.size_bytes !== undefined) {entry.size_bytes = r.size_bytes;}
+      if (r.warning) {entry.warning = r.warning;}
+      if (r.pagination) {entry.pagination = r.pagination;}
+      if (r.cache) {entry.cache = r.cache;}
+      if (r.cache_hit !== undefined) {entry.cache_hit = r.cache_hit;}
+      if (r.probe) {entry.probe = true;}
+      if (r.metadata) {entry.metadata = r.metadata;}
+      if (verbose && r.token_cost !== undefined) {entry.token_cost = r.token_cost;}
       entry.resolved_path = r.resolved_path;
       return entry;
     };
@@ -731,7 +731,7 @@ async function runCodeRead(args: unknown): Promise<CallToolResult> {
             owner = r;
           }
         }
-        if (!largest || !owner) break;
+        if (!largest || !owner) {break;}
         largest.length = Math.floor(largest.length / 2);
         owner.truncated = true;
         trimmedAny = true;
@@ -742,15 +742,15 @@ async function runCodeRead(args: unknown): Promise<CallToolResult> {
         if (dataObj.files) {
           for (const r of paginatedResults) {
             const key = r.result_key ?? r.path;
-            if (r.truncated && dataObj.files[key]) dataObj.files[key].truncated = true;
+            if (r.truncated && dataObj.files[key]) {dataObj.files[key].truncated = true;}
           }
         }
-        if (dataObj.tokens_used !== undefined) dataObj.tokens_used = estimatePayloadTokens(JSON.stringify(paginatedResults));
+        if (dataObj.tokens_used !== undefined) {dataObj.tokens_used = estimatePayloadTokens(JSON.stringify(paginatedResults));}
       }
     }
 
     const env: Envelope<unknown> = successEnvelope(data, { execution_ms: Math.round(performance.now() - start) });
-    if (baseWarning) env.warning = baseWarning;
+    if (baseWarning) {env.warning = baseWarning;}
     return toCallToolResult(env);
   } catch (error) {
     return toCallToolResult(

@@ -44,7 +44,8 @@ function runHook(hookFile: string, input: unknown, opts: SpawnOpts = {}): { code
   const env = {
     ...cleanEnv,
     CLAUDE_PLUGIN_ROOT: opts.pluginRoot ?? FAKE_PLUGIN_ROOT,
-    GOODVIBES_HOOK_NO_BACKGROUND: '1',
+    // Never let a test kick the real detached npm installer.
+    GOODVIBES_NO_BG_INSTALL: '1',
     ...opts.extraEnv,
   };
   try {
@@ -61,14 +62,17 @@ function runHook(hookFile: string, input: unknown, opts: SpawnOpts = {}): { code
   }
 }
 
+/** The per-server probe packages session-start checks (mirrors lib/deps-link.mjs). */
+const PROBES = [
+  ['intel', '@vscode/ripgrep'],
+  ['analytics', 'sql.js'],
+  ['connect', 'sql.js'],
+] as const;
+
 beforeAll(() => {
   // Every server's representative native-dep probe exists in the fake root,
-  // so the deps nudge stays silent in every test that doesn't remove them.
-  for (const [server, probe] of [
-    ['intel', '@vscode/ripgrep'],
-    ['analytics', 'ink'],
-    ['connect', 'sql.js'],
-  ]) {
+  // so the deps line stays silent in every test that doesn't remove them.
+  for (const [server, probe] of PROBES) {
     fs.mkdirSync(
       path.join(FAKE_PLUGIN_ROOT, 'server', server, 'node_modules', ...probe.split('/')),
       { recursive: true },
@@ -194,16 +198,30 @@ describe('goodvibes intel hooks: schema and content', () => {
     expect(summary2.project_total_usd).toBe(7.2);
   });
 
-  it('setup.mjs writes a marker once and stays silent on the second run', () => {
+  it('setup.mjs is silent and writes no marker, whether deps are installed or missing', () => {
+    // Probes present in the fake root: nothing to install, nothing to say.
     const cwd = makeTmpCwd();
-    const first = runHook('setup.mjs', { session_id: 's1', cwd, hook_event_name: 'Setup' });
-    const firstParsed = JSON.parse(first.stdout);
-    expect(firstParsed.systemMessage).toMatch(/first-time setup/);
-    expect(fs.existsSync(path.join(cwd, '.goodvibes', '.setup-marker.json'))).toBe(true);
+    const installed = JSON.parse(runHook('setup.mjs', { session_id: 's1', cwd, hook_event_name: 'Setup' }).stdout);
+    expect(installed.continue).toBe(true);
+    expect(installed.systemMessage).toBeUndefined();
+    expect(installed.hookSpecificOutput).toBeUndefined();
+    expect(fs.existsSync(path.join(cwd, '.goodvibes', '.setup-marker.json'))).toBe(false);
 
-    const second = runHook('setup.mjs', { session_id: 's2', cwd, hook_event_name: 'Setup' });
-    const secondParsed = JSON.parse(second.stdout);
-    expect(secondParsed.systemMessage).toBeUndefined();
+    // Probes missing: the hook kicks the detached installer (suppressed here by
+    // GOODVIBES_NO_BG_INSTALL=1) and is STILL silent — SessionStart owns the lines.
+    const bareRoot = makeTmpCwd();
+    const bareHome = makeTmpCwd();
+    const missing = JSON.parse(
+      runHook(
+        'setup.mjs',
+        { session_id: 's2', cwd, hook_event_name: 'Setup' },
+        { pluginRoot: bareRoot, extraEnv: { HOME: bareHome } },
+      ).stdout,
+    );
+    expect(missing.continue).toBe(true);
+    expect(missing.systemMessage).toBeUndefined();
+    expect(missing.hookSpecificOutput).toBeUndefined();
+    expect(fs.existsSync(path.join(cwd, '.goodvibes', '.setup-marker.json'))).toBe(false);
   });
 
   it('subagent-start.mjs stays within the ~500-token pointer budget and records tracking', () => {
@@ -249,10 +267,12 @@ describe('goodvibes intel hooks: schema and content', () => {
     expect(failures[0].reason).toMatch(/recurred/);
   });
 
-  it('session-start.mjs appends the deps nudge when the installed plugin copy has no native deps', () => {
+  it('session-start.mjs announces the background install when the plugin copy has no native deps', () => {
     const cwd = makeTmpCwd();
     const bareRoot = makeTmpCwd(); // no server/<name>/node_modules probes inside
     const bareHome = makeTmpCwd(); // no durable deps either -> nothing to relink
+    // GOODVIBES_NO_BG_INSTALL=1 (set for every test spawn) skips the real npm
+    // spawn but the announcement line must still be emitted.
     const { stdout } = runHook(
       'session-start.mjs',
       { session_id: 'abc12345', cwd, hook_event_name: 'SessionStart' },
@@ -261,29 +281,81 @@ describe('goodvibes intel hooks: schema and content', () => {
     const parsed = JSON.parse(stdout);
     const ctx = parsed.hookSpecificOutput.additionalContext as string;
     expect(ctx.split('\n')[0]).toContain('[goodvibes] First session here');
-    expect(ctx).toContain('run /goodvibes:setup');
-    expect(parsed.systemMessage).toMatch(/native deps/);
+    expect(ctx).toContain('goodvibes: installing native deps in the background - ready next session');
+    expect(parsed.systemMessage).toMatch(/installing native deps/);
+    // No foreground install happened: the durable home stays empty.
+    expect(fs.existsSync(path.join(bareHome, '.claude', '.goodvibes', 'deps'))).toBe(false);
   });
 
-  it('session-start.mjs silently relinks durable deps after a plugin update (no nudge)', () => {
+  it('session-start.mjs reports a recent failed install instead of retrying (planted .last-result.json)', () => {
+    const cwd = makeTmpCwd();
+    const bareRoot = makeTmpCwd();
+    const home = makeTmpCwd();
+    const depsDir = path.join(home, '.claude', '.goodvibes', 'deps');
+    fs.mkdirSync(depsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(depsDir, '.last-result.json'),
+      JSON.stringify({ ok: false, failed: ['intel', 'analytics'], finished_at: new Date().toISOString() }),
+    );
+
+    const { stdout } = runHook(
+      'session-start.mjs',
+      { session_id: 'abc12345', cwd, hook_event_name: 'SessionStart' },
+      { pluginRoot: bareRoot, extraEnv: { HOME: home } },
+    );
+    const parsed = JSON.parse(stdout);
+    const ctx = parsed.hookSpecificOutput.additionalContext as string;
+    expect(ctx).toContain(
+      'goodvibes: native dep install failed for intel, analytics - see ~/.claude/.goodvibes/deps/install.log or run /goodvibes:setup',
+    );
+    expect(ctx).not.toContain('installing native deps in the background');
+    expect(parsed.systemMessage).toMatch(/native dep install failed/);
+  });
+
+  it('session-start.mjs retries the background install when the recorded failure is older than 24h', () => {
+    const cwd = makeTmpCwd();
+    const bareRoot = makeTmpCwd();
+    const home = makeTmpCwd();
+    const depsDir = path.join(home, '.claude', '.goodvibes', 'deps');
+    fs.mkdirSync(depsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(depsDir, '.last-result.json'),
+      JSON.stringify({
+        ok: false,
+        failed: ['intel'],
+        finished_at: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(),
+      }),
+    );
+
+    const { stdout } = runHook(
+      'session-start.mjs',
+      { session_id: 'abc12345', cwd, hook_event_name: 'SessionStart' },
+      { pluginRoot: bareRoot, extraEnv: { HOME: home } },
+    );
+    const parsed = JSON.parse(stdout);
+    const ctx = parsed.hookSpecificOutput.additionalContext as string;
+    expect(ctx).toContain('goodvibes: installing native deps in the background - ready next session');
+    expect(ctx).not.toContain('native dep install failed');
+  });
+
+  it('session-start.mjs silently relinks when the durable install is a SUPERSET of the plugin copy', () => {
     const cwd = makeTmpCwd();
     const home = makeTmpCwd();
     const freshRoot = makeTmpCwd(); // simulates the update-replaced plugin copy
 
-    const pkg = JSON.stringify({ dependencies: { probe: '1.0.0' } });
-    for (const [server, probe] of [
-      ['intel', '@vscode/ripgrep'],
-      ['analytics', 'ink'],
-      ['connect', 'sql.js'],
-    ] as const) {
-      // Durable home: installed modules + the package.json setup recorded.
+    for (const [server, probe] of PROBES) {
+      // Durable home: installed modules + a package.json with an EXTRA leftover
+      // dependency (the update removed one) — superset-or-equal must relink.
       const durable = path.join(home, '.claude', '.goodvibes', 'deps', server);
       fs.mkdirSync(path.join(durable, 'node_modules', ...probe.split('/')), { recursive: true });
-      fs.writeFileSync(path.join(durable, 'package.json'), pkg);
-      // Fresh plugin copy: same package.json, NO node_modules (the update wiped it).
+      fs.writeFileSync(
+        path.join(durable, 'package.json'),
+        JSON.stringify({ dependencies: { probe: '1.0.0', 'removed-by-update': '0.1.0' } }),
+      );
+      // Fresh plugin copy: a subset of the durable list, NO node_modules.
       const serverDir = path.join(freshRoot, 'server', server);
       fs.mkdirSync(serverDir, { recursive: true });
-      fs.writeFileSync(path.join(serverDir, 'package.json'), pkg);
+      fs.writeFileSync(path.join(serverDir, 'package.json'), JSON.stringify({ dependencies: { probe: '1.0.0' } }));
     }
 
     const { stdout } = runHook(
@@ -292,32 +364,33 @@ describe('goodvibes intel hooks: schema and content', () => {
       { pluginRoot: freshRoot, extraEnv: { HOME: home } },
     );
     const parsed = JSON.parse(stdout);
-    // Healed silently: value line only, no nudge, and the symlinks exist.
+    // Healed silently: value line only, no deps line, and the links exist.
+    expect(parsed.hookSpecificOutput.additionalContext).not.toContain('goodvibes: installing');
     expect(parsed.hookSpecificOutput.additionalContext).not.toContain('/goodvibes:setup');
-    expect(parsed.systemMessage).not.toMatch(/native deps/);
-    for (const server of ['intel', 'analytics', 'connect']) {
+    expect(parsed.systemMessage).not.toMatch(/native dep|installing/);
+    for (const [server] of PROBES) {
       const link = path.join(freshRoot, 'server', server, 'node_modules');
       expect(fs.lstatSync(link).isSymbolicLink()).toBe(true);
     }
   });
 
-  it('session-start.mjs nudges instead of relinking when an update changed a dependency list', () => {
+  it('session-start.mjs does NOT relink when the durable install is missing a dependency the update added', () => {
     const cwd = makeTmpCwd();
     const home = makeTmpCwd();
     const freshRoot = makeTmpCwd();
 
-    for (const [server, probe] of [
-      ['intel', '@vscode/ripgrep'],
-      ['analytics', 'ink'],
-      ['connect', 'sql.js'],
-    ] as const) {
+    for (const [server, probe] of PROBES) {
       const durable = path.join(home, '.claude', '.goodvibes', 'deps', server);
       fs.mkdirSync(path.join(durable, 'node_modules', ...probe.split('/')), { recursive: true });
       fs.writeFileSync(path.join(durable, 'package.json'), JSON.stringify({ dependencies: { probe: '1.0.0' } }));
       const serverDir = path.join(freshRoot, 'server', server);
       fs.mkdirSync(serverDir, { recursive: true });
-      // The update ships a DIFFERENT dependency list -> stale install must not relink.
-      fs.writeFileSync(path.join(serverDir, 'package.json'), JSON.stringify({ dependencies: { probe: '2.0.0' } }));
+      // The update ADDED a dependency the durable install lacks -> no relink,
+      // the background installer runs instead.
+      fs.writeFileSync(
+        path.join(serverDir, 'package.json'),
+        JSON.stringify({ dependencies: { probe: '1.0.0', 'added-by-update': '2.0.0' } }),
+      );
     }
 
     const { stdout } = runHook(
@@ -326,7 +399,9 @@ describe('goodvibes intel hooks: schema and content', () => {
       { pluginRoot: freshRoot, extraEnv: { HOME: home } },
     );
     const parsed = JSON.parse(stdout);
-    expect(parsed.hookSpecificOutput.additionalContext).toContain('run /goodvibes:setup');
+    expect(parsed.hookSpecificOutput.additionalContext).toContain(
+      'goodvibes: installing native deps in the background - ready next session',
+    );
     expect(fs.existsSync(path.join(freshRoot, 'server', 'intel', 'node_modules'))).toBe(false);
   });
 });

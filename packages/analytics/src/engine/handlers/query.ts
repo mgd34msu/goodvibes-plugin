@@ -16,7 +16,7 @@ import {
   formatPercent,
   formatDuration,
   formatUptime,
-} from '../tui/mini/format.js';
+} from '../format.js';
 import { type HandlerResponse, text } from './types.js';
 import { runLiveCost, runDoctor, runAgents } from './observability.js';
 
@@ -114,7 +114,7 @@ function buildDataScopeNote(
 ): string | null {
   try {
     const db = aggregator.getGlobalDb();
-    if (!db) return null;
+    if (!db) {return null;}
 
     const tags = input.filters?.tags ?? [];
     const lines: string[] = [];
@@ -190,7 +190,7 @@ function filterByTimeRange(
   events: ActivityEvent[],
   timeRange: AnalyticsQueryInput['time_range'],
 ): ActivityEvent[] {
-  if (timeRange === 'session') return events;
+  if (timeRange === 'session') {return events;}
   const cutoffMs = TIME_RANGE_MS[timeRange];
   const cutoff = Date.now() - cutoffMs;
   return events.filter((e) => {
@@ -210,14 +210,14 @@ function applyActivityFilters(
   events: ActivityEvent[],
   filters: AnalyticsQueryInput['filters'],
 ): ActivityEvent[] {
-  if (!filters) return events;
+  if (!filters) {return events;}
   return events.filter((e) => {
-    if (filters.tool && e.tool !== filters.tool) return false;
+    if (filters.tool && e.tool !== filters.tool) {return false;}
     if (filters.status) {
       const status = typeof e.details['status'] === 'string' ? e.details['status'] : undefined;
-      if (status !== filters.status) return false;
+      if (status !== filters.status) {return false;}
     }
-    if (filters.agent && e.agent_id !== filters.agent) return false;
+    if (filters.agent && e.agent_id !== filters.agent) {return false;}
     return true;
   });
 }
@@ -229,7 +229,7 @@ function filterToolsBreakdown(
   breakdown: Record<string, ToolBreakdown>,
   toolFilter: string | undefined,
 ): Record<string, ToolBreakdown> {
-  if (!toolFilter) return breakdown;
+  if (!toolFilter) {return breakdown;}
   const result: Record<string, ToolBreakdown> = {};
   for (const [key, value] of Object.entries(breakdown)) {
     if (key === toolFilter || key.startsWith(toolFilter)) {
@@ -517,7 +517,7 @@ function renderToolsBreakdown(
   group_by: AnalyticsQueryInput['group_by'],
 ): string {
   const entries = Object.entries(breakdown);
-  if (entries.length === 0) return '=== Tools Breakdown ===\n  (no data yet)';
+  if (entries.length === 0) {return '=== Tools Breakdown ===\n  (no data yet)';}
 
   const lines = ['=== Tools Breakdown ==='];
 
@@ -553,7 +553,7 @@ function renderToolsBreakdown(
 function renderActivity(
   activity: ActivityEvent[],
 ): string {
-  if (activity.length === 0) return '=== Recent Activity ===\n  (no events in range)';
+  if (activity.length === 0) {return '=== Recent Activity ===\n  (no events in range)';}
   const lines = [`=== Recent Activity (${activity.length} events) ===`];
   for (const e of activity.slice(0, 20)) {
     const duration = e.duration_ms !== undefined ? ` ${formatDuration(e.duration_ms)}` : '';

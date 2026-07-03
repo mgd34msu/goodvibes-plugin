@@ -94,7 +94,7 @@ describe('installProcessHygiene — parent-liveness (real process)', () => {
 
     const start = Date.now();
     while (Date.now() - start < 10000) {
-      if (!isAlive(serverPid)) break;
+      if (!isAlive(serverPid)) {break;}
       await new Promise((r) => setTimeout(r, 200));
     }
     const survived = isAlive(serverPid);
@@ -143,7 +143,7 @@ describe('withBudget — partial result on expiry', () => {
     const collected: number[] = [];
     const outcome = await withBudget(50, async (signal) => {
       for (let i = 0; i < 100000; i++) {
-        if (signal.aborted) return collected.slice();
+        if (signal.aborted) {return collected.slice();}
         collected.push(i);
         await new Promise((r) => setTimeout(r, 5));
       }

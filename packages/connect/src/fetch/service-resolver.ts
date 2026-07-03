@@ -32,14 +32,14 @@ export async function resolveService(nameOrUrl: string): Promise<ResolvedService
   let config: ServiceConfig | undefined;
 
   config = getService(nameOrUrl);
-  if (config) serviceName = nameOrUrl;
+  if (config) {serviceName = nameOrUrl;}
 
   if (!serviceName) {
     serviceName = matchServiceByUrl(nameOrUrl);
-    if (serviceName) config = getService(serviceName);
+    if (serviceName) {config = getService(serviceName);}
   }
 
-  if (!serviceName || !config) return undefined;
+  if (!serviceName || !config) {return undefined;}
 
   const rawAuth = await getServiceSecrets(serviceName);
   const auth = rawAuth ? resolveAuthConfig(rawAuth) : undefined;
@@ -64,11 +64,11 @@ export function buildServiceHeaders(
   const headers: Record<string, string> = {};
 
   const globalDefaults = getFetchGlobalDefaults();
-  if (globalDefaults?.headers) Object.assign(headers, globalDefaults.headers);
-  if (globalDefaults?.user_agent) headers['User-Agent'] = globalDefaults.user_agent;
+  if (globalDefaults?.headers) {Object.assign(headers, globalDefaults.headers);}
+  if (globalDefaults?.user_agent) {headers['User-Agent'] = globalDefaults.user_agent;}
 
-  if (service?.config.default_headers) Object.assign(headers, service.config.default_headers);
-  if (requestHeaders) Object.assign(headers, requestHeaders);
+  if (service?.config.default_headers) {Object.assign(headers, service.config.default_headers);}
+  if (requestHeaders) {Object.assign(headers, requestHeaders);}
 
   return headers;
 }

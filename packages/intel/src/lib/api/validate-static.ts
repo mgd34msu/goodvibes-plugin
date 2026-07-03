@@ -36,7 +36,7 @@ function extractParamNames(openApiPath: string): string[] {
   const names: string[] = [];
   const re = /\{([^}]+)\}/g;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(openApiPath)) !== null) names.push(m[1]);
+  while ((m = re.exec(openApiPath)) !== null) {names.push(m[1]);}
   return names;
 }
 
@@ -77,7 +77,7 @@ export function validateRoutesAgainstSpec(routes: ApiRoute[], spec: OpenApiSpecF
     }
     const item = pathItem as unknown as Record<string, unknown>;
     for (const method of METHODS) {
-      if (item[method]) methodMap.set(method.toUpperCase(), { specPath, params });
+      if (item[method]) {methodMap.set(method.toUpperCase(), { specPath, params });}
     }
   }
 

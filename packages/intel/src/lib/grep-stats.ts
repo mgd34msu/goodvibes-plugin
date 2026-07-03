@@ -30,19 +30,19 @@ function getFileExtension(filePath: string): string {
 }
 
 function extractAlternationPatterns(pattern: string): string[] | null {
-  if (!pattern.includes('|')) return null;
-  if (/[[\]{}()\\]/.test(pattern.replace(/\|/g, ''))) return null;
+  if (!pattern.includes('|')) {return null;}
+  if (/[[\]{}()\\]/.test(pattern.replace(/\|/g, ''))) {return null;}
   const subPatterns = pattern.split('|').map((p) => p.trim()).filter((p) => p.length > 0);
   return subPatterns.length > 1 ? subPatterns : null;
 }
 
 function countByPattern(files: GrepFileData[], subPatterns: string[]): Record<string, number> {
   const counts: Record<string, number> = {};
-  for (const pattern of subPatterns) counts[pattern] = 0;
+  for (const pattern of subPatterns) {counts[pattern] = 0;}
   for (const file of files) {
-    if (!file.matches) continue;
+    if (!file.matches) {continue;}
     for (const match of file.matches) {
-      if (!match.content) continue;
+      if (!match.content) {continue;}
       for (const pattern of subPatterns) {
         try {
           if (new RegExp(pattern, 'i').test(match.content)) {
@@ -72,7 +72,7 @@ export function computeStats(files: GrepFileData[], pattern?: string): GrepStats
 
   for (const file of files) {
     const matchCount = file.match_count ?? file.matches?.length ?? 0;
-    if (matchCount === 0) continue;
+    if (matchCount === 0) {continue;}
     totalFiles++;
     totalMatches += matchCount;
 
@@ -98,7 +98,7 @@ export function computeStats(files: GrepFileData[], pattern?: string): GrepStats
 
   if (pattern) {
     const subPatterns = extractAlternationPatterns(pattern);
-    if (subPatterns) result.by_pattern = countByPattern(files, subPatterns);
+    if (subPatterns) {result.by_pattern = countByPattern(files, subPatterns);}
   }
 
   return result;

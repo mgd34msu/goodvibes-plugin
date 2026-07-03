@@ -93,7 +93,7 @@ async function openBrowser(url: string): Promise<boolean> {
       });
       child.unref();
       child.on('error', () => {
-        if (timeoutHandle) clearTimeout(timeoutHandle);
+        if (timeoutHandle) {clearTimeout(timeoutHandle);}
         resolve(false);
       });
       timeoutHandle = setTimeout(() => resolve(true), 1000);
@@ -109,7 +109,7 @@ async function findAvailablePort(preferredPort?: number): Promise<number> {
   for (const port of portsToTry) {
     try {
       const available = await checkPort(port);
-      if (available) return port === 0 ? await getRandomPort() : port;
+      if (available) {return port === 0 ? await getRandomPort() : port;}
     } catch {
       continue;
     }
@@ -163,7 +163,7 @@ export async function startOAuth2Flow(config: OAuth2FlowConfig): Promise<OAuth2F
   if (!port && auth.redirect_uri) {
     try {
       const parsedRedirectUri = new URL(auth.redirect_uri);
-      if (parsedRedirectUri.port) port = parseInt(parsedRedirectUri.port, 10);
+      if (parsedRedirectUri.port) {port = parseInt(parsedRedirectUri.port, 10);}
     } catch {
       // Invalid URI — fall back to default ports.
     }
@@ -317,7 +317,7 @@ export async function startOAuth2Flow(config: OAuth2FlowConfig): Promise<OAuth2F
       authorize_url: authorizeUrl,
     };
   } finally {
-    if (timeoutHandle) clearTimeout(timeoutHandle);
-    if (server) (server as http.Server).close();
+    if (timeoutHandle) {clearTimeout(timeoutHandle);}
+    if (server) {(server as http.Server).close();}
   }
 }

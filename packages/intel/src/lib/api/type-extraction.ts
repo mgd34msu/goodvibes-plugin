@@ -56,14 +56,14 @@ export function parseHandlerTypes(absoluteFilePath: string): HandlerTypes {
     if (requestInterfaceMatch && requestInterfaceMatch.index !== undefined) {
       const bodyStart = content.indexOf('{', requestInterfaceMatch.index);
       const body = extractBracketBody(content, bodyStart);
-      if (body !== null) requestSchema = parseInterfaceToSchema(body, requestInterfaceMatch[1]);
+      if (body !== null) {requestSchema = parseInterfaceToSchema(body, requestInterfaceMatch[1]);}
     }
 
     const responseInterfaceMatch = content.match(/interface\s+(\w+Response)\s*\{/);
     if (responseInterfaceMatch && responseInterfaceMatch.index !== undefined) {
       const bodyStart = content.indexOf('{', responseInterfaceMatch.index);
       const body = extractBracketBody(content, bodyStart);
-      if (body !== null) responseSchema = parseInterfaceToSchema(body, responseInterfaceMatch[1]);
+      if (body !== null) {responseSchema = parseInterfaceToSchema(body, responseInterfaceMatch[1]);}
     }
 
     const nextResponseMatch = content.match(/return\s+(?:NextResponse\.json|Response\.json)\s*\(\s*\{([^}]+)\}/);
@@ -82,13 +82,13 @@ export function parseHandlerTypes(absoluteFilePath: string): HandlerTypes {
  * at `startIndex`. Handles nested brackets.
  */
 function extractBracketBody(content: string, startIndex: number): string | null {
-  if (content[startIndex] !== '{') return null;
+  if (content[startIndex] !== '{') {return null;}
   let depth = 0;
   for (let i = startIndex; i < content.length; i++) {
-    if (content[i] === '{') depth++;
+    if (content[i] === '{') {depth++;}
     else if (content[i] === '}') {
       depth--;
-      if (depth === 0) return content.slice(startIndex + 1, i);
+      if (depth === 0) {return content.slice(startIndex + 1, i);}
     }
   }
   return null;
@@ -110,7 +110,7 @@ export function parseInterfaceToSchema(interfaceBody: string, name: string): JSO
     const propType = match[3].trim();
 
     properties[propName] = typeToJsonSchema(propType);
-    if (!isOptional) required.push(propName);
+    if (!isOptional) {required.push(propName);}
   }
 
   return {

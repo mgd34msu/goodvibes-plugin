@@ -94,7 +94,7 @@ export async function saveToken(tok: PreviewToken): Promise<void> {
  * before parsing so a replay always misses even if the JSON is corrupt.
  */
 export async function loadAndConsumeToken(token: string): Promise<PreviewToken | null> {
-  if (typeof token !== 'string' || !TOKEN_ID_RE.test(token)) return null;
+  if (typeof token !== 'string' || !TOKEN_ID_RE.test(token)) {return null;}
   const file = path.join(tokenDir(), `${token}.json`);
   let raw: string;
   try {

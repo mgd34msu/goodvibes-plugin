@@ -168,7 +168,7 @@ async function listCandidateFiles(
         files: raw.map((f) => (typeof f === 'string' ? { path: f, stats: null } : { path: f.path, stats: f.stats ?? null })),
       };
     }
-    if (!fastGlobUnavailableWarned) fastGlobUnavailableWarned = true;
+    if (!fastGlobUnavailableWarned) {fastGlobUnavailableWarned = true;}
     // Fall through to the ripgrep listing, flagged via the returned warning.
   }
 
@@ -388,7 +388,7 @@ async function runCodeGlob(args: unknown, _signal: { aborted: boolean }): Promis
     let totalSize = 0;
 
     for (const file of files) {
-      if (totalTokens >= maxTokens) break;
+      if (totalTokens >= maxTokens) {break;}
       const absolutePath = path.isAbsolute(file.path) ? file.path : path.resolve(workDir, file.path);
       const relativePath = path.relative(workDir, absolutePath);
       const result: GlobFileResult = { path: relativePath, resolved_path: absolutePath };
@@ -415,8 +415,8 @@ async function runCodeGlob(args: unknown, _signal: { aborted: boolean }): Promis
     const truncatedByTokens = results.length < files.length;
     const truncated = truncatedByMaxFiles || truncatedByTokens;
     const effectiveCaps: GlobEffectiveCaps = {};
-    if (truncatedByMaxFiles) effectiveCaps.max_results = maxFiles;
-    if (truncatedByTokens && rawOutput.max_tokens !== undefined) effectiveCaps.max_tokens = rawOutput.max_tokens;
+    if (truncatedByMaxFiles) {effectiveCaps.max_results = maxFiles;}
+    if (truncatedByTokens && rawOutput.max_tokens !== undefined) {effectiveCaps.max_tokens = rawOutput.max_tokens;}
 
     const summary: {
       total_files: number;
@@ -425,7 +425,7 @@ async function runCodeGlob(args: unknown, _signal: { aborted: boolean }): Promis
       truncated: boolean;
       effective_caps?: GlobEffectiveCaps;
     } = { total_files: totalMatched, returned: results.length, total_size: totalSize, truncated };
-    if (truncated) summary.effective_caps = effectiveCaps;
+    if (truncated) {summary.effective_caps = effectiveCaps;}
 
     let data: unknown = { files: results.map((r) => r.path), summary, tokens_used: totalTokens };
     switch (mode) {
@@ -445,7 +445,7 @@ async function runCodeGlob(args: unknown, _signal: { aborted: boolean }): Promis
 
     const warningParts = [baseWarning, listed.warning].filter((w): w is string => !!w);
     const env: Envelope<unknown> = successEnvelope(data, { execution_ms: Math.round(performance.now() - start) });
-    if (warningParts.length > 0) env.warning = warningParts.join(' ');
+    if (warningParts.length > 0) {env.warning = warningParts.join(' ');}
     return toCallToolResult(env);
   } catch (error) {
     return toCallToolResult(

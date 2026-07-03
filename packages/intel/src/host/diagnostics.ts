@@ -62,7 +62,7 @@ export function diagnosticToError(
   diagnostic: ts.Diagnostic,
   projectRoot: string,
 ): DiagnosticError | null {
-  if (!diagnostic.file || diagnostic.start === undefined) return null;
+  if (!diagnostic.file || diagnostic.start === undefined) {return null;}
   const sourceFile = diagnostic.file;
   const start = sourceFile.getLineAndCharacterOfPosition(diagnostic.start);
   const end = sourceFile.getLineAndCharacterOfPosition(diagnostic.start + (diagnostic.length ?? 0));

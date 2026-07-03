@@ -18,10 +18,10 @@ import { MAX_PREVIEW_LENGTH } from './constants.js';
 export function getLinePreview(service: ts.LanguageService, fileName: string, line: number): string {
   try {
     const sourceFile = service.getProgram()?.getSourceFile(fileName);
-    if (!sourceFile) return '';
+    if (!sourceFile) {return '';}
 
     const lineStarts = sourceFile.getLineStarts();
-    if (line < 1 || line > lineStarts.length) return '';
+    if (line < 1 || line > lineStarts.length) {return '';}
 
     const lineStart = lineStarts[line - 1];
     const lineEnd = line < lineStarts.length ? lineStarts[line] : sourceFile.text.length;

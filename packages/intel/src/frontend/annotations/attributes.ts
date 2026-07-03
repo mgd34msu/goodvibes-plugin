@@ -58,26 +58,26 @@ const ARIA_REQUIRED: Record<string, string[]> = {
 
 function getRole(tag: string, attrs: Map<string, string>): string {
   const explicit = attrs.get('role');
-  if (explicit) return explicit;
+  if (explicit) {return explicit;}
   if (tag === 'input') {
     const type = attrs.get('type') || 'text';
     return INPUT_TYPE_ROLES[type] || 'textbox';
   }
-  if (tag === 'a' && !attrs.has('href')) return 'generic';
+  if (tag === 'a' && !attrs.has('href')) {return 'generic';}
   return SEMANTIC_ROLES[tag] || 'generic';
 }
 
 /** Read a JSX attribute's value into a string (presence-focused). */
-function attrValue(attr: ts.JsxAttribute, sourceFile: ts.SourceFile): string {
-  if (!attr.initializer) return 'true';
-  if (ts.isStringLiteral(attr.initializer)) return attr.initializer.text;
+function attrValue(attr: ts.JsxAttribute, _sourceFile: ts.SourceFile): string {
+  if (!attr.initializer) {return 'true';}
+  if (ts.isStringLiteral(attr.initializer)) {return attr.initializer.text;}
   if (ts.isJsxExpression(attr.initializer) && attr.initializer.expression) {
     const expr = attr.initializer.expression;
-    if (ts.isStringLiteral(expr)) return expr.text;
-    if (expr.kind === ts.SyntaxKind.TrueKeyword) return 'true';
-    if (expr.kind === ts.SyntaxKind.FalseKeyword) return 'false';
-    if (ts.isNumericLiteral(expr)) return expr.text;
-    if (ts.isIdentifier(expr)) return `[${expr.text}]`;
+    if (ts.isStringLiteral(expr)) {return expr.text;}
+    if (expr.kind === ts.SyntaxKind.TrueKeyword) {return 'true';}
+    if (expr.kind === ts.SyntaxKind.FalseKeyword) {return 'false';}
+    if (ts.isNumericLiteral(expr)) {return expr.text;}
+    if (ts.isIdentifier(expr)) {return `[${expr.text}]`;}
     return '[expression]';
   }
   return '';
@@ -131,7 +131,7 @@ export function annotateAttributes(componentNode: ts.Node, sourceFile: ts.Source
         attrs.get('aria-hidden') === 'true' ||
         attrs.get('role') === 'presentation' ||
         attrs.get('role') === 'none';
-      if (!decorative) issues.push('missing_alt');
+      if (!decorative) {issues.push('missing_alt');}
     }
 
     // 2. click-without-role (WCAG 4.1.2) — verified: onClick on a non-focusable
@@ -152,7 +152,7 @@ export function annotateAttributes(componentNode: ts.Node, sourceFile: ts.Source
         }
       } else {
         for (const req of required) {
-          if (!attrs.has(req)) issues.push(`aria_required_missing:${req}`);
+          if (!attrs.has(req)) {issues.push(`aria_required_missing:${req}`);}
         }
       }
     }

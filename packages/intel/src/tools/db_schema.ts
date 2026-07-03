@@ -86,8 +86,8 @@ const definition: Tool = {
 
 /** Trim `data.usage.call_sites` from the end until the rendered envelope fits `maxTokens`. */
 function capToTokens(env: Envelope<DbSchemaData>, maxTokens?: number): Envelope<DbSchemaData> {
-  if (!maxTokens || maxTokens <= 0 || !env.data) return env;
-  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) return env;
+  if (!maxTokens || maxTokens <= 0 || !env.data) {return env;}
+  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) {return env;}
 
   const data = env.data;
   const trim = (): Envelope<DbSchemaData> => ({

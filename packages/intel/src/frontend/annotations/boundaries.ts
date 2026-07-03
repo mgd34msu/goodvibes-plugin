@@ -40,10 +40,10 @@ const REACT_ERROR_BOUNDARY_COMPONENTS = new Set([
 ]);
 
 function findClass(node: ts.Node): ts.ClassDeclaration | null {
-  if (ts.isClassDeclaration(node)) return node;
+  if (ts.isClassDeclaration(node)) {return node;}
   let found: ts.ClassDeclaration | null = null;
   ts.forEachChild(node, (child) => {
-    if (!found && ts.isClassDeclaration(child)) found = child;
+    if (!found && ts.isClassDeclaration(child)) {found = child;}
   });
   return found;
 }
@@ -52,11 +52,11 @@ function classMechanism(node: ts.ClassDeclaration): string | null {
   const names: string[] = [];
   for (const member of node.members) {
     if ((ts.isMethodDeclaration(member) || ts.isPropertyDeclaration(member)) && member.name && ts.isIdentifier(member.name)) {
-      if (ERROR_BOUNDARY_METHODS.includes(member.name.text)) names.push(member.name.text);
+      if (ERROR_BOUNDARY_METHODS.includes(member.name.text)) {names.push(member.name.text);}
     }
   }
-  if (names.includes('getDerivedStateFromError')) return 'getDerivedStateFromError';
-  if (names.length > 0) return names[0];
+  if (names.includes('getDerivedStateFromError')) {return 'getDerivedStateFromError';}
+  if (names.length > 0) {return names[0];}
   return null;
 }
 
@@ -86,7 +86,7 @@ function classHasReset(node: ts.ClassDeclaration, sourceFile: ts.SourceFile): bo
     // (the latter is common in real error boundaries and was missed by v1).
     if ((ts.isMethodDeclaration(member) || ts.isPropertyDeclaration(member)) && member.name && ts.isIdentifier(member.name)) {
       const name = member.name.text.toLowerCase();
-      if (name.includes('reset') || name.includes('retry') || name.includes('recover')) return true;
+      if (name.includes('reset') || name.includes('retry') || name.includes('recover')) {return true;}
     }
   }
   const classText = node.getText(sourceFile);
@@ -97,13 +97,13 @@ function classHasReset(node: ts.ClassDeclaration, sourceFile: ts.SourceFile): bo
 function extractImports(sourceFile: ts.SourceFile): Map<string, string> {
   const imports = new Map<string, string>();
   ts.forEachChild(sourceFile, (node) => {
-    if (!ts.isImportDeclaration(node) || !ts.isStringLiteral(node.moduleSpecifier)) return;
+    if (!ts.isImportDeclaration(node) || !ts.isStringLiteral(node.moduleSpecifier)) {return;}
     const moduleName = node.moduleSpecifier.text;
     const clause = node.importClause;
-    if (!clause) return;
-    if (clause.name) imports.set(clause.name.text, moduleName);
+    if (!clause) {return;}
+    if (clause.name) {imports.set(clause.name.text, moduleName);}
     if (clause.namedBindings && ts.isNamedImports(clause.namedBindings)) {
-      for (const el of clause.namedBindings.elements) imports.set(el.name.text, moduleName);
+      for (const el of clause.namedBindings.elements) {imports.set(el.name.text, moduleName);}
     }
     if (clause.namedBindings && ts.isNamespaceImport(clause.namedBindings)) {
       imports.set(clause.namedBindings.name.text + '.*', moduleName);
@@ -116,7 +116,7 @@ function extractImports(sourceFile: ts.SourceFile): Map<string, string> {
 function jsxHasProp(node: ts.Node, sourceFile: ts.SourceFile, componentName: string, props: string[]): boolean {
   let found = false;
   function visit(n: ts.Node): void {
-    if (found) return;
+    if (found) {return;}
     if (ts.isJsxOpeningElement(n) || ts.isJsxSelfClosingElement(n)) {
       const tagName = n.tagName.getText(sourceFile);
       if (tagName === componentName || tagName.endsWith('.' + componentName)) {
@@ -187,7 +187,7 @@ export function annotateBoundaries(componentNode: ts.Node, sourceFile: ts.Source
       let matched = localName;
       if (!jsxNames.has(localName)) {
         const ns = Array.from(jsxNames).find((n) => n.startsWith(localName + '.'));
-        if (!ns) continue;
+        if (!ns) {continue;}
         matched = ns;
       }
       return {

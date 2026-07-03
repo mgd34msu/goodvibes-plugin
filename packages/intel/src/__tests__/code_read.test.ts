@@ -28,7 +28,7 @@ let outlineAvailable = true;
 beforeAll(async () => {
   outlineAvailable = await treeSitterOutlineAvailable();
   if (!outlineAvailable) {
-    // eslint-disable-next-line no-console
+     
     console.warn(
       '[code_read.test] tree-sitter grammar wasm is ABI-incompatible with this web-tree-sitter version ' +
         '(see test-utils.ts treeSitterOutlineAvailable doc) — outline-mode assertions are skipped.',
@@ -119,7 +119,7 @@ describe('code_read — extract: lines (default)', () => {
 
 describe('code_read — extract: outline', () => {
   it('extracts a document outline with honest exported flags', async (ctx) => {
-    if (!outlineAvailable) ctx.skip();
+    if (!outlineAvailable) {ctx.skip();}
     await writeFile(dir, 'sample.ts', SAMPLE_TS_CODE);
     const result = await handler({ files: ['sample.ts'], extract: 'outline', base_path: dir });
     const data = expectSuccess<ReadData>(result).data!;
@@ -258,7 +258,7 @@ describe('code_read — F4 integration: cache serves content, never a stub', () 
 describe('code_read — F6 one-representation token_budget pagination', () => {
   it('paginates across many small files without ever adding a field the extract mode did not produce', async () => {
     const files: Record<string, string> = {};
-    for (let i = 0; i < 8; i++) files[`f${i}.ts`] = `content of file ${i}`;
+    for (let i = 0; i < 8; i++) {files[`f${i}.ts`] = `content of file ${i}`;}
     await writeFiles(dir, files);
 
     const result = await handler({
@@ -272,7 +272,7 @@ describe('code_read — F6 one-representation token_budget pagination', () => {
     expect(data.summary.pagination).toBeDefined();
     for (const entry of Object.values(data.files)) {
       expect(entry).not.toHaveProperty('content');
-      if (entry.lines !== undefined) expect(Array.isArray(entry.lines)).toBe(true);
+      if (entry.lines !== undefined) {expect(Array.isArray(entry.lines)).toBe(true);}
     }
   });
 
@@ -314,7 +314,7 @@ describe('code_read — output.max_tokens enforcement', () => {
   });
 
   it('trims an oversized outline and flags truncation instead of returning an oversized payload', async (ctx) => {
-    if (!outlineAvailable) ctx.skip();
+    if (!outlineAvailable) {ctx.skip();}
     const bigSource = Array.from(
       { length: 400 },
       (_, i) => `export function generatedFunction_${String(i).padStart(4, '0')}(a: string): string {\n  return a;\n}`,
@@ -335,7 +335,7 @@ describe('code_read — output.max_tokens enforcement', () => {
   });
 
   it('does not flag truncation when output already fits', async (ctx) => {
-    if (!outlineAvailable) ctx.skip();
+    if (!outlineAvailable) {ctx.skip();}
     await writeFile(dir, 'small.ts', SAMPLE_TS_CODE);
     const result = await handler({ files: ['small.ts'], extract: 'outline', base_path: dir, output: { max_tokens: 8000 } });
     const data = expectSuccess<ReadData>(result).data!;

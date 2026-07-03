@@ -71,14 +71,14 @@ export async function withBudget<T>(
   ]);
 
   if (first !== BUDGET_EXPIRED) {
-    if (timer) clearTimeout(timer);
+    if (timer) {clearTimeout(timer);}
     return { value: (first as { value: T }).value, budget_exceeded: false, elapsed_ms: Date.now() - start };
   }
 
   // Budget expired: the task has seen `aborted` and should resolve promptly with
   // its partial. Await it to collect that partial.
   const value = await taskP;
-  if (timer) clearTimeout(timer);
+  if (timer) {clearTimeout(timer);}
   return { value, budget_exceeded: true, elapsed_ms: Date.now() - start };
 }
 
@@ -127,9 +127,9 @@ export function installProcessHygiene(options: ProcHygieneOptions = {}): ProcHyg
   const timers: Array<ReturnType<typeof setInterval>> = [];
 
   function stop(): void {
-    if (stopped) return;
+    if (stopped) {return;}
     stopped = true;
-    for (const t of timers) clearInterval(t);
+    for (const t of timers) {clearInterval(t);}
     if (watchStdin) {
       try {
         process.stdin.off('end', onStdinEnd);
@@ -145,7 +145,7 @@ export function installProcessHygiene(options: ProcHygieneOptions = {}): ProcHyg
   }
 
   async function shutdown(reason: string): Promise<void> {
-    if (shuttingDown) return;
+    if (shuttingDown) {return;}
     shuttingDown = true;
     stop();
     try {
@@ -170,7 +170,7 @@ export function installProcessHygiene(options: ProcHygieneOptions = {}): ProcHyg
   // ppid poll — catches reparent-to-init that stdin-close alone misses
   const ppidTimer = setInterval(() => {
     const p = process.ppid;
-    if (p !== initialPpid || p === 1) void shutdown('reparented');
+    if (p !== initialPpid || p === 1) {void shutdown('reparented');}
   }, ppidPollMs);
   ppidTimer.unref?.();
   timers.push(ppidTimer);

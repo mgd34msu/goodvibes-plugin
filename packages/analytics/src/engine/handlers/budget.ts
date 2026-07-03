@@ -14,7 +14,7 @@ import {
   formatDollars,
   formatPercent,
   formatBar,
-} from '../tui/mini/format.js';
+} from '../format.js';
 import { type HandlerResponse, text } from './types.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -229,9 +229,9 @@ function formatBudgetUsed(used: number, unit: BudgetState['unit']): string {
  * Derive a human-readable status label from the usage percentage.
  */
 function resolveStatusLabel(ratio: number): string {
-  if (ratio >= DEFAULT_WARN_THRESHOLDS[2]) return 'exceeded';
-  if (ratio >= DEFAULT_WARN_THRESHOLDS[1]) return 'warning';
-  if (ratio >= DEFAULT_WARN_THRESHOLDS[0]) return 'on-track';
+  if (ratio >= DEFAULT_WARN_THRESHOLDS[2]) {return 'exceeded';}
+  if (ratio >= DEFAULT_WARN_THRESHOLDS[1]) {return 'warning';}
+  if (ratio >= DEFAULT_WARN_THRESHOLDS[0]) {return 'on-track';}
   return 'under';
 }
 

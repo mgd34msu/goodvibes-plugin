@@ -48,7 +48,11 @@ registry operations.
    env references over a literal secret value.
 4. `api_request` — call the registered service by `service` name + `path` (or an allowlisted `url`).
    Batch related calls; each result is keyed by `id` (or array index) and error-isolated. Choose
-   `extract`: json | text | headers | status (default json).
+   `extract`: json | text | headers | status (default json). An entry may carry a per-request
+   `auth` override (`none` | `bearer` | `basic` | `api-key` | `custom-headers`), applied to the
+   headers when the request is built — useful for one-off credentials on allowlisted URLs. It is
+   caller-supplied, not origin-pinned; for an origin-matched registered service the stored
+   credential is applied after it and wins on the same header (usually `Authorization`).
 5. For databases: `service` `register_connection` (`url` for a secret-free target such as a SQLite
    file, or `url_env` naming an env var that holds the connection URL), then `db_query` with the
    `connection` name. SELECT/WITH queries auto-LIMIT (default 100); pass `write: true` only for a

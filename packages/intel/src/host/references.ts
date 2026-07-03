@@ -30,15 +30,15 @@ export function countReferences(
   isTestFile: (p: string) => boolean,
 ): { total: number; external: number } {
   const references = service.getReferencesAtPosition(fileName, position);
-  if (!references) return { total: 0, external: 0 };
+  if (!references) {return { total: 0, external: 0 };}
 
   let total = 0;
   let external = 0;
   for (const ref of references) {
-    if (isDefinitionRef(ref)) continue;
-    if (!includeTests && isTestFile(ref.fileName)) continue;
+    if (isDefinitionRef(ref)) {continue;}
+    if (!includeTests && isTestFile(ref.fileName)) {continue;}
     total++;
-    if (ref.fileName !== fileName) external++;
+    if (ref.fileName !== fileName) {external++;}
   }
   return { total, external };
 }
@@ -85,13 +85,13 @@ export function findReferencingFiles(
   try {
     const { service, program } = host.getServiceForFile(absoluteFilePath);
     const normalized = toTsPath(absoluteFilePath);
-    if (!program.getSourceFile(normalized)) return [];
+    if (!program.getSourceFile(normalized)) {return [];}
 
     const navTree = service.getNavigationTree(normalized);
     for (const item of navTree?.childItems ?? []) {
-      if (item.text.startsWith('<') || item.text.startsWith('_')) continue;
+      if (item.text.startsWith('<') || item.text.startsWith('_')) {continue;}
       const spans = item.spans;
-      if (!spans || spans.length === 0) continue;
+      if (!spans || spans.length === 0) {continue;}
       try {
         const references = service.findReferences(normalized, spans[0].start);
         for (const refGroup of references ?? []) {

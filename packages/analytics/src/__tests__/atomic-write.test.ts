@@ -1,8 +1,8 @@
 /**
- * Atomic-write regression tests (v2 mandatory fix): every shared state file is
- * written temp-then-rename, so a reader never observes a partial write and no
- * `.tmp` residue is left behind. The global SQLite DB, analytics config, and the
- * dashboard pane-state JSON all route through these helpers.
+ * Atomic-write regression tests: every shared state file is written
+ * temp-then-rename, so a reader never observes a partial write and no `.tmp`
+ * residue is left behind. The global SQLite DB, analytics config, and the
+ * health-state JSON all route through these helpers.
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -46,7 +46,7 @@ describe('atomicWriteFileSync', () => {
 
   it('round-trips through repeated overwrites without corruption', () => {
     const file = join(dir, 'loop.txt');
-    for (let i = 0; i < 20; i++) atomicWriteFileSync(file, `iteration-${i}`);
+    for (let i = 0; i < 20; i++) {atomicWriteFileSync(file, `iteration-${i}`);}
     expect(readFileSync(file, 'utf-8')).toBe('iteration-19');
     expect(readdirSync(dir).filter((f) => f.includes('.tmp'))).toEqual([]);
   });

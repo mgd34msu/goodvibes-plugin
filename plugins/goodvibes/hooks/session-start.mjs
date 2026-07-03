@@ -10,9 +10,15 @@
  *
  * The first time a project is seen (no summary yet) that line points at the
  * live-cost view instead. Nothing else is emitted unless it is real: existing
- * project-health notes, the host-health nudge, and a native-deps-missing note
+ * project-health notes, the host-health nudge, and one native-deps line
  * (only when the durable install can't be silently relinked — see
- * `selfHealDeps`). `systemMessage` mirrors the same information compactly.
+ * `nativeDepsAction`). `systemMessage` mirrors the same information compactly.
+ *
+ * Native deps install themselves: when a server's probe is missing and the
+ * durable home can't cover it, this hook kicks `lib/deps-install.mjs` as a
+ * DETACHED background process (stdio ignored, unref'd — SessionStart never
+ * blocks on npm) and says so in one line. A recent (<24h) failed install is
+ * reported instead of retried, pointing at the log and /goodvibes:setup.
  *
  * Still retired (never coming back): stack/framework detection, git status, the
  * TODO walker, "ready" banners, CLAUDE.md/prompt-chain writing, crash recovery,
@@ -20,8 +26,7 @@
  * 2.0.2/2.0.3 noise the value-line contract exists to keep out.
  */
 
-import { existsSync, readFileSync, symlinkSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { existsSync, readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import {
   runHook,
@@ -30,6 +35,15 @@ import {
   readJsonSafe,
   isTestEnvironment,
 } from './lib/common.mjs';
+import {
+  SERVER_PROBES,
+  depsSatisfied,
+  durableDepsDir,
+  durableDepsRoot,
+  hasProbe,
+  linkDeps,
+} from './lib/deps-link.mjs';
+import { spawnDetachedInstall } from './lib/deps-install.mjs';
 
 const HOOK_EVENT = 'SessionStart';
 
@@ -57,68 +71,67 @@ function valueLine(cwd) {
   };
 }
 
-/** One representative dependency per server proves that server's install. */
-const SERVER_PROBES = {
-  intel: '@vscode/ripgrep',
-  analytics: 'ink',
-  connect: 'sql.js',
-};
-
-/** Durable per-server dependency home — survives plugin-cache replacement on update. */
-function durableDepsDir(server) {
-  return path.join(homedir(), '.claude', '.goodvibes', 'deps', server);
-}
-
-function depsSatisfied(root, server) {
-  return existsSync(
-    path.join(root, 'server', server, 'node_modules', ...SERVER_PROBES[server].split('/')),
-  );
-}
-
-/** True when two package.json files declare the same `dependencies` map. */
-function sameDeps(fileA, fileB) {
+/**
+ * True when every dependency the plugin copy's package.json declares is
+ * present in the durable install's package.json at the same version range —
+ * i.e. the durable install covers the plugin copy (superset-or-equal). An
+ * update that only REMOVES dependencies still relinks; one that adds a
+ * dependency or changes a range does not, and a reinstall runs instead.
+ */
+function durableCoversPlugin(pluginPkgFile, durablePkgFile) {
   try {
-    const a = JSON.parse(readFileSync(fileA, 'utf-8')).dependencies ?? {};
-    const b = JSON.parse(readFileSync(fileB, 'utf-8')).dependencies ?? {};
-    return JSON.stringify(a) === JSON.stringify(b);
+    const plugin = JSON.parse(readFileSync(pluginPkgFile, 'utf-8')).dependencies ?? {};
+    const durable = JSON.parse(readFileSync(durablePkgFile, 'utf-8')).dependencies ?? {};
+    return Object.entries(plugin).every(([name, range]) => durable[name] === range);
   } catch {
     return false;
   }
 }
 
 /**
- * Self-heal after a plugin update: `/goodvibes:setup` installs into the durable
- * home and leaves a symlink in the plugin copy; an update replaces the plugin
- * copy (dropping the symlink) but not the durable home. When the durable
- * install exists and its package.json still matches the new plugin version's,
- * silently relink — the user never re-runs setup. A dependency-list change in
- * the update makes this return false, so the nudge points at setup honestly.
+ * Self-heal after a plugin update: installs live in the durable home and the
+ * plugin copy holds a link to them; an update replaces the plugin copy
+ * (dropping the link) but not the durable home. When the durable install has
+ * the probe and covers the new plugin copy's dependency list, silently relink.
  */
 function selfHealDeps(root, server) {
   try {
     const durable = durableDepsDir(server);
-    const durableModules = path.join(durable, 'node_modules');
-    if (!existsSync(path.join(durableModules, ...SERVER_PROBES[server].split('/')))) return false;
-    const serverDir = path.join(root, 'server', server);
-    if (!sameDeps(path.join(serverDir, 'package.json'), path.join(durable, 'package.json'))) {
+    if (!hasProbe(path.join(durable, 'node_modules'), server)) return false;
+    if (
+      !durableCoversPlugin(
+        path.join(root, 'server', server, 'package.json'),
+        path.join(durable, 'package.json'),
+      )
+    ) {
       return false;
     }
-    const target = path.join(serverDir, 'node_modules');
-    if (!existsSync(target)) symlinkSync(durableModules, target, 'dir');
+    linkDeps(root, server);
     return depsSatisfied(root, server);
   } catch {
     return false;
   }
 }
 
+/** The failed-server list from a recent (<24h) failed install, else null. */
+function recentInstallFailure() {
+  const result = readJsonSafe(path.join(durableDepsRoot(), '.last-result.json'), null);
+  if (!result || result.ok !== false) return null;
+  const finished = Date.parse(result.finished_at);
+  if (!Number.isFinite(finished) || Date.now() - finished > 24 * 60 * 60 * 1000) return null;
+  return Array.isArray(result.failed) ? result.failed : [];
+}
+
 /**
- * One-line note when the INSTALLED plugin copy is missing native deps that
- * cannot be silently relinked from the durable home — i.e. setup genuinely
- * needs to run (never ran, or an update changed a server's dependency list).
- * This is a global condition of the installed copy, not project state, so it
- * is keyed on nothing but the probes. Silent when CLAUDE_PLUGIN_ROOT is absent.
+ * Decide what to do about native deps this session. Probes each server; a
+ * missing server first tries the silent relink from the durable home. Anything
+ * still missing means an install has to run: a recent failed attempt is
+ * reported (with the log path and the manual /goodvibes:setup fallback)
+ * instead of retried; otherwise the background installer should be kicked.
+ * Returns null (all satisfied) or { line, alert, spawnInstall }.
+ * Silent when CLAUDE_PLUGIN_ROOT is absent.
  */
-function nativeDepsNudge() {
+function nativeDepsAction() {
   const root = process.env.CLAUDE_PLUGIN_ROOT;
   if (!root) return null;
   const missing = [];
@@ -128,7 +141,20 @@ function nativeDepsNudge() {
     missing.push(server);
   }
   if (missing.length === 0) return null;
-  return `native deps not installed (${missing.join(', ')}) - run /goodvibes:setup (once; installs survive plugin updates)`;
+  const failed = recentInstallFailure();
+  if (failed) {
+    const servers = failed.length ? failed : missing;
+    return {
+      line: `goodvibes: native dep install failed for ${servers.join(', ')} - see ~/.claude/.goodvibes/deps/install.log or run /goodvibes:setup`,
+      alert: 'native dep install failed',
+      spawnInstall: false,
+    };
+  }
+  return {
+    line: 'goodvibes: installing native deps in the background - ready next session',
+    alert: 'installing native deps',
+    spawnInstall: true,
+  };
 }
 
 /** Cheap, synchronous project-health checks. Returns short problem notes. */
@@ -181,17 +207,20 @@ async function handleSessionStart(input) {
   const value = valueLine(cwd);
   const problems = quickHealth(cwd);
   const nudge = healthNudge(cwd);
-  const deps = nativeDepsNudge();
+  const deps = nativeDepsAction();
+  if (deps?.spawnInstall && process.env.GOODVIBES_NO_BG_INSTALL !== '1') {
+    spawnDetachedInstall(process.env.CLAUDE_PLUGIN_ROOT);
+  }
 
   const lines = [value.context];
   for (const note of problems) lines.push(`- ${note}`);
   if (nudge) lines.push(`- ${nudge}`);
-  if (deps) lines.push(`- ${deps}`);
+  if (deps) lines.push(deps.line);
 
   const alerts = [];
   if (problems.length) alerts.push(`${problems.length} project note(s)`);
   if (nudge) alerts.push('host health alert');
-  if (deps) alerts.push('native deps missing');
+  if (deps) alerts.push(deps.alert);
 
   const systemMessage = alerts.length ? `${value.system} — ${alerts.join(', ')}` : value.system;
 
@@ -206,4 +235,4 @@ if (!isTestEnvironment()) {
   await runHook(HOOK_EVENT, handleSessionStart);
 }
 
-export { quickHealth, healthNudge, valueLine, nativeDepsNudge, handleSessionStart };
+export { quickHealth, healthNudge, valueLine, nativeDepsAction, handleSessionStart };

@@ -81,7 +81,7 @@ export class IndexReader {
    */
   getTotalTokens(): number {
     const index = this.read();
-    if (!index) return 0;
+    if (!index) {return 0;}
 
     let total = 0;
     for (const files of Object.values(index.tree)) {
@@ -101,7 +101,7 @@ export class IndexReader {
    */
   getTypeCounts(): Record<string, number> {
     const index = this.read();
-    if (!index) return {};
+    if (!index) {return {};}
 
     const counts: Record<string, number> = {};
     for (const files of Object.values(index.tree)) {
@@ -120,10 +120,10 @@ export class IndexReader {
    * Returns an empty array if the index is unavailable or n <= 0.
    */
   getLargestFiles(n: number): Array<{ path: string; tokens: number }> {
-    if (n <= 0) return [];
+    if (n <= 0) {return [];}
 
     const index = this.read();
-    if (!index) return [];
+    if (!index) {return [];}
 
     const entries: Array<{ path: string; tokens: number }> = [];
     for (const [dir, files] of Object.entries(index.tree)) {

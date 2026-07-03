@@ -83,7 +83,7 @@ function diffCharCap(maxTokens: number, entryCount: number): number {
 }
 
 function truncateDiff(diff: string, cap: number): { diff: string; truncated: boolean } {
-  if (diff.length <= cap) return { diff, truncated: false };
+  if (diff.length <= cap) {return { diff, truncated: false };}
   const head = Math.floor(cap * 0.6);
   const tail = Math.floor(cap * 0.25);
   return {
@@ -159,8 +159,8 @@ async function runPreview(input: StructuralEditInput, startedAt: number): Promis
       }
       const find = resolveStringOrBase64(edit as unknown as Record<string, unknown>, 'find');
       const replace = resolveStringOrBase64(edit as unknown as Record<string, unknown>, 'replace');
-      if (find == null) throw new Error(`edits[${i}].find is required (provide find or find_base64).`);
-      if (replace == null) throw new Error(`edits[${i}].replace is required (provide replace or replace_base64).`);
+      if (find == null) {throw new Error(`edits[${i}].find is required (provide find or find_base64).`);}
+      if (replace == null) {throw new Error(`edits[${i}].replace is required (provide replace or replace_base64).`);}
 
       const resolved = resolveInputPath(edit.path, workDir).resolved_path;
 
@@ -173,7 +173,7 @@ async function runPreview(input: StructuralEditInput, startedAt: number): Promis
           content = null;
         }
         originalContent.set(resolved, content);
-        if (content !== null) workingContent.set(resolved, content);
+        if (content !== null) {workingContent.set(resolved, content);}
         touchedFiles.set(resolved, {
           resolved_path: resolved,
           hash: content !== null ? sha256(content) : '',
@@ -210,7 +210,7 @@ async function runPreview(input: StructuralEditInput, startedAt: number): Promis
         const relName = path.relative(workDir, resolved) || path.basename(resolved);
         const rawDiff = createTwoFilesPatch(relName, relName, before, after, '', '', { context });
         const { diff, truncated } = truncateDiff(rawDiff, cap);
-        if (truncated) anyTruncated = true;
+        if (truncated) {anyTruncated = true;}
         entryOut = {
           id: edit.id,
           status: 'ready',
@@ -282,7 +282,7 @@ async function runPreview(input: StructuralEditInput, startedAt: number): Promis
     execution_ms: Math.round(performance.now() - startedAt),
     ...(anyTruncated ? { truncated: true, effective_caps: { max_tokens: maxTokens } } : {}),
   });
-  if (baseWarning) env.warning = baseWarning;
+  if (baseWarning) {env.warning = baseWarning;}
   return toCallToolResult(env);
 }
 
@@ -341,7 +341,7 @@ async function runApply(input: StructuralEditInput, startedAt: number): Promise<
     }
     currentSnapshot.set(f.resolved_path, current);
     const currentHash = current !== null ? sha256(current) : '';
-    if (currentHash !== f.hash) staleFiles.add(f.resolved_path);
+    if (currentHash !== f.hash) {staleFiles.add(f.resolved_path);}
   }
 
   const transaction = record.transaction;
@@ -380,7 +380,7 @@ async function runApply(input: StructuralEditInput, startedAt: number): Promise<
   const anyBlocked = classified.some((c) => c.outcome !== 'pending');
   const freshFilesToWrite = new Set<string>();
   for (const c of classified) {
-    if (c.outcome === 'pending') freshFilesToWrite.add(c.resolved_path);
+    if (c.outcome === 'pending') {freshFilesToWrite.add(c.resolved_path);}
   }
 
   const entriesOut: Record<string, ApplyEntryOut> = {};
@@ -388,7 +388,7 @@ async function runApply(input: StructuralEditInput, startedAt: number): Promise<
 
   const finalize = (success: boolean, errorMsg?: string): CallToolResult => {
     const summary = { applied: 0, refused_stale: 0, rolled_back: 0, failed: 0 };
-    for (const out of Object.values(entriesOut)) summary[out.status]++;
+    for (const out of Object.values(entriesOut)) {summary[out.status]++;}
     const data = {
       action: 'apply' as const,
       transaction,
@@ -541,8 +541,8 @@ async function run(args: unknown): Promise<CallToolResult> {
   const input = (args ?? {}) as StructuralEditInput;
   const action = input.action;
   try {
-    if (action === 'preview') return await runPreview(input, start);
-    if (action === 'apply') return await runApply(input, start);
+    if (action === 'preview') {return await runPreview(input, start);}
+    if (action === 'apply') {return await runApply(input, start);}
     return toCallToolResult(
       errorEnvelope(
         `Missing or invalid 'action'. Expected "preview" or "apply" (got ${JSON.stringify(action)}). ` +

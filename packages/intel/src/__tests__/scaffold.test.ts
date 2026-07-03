@@ -33,8 +33,8 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-  if (originalPluginRoot === undefined) delete process.env.PLUGIN_ROOT;
-  else process.env.PLUGIN_ROOT = originalPluginRoot;
+  if (originalPluginRoot === undefined) {delete process.env.PLUGIN_ROOT;}
+  else {process.env.PLUGIN_ROOT = originalPluginRoot;}
 });
 
 async function listFilesRecursive(dir: string, relBase = ''): Promise<string[]> {
@@ -55,10 +55,10 @@ function discoverTemplates(): Array<{ category: string; name: string; dir: strin
   const found: Array<{ category: string; name: string; dir: string }> = [];
   for (const category of ['minimal', 'full']) {
     const categoryDir = path.join(TEMPLATES_ROOT, category);
-    if (!fs.existsSync(categoryDir)) continue;
+    if (!fs.existsSync(categoryDir)) {continue;}
     for (const name of fs.readdirSync(categoryDir)) {
       const dir = path.join(categoryDir, name);
-      if (fs.statSync(dir).isDirectory()) found.push({ category, name, dir });
+      if (fs.statSync(dir).isDirectory()) {found.push({ category, name, dir });}
     }
   }
   return found;

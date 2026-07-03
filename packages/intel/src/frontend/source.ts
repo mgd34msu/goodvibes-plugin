@@ -37,11 +37,11 @@ export function getSourceFile(absPath: string): ts.SourceFile | undefined {
  */
 export function getSourceFiles(absPaths: string[]): Map<string, ts.SourceFile> {
   const out = new Map<string, ts.SourceFile>();
-  if (absPaths.length === 0) return out;
+  if (absPaths.length === 0) {return out;}
   const { program } = getCompilerHost().getServiceForFiles(absPaths);
   for (const abs of absPaths) {
     const sf = program.getSourceFile(toTsPath(abs));
-    if (sf) out.set(abs, sf);
+    if (sf) {out.set(abs, sf);}
   }
   return out;
 }

@@ -48,7 +48,7 @@ export interface PricingCacheFile {
 /** "$12.50 / MTok" -> 12.5; throws on anything else. */
 function parsePrice(cell: string): number {
   const match = cell.match(/\$(\d+(?:\.\d+)?)\s*\/\s*MTok/i);
-  if (!match) throw new Error(`unparseable price cell: ${cell}`);
+  if (!match) {throw new Error(`unparseable price cell: ${cell}`);}
   return parseFloat(match[1]);
 }
 
@@ -82,7 +82,7 @@ function rowEffectiveNow(cleanedName: string, now: Date): boolean {
 /** "Claude Opus 4.8 through Aug 31, 2026" -> "claude-opus-4-8" (or null). */
 function modelKey(cleanedName: string): { key: string; display: string } | null {
   const match = cleanedName.match(/Claude\s+([A-Za-z]+)\s+([\d.]+)/i);
-  if (!match) return null;
+  if (!match) {return null;}
   const family = match[1].toLowerCase();
   const version = match[2].replace(/\./g, '-');
   return { key: `claude-${family}-${version}`, display: `Claude ${match[1]} ${match[2]}` };
@@ -95,20 +95,20 @@ function modelKey(cleanedName: string): { key: string; display: string } | null 
  */
 export function parsePricingMarkdown(markdown: string, now: Date = new Date()): Record<string, FetchedModelPricing> {
   const section = markdown.match(/##\s*Model pricing[\s\S]*?(?=\n##\s|$)/i);
-  if (!section) throw new Error('no "Model pricing" section found');
+  if (!section) {throw new Error('no "Model pricing" section found');}
 
   const models: Record<string, FetchedModelPricing> = {};
   for (const line of section[0].split('\n')) {
-    if (!line.trim().startsWith('|') || /^\|\s*-+/.test(line.trim()) || /\|\s*Model\s*\|/i.test(line)) continue;
+    if (!line.trim().startsWith('|') || /^\|\s*-+/.test(line.trim()) || /\|\s*Model\s*\|/i.test(line)) {continue;}
     const cells = line.split('|').map((c) => c.trim()).filter((c) => c.length > 0);
-    if (cells.length < 6) continue;
+    if (cells.length < 6) {continue;}
 
     const cleaned = cleanName(cells[0]);
     const keyed = modelKey(cleaned);
-    if (!keyed) continue;
-    if (!rowEffectiveNow(cleaned, now)) continue;
+    if (!keyed) {continue;}
+    if (!rowEffectiveNow(cleaned, now)) {continue;}
     // First effective row per key wins (introductory rows are listed first).
-    if (models[keyed.key]) continue;
+    if (models[keyed.key]) {continue;}
 
     try {
       models[keyed.key] = {
@@ -133,10 +133,10 @@ export function parsePricingMarkdown(markdown: string, now: Date = new Date()): 
 /** Age of the cache file in hours; Infinity when absent/unreadable. */
 export function cacheAgeHours(cachePath: string = PRICING_CACHE_PATH): number {
   try {
-    if (!existsSync(cachePath)) return Infinity;
+    if (!existsSync(cachePath)) {return Infinity;}
     const cache = JSON.parse(readFileSync(cachePath, 'utf-8')) as PricingCacheFile;
     const fetched = new Date(cache.fetchedAt).getTime();
-    if (isNaN(fetched)) return Infinity;
+    if (isNaN(fetched)) {return Infinity;}
     return (Date.now() - fetched) / 3_600_000;
   } catch {
     return Infinity;
@@ -159,13 +159,13 @@ export async function refreshPricingIfStale(options: {
   /** Tests stubbing global fetch set this to bypass the VITEST guard. */
   force?: boolean;
 } = {}): Promise<boolean> {
-  if (process.env.GOODVIBES_NO_PRICING_FETCH === '1') return false;
+  if (process.env.GOODVIBES_NO_PRICING_FETCH === '1') {return false;}
   // Never let the test suite (or anything importing config under it) reach
   // the network implicitly; the fetcher's own tests stub fetch and force.
-  if (process.env.VITEST && !options.force) return false;
+  if (process.env.VITEST && !options.force) {return false;}
   const cachePath = options.cachePath ?? PRICING_CACHE_PATH;
-  if (cacheAgeHours(cachePath) < (options.ttlHours ?? TTL_HOURS)) return false;
-  if (inFlight) return inFlight;
+  if (cacheAgeHours(cachePath) < (options.ttlHours ?? TTL_HOURS)) {return false;}
+  if (inFlight) {return inFlight;}
 
   inFlight = (async () => {
     try {
@@ -177,7 +177,7 @@ export async function refreshPricingIfStale(options: {
         redirect: 'follow',
       });
       clearTimeout(timer);
-      if (!response.ok) return false;
+      if (!response.ok) {return false;}
       const markdown = await response.text();
       const models = parsePricingMarkdown(markdown);
       const file: PricingCacheFile = {

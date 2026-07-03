@@ -20,9 +20,9 @@ function detectUnnecessaryClient(
 ): ClientBoundaryIssue[] {
   const issues: ClientBoundaryIssue[] = [];
   for (const comp of classifications) {
-    if (comp.classification !== 'client') continue;
+    if (comp.classification !== 'client') {continue;}
     const info = directiveMap.get(comp.file);
-    if (!info) continue;
+    if (!info) {continue;}
     if (!info.hasClientAPIs && !info.hasServerOnlyImports) {
       issues.push({
         type: 'unnecessary_client',
@@ -43,9 +43,9 @@ function detectMissingDirective(
 ): ClientBoundaryIssue[] {
   const issues: ClientBoundaryIssue[] = [];
   for (const comp of classifications) {
-    if (comp.classification !== 'server') continue;
+    if (comp.classification !== 'server') {continue;}
     const info = directiveMap.get(comp.file);
-    if (!info) continue;
+    if (!info) {continue;}
     if (info.hasClientAPIs) {
       issues.push({
         type: 'missing_directive',
@@ -86,9 +86,9 @@ function detectServerOnlyInClient(
 ): ClientBoundaryIssue[] {
   const issues: ClientBoundaryIssue[] = [];
   for (const comp of classifications) {
-    if (comp.classification !== 'client' && comp.classification !== 'client-inherited') continue;
+    if (comp.classification !== 'client' && comp.classification !== 'client-inherited') {continue;}
     const info = directiveMap.get(comp.file);
-    if (!info) continue;
+    if (!info) {continue;}
     if (info.hasServerOnlyImports) {
       issues.push({
         type: 'server_only_in_client',
@@ -111,7 +111,7 @@ function detectBoundaryOptimizations(
 ): ClientBoundaryIssue[] {
   const issues: ClientBoundaryIssue[] = [];
   for (const [boundaryFile, childCount] of boundaryMap) {
-    if (childCount < 3) continue;
+    if (childCount < 3) {continue;}
     const directImports = graph.get(boundaryFile) || [];
     const serverableChildren = directImports.filter((imp) => {
       const info = directiveMap.get(imp);

@@ -36,7 +36,7 @@ export function findTsConfigSync(startPath: string): string | null {
       return toTsPath(tsconfigPath);
     }
     const parentDir = path.dirname(dir);
-    if (parentDir === dir) break;
+    if (parentDir === dir) {break;}
     dir = parentDir;
   }
   return null;
@@ -59,7 +59,7 @@ export async function findTsConfig(startPath: string): Promise<string | null> {
       // not here — keep walking
     }
     const parentDir = path.dirname(dir);
-    if (parentDir === dir) break;
+    if (parentDir === dir) {break;}
     dir = parentDir;
   }
   return null;
@@ -142,9 +142,9 @@ export function findTypescriptLibDir(startDir: string): string | null {
   const root = path.parse(dir).root;
   while (dir !== root) {
     const tsLibDir = path.join(dir, 'node_modules', 'typescript', 'lib');
-    if (fs.existsSync(tsLibDir)) return tsLibDir;
+    if (fs.existsSync(tsLibDir)) {return tsLibDir;}
     const parent = path.dirname(dir);
-    if (parent === dir) break;
+    if (parent === dir) {break;}
     dir = parent;
   }
   return null;

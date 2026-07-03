@@ -141,17 +141,17 @@ interface ResolvedCaps {
 }
 
 function truncateLine(line: string, maxLength: number | undefined): string {
-  if (!maxLength || line.length <= maxLength) return line;
+  if (!maxLength || line.length <= maxLength) {return line;}
   return line.substring(0, maxLength) + '... [truncated]';
 }
 
 /** Split a glob with a literal directory prefix (e.g. `pt-tests/fixtures/**\/*.ts`) into (dir, glob). */
 function splitGlobPattern(globPattern: string): { dir: string; glob: string } | null {
   const match = globPattern.match(/^([^*?[\]{}]+\/)(.*)/);
-  if (!match) return null;
+  if (!match) {return null;}
   const [, literalPrefix, remainingGlob] = match;
   const dir = literalPrefix.replace(/\/$/, '');
-  if (!remainingGlob || !/[*?[\]{}]/.test(remainingGlob)) return null;
+  if (!remainingGlob || !/[*?[\]{}]/.test(remainingGlob)) {return null;}
   return { dir, glob: remainingGlob };
 }
 
@@ -178,8 +178,8 @@ async function transformRipgrepResult(
   for (const match of ripgrepResult.matches) {
     const relativePath = path.relative(workDir, match.file);
     const existing = byFile.get(relativePath);
-    if (existing) existing.push(match);
-    else byFile.set(relativePath, [match]);
+    if (existing) {existing.push(match);}
+    else {byFile.set(relativePath, [match]);}
   }
 
   const trueFileCount = byFile.size;
@@ -214,7 +214,7 @@ async function transformRipgrepResult(
       match_count: trueMatchCount,
       truncated,
     };
-    if (truncated) filesOnlyResult.effective_caps = effectiveCaps;
+    if (truncated) {filesOnlyResult.effective_caps = effectiveCaps;}
     filesOnlyResult.tokens_used = estimatePayloadTokens(JSON.stringify(filesOnlyResult));
     return filesOnlyResult;
   }
@@ -246,7 +246,7 @@ async function transformRipgrepResult(
       }
       if (totalTokens >= maxTokens) {
         truncated = true;
-        if (output.max_tokens !== undefined) effectiveCaps.max_tokens = output.max_tokens;
+        if (output.max_tokens !== undefined) {effectiveCaps.max_tokens = output.max_tokens;}
         break outer;
       }
 
@@ -255,7 +255,7 @@ async function transformRipgrepResult(
       if (output.mode === 'matches' || output.mode === 'context') {
         const originalLine = match.lineContent;
         grepMatch.content = truncateLine(match.lineContent, output.max_line_length);
-        if (grepMatch.content !== originalLine) linesTruncated++;
+        if (grepMatch.content !== originalLine) {linesTruncated++;}
         const matchStart = match.column - 1;
         grepMatch.highlight = [matchStart, matchStart + match.matchText.length];
         totalTokens += estimatePayloadTokens(grepMatch.content);
@@ -278,7 +278,7 @@ async function transformRipgrepResult(
               if (start < matchLineIndex) {
                 grepMatch.before = lines.slice(start, matchLineIndex).map((l) => {
                   const t = truncateLine(l, output.max_line_length);
-                  if (t !== l) linesTruncated++;
+                  if (t !== l) {linesTruncated++;}
                   return t;
                 });
                 totalTokens += estimatePayloadTokens(grepMatch.before.join('\n'));
@@ -286,7 +286,7 @@ async function transformRipgrepResult(
               if (end > matchLineIndex) {
                 grepMatch.after = lines.slice(matchLineIndex + 1, end + 1).map((l) => {
                   const t = truncateLine(l, output.max_line_length);
-                  if (t !== l) linesTruncated++;
+                  if (t !== l) {linesTruncated++;}
                   return t;
                 });
                 totalTokens += estimatePayloadTokens(grepMatch.after.join('\n'));
@@ -296,7 +296,7 @@ async function transformRipgrepResult(
             if (match.contextBefore) {
               grepMatch.before = match.contextBefore.map((l) => {
                 const t = truncateLine(l, output.max_line_length);
-                if (t !== l) linesTruncated++;
+                if (t !== l) {linesTruncated++;}
                 return t;
               });
               totalTokens += estimatePayloadTokens(grepMatch.before.join('\n'));
@@ -304,7 +304,7 @@ async function transformRipgrepResult(
             if (match.contextAfter) {
               grepMatch.after = match.contextAfter.map((l) => {
                 const t = truncateLine(l, output.max_line_length);
-                if (t !== l) linesTruncated++;
+                if (t !== l) {linesTruncated++;}
                 return t;
               });
               totalTokens += estimatePayloadTokens(grepMatch.after.join('\n'));
@@ -314,7 +314,7 @@ async function transformRipgrepResult(
           if (match.contextBefore) {
             grepMatch.before = match.contextBefore.map((l) => {
               const t = truncateLine(l, output.max_line_length);
-              if (t !== l) linesTruncated++;
+              if (t !== l) {linesTruncated++;}
               return t;
             });
             totalTokens += estimatePayloadTokens(grepMatch.before.join('\n'));
@@ -322,7 +322,7 @@ async function transformRipgrepResult(
           if (match.contextAfter) {
             grepMatch.after = match.contextAfter.map((l) => {
               const t = truncateLine(l, output.max_line_length);
-              if (t !== l) linesTruncated++;
+              if (t !== l) {linesTruncated++;}
               return t;
             });
             totalTokens += estimatePayloadTokens(grepMatch.after.join('\n'));
@@ -336,7 +336,7 @@ async function transformRipgrepResult(
   }
 
   const result: GrepResult = { files, file_count: trueFileCount, match_count: trueMatchCount, truncated };
-  if (truncated) result.effective_caps = effectiveCaps;
+  if (truncated) {result.effective_caps = effectiveCaps;}
   if (linesTruncated > 0) {
     result.lines_truncated = linesTruncated;
     result.note = `${linesTruncated} lines truncated to ${output.max_line_length} chars. Omit max_line_length for full content.`;
@@ -396,7 +396,7 @@ async function executeQuery(
       negation: negationResult,
       tokens_used: estimatePayloadTokens(JSON.stringify({ files: negationResult.files, negation: negationResult })),
     };
-    if (negationTruncated) negationReturn.effective_caps = { max_results: maxFiles };
+    if (negationTruncated) {negationReturn.effective_caps = { max_results: maxFiles };}
     return negationReturn;
   }
 
@@ -583,12 +583,12 @@ async function runCodeGrep(args: unknown): Promise<CallToolResult> {
       const results = await Promise.all(queries.map((q) => executeQuery(q, output, workDir)));
       queries.forEach((q, i) => (queryResults[q.id] = results[i]));
     } else {
-      for (const query of queries) queryResults[query.id] = await executeQuery(query, output, workDir);
+      for (const query of queries) {queryResults[query.id] = await executeQuery(query, output, workDir);}
     }
 
     for (const [queryId, result] of Object.entries(queryResults)) {
       const query = queries.find((q) => q.id === queryId);
-      if (!query) continue;
+      if (!query) {continue;}
       const patternStr = resolveStringOrBase64(query as unknown as Record<string, unknown>, 'pattern') ?? '';
 
       try {
@@ -636,7 +636,7 @@ async function runCodeGrep(args: unknown): Promise<CallToolResult> {
     for (const result of Object.values(queryResults)) {
       totalFiles += result.file_count ?? 0;
       totalMatches += result.match_count ?? 0;
-      if (result.truncated) anyTruncated = true;
+      if (result.truncated) {anyTruncated = true;}
       cumulativeTokens += result.tokens_used ?? 0;
     }
 
@@ -647,7 +647,7 @@ async function runCodeGrep(args: unknown): Promise<CallToolResult> {
     };
 
     const env: Envelope<unknown> = successEnvelope(data, { execution_ms: Math.round(performance.now() - start) });
-    if (baseWarning) env.warning = baseWarning;
+    if (baseWarning) {env.warning = baseWarning;}
     return toCallToolResult(env);
   } catch (error) {
     return toCallToolResult(

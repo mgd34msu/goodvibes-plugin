@@ -123,7 +123,7 @@ export function findOverflowPatterns(tree: LayoutNode, hint?: string): OverflowP
       });
     }
 
-    for (const child of node.children) traverse(child);
+    for (const child of node.children) {traverse(child);}
   }
 
   traverse(tree);

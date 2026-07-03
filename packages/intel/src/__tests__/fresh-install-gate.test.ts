@@ -46,10 +46,10 @@ function drive(bundle: string, cwd: string): Driver {
     while ((idx = buffer.indexOf('\n')) >= 0) {
       const line = buffer.slice(0, idx).trim();
       buffer = buffer.slice(idx + 1);
-      if (!line) continue;
+      if (!line) {continue;}
       try {
         const msg = JSON.parse(line) as { id?: number; result?: unknown; error?: unknown };
-        if (typeof msg.id === 'number') responses.set(msg.id, msg);
+        if (typeof msg.id === 'number') {responses.set(msg.id, msg);}
       } catch {
         /* non-JSON noise is not this test's concern */
       }
@@ -105,7 +105,7 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-  if (root) rmSync(root, { recursive: true, force: true });
+  if (root) {rmSync(root, { recursive: true, force: true });}
 });
 
 describe('fresh-install gate — committed bundles with zero node_modules', () => {

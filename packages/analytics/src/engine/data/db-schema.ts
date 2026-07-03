@@ -166,7 +166,7 @@ export function getSchemaVersion(db: Database): number {
       'SELECT MAX(version) AS v FROM schema_version',
     );
     const row = result[0]?.values[0];
-    if (!row || row[0] === null || row[0] === undefined) return 0;
+    if (!row || row[0] === null || row[0] === undefined) {return 0;}
     const v = Number(row[0]);
     return isNaN(v) ? 0 : v;
   } catch {

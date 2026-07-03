@@ -40,8 +40,8 @@ function fileUsesPrisma(content: string): boolean {
 function hasRelationInclusion(node: ts.CallExpression, sourceFile: ts.SourceFile): boolean {
   for (const arg of node.arguments) {
     const text = arg.getText(sourceFile);
-    if (text.includes('include:') || text.includes('include :')) return true;
-    if (text.includes('select:') && text.includes(': {')) return true;
+    if (text.includes('include:') || text.includes('include :')) {return true;}
+    if (text.includes('select:') && text.includes(': {')) {return true;}
   }
   return false;
 }
@@ -49,13 +49,13 @@ function hasRelationInclusion(node: ts.CallExpression, sourceFile: ts.SourceFile
 /** Recognize `prisma.model.operation()` / `this.db.model.operation()` call chains. */
 function extractModelFromPrismaCall(node: ts.CallExpression, sourceFile: ts.SourceFile): { model: string; operation: string } | null {
   const expr = node.expression;
-  if (!ts.isPropertyAccessExpression(expr)) return null;
+  if (!ts.isPropertyAccessExpression(expr)) {return null;}
 
   const operation = expr.name.getText(sourceFile);
-  if (!PRISMA_OPERATIONS.includes(operation)) return null;
+  if (!PRISMA_OPERATIONS.includes(operation)) {return null;}
 
   const modelAccess = expr.expression;
-  if (!ts.isPropertyAccessExpression(modelAccess)) return null;
+  if (!ts.isPropertyAccessExpression(modelAccess)) {return null;}
 
   const model = modelAccess.name.getText(sourceFile);
   const clientExpr = modelAccess.expression;
@@ -63,7 +63,7 @@ function extractModelFromPrismaCall(node: ts.CallExpression, sourceFile: ts.Sour
 
   const validClients = ['prisma', 'db', 'client', 'this.prisma', 'this.db', 'ctx.prisma', 'ctx.db'];
   const isValidClient = validClients.some((c) => clientText === c || clientText.endsWith('.' + c.split('.').pop()));
-  if (!isValidClient) return null;
+  if (!isValidClient) {return null;}
 
   return { model, operation };
 }
@@ -73,14 +73,14 @@ function isInsideLoop(node: ts.Node, sourceFile: ts.SourceFile): boolean {
   let current: ts.Node | undefined = node.parent;
 
   while (current) {
-    if (ts.isForStatement(current) || ts.isForInStatement(current) || ts.isForOfStatement(current)) return true;
-    if (ts.isWhileStatement(current) || ts.isDoStatement(current)) return true;
+    if (ts.isForStatement(current) || ts.isForInStatement(current) || ts.isForOfStatement(current)) {return true;}
+    if (ts.isWhileStatement(current) || ts.isDoStatement(current)) {return true;}
 
     if (ts.isCallExpression(current)) {
       const callExpr = current.expression;
       if (ts.isPropertyAccessExpression(callExpr)) {
         const methodName = callExpr.name.getText(sourceFile);
-        if (LOOP_KEYWORDS.includes(methodName)) return true;
+        if (LOOP_KEYWORDS.includes(methodName)) {return true;}
       }
     }
 
@@ -105,9 +105,9 @@ export async function scanPrismaUsage(
 
   const candidateFiles: string[] = [];
   for (const file of allFiles) {
-    if (signal?.aborted) break;
+    if (signal?.aborted) {break;}
     const content = await fs.readFile(file, 'utf-8').catch(() => null);
-    if (content !== null && fileUsesPrisma(content)) candidateFiles.push(file);
+    if (content !== null && fileUsesPrisma(content)) {candidateFiles.push(file);}
   }
 
   if (candidateFiles.length === 0 || signal?.aborted) {
@@ -121,9 +121,9 @@ export async function scanPrismaUsage(
   const modelCounts = new Map<string, number>();
 
   for (const file of candidateFiles) {
-    if (signal?.aborted) break;
+    if (signal?.aborted) {break;}
     const sourceFile = program.getSourceFile(toTsPath(file));
-    if (!sourceFile) continue;
+    if (!sourceFile) {continue;}
 
     const relativePath = makeRelativePath(file, baseDir);
 

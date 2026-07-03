@@ -114,15 +114,11 @@ export async function handleConfig(
     // === get ===
     if (input.action === 'get') {
       if (input.key) {
-        // Support renamed key aliases for backward compatibility
-        const resolvedKey = resolveKeyAlias(input.key);
-        const value = getByPath(configObj, resolvedKey);
+        const value = getByPath(configObj, input.key);
         if (value === undefined) {
-          return text(
-            `Config key not found: "${input.key}"${resolvedKey !== input.key ? ` (resolved alias: "${resolvedKey}")` : ''}.`,
-          );
+          return text(`Config key not found: "${input.key}".`);
         }
-        return text(`${resolvedKey} = ${JSON.stringify(value, null, 2)}`);
+        return text(`${input.key} = ${JSON.stringify(value, null, 2)}`);
       }
 
       // No key — return full config
@@ -138,24 +134,21 @@ export async function handleConfig(
       return text('analytics_config set: "value" is required.');
     }
 
-    // Resolve key alias before setting
-    const resolvedKey = resolveKeyAlias(input.key);
-
     // Verify the key path exists before setting
-    const existing = getByPath(configObj, resolvedKey);
+    const existing = getByPath(configObj, input.key);
     if (existing === undefined) {
       return text(
-        `Config key not found: "${input.key}"${resolvedKey !== input.key ? ` (alias for "${resolvedKey}")` : ''}. Use "get" (no key) to list all valid keys.`,
+        `Config key not found: "${input.key}". Use "get" (no key) to list all valid keys.`,
       );
     }
 
     // Clone config to avoid mutating the passed-in reference
     const updated = JSON.parse(JSON.stringify(config)) as AnalyticsConfig;
-    setByPath(updated as unknown as Record<string, unknown>, resolvedKey, input.value);
+    setByPath(updated as unknown as Record<string, unknown>, input.key, input.value);
     await persistConfig(goodvibesDir, updated);
 
     return text(
-      `Config updated: ${resolvedKey} = ${JSON.stringify(input.value)}\n\n` +
+      `Config updated: ${input.key} = ${JSON.stringify(input.value)}\n\n` +
       `Persisted to ${path.join(goodvibesDir, CONFIG_FILENAME)}.\n` +
       'Use action="reload" to apply changes to the running engine without restarting.',
     );
@@ -163,25 +156,4 @@ export async function handleConfig(
     const message = err instanceof Error ? err.message : String(err);
     return text(`analytics_config error: ${message}`);
   }
-}
-
-// === Key alias resolution ===
-
-/**
- * Map deprecated/renamed config key paths to their canonical equivalents.
- * Allows old keys to continue working after renames.
- */
-const KEY_ALIASES: Record<string, string> = {
-  // 'full' -> 'dashboard' renames
-  'auto_start_full':             'auto_start_dashboard',
-  'full_tui_refresh_rate_ms':    'dashboard_refresh_rate_ms',
-  'tmux.full_pane_size':         'tmux.dashboard_pane_size',
-  'tmux.full_position':          'tmux.dashboard_position',
-};
-
-/**
- * Resolve a possibly-deprecated config key to its canonical form.
- */
-function resolveKeyAlias(key: string): string {
-  return KEY_ALIASES[key] ?? key;
 }

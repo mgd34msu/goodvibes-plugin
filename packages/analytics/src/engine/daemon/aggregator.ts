@@ -154,7 +154,7 @@ function readMaxAgentChains(goodvibesDir: string): number {
       const raw = readFileSync(configPath, 'utf8');
       const parsed = JSON.parse(raw) as Record<string, unknown>;
       const val = parsed['max_parallel_agent_chains'];
-      if (typeof val === 'number' && val > 0) return val;
+      if (typeof val === 'number' && val > 0) {return val;}
     } catch { /* file missing or unparseable — try next */ }
   }
   return DEFAULT;
@@ -197,8 +197,8 @@ function computeHealthStatus(
   const hasAlert = anomalies.some((a) => a.severity === 'alert');
   const hasWarning = anomalies.some((a) => a.severity === 'warning');
 
-  if (hasAlert || errorRate > 0.25) return 'alert';
-  if (hasWarning || errorRate > 0.1) return 'warning';
+  if (hasAlert || errorRate > 0.25) {return 'alert';}
+  if (hasWarning || errorRate > 0.1) {return 'warning';}
   return 'healthy';
 }
 
@@ -229,6 +229,18 @@ function toolToActivityType(
 }
 
 /**
+ * Encode a project root path the way Claude Code names its per-project JSONL
+ * directories under ~/.claude/projects/: every character that is not a Latin
+ * letter or digit becomes '-'. Replacing only '/' is not enough — dots and
+ * underscores in the path (e.g. `/home/user/my.app`) are also encoded as '-',
+ * and the mismatch silently sent the aggregator to the wrong project's data
+ * via the most-recent-directory fallback.
+ */
+export function encodeProjectDirName(projectRoot: string): string {
+  return projectRoot.replace(/[^A-Za-z0-9]/g, '-');
+}
+
+/**
  * Resolve the JSONL project directory for the current project.
  *
  * Tries to infer from the goodvibesDir path. The project hash is the name
@@ -237,7 +249,8 @@ function toolToActivityType(
  *
  * Resolution:
  *   1. Expand ~ in jsonlBasePath.
- *   2. Try to match a subdir whose name appears in goodvibesDir's ancestor path.
+ *   2. Match the subdir named by encoding goodvibesDir's parent path with
+ *      Claude Code's non-alphanumeric-to-dash scheme.
  *   3. Fallback: return the most recently modified project dir that has JSONL files.
  *
  * @param goodvibesDir  - Absolute path to the .goodvibes directory.
@@ -253,7 +266,7 @@ function resolveJsonlProjectDir(
     ? join(homedir(), jsonlBasePath.slice(1))
     : jsonlBasePath;
 
-  if (!existsSync(expandedBase)) return null;
+  if (!existsSync(expandedBase)) {return null;}
 
   let entries: string[];
   try {
@@ -264,14 +277,12 @@ function resolveJsonlProjectDir(
 
   // Try to find the project directory matching the goodvibesDir ancestor.
   // The goodvibesDir is typically <project-root>/.goodvibes.
-  // Claude stores JSONL project dirs with dashed-path names, e.g.
-  // /home/user/Projects/myapp → -home-user-Projects-myapp
   const projectRoot = dirname(resolve(goodvibesDir));
-  const dashedPath = projectRoot.replace(/\//g, '-');
+  const encodedName = encodeProjectDirName(projectRoot);
   for (const entry of entries) {
-    if (entry === dashedPath) {
+    if (entry === encodedName) {
       const candidate = join(expandedBase, entry);
-      if (existsSync(candidate)) return candidate;
+      if (existsSync(candidate)) {return candidate;}
     }
   }
 
@@ -297,8 +308,10 @@ function resolveJsonlProjectDir(
   }
 
   if (latestDir !== null) {
-    console.warn(
-      `[analytics:aggregator] JSONL project directory not found for primary match; falling back to most recent directory`,
+    // Route through the engine logger (activity.log + stderr) like every other
+    // aggregator warning — stdout stays clean for the MCP transport.
+    engineLogger().warn(
+      `[analytics:aggregator] no JSONL project directory named "${encodedName}"; falling back to most recent directory "${basename(latestDir)}"`,
     );
   }
 
@@ -525,7 +538,7 @@ export class Aggregator {
    * @returns Promise that resolves once initialization is complete.
    */
   async initialize(): Promise<void> {
-    if (this.initialized) return;
+    if (this.initialized) {return;}
 
     this.startedAt = new Date().toISOString();
 
@@ -674,7 +687,7 @@ export class Aggregator {
     this.callbacks.push(callback);
     return () => {
       const idx = this.callbacks.indexOf(callback);
-      if (idx >= 0) this.callbacks.splice(idx, 1);
+      if (idx >= 0) {this.callbacks.splice(idx, 1);}
     };
   }
 
@@ -746,11 +759,11 @@ export class Aggregator {
    * @param jsonlProjectDir - Absolute path to the JSONL project directory.
    */
   private async initJsonlFromFile(jsonlProjectDir: string): Promise<void> {
-    if (this.jsonlReader === null) return;
+    if (this.jsonlReader === null) {return;}
 
     try {
       const activeFile = await findActiveJsonlFile(jsonlProjectDir);
-      if (activeFile === null) return;
+      if (activeFile === null) {return;}
 
       this.activeJsonlPath = activeFile;
       this.jsonlSessionId = sessionIdFromPath(activeFile);
@@ -782,7 +795,7 @@ export class Aggregator {
   private static readonly MAX_JSONL_RECORDS = 10000;
 
   private accumulateJsonlRecords(records: JSONLRecord[]): void {
-    if (records.length === 0) return;
+    if (records.length === 0) {return;}
     this.jsonlRecords.push(...records);
     if (this.jsonlRecords.length > Aggregator.MAX_JSONL_RECORDS) {
       this.jsonlRecords = this.jsonlRecords.slice(-Aggregator.MAX_JSONL_RECORDS);
@@ -797,7 +810,7 @@ export class Aggregator {
    * and model/timing information. Runs after each batch accumulation.
    */
   private recomputeJsonlTotals(): void {
-    if (this.jsonlReader === null) return;
+    if (this.jsonlReader === null) {return;}
 
     const apiCalls = this.jsonlReader.extractApiCalls(this.jsonlRecords);
     const sessionInfo = this.jsonlReader.extractSessionInfo(this.jsonlRecords);
@@ -987,14 +1000,14 @@ export class Aggregator {
     // Sort: at same timestamp, starts (+1) before ends (-1)
     events.sort((a, b) => {
       const cmp = a.time.localeCompare(b.time);
-      if (cmp !== 0) return cmp;
+      if (cmp !== 0) {return cmp;}
       return b.delta - a.delta;
     });
     let maxConcurrent = 0;
     let currentConcurrent = 0;
     for (const { delta } of events) {
       currentConcurrent += delta;
-      if (currentConcurrent > maxConcurrent) maxConcurrent = currentConcurrent;
+      if (currentConcurrent > maxConcurrent) {maxConcurrent = currentConcurrent;}
     }
 
     // ── Agent profiles ────────────────────────────────────────────────────
@@ -1047,8 +1060,8 @@ export class Aggregator {
               ? (f as Record<string, unknown>)['path'] as string
               : null;
             if (p) {
-              if (toolName === 'precision_read') uniqueReadFiles.add(p);
-              else createdFiles++;
+              if (toolName === 'precision_read') {uniqueReadFiles.add(p);}
+              else {createdFiles++;}
             }
           }
         }
@@ -1062,7 +1075,7 @@ export class Aggregator {
               const p = typeof editRec['path'] === 'string'
                 ? editRec['path'] as string
                 : typeof editRec['file'] === 'string' ? editRec['file'] as string : null;
-              if (p) uniqueReadFiles.add(p);
+              if (p) {uniqueReadFiles.add(p);}
             }
           }
         }
@@ -1078,7 +1091,7 @@ export class Aggregator {
         const toolName = Aggregator.extractBaseToolName(tc.name ?? '');
         if (toolName.startsWith('precision_') || toolName === 'discover') {
           jsonlToolTotal++;
-          if (tc.isError) jsonlToolFailures++;
+          if (tc.isError) {jsonlToolFailures++;}
         }
       }
 
@@ -1370,7 +1383,7 @@ export class Aggregator {
             const editPath = typeof editRec['path'] === 'string'
               ? editRec['path']
               : typeof editRec['file'] === 'string' ? editRec['file'] : null;
-            if (editPath !== null) filePaths.push(editPath);
+            if (editPath !== null) {filePaths.push(editPath);}
           }
         }
       }
@@ -1382,7 +1395,7 @@ export class Aggregator {
           fileStats.set(filePath, { reads: 0, writes: 0, conflicts: 0, lastAccessed: timestamp });
         }
         const stat = fileStats.get(filePath)!;
-        if (timestamp > stat.lastAccessed) stat.lastAccessed = timestamp;
+        if (timestamp > stat.lastAccessed) {stat.lastAccessed = timestamp;}
 
         if (
           toolName === 'read'  || toolName === 'precision_read'  ||
@@ -1488,7 +1501,7 @@ export class Aggregator {
    * Subagent files live at <session-dir>/subagents/agent-<id>.jsonl
    */
   private findSessionDir(): string | null {
-    if (this.activeJsonlPath === null) return null;
+    if (this.activeJsonlPath === null) {return null;}
     return dirname(this.activeJsonlPath);
   }
 
@@ -1503,7 +1516,7 @@ export class Aggregator {
     agentId: string,
   ): { tokens_in: number; tokens_out: number; tool_calls: number } | null {
     const subagentsDir = join(sessionDir, 'subagents');
-    if (!existsSync(subagentsDir)) return null;
+    if (!existsSync(subagentsDir)) {return null;}
 
     // Find a matching file: exact match or agentId as prefix.
     // Use cached directory listing when the directory mtime is unchanged.
@@ -1522,7 +1535,7 @@ export class Aggregator {
 
     let subagentFile: string | null = null;
     for (const entry of entries) {
-      if (!entry.startsWith('agent-') || !entry.endsWith('.jsonl')) continue;
+      if (!entry.startsWith('agent-') || !entry.endsWith('.jsonl')) {continue;}
       // The agentId is the tool_use id; the filename is agent-<id>.jsonl.
       // Try exact match first, then prefix match.
       const fileId = entry.slice('agent-'.length, -'.jsonl'.length);
@@ -1532,7 +1545,7 @@ export class Aggregator {
       }
     }
 
-    if (subagentFile === null) return null;
+    if (subagentFile === null) {return null;}
 
     // Check file mtime cache before re-reading.
     try {
@@ -1551,7 +1564,7 @@ export class Aggregator {
       for (const line of lines) {
         try {
           const entry = JSON.parse(line) as Record<string, unknown>;
-          if (entry['type'] !== 'assistant') continue;
+          if (entry['type'] !== 'assistant') {continue;}
           const msg = entry['message'] as Record<string, unknown> | undefined;
           if (msg?.['usage']) {
             const usage = msg['usage'] as Record<string, number>;
@@ -1594,7 +1607,7 @@ export class Aggregator {
    * on rapid-fire refresh cycles.
    */
   private scheduleGlobalDbSave(): void {
-    if (this.globalDb === null) return;
+    if (this.globalDb === null) {return;}
 
     if (this.globalDbSaveTimer !== null) {
       clearTimeout(this.globalDbSaveTimer);
@@ -1614,9 +1627,9 @@ export class Aggregator {
    * and calls `upsertSession()`. Errors are logged but do not propagate.
    */
   private writeGlobalDbSession(): void {
-    if (this.globalDb === null) return;
+    if (this.globalDb === null) {return;}
     const sessionId = this.state.session_id;
-    if (!sessionId || sessionId === 'unknown') return;
+    if (!sessionId || sessionId === 'unknown') {return;}
 
     try {
       const metrics = this.state.metrics;
@@ -1745,10 +1758,10 @@ export class Aggregator {
         return null;
       }
       const raw = readFileSync(filePath, 'utf-8');
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+       
       const json = JSON.parse(raw);
       // Validate required structure before extracting values.
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+       
       if (typeof json?.context_window?.used_percentage !== 'number') {
         return null;
       }
@@ -1756,19 +1769,19 @@ export class Aggregator {
       // runtime without relying on `as number ?? 0` (which is a TypeScript-only
       // assertion — the ?? 0 never fires because `as number` always "succeeds").
       return {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+         
         contextPercent:    Number(json.context_window.used_percentage)                                     || 0,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+         
         contextWindowSize: Number(json.context_window.context_window_size)                                 || 0,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+         
         apiInput:          Number(json.context_window.total_input_tokens)                                   || 0,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+         
         apiOutput:         Number(json.context_window.total_output_tokens)                                  || 0,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+         
         cacheRead:         Number(json.context_window.current_usage?.cache_read_input_tokens)               || 0,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+         
         cacheWrite:        Number(json.context_window.current_usage?.cache_creation_input_tokens)           || 0,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+         
         costUsd:           Number(json.cost?.total_cost_usd)                                                || 0,
       };
     } catch {

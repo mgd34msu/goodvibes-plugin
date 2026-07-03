@@ -55,7 +55,7 @@ export function enhanceDatabaseError(message: string, dbType: DatabaseDriver): s
       [/permission denied/i, `${message}\n\nHint: The database user lacks permission for this operation.`],
     ];
     for (const [pattern, enhanced] of pgEnhancements) {
-      if (pattern.test(message)) return enhanced;
+      if (pattern.test(message)) {return enhanced;}
     }
     return message;
   }
@@ -68,12 +68,12 @@ export function enhanceDatabaseError(message: string, dbType: DatabaseDriver): s
       [/Unknown column/i, `${message}\n\nHint: The column does not exist. Use 'DESCRIBE table_name' to see columns.`],
     ];
     for (const [pattern, enhanced] of mysqlEnhancements) {
-      if (pattern.test(message)) return enhanced;
+      if (pattern.test(message)) {return enhanced;}
     }
     return message;
   }
 
-  if (dbType !== 'sqlite') return message;
+  if (dbType !== 'sqlite') {return message;}
 
   const enhancements: Array<[RegExp, string]> = [
     [/SQLITE_READONLY/i, `${message}\n\nHint: The database is opened read-only. Enable writes explicitly to mutate.`],
@@ -86,7 +86,7 @@ export function enhanceDatabaseError(message: string, dbType: DatabaseDriver): s
   ];
 
   for (const [pattern, enhanced] of enhancements) {
-    if (pattern.test(message)) return enhanced;
+    if (pattern.test(message)) {return enhanced;}
   }
 
   return message;

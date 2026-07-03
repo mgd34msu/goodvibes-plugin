@@ -5,7 +5,6 @@
  * for session intelligence, budget tracking, and data export.
  *
  * Usage: `import { AnalyticsEngine } from './index.js'` — instantiate and manage lifecycle.
- * Standalone TUI entry points: `mini.ts` and `full.ts`.
  */
 
 import type { AnalyticsConfig, ToolResponse } from './types.js';

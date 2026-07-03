@@ -71,7 +71,7 @@ export function parseConnectionUrl(url: string): DatabaseConnectionInfo {
         password: parsed.password || undefined,
       };
     } catch (err) {
-      if (err instanceof Error && err.message.startsWith('Invalid')) throw err;
+      if (err instanceof Error && err.message.startsWith('Invalid')) {throw err;}
       return { type: 'unknown', database: '' };
     }
   }
@@ -92,7 +92,7 @@ export function parseConnectionUrl(url: string): DatabaseConnectionInfo {
         password: parsed.password || undefined,
       };
     } catch (err) {
-      if (err instanceof Error && err.message.startsWith('Invalid')) throw err;
+      if (err instanceof Error && err.message.startsWith('Invalid')) {throw err;}
       return { type: 'unknown', database: '' };
     }
   }

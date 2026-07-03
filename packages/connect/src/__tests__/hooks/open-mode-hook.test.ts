@@ -50,8 +50,8 @@ describe('session-start open-mode hook', () => {
   });
 
   afterEach(async () => {
-    if (originalHome === undefined) delete process.env.HOME;
-    else process.env.HOME = originalHome;
+    if (originalHome === undefined) {delete process.env.HOME;}
+    else {process.env.HOME = originalHome;}
     await fs.promises.rm(tmpDir, { recursive: true, force: true });
   });
 

@@ -31,7 +31,7 @@ export class VirtualFileSystem {
   /** Content of a file, preferring the overlay, else disk, else undefined. */
   getContent(filePath: string): string | undefined {
     const normalized = toTsPath(filePath);
-    if (this.files.has(normalized)) return this.files.get(normalized);
+    if (this.files.has(normalized)) {return this.files.get(normalized);}
     try {
       return fs.readFileSync(filePath, 'utf-8');
     } catch {
@@ -64,7 +64,7 @@ export function applyEdit(
   currentContent: string | undefined,
   edit: ProposedEdit,
 ): [string | null, string | null] {
-  if (edit.content !== undefined) return [edit.content, null];
+  if (edit.content !== undefined) {return [edit.content, null];}
 
   if (edit.old_text !== undefined && edit.new_text !== undefined) {
     if (currentContent === undefined) {

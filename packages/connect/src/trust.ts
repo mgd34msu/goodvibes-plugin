@@ -125,13 +125,13 @@ export function isMethodAllowed(
   method: string,
   opts: { mode: TrustMode; hasService: boolean; writeMethods?: string[] },
 ): TrustDecision {
-  if (isSafeMethod(method)) return { allowed: true };
+  if (isSafeMethod(method)) {return { allowed: true };}
 
   const upper = method.toUpperCase();
 
   if (opts.hasService) {
     const opted = (opts.writeMethods ?? []).map((m) => m.toUpperCase());
-    if (opted.includes(upper)) return { allowed: true };
+    if (opted.includes(upper)) {return { allowed: true };}
     return {
       allowed: false,
       reason:
@@ -141,7 +141,7 @@ export function isMethodAllowed(
   }
 
   // Bare URL (no service): no per-service opt-in exists, so writes need open mode.
-  if (opts.mode === 'open') return { allowed: true };
+  if (opts.mode === 'open') {return { allowed: true };}
   return {
     allowed: false,
     reason:
@@ -161,9 +161,9 @@ export function isMethodAllowed(
 export function collectSecretValues(auth?: ServiceAuth): string[] {
   const out = new Set<string>();
   const add = (v: unknown): void => {
-    if (typeof v === 'string' && v.trim().length >= 4) out.add(v);
+    if (typeof v === 'string' && v.trim().length >= 4) {out.add(v);}
   };
-  if (!auth) return [];
+  if (!auth) {return [];}
 
   add(auth.token);
   add(auth.key);
@@ -177,7 +177,7 @@ export function collectSecretValues(auth?: ServiceAuth): string[] {
   }
 
   if (auth.headers) {
-    for (const value of Object.values(auth.headers)) add(value);
+    for (const value of Object.values(auth.headers)) {add(value);}
   }
 
   return [...out];
@@ -189,7 +189,7 @@ const REDACTION = '***REDACTED***';
 export function redactString(text: string, secrets: string[]): string {
   let out = text;
   for (const secret of secrets) {
-    if (!secret) continue;
+    if (!secret) {continue;}
     out = out.split(secret).join(REDACTION);
   }
   return out;
@@ -202,9 +202,9 @@ export function redactString(text: string, secrets: string[]): string {
  * @param secrets - the secret plaintexts to strip
  */
 export function redactValue(value: unknown, secrets: string[]): unknown {
-  if (secrets.length === 0) return value;
-  if (typeof value === 'string') return redactString(value, secrets);
-  if (Array.isArray(value)) return value.map((v) => redactValue(v, secrets));
+  if (secrets.length === 0) {return value;}
+  if (typeof value === 'string') {return redactString(value, secrets);}
+  if (Array.isArray(value)) {return value.map((v) => redactValue(v, secrets));}
   if (value && typeof value === 'object') {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {

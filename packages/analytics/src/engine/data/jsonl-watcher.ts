@@ -158,7 +158,7 @@ export class JSONLWatcher extends EventEmitter {
    * times — subsequent calls are no-ops if already running.
    */
   start(): void {
-    if (this.running) return;
+    if (this.running) {return;}
     this.running = true;
 
     // Initialise session watching asynchronously.
@@ -187,7 +187,7 @@ export class JSONLWatcher extends EventEmitter {
    * Safe to call multiple times.
    */
   stop(): void {
-    if (!this.running) return;
+    if (!this.running) {return;}
     this.running = false;
 
     // Cancel batch and rotation timers.
@@ -312,7 +312,7 @@ export class JSONLWatcher extends EventEmitter {
    * @param isSubagent - Whether this file belongs to a subagent.
    */
   private attachFileWatcher(filePath: string, isSubagent: boolean): void {
-    if (this.watchedFiles.has(filePath)) return;
+    if (this.watchedFiles.has(filePath)) {return;}
 
     const watched: WatchedFile = {
       path: filePath,
@@ -387,13 +387,13 @@ export class JSONLWatcher extends EventEmitter {
    */
   private watchDirectoryForNewSession(): void {
     const dirPath = this.projectDir;
-    if (!existsSync(dirPath)) return;
+    if (!existsSync(dirPath)) {return;}
 
     let handle: FSWatcher | { close(): void };
     const onDirChange = (_eventType: string, filename: string | null): void => {
-      if (filename === null || !filename.endsWith('.jsonl')) return;
+      if (filename === null || !filename.endsWith('.jsonl')) {return;}
       const fullPath = join(dirPath, filename);
-      if (!existsSync(fullPath)) return;
+      if (!existsSync(fullPath)) {return;}
 
       // A new JSONL appeared — switch to it.
       this.switchToSession(fullPath).catch((err: unknown) => {
@@ -425,7 +425,7 @@ export class JSONLWatcher extends EventEmitter {
    */
   private async watchSubagentFiles(sessionId: string): Promise<void> {
     const subagentDir = join(this.projectDir, sessionId, 'subagents');
-    if (!existsSync(subagentDir)) return;
+    if (!existsSync(subagentDir)) {return;}
 
     let entries: string[];
     try {
@@ -435,7 +435,7 @@ export class JSONLWatcher extends EventEmitter {
     }
 
     for (const entry of entries) {
-      if (!entry.startsWith('agent-') || !entry.endsWith('.jsonl')) continue;
+      if (!entry.startsWith('agent-') || !entry.endsWith('.jsonl')) {continue;}
       const fullPath = join(subagentDir, entry);
       if (!this.watchedFiles.has(fullPath)) {
         this.attachFileWatcher(fullPath, true);
@@ -454,16 +454,16 @@ export class JSONLWatcher extends EventEmitter {
    */
   private watchSubagentDirectory(subagentDir: string, sessionId: string): void {
     // Only set up the directory watch once.
-    if (this.subagentDirWatcher !== null && this.subagentDirWatcher.path === subagentDir) return;
+    if (this.subagentDirWatcher !== null && this.subagentDirWatcher.path === subagentDir) {return;}
 
     const onDirChange = (_eventType: string, filename: string | null): void => {
       // Only react to this session's subagents.
-      if (this.activeSessionId !== sessionId) return;
-      if (filename === null) return;
-      if (!filename.startsWith('agent-') || !filename.endsWith('.jsonl')) return;
+      if (this.activeSessionId !== sessionId) {return;}
+      if (filename === null) {return;}
+      if (!filename.startsWith('agent-') || !filename.endsWith('.jsonl')) {return;}
 
       const fullPath = join(subagentDir, filename);
-      if (!existsSync(fullPath)) return;
+      if (!existsSync(fullPath)) {return;}
       if (!this.watchedFiles.has(fullPath)) {
         this.attachFileWatcher(fullPath, true);
       }
@@ -490,7 +490,7 @@ export class JSONLWatcher extends EventEmitter {
    * @param watched - The watched file state to read from.
    */
   private async readNewLines(watched: WatchedFile): Promise<void> {
-    if (!this.running) return;
+    if (!this.running) {return;}
 
     try {
       const result = await this.reader.parseFile(watched.path, watched.offset);
@@ -521,7 +521,7 @@ export class JSONLWatcher extends EventEmitter {
    * Called by the batch interval timer and on stop().
    */
   private flushPendingRecords(): void {
-    if (this.pendingRecords.length === 0) return;
+    if (this.pendingRecords.length === 0) {return;}
     const batch = this.pendingRecords.splice(0);
     this.emit('records', batch);
   }
@@ -535,11 +535,11 @@ export class JSONLWatcher extends EventEmitter {
    * Called periodically by the rotation timer.
    */
   private async checkSessionRotation(): Promise<void> {
-    if (!this.running) return;
+    if (!this.running) {return;}
 
     const activePath = await findActiveJsonlFile(this.projectDir);
-    if (activePath === null) return;
-    if (activePath === this.activeSessionPath) return;
+    if (activePath === null) {return;}
+    if (activePath === this.activeSessionPath) {return;}
 
     // A newer JSONL file exists — switch to it.
     await this.switchToSession(activePath);

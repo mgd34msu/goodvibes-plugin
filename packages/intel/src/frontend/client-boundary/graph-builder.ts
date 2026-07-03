@@ -21,10 +21,10 @@ function extractImports(sourceFile: ts.SourceFile): string[] {
   ts.forEachChild(sourceFile, (node) => {
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
       const spec = node.moduleSpecifier.text;
-      if (spec.startsWith('.')) imports.push(spec);
+      if (spec.startsWith('.')) {imports.push(spec);}
     } else if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
       const spec = node.moduleSpecifier.text;
-      if (spec.startsWith('.')) imports.push(spec);
+      if (spec.startsWith('.')) {imports.push(spec);}
     }
   });
   ts.forEachChild(sourceFile, function visitForRequire(node) {
@@ -51,13 +51,13 @@ function resolveImport(importSpec: string, fromFile: string): string | null {
   const extensions = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.mts'];
   for (const ext of extensions) {
     const candidate = base + ext;
-    if (fs.existsSync(candidate)) return candidate;
+    if (fs.existsSync(candidate)) {return candidate;}
   }
   for (const ext of extensions) {
     const candidate = path.join(base, `index${ext}`);
-    if (fs.existsSync(candidate)) return candidate;
+    if (fs.existsSync(candidate)) {return candidate;}
   }
-  if (fs.existsSync(base)) return base;
+  if (fs.existsSync(base)) {return base;}
   return null;
 }
 
@@ -115,7 +115,7 @@ export function classifyComponents(
 
   const queue: string[] = [];
   for (const [file, cls] of classifications) {
-    if (cls === 'client') queue.push(file);
+    if (cls === 'client') {queue.push(file);}
   }
   const visited = new Set<string>(queue);
 

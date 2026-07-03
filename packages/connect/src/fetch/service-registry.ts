@@ -169,7 +169,7 @@ export async function addAllowlistHost(hostname: string): Promise<void> {
 export async function removeAllowlistHost(hostname: string): Promise<boolean> {
   const fetchConfig = { ...getFetchConfig() };
   const before = fetchConfig.allowlist ?? [];
-  if (!before.includes(hostname)) return false;
+  if (!before.includes(hostname)) {return false;}
   fetchConfig.allowlist = before.filter((h) => h !== hostname);
   await saveRegistry(fetchConfig);
   return true;
@@ -217,7 +217,7 @@ export async function addConnection(
 export async function removeConnection(name: string): Promise<boolean> {
   const fetchConfig = { ...getFetchConfig() };
   const connections = { ...(fetchConfig.connections ?? {}) };
-  if (!(name in connections)) return false;
+  if (!(name in connections)) {return false;}
   delete connections[name];
   fetchConfig.connections = connections;
   await saveRegistry(fetchConfig);
@@ -229,7 +229,7 @@ export function getConnectionSummary(
   name: string,
 ): { name: string; kind: 'url' | 'url_env'; allow_writes: boolean; description?: string } | undefined {
   const conn = getConnection(name);
-  if (!conn) return undefined;
+  if (!conn) {return undefined;}
   return {
     name,
     kind: conn.url_env ? 'url_env' : 'url',
@@ -243,7 +243,7 @@ export function getServiceSummary(
   name: string,
 ): { name: string; base_url: string; auth_type?: string; description?: string } | undefined {
   const service = getService(name);
-  if (!service) return undefined;
+  if (!service) {return undefined;}
   return {
     name,
     base_url: service.base_url,

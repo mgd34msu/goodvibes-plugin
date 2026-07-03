@@ -40,7 +40,7 @@ let _initPromise: Promise<GlobalDB> | null = null;
  * @returns TagStore backed by the initialized GlobalDB.
  */
 async function getTagStore(): Promise<TagStore> {
-  if (_tagStore) return _tagStore;
+  if (_tagStore) {return _tagStore;}
   if (!_initPromise) {
     _initPromise = initializeGlobalDb()
       .then((db) => {
@@ -55,7 +55,7 @@ async function getTagStore(): Promise<TagStore> {
       });
   }
   await _initPromise;
-  if (!_tagStore) throw new Error('TagStore initialization failed');
+  if (!_tagStore) {throw new Error('TagStore initialization failed');}
   return _tagStore;
 }
 

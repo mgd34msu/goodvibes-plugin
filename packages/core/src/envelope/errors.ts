@@ -51,18 +51,22 @@ export function formatMutualExclusivityError(fieldName: string, providedSources:
 
 /**
  * Standard "native dependency missing" message for a capability whose backing
- * package is one of the externalized native/WASM deps installed by the one-time
- * plugin setup (tree-sitter, sql.js, ast-grep, ripgrep). A tool that reaches a
- * missing dep returns this as a NORMAL error envelope — never a crash, never a
- * hang. The wording also covers the post-update case, where a plugin update
- * replaces the installed `server/<name>/node_modules` and setup must run again.
+ * package is one of the externalized native/WASM deps (tree-sitter, sql.js,
+ * ast-grep, ripgrep). These install automatically in the background on the
+ * first session (the SessionStart hook kicks a detached installer into the
+ * durable home `~/.claude/.goodvibes/deps/`), so reaching this message means
+ * that install has not finished yet — or failed, which /goodvibes:setup
+ * repairs in the foreground. A tool that reaches a missing dep returns this
+ * as a NORMAL error envelope — never a crash, never a hang.
  *
  * @param capability - the user-facing capability name (e.g. "code_read outline mode").
  */
 export function nativeDepMessage(capability: string): string {
   return (
     `${capability} needs native dependencies that are not installed yet - ` +
-    `run /goodvibes:setup (once; the install survives plugin updates).`
+    `they install automatically in the background on the first session, so this ` +
+    `capability is ready shortly after that install completes; if it does not, ` +
+    `run /goodvibes:setup to install them manually.`
   );
 }
 

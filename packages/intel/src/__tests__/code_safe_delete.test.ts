@@ -46,7 +46,7 @@ function parse(result: Awaited<ReturnType<typeof handler>>): {
 /** 1-based line/column of `symbol` within its declaration line `decl`. */
 function defPos(content: string, decl: string, symbol: string): { line: number; column: number } {
   const declIdx = content.indexOf(decl);
-  if (declIdx < 0) throw new Error(`declaration not found: ${decl}`);
+  if (declIdx < 0) {throw new Error(`declaration not found: ${decl}`);}
   const symIdx = content.indexOf(symbol, declIdx);
   const before = content.slice(0, symIdx);
   return { line: before.split('\n').length, column: symIdx - before.lastIndexOf('\n') };

@@ -25,7 +25,7 @@ export function setMockDriver(moduleName: string, driver: AnyModule | null): voi
 
 /** Clear all mock drivers. @internal */
 export function clearMockDrivers(): void {
-  for (const key of Object.keys(mockDrivers)) delete mockDrivers[key];
+  for (const key of Object.keys(mockDrivers)) {delete mockDrivers[key];}
 }
 
 /** Resolve a module name from the target project's node_modules. @internal */
@@ -44,10 +44,10 @@ function resolveFromTarget(moduleName: string): string | null {
  * @returns the module, or null when not installed in the target project
  */
 export async function dynamicImport(moduleName: string): Promise<AnyModule | null> {
-  if (moduleName in mockDrivers) return mockDrivers[moduleName];
+  if (moduleName in mockDrivers) {return mockDrivers[moduleName];}
 
   const resolved = resolveFromTarget(moduleName);
-  if (!resolved) return null;
+  if (!resolved) {return null;}
 
   try {
     return (await import(pathToFileURL(resolved).href)) as AnyModule;
@@ -68,11 +68,11 @@ export async function loadMysqlDriver(): Promise<AnyModule | null> {
 
 /** Detect the driver type from a connection URL. */
 export function detectDriver(url: string): 'postgresql' | 'mysql' | 'sqlite' | 'unknown' {
-  if (url.startsWith('postgres://') || url.startsWith('postgresql://')) return 'postgresql';
-  if (url.startsWith('mysql://')) return 'mysql';
+  if (url.startsWith('postgres://') || url.startsWith('postgresql://')) {return 'postgresql';}
+  if (url.startsWith('mysql://')) {return 'mysql';}
   if (url.startsWith('sqlite:') || url.startsWith('file:') || url.match(/\.(db|sqlite|sqlite3)$/i)) {
     return 'sqlite';
   }
-  if (url === ':memory:') return 'sqlite';
+  if (url === ':memory:') {return 'sqlite';}
   return 'unknown';
 }

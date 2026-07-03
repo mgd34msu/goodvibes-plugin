@@ -11,11 +11,11 @@ import { ConnectionError, QueryError } from '../errors.js';
 
 /** Infer a SQLite column type from a JS value. */
 export function inferSqliteType(value: unknown): string {
-  if (value === null) return 'null';
-  if (typeof value === 'number') return Number.isInteger(value) ? 'integer' : 'real';
-  if (typeof value === 'string') return 'text';
-  if (typeof value === 'boolean') return 'integer';
-  if (Buffer.isBuffer(value)) return 'blob';
+  if (value === null) {return 'null';}
+  if (typeof value === 'number') {return Number.isInteger(value) ? 'integer' : 'real';}
+  if (typeof value === 'string') {return 'text';}
+  if (typeof value === 'boolean') {return 'integer';}
+  if (Buffer.isBuffer(value)) {return 'blob';}
   return 'unknown';
 }
 
@@ -52,12 +52,12 @@ export async function executeSqlite(
 
       if (isSelect) {
         const stmt = db.prepare(query);
-        if (params.length > 0) stmt.bind(params);
+        if (params.length > 0) {stmt.bind(params);}
 
         const rows: Record<string, unknown>[] = [];
         const columnNames = stmt.getColumnNames();
 
-        while (stmt.step()) rows.push(stmt.getAsObject());
+        while (stmt.step()) {rows.push(stmt.getAsObject());}
         stmt.free();
 
         const columns: ColumnInfo[] = [];
@@ -66,7 +66,7 @@ export async function executeSqlite(
             columns.push({ name: key, type: inferSqliteType(value) });
           }
         } else if (columnNames.length > 0) {
-          for (const name of columnNames) columns.push({ name, type: 'unknown' });
+          for (const name of columnNames) {columns.push({ name, type: 'unknown' });}
         }
 
         return { rows, columns };
@@ -87,7 +87,7 @@ export async function executeSqlite(
       return { rows: [], columns: [], changes, lastInsertRowid };
     });
   } catch (cause) {
-    if (cause instanceof ConnectionError || cause instanceof QueryError) throw cause;
+    if (cause instanceof ConnectionError || cause instanceof QueryError) {throw cause;}
     throw new QueryError(
       `SQLite query failed: ${cause instanceof Error ? cause.message : String(cause)}`,
       cause,

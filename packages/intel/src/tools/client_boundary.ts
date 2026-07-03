@@ -125,8 +125,8 @@ function capToTokens(
   env: Envelope<ClientBoundaryResult>,
   maxTokens?: number,
 ): Envelope<ClientBoundaryResult> {
-  if (!maxTokens || maxTokens <= 0 || !env.data) return env;
-  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) return env;
+  if (!maxTokens || maxTokens <= 0 || !env.data) {return env;}
+  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) {return env;}
 
   const data = env.data;
   const trim = (): Envelope<ClientBoundaryResult> => ({

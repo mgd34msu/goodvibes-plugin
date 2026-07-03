@@ -27,7 +27,7 @@ function makeTmpDir(): string {
 }
 
 afterEach(() => {
-  while (tmpDirs.length) fs.rmSync(tmpDirs.pop()!, { recursive: true, force: true });
+  while (tmpDirs.length) {fs.rmSync(tmpDirs.pop()!, { recursive: true, force: true });}
 });
 
 function run(command: string, projectDir: string, fakeHome: string): Record<string, unknown> {

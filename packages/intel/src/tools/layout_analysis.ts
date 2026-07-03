@@ -150,7 +150,7 @@ function layoutRole(node: LayoutNode): string {
     const dir = node.flex_props?.direction;
     return dir === 'column' || dir === 'column-reverse' ? 'flex-col' : 'flex-row';
   }
-  if (d === 'grid' || d === 'inline-grid') return 'grid';
+  if (d === 'grid' || d === 'inline-grid') {return 'grid';}
   return d;
 }
 
@@ -173,15 +173,15 @@ function pruneHierarchyLeaf(nodes: HierarchyNode[]): boolean {
       nodes.splice(i, 1);
       return true;
     }
-    if (pruneHierarchyLeaf(nodes[i].children)) return true;
+    if (pruneHierarchyLeaf(nodes[i].children)) {return true;}
   }
   return false;
 }
 
 /** Trim sections then hierarchy leaves until the rendered envelope fits. */
 function capToTokens(env: Envelope<LayoutData>, maxTokens?: number): Envelope<LayoutData> {
-  if (!maxTokens || maxTokens <= 0 || !env.data) return env;
-  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) return env;
+  if (!maxTokens || maxTokens <= 0 || !env.data) {return env;}
+  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) {return env;}
 
   const data = env.data;
   const trim = (): Envelope<LayoutData> => ({
@@ -204,7 +204,7 @@ function capToTokens(env: Envelope<LayoutData>, maxTokens?: number): Envelope<La
       data.overflow.risks.pop();
       continue;
     }
-    if (!pruneHierarchyLeaf(data.hierarchy)) break;
+    if (!pruneHierarchyLeaf(data.hierarchy)) {break;}
   }
   return trim();
 }
@@ -243,13 +243,13 @@ export async function handler(rawArgs: unknown): Promise<CallToolResult> {
 
     const outcome = await withBudget(cfg.budgets.analyzer_ms, async () => {
       const sourceFile = getSourceFile(absFile);
-      if (!sourceFile) return { ok: false as const, error: `Failed to parse component file: ${absFile}` };
+      if (!sourceFile) {return { ok: false as const, error: `Failed to parse component file: ${absFile}` };}
 
       const rootJsx = findRootJsx(sourceFile);
-      if (!rootJsx) return { ok: false as const, error: 'No JSX element found in file. Ensure the component returns JSX.' };
+      if (!rootJsx) {return { ok: false as const, error: 'No JSX element found in file. Ensure the component returns JSX.' };}
 
       const tree = parseJsxElement(rootJsx, sourceFile);
-      if (!tree) return { ok: false as const, error: 'Failed to parse layout hierarchy from JSX.' };
+      if (!tree) {return { ok: false as const, error: 'Failed to parse layout hierarchy from JSX.' };}
 
       const data: LayoutData = {
         file: makeRelativePath(absFile, baseDir),
@@ -325,7 +325,7 @@ export async function handler(rawArgs: unknown): Promise<CallToolResult> {
       execution_ms: elapsed(),
       ...(outcome.budget_exceeded ? { budget_exceeded: true } : {}),
     });
-    if (resolved.warning) env = { ...env, warning: resolved.warning };
+    if (resolved.warning) {env = { ...env, warning: resolved.warning };}
 
     const maxTokens = args.output?.max_tokens ?? cfg.max_tokens_default;
     env = capToTokens(env, maxTokens);

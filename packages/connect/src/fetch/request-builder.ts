@@ -136,7 +136,7 @@ export function buildRequestHeaders(
     headers['Content-Type'] = autoContentType;
   }
 
-  if (spec.auth) applyRequestAuth(headers, spec.auth);
+  if (spec.auth) {applyRequestAuth(headers, spec.auth);}
 
   return headers;
 }

@@ -38,7 +38,7 @@ function resolveLoginBody(body: Record<string, string | EnvRef>): Record<string,
   const resolved: Record<string, string> = {};
   for (const [key, value] of Object.entries(body)) {
     const resolvedValue = resolveSecretValue(value);
-    if (resolvedValue !== undefined) resolved[key] = resolvedValue;
+    if (resolvedValue !== undefined) {resolved[key] = resolvedValue;}
   }
   return resolved;
 }
@@ -82,7 +82,7 @@ export async function acquireSessionToken(auth: ServiceAuth): Promise<SessionRes
 
     let expiresAt: number | undefined;
     const expiresIn = extractFromPath(data, 'expires_in');
-    if (typeof expiresIn === 'number') expiresAt = Date.now() + expiresIn * 1000;
+    if (typeof expiresIn === 'number') {expiresAt = Date.now() + expiresIn * 1000;}
 
     return { success: true, token, expires_at: expiresAt };
   } catch (error) {
@@ -99,7 +99,7 @@ export async function acquireAndStore(
   currentAuth: ServiceAuth,
 ): Promise<ServiceAuth | null> {
   const result = await acquireSessionToken(currentAuth);
-  if (!result.success || !result.token) return null;
+  if (!result.success || !result.token) {return null;}
 
   const updatedAuth: ServiceAuth = {
     ...currentAuth,

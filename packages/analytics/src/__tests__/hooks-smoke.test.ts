@@ -43,6 +43,8 @@ function runHook(hookFile: string, input: unknown, opts: SpawnOpts = {}): { code
   const env = {
     ...cleanEnv,
     CLAUDE_PLUGIN_ROOT: opts.pluginRoot ?? FAKE_PLUGIN_ROOT,
+    // Never let a test kick the real detached npm installer.
+    GOODVIBES_NO_BG_INSTALL: '1',
   };
   try {
     const stdout = execFileSync('node', [path.join(HOOKS_DIR, hookFile)], {

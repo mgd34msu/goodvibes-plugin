@@ -30,8 +30,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  if (prevStateRoot === undefined) delete process.env.GOODVIBES_STATE_ROOT;
-  else process.env.GOODVIBES_STATE_ROOT = prevStateRoot;
+  if (prevStateRoot === undefined) {delete process.env.GOODVIBES_STATE_ROOT;}
+  else {process.env.GOODVIBES_STATE_ROOT = prevStateRoot;}
   await cleanupTempDir(stateRoot);
 });
 
@@ -229,7 +229,7 @@ describe('structural_edit — CRLF preservation (v1 silent-conversion lesson)', 
     expect(after).toBe('const a = 1;\r\nconst b = 20;\r\nconst bb = 22;\r\nconst c = 3;\r\n');
     // Not a single lone LF anywhere — every newline is a full CRLF.
     for (let i = 0; i < after.length; i++) {
-      if (after[i] === '\n') expect(after[i - 1]).toBe('\r');
+      if (after[i] === '\n') {expect(after[i - 1]).toBe('\r');}
     }
   });
 });

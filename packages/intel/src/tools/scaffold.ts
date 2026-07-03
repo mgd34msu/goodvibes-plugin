@@ -99,7 +99,7 @@ function templatesRoot(): string {
 function findTemplateDir(templatesDir: string, template: string): string | null {
   for (const category of TEMPLATE_CATEGORIES) {
     const candidate = path.join(templatesDir, category, template);
-    if (fs.existsSync(candidate)) return candidate;
+    if (fs.existsSync(candidate)) {return candidate;}
   }
   return null;
 }

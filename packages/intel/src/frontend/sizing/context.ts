@@ -74,8 +74,8 @@ export function buildAncestorChain(element: ElementNode): AncestorNode[] {
     if (current.height?.strategy === 'fixed' || current.height?.strategy === 'percentage') {
       impacts.push(`height: ${current.height.value}`);
     }
-    if (current.maxWidth) impacts.push(`max-width: ${current.maxWidth}`);
-    if (current.maxHeight) impacts.push(`max-height: ${current.maxHeight}`);
+    if (current.maxWidth) {impacts.push(`max-width: ${current.maxWidth}`);}
+    if (current.maxHeight) {impacts.push(`max-height: ${current.maxHeight}`);}
 
     if (current.overflowX !== 'visible' || current.overflowY !== 'visible') {
       const overflow =
@@ -85,7 +85,7 @@ export function buildAncestorChain(element: ElementNode): AncestorNode[] {
       impacts.push(`overflow: ${overflow}`);
     }
 
-    if (current.position !== 'static') impacts.push(`position: ${current.position}`);
+    if (current.position !== 'static') {impacts.push(`position: ${current.position}`);}
 
     if (impacts.length > 0) {
       chain.push({

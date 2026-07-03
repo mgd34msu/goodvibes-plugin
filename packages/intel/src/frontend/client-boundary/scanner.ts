@@ -48,7 +48,7 @@ const SCANNABLE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.mts'];
 
 /** Detect a `"use client"` / `"use server"` directive from raw file text. */
 function detectDirective(content: string): '"use client"' | '"use server"' | null {
-  const stripped = content.replace(/^﻿/, '');
+  const stripped = content.replace(/^\uFEFF/, '');
   const lines = stripped.split('\n');
   for (const line of lines) {
     const trimmed = line.trim();
@@ -56,8 +56,8 @@ function detectDirective(content: string): '"use client"' | '"use server"' | nul
       continue;
     }
     const normalized = trimmed.replace(/;+$/, '');
-    if (normalized === '"use client"' || normalized === "'use client'") return '"use client"';
-    if (normalized === '"use server"' || normalized === "'use server'") return '"use server"';
+    if (normalized === '"use client"' || normalized === "'use client'") {return '"use client"';}
+    if (normalized === '"use server"' || normalized === "'use server'") {return '"use server"';}
     break;
   }
   return null;
@@ -67,7 +67,7 @@ function detectDirective(content: string): '"use client"' | '"use server"' | nul
 export function findClientOnlyAPIs(sourceFile: ts.SourceFile): boolean {
   let found = false;
   function visit(node: ts.Node): void {
-    if (found) return;
+    if (found) {return;}
     if (ts.isCallExpression(node)) {
       const expr = node.expression;
       if (ts.isIdentifier(expr)) {
@@ -110,7 +110,7 @@ export function findClientOnlyAPIs(sourceFile: ts.SourceFile): boolean {
 export function findServerOnlyImports(sourceFile: ts.SourceFile): boolean {
   let found = false;
   ts.forEachChild(sourceFile, (node) => {
-    if (found) return;
+    if (found) {return;}
     let moduleSpecifier: string | undefined;
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
       moduleSpecifier = node.moduleSpecifier.text;
@@ -151,8 +151,8 @@ export function findServerOnlyImports(sourceFile: ts.SourceFile): boolean {
 /** Recursively collect scannable files under a directory (or return the single file). */
 export function collectScannableFiles(scanPath: string): string[] {
   const stat = fs.statSync(scanPath, { throwIfNoEntry: false });
-  if (!stat) return [];
-  if (stat.isFile()) return [scanPath];
+  if (!stat) {return [];}
+  if (stat.isFile()) {return [scanPath];}
 
   const results: string[] = [];
   function walk(dir: string): void {
@@ -165,11 +165,11 @@ export function collectScannableFiles(scanPath: string): string[] {
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
-        if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
+        if (entry.name === 'node_modules' || entry.name.startsWith('.')) {continue;}
         walk(fullPath);
       } else if (entry.isFile()) {
         const ext = path.extname(entry.name).toLowerCase();
-        if (SCANNABLE_EXTENSIONS.includes(ext)) results.push(fullPath);
+        if (SCANNABLE_EXTENSIONS.includes(ext)) {results.push(fullPath);}
       }
     }
   }
@@ -192,7 +192,7 @@ export function scanForDirectives(
   const results: FileDirectiveInfo[] = [];
   for (const absPath of absPaths) {
     const sourceFile = sourceFiles.get(absPath);
-    if (!sourceFile) continue;
+    if (!sourceFile) {continue;}
     const directive = detectDirective(sourceFile.getFullText());
     results.push({
       file: makeRelativePath(absPath, baseDir),

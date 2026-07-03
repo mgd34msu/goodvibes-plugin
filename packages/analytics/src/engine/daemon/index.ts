@@ -12,5 +12,3 @@ export { DataWatcher } from './watcher.js';
 export type { WatcherEvents, WatcherEventName } from './watcher.js';
 export { MemoryUpdater } from './memory-updater.js';
 export type { PatternUpdate, PreferenceUpdate } from './memory-updater.js';
-export { ReportGenerator } from './report-generator.js';
-export { SessionArchiver } from './session-archiver.js';

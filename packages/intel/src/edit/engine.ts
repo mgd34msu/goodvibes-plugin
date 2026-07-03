@@ -121,14 +121,14 @@ function normalizeWithMap(original: string): { norm: string; map: number[] } {
 function exactMatchSpans(original: string, find: string, caseSensitive: boolean): Span[] {
   const { norm, map } = normalizeWithMap(original);
   const needleRaw = toLf(find);
-  if (needleRaw.length === 0) return [];
+  if (needleRaw.length === 0) {return [];}
   const hay = caseSensitive ? norm : norm.toLowerCase();
   const needle = caseSensitive ? needleRaw : needleRaw.toLowerCase();
   const spans: Span[] = [];
   let pos = 0;
   for (;;) {
     const found = hay.indexOf(needle, pos);
-    if (found === -1) break;
+    if (found === -1) {break;}
     spans.push({ start: map[found], end: map[found + needle.length] });
     pos = found + needle.length; // non-overlapping
   }
@@ -142,7 +142,7 @@ function exactMatchSpans(original: string, find: string, caseSensitive: boolean)
  * mapping. Predicates ported verbatim from v1 `astMatch`.
  */
 function astMatchSpans(filePath: string, original: string, find: string): Span[] {
-  if (!isJavaScriptFile(filePath)) return [];
+  if (!isJavaScriptFile(filePath)) {return [];}
   let sourceFile: ts.SourceFile;
   try {
     sourceFile = ts.createSourceFile(
@@ -305,7 +305,7 @@ async function astPatternSpans(
     const { norm, map } = normalizeWithMap(original);
     const normLineStarts: number[] = [0];
     for (let i = 0; i < norm.length; i++) {
-      if (norm[i] === '\n') normLineStarts.push(i + 1);
+      if (norm[i] === '\n') {normLineStarts.push(i + 1);}
     }
     const root = napi.parse(langEnum, norm);
     const matches = root.root().findAll(toLf(pattern));
@@ -321,7 +321,7 @@ async function astPatternSpans(
         (raw, multi: string | undefined, single: string | undefined) => {
           if (multi !== undefined) {
             const nodes = m.getMultipleMatches(multi);
-            if (nodes.length === 0) return '';
+            if (nodes.length === 0) {return '';}
             const start = offsetOf(nodes[0].range().start);
             const end = offsetOf(nodes[nodes.length - 1].range().end);
             return norm.slice(start, end);
@@ -351,10 +351,10 @@ async function astPatternSpans(
 /** Select which matched spans an `occurrence` setting replaces, sorted by start. */
 function selectSpans(spans: Span[], occurrence: Occurrence): Span[] {
   const sorted = [...spans].sort((a, b) => a.start - b.start);
-  if (sorted.length === 0) return [];
-  if (occurrence === 'all') return sorted;
-  if (occurrence === 'first') return [sorted[0]];
-  if (occurrence === 'last') return [sorted[sorted.length - 1]];
+  if (sorted.length === 0) {return [];}
+  if (occurrence === 'all') {return sorted;}
+  if (occurrence === 'first') {return [sorted[0]];}
+  if (occurrence === 'last') {return [sorted[sorted.length - 1]];}
   if (typeof occurrence === 'number' && occurrence >= 1 && occurrence <= sorted.length) {
     return [sorted[occurrence - 1]];
   }

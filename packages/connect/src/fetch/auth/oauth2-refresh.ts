@@ -18,7 +18,7 @@ export interface TokenRefreshResult {
 
 /** True when the access token is expired or within a 60s buffer of expiry. */
 export function isTokenExpired(auth: ServiceAuth): boolean {
-  if (!auth.expires_at) return false;
+  if (!auth.expires_at) {return false;}
   const buffer = 60 * 1000;
   return Date.now() + buffer >= auth.expires_at;
 }
@@ -96,7 +96,7 @@ export async function refreshAndStore(
   currentAuth: ServiceAuth,
 ): Promise<ServiceAuth | null> {
   const result = await refreshAccessToken(currentAuth);
-  if (!result.success || !result.access_token) return null;
+  if (!result.success || !result.access_token) {return null;}
 
   const updatedAuth: ServiceAuth = {
     ...currentAuth,

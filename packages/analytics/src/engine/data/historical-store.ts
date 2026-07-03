@@ -245,7 +245,7 @@ export class HistoricalStore {
    */
   tagSession(sessionId: string, tag: string): boolean {
     const archive = this.load(sessionId);
-    if (!archive) return false;
+    if (!archive) {return false;}
     archive.tag = tag;
     // Keep tags array in sync with deprecated tag field
     archive.tags = archive.tags ? [...new Set([...archive.tags, tag])] : [tag];
@@ -260,7 +260,7 @@ export class HistoricalStore {
    */
   renameSession(sessionId: string, name: string): boolean {
     const archive = this.load(sessionId);
-    if (!archive) return false;
+    if (!archive) {return false;}
     archive.name = name;
     this._writeArchive(sessionId, archive);
     return true;

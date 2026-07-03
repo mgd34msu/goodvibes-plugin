@@ -244,7 +244,7 @@ describe('code_glob — backend selection', () => {
 describe('code_glob — honest truncation summary', () => {
   it('reports true total_files and effective_caps when max_results trims', async () => {
     const manyFiles: Record<string, string> = {};
-    for (let i = 0; i < 30; i++) manyFiles[`file${String(i).padStart(2, '0')}.ts`] = 'content';
+    for (let i = 0; i < 30; i++) {manyFiles[`file${String(i).padStart(2, '0')}.ts`] = 'content';}
     await writeFiles(dir, manyFiles);
 
     const result = await handler({ patterns: ['*.ts'], base_path: dir, output: { mode: 'paths_only', max_results: 10 } });

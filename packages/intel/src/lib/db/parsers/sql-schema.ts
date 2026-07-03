@@ -37,17 +37,17 @@ export function parseSqlSchema(content: string, resolvedPath: string): DatabaseS
     let parenDepth = 0;
     for (let i = 0; i < columnsBlock.length; i++) {
       const char = columnsBlock[i];
-      if (char === '(') parenDepth++;
-      else if (char === ')') parenDepth--;
+      if (char === '(') {parenDepth++;}
+      else if (char === ')') {parenDepth--;}
 
       if (char === ',' && parenDepth === 0) {
-        if (currentLine.trim()) lines.push(currentLine.trim());
+        if (currentLine.trim()) {lines.push(currentLine.trim());}
         currentLine = '';
       } else {
         currentLine += char;
       }
     }
-    if (currentLine.trim()) lines.push(currentLine.trim());
+    if (currentLine.trim()) {lines.push(currentLine.trim());}
 
     for (const line of lines) {
       const normalizedLine = line.replace(/\s+/g, ' ').trim();
@@ -61,7 +61,7 @@ export function parseSqlSchema(content: string, resolvedPath: string): DatabaseS
           const toTable = fkMatch[3];
           const toCol = fkMatch[4];
           const col = columns.find((c) => c.name === fromCol);
-          if (col) col.references = { table: toTable, column: toCol };
+          if (col) {col.references = { table: toTable, column: toCol };}
           relations.push({ from_table: tableName, from_column: fromCol, to_table: toTable, to_column: toCol, type: 'one-to-many' });
         }
 
@@ -113,7 +113,7 @@ export function parseSqlSchema(content: string, resolvedPath: string): DatabaseS
     const [, isUnique, idxName, tblName, colsStr] = match;
     const idxCols = colsStr.split(',').map((c) => c.trim().replace(/[`"']/g, ''));
     const table = tables.find((t) => t.name === tblName);
-    if (table) table.indexes.push({ name: idxName, columns: idxCols, unique: !!isUnique });
+    if (table) {table.indexes.push({ name: idxName, columns: idxCols, unique: !!isUnique });}
   }
 
   return { source: 'sql', tables, relations, raw_path: resolvedPath };

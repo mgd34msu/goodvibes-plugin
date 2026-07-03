@@ -143,7 +143,7 @@ function detectComponentName(sourceFile: ts.SourceFile, filePath: string): strin
 /** Filter hooks by a variable name or a line number string. */
 function filterHooks(hooks: HookInfo[], hookFilter: string): HookInfo[] {
   const lineNum = parseInt(hookFilter, 10);
-  if (!isNaN(lineNum)) return hooks.filter((h) => h.line === lineNum);
+  if (!isNaN(lineNum)) {return hooks.filter((h) => h.line === lineNum);}
   return hooks.filter((h) => h.variableName === hookFilter || h.name === hookFilter);
 }
 
@@ -152,8 +152,8 @@ function capToTokens(
   env: Envelope<HookDependenciesData>,
   maxTokens?: number,
 ): Envelope<HookDependenciesData> {
-  if (!maxTokens || maxTokens <= 0 || !env.data) return env;
-  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) return env;
+  if (!maxTokens || maxTokens <= 0 || !env.data) {return env;}
+  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) {return env;}
 
   const data = env.data;
   const trim = (): Envelope<HookDependenciesData> => ({
@@ -211,18 +211,18 @@ export async function handler(rawArgs: unknown): Promise<CallToolResult> {
       const componentName = detectComponentName(sourceFile, absFile);
       const scope = buildComponentScope(sourceFile, sourceFile);
       let hooks = extractHooksWithDeps(sourceFile, sourceFile, scope);
-      if (args.hook) hooks = filterHooks(hooks, args.hook);
+      if (args.hook) {hooks = filterHooks(hooks, args.hook);}
 
       const includeStable = args.include_stable_analysis !== false;
       for (const hook of hooks) {
-        if (signal.aborted) break;
+        if (signal.aborted) {break;}
         const analyzedDeps = analyzeDependencies(hook.rawDeps, scope, sourceFile);
         hook.deps = includeStable ? analyzedDeps : analyzedDeps.filter((d) => d.stability !== 'stable');
       }
 
       const allIssues: HookIssue[] = [];
       for (const hook of hooks) {
-        if (signal.aborted) break;
+        if (signal.aborted) {break;}
         allIssues.push(...detectAllIssues(hook, scope));
       }
 
@@ -269,7 +269,7 @@ export async function handler(rawArgs: unknown): Promise<CallToolResult> {
       execution_ms: elapsed(),
       ...(outcome.budget_exceeded ? { budget_exceeded: true } : {}),
     });
-    if (resolved.warning) env = { ...env, warning: resolved.warning };
+    if (resolved.warning) {env = { ...env, warning: resolved.warning };}
 
     const maxTokens = args.output?.max_tokens ?? cfg.max_tokens_default;
     env = capToTokens(env, maxTokens);

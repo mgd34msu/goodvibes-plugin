@@ -142,7 +142,7 @@ function capRows(
   maxTokens: number,
 ): boolean {
   const render = (): number => estimatePayloadTokens(JSON.stringify(data));
-  if (render() <= maxTokens) return false;
+  if (render() <= maxTokens) {return false;}
   let trimmed = false;
   while (data.rows.length > 0 && render() > maxTokens) {
     // Drop a chunk from the tail proportional to the overage (bounded by 1 row).
@@ -168,7 +168,7 @@ export async function handleDbQuery(args: unknown): Promise<CallToolResult> {
   }
 
   const target = resolveTarget(input, mode);
-  if ('error' in target) return fail(target.error);
+  if ('error' in target) {return fail(target.error);}
 
   const connectionInfo = parseConnectionUrl(target.url);
   if (connectionInfo.type === 'unknown') {
@@ -238,7 +238,7 @@ export async function handleDbQuery(args: unknown): Promise<CallToolResult> {
     return { error: enhanceDatabaseError(msg, connectionInfo.type) } as const;
   });
 
-  if ('error' in outcome) return fail(outcome.error);
+  if ('error' in outcome) {return fail(outcome.error);}
 
   const { value } = outcome;
   const { executionResult, queryToExecute, truncated, explainOutput } = value;
@@ -253,9 +253,9 @@ export async function handleDbQuery(args: unknown): Promise<CallToolResult> {
     } else {
       const tableOutput = formatQueryResult(executionResult.rows, executionResult.columns);
       outputText = `${tableOutput}\n\n${executionResult.rows.length} row(s) returned`;
-      if (truncated) outputText += ` (limited to ${limit})`;
+      if (truncated) {outputText += ` (limited to ${limit})`;}
     }
-    if (explainOutput) outputText += `\n\nEXPLAIN:\n${explainOutput}`;
+    if (explainOutput) {outputText += `\n\nEXPLAIN:\n${explainOutput}`;}
 
     const env = successEnvelope(
       {
@@ -290,13 +290,13 @@ export async function handleDbQuery(args: unknown): Promise<CallToolResult> {
     query_executed: queryToExecute,
     truncated,
   };
-  if (executionResult.changes !== undefined) data.changes = executionResult.changes;
+  if (executionResult.changes !== undefined) {data.changes = executionResult.changes;}
   if (executionResult.lastInsertRowid !== undefined) {
     // bigint is not JSON-serializable; stringify large ids honestly.
     const rid = executionResult.lastInsertRowid;
     data.last_insert_rowid = typeof rid === 'bigint' ? Number(rid) : rid;
   }
-  if (explainOutput) data.explain_output = explainOutput;
+  if (explainOutput) {data.explain_output = explainOutput;}
 
   const capped = capRows(data, maxTokens);
 

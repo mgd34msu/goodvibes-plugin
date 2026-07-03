@@ -7,6 +7,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-07-02
+
+The analytics view becomes a file you can open anywhere, and dependency
+installation becomes something you never think about.
+
+### Added
+- **HTML analytics report.** `dashboard {"action":"report"}` writes a fully
+  self-contained HTML report — inline CSS/JS and inline SVG charts, no external
+  URLs, CDNs, or fonts; follows the viewer's light/dark preference — to
+  `<project>/.goodvibes/reports/analytics-report.html` (stable name, overwritten
+  each run) and returns the absolute path plus a 3-line stats summary. Sections:
+  session overview (cost, tokens, cache), per-model cost, tool usage, agents,
+  files touched, and historical + cross-project sections when the global DB has
+  data. Optional `scope`: `session` | `project` | `all_projects`.
+  `/goodvibes:analytics report` generates it and renders it inline.
+- **Automatic background dependency install.** SessionStart probes each server's
+  native dependencies; when one is missing it first tries a silent relink to the
+  durable home, and only if still missing spawns `hooks/lib/deps-install.mjs`
+  detached — SessionStart never blocks on npm — and says so in one line. The
+  installer holds a single-instance lock (stale after 10 minutes), appends
+  progress to `~/.claude/.goodvibes/deps/install.log`, and records
+  `{ok, failed, finished_at}` to `.last-result.json`; a recent (<24h) recorded
+  failure surfaces as one pointer line at the next session start instead of a
+  re-spawn. `hooks/lib/deps-link.mjs` owns the plugin-copy link (symlink, then
+  junction, then a plain copy fallback) and runs standalone as a CLI, as does
+  `deps-install.mjs`.
+- The analytics MCP server entry in `.mcp.json` is marked `alwaysLoad`, so its
+  7 tool schemas skip the deferred-loading round trip.
+- The per-request `auth` override on connect's `api_request` is now documented —
+  in the tool schema, `/goodvibes:services`, and the service-integration skill —
+  matching the implementation: `none` | `bearer` | `basic` | `api-key` |
+  `custom-headers`, applied at request build; an origin-matched registered
+  service's stored credential is applied after it and wins on the same header.
+
+### Changed
+- **The `dashboard` tool's params are now
+  `{action: report | doctor | status, scope?}`.** `doctor` is the existing
+  host-health + orphan report, unchanged; `status` is brief engine/server status
+  text. The pane targets (`mini`/`full`/`dashboard`/`both`) and pane actions
+  (`start`/`stop`) are deleted from the schema, handler, and docs.
+- **`/goodvibes:setup` is now the manual repair path.** Installation is
+  automatic and in the background; the command re-runs the same installer in the
+  foreground with visible output for when that did not work. `/goodvibes:plugin`
+  matches: the setup section describes the automatic flow, and `status` reads
+  install state from the filesystem alone.
+- The SessionStart relink check accepts a durable install whose dependency list
+  is a superset of the plugin copy's (was exact-equality), so leftover extra
+  packages no longer force a reinstall.
+- The analytics native-dependency probe is `sql.js` (was `ink`).
+- `/goodvibes:analytics` rewritten as a compact dispatcher — one table, no
+  tool-availability preflight ritual, under a third of its former length.
+
+### Removed
+- **The mini pane and the whole terminal-UI stack.** No tmux machinery, no
+  `mini.cjs` bundle; `ink`, `react`, `react-devtools-core`, and `yoga-wasm-web`
+  are gone from the analytics runtime dependencies and build externals — the
+  analytics server's only native dependency is now `sql.js`.
+- The Setup hook's `.setup-marker.json` machinery, everywhere. On `claude init`
+  the hook kicks the same detached installer and stays otherwise silent.
+- Dead dev scripts `scripts/check-registry-fresh.sh` and `scripts/tmux-send.sh`.
+
 ## [2.2.0] - 2026-07-02
 
 Setup runs once, ever.

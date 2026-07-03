@@ -68,7 +68,7 @@ export function parseNextJsPagesRouterFile(content: string, filePath: string, re
   const routePath = extractNextJsPagesRoutePath(filePath);
 
   const defaultExportMatch = /export\s+default\s+(?:async\s+)?function/.exec(content);
-  if (!defaultExportMatch) return routes;
+  if (!defaultExportMatch) {return routes;}
 
   const line = getLineNumber(content, defaultExportMatch.index);
   const methods = detectPagesRouterMethods(content);
@@ -102,9 +102,9 @@ export function detectPagesRouterMethods(content: string): string[] {
   ];
 
   for (const { method, pattern } of methodPatterns) {
-    if (pattern.test(content)) methods.push(method);
+    if (pattern.test(content)) {methods.push(method);}
   }
-  if (methods.length === 0) methods.push('GET');
+  if (methods.length === 0) {methods.push('GET');}
   return methods;
 }
 
@@ -115,7 +115,7 @@ export function detectPagesRouterMethods(content: string): string[] {
  */
 export function extractNextJsRoutePath(filePath: string): string {
   let routePath = filePath.replace(/^(src\/)?app/, '').replace(/\/route\.(ts|tsx|js|jsx)$/, '');
-  if (!routePath.startsWith('/')) routePath = '/' + routePath;
+  if (!routePath.startsWith('/')) {routePath = '/' + routePath;}
   return routePath || '/';
 }
 
@@ -127,6 +127,6 @@ export function extractNextJsRoutePath(filePath: string): string {
 export function extractNextJsPagesRoutePath(filePath: string): string {
   let routePath = filePath.replace(/^(src\/)?pages/, '').replace(/\.(ts|tsx|js|jsx)$/, '');
   routePath = routePath.replace(/\/index$/, '') || '/';
-  if (!routePath.startsWith('/')) routePath = '/' + routePath;
+  if (!routePath.startsWith('/')) {routePath = '/' + routePath;}
   return routePath;
 }

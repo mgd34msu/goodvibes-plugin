@@ -1,31 +1,27 @@
-/** `dashboard` — launch/stop/status of the tmux analytics panes. */
+/** `dashboard` — HTML analytics report, host-health doctor, or engine status. */
 import type { ToolModule } from './types.js';
 
 export const dashboardTool: ToolModule = {
   name: 'dashboard',
   engineTool: 'analytics_dashboard',
   description:
-    'Launch, stop, or check status of the analytics tmux panes. The mini dashboard is an always-on ' +
-    '4-line pane showing live session metrics. (The full interactive TUI is deferred in the alpha.) ' +
-    'Calling start on a running target toggles it off; stop on a stopped target is a no-op. ' +
-    'action="doctor" prints a read-only host-health + agent-liveness report (load, session children, ' +
-    'orphaned busy-loop plugin processes with ready-to-run kill commands, background-agent states) ' +
-    'without launching a pane and never killing anything.',
+    'Generate an analytics report or check engine health. action="report" writes a fully ' +
+    'self-contained HTML report (session overview, per-model cost, tool usage, agents, files ' +
+    'touched, plus historical and cross-project sections when the global DB has data) to ' +
+    '.goodvibes/reports/analytics-report.html and returns the path with a short summary. ' +
+    'action="doctor" prints a read-only host-health + agent-liveness report (load, session ' +
+    'children, orphaned busy-loop plugin processes with ready-to-run kill commands, ' +
+    'background-agent states) and never kills anything. action="status" returns brief ' +
+    'engine/server status text.',
   inputSchema: {
     type: 'object',
     properties: {
-      action: { type: 'string', enum: ['start', 'stop', 'status', 'doctor'] },
-      target: {
+      action: { type: 'string', enum: ['report', 'doctor', 'status'] },
+      scope: {
         type: 'string',
-        enum: ['mini', 'full', 'dashboard', 'both'],
-        description: 'Which pane to operate on (default: both).',
-      },
-      options: {
-        type: 'object',
-        properties: {
-          pane_position: { type: 'string', enum: ['bottom', 'top', 'left', 'right'] },
-          pane_size: { type: ['number', 'string'] },
-        },
+        enum: ['session', 'project', 'all_projects'],
+        description:
+          'Report scope: session-only, this project with history, or all projects (default).',
       },
     },
     required: ['action'],

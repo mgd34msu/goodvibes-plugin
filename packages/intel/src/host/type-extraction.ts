@@ -45,13 +45,13 @@ export function extractTypeInfo(
     const { service, program } = host.getServiceForFile(absoluteFilePath);
     const normalized = toTsPath(absoluteFilePath);
     const sourceFile = program.getSourceFile(normalized);
-    if (!sourceFile) return { file: displayPath, symbols };
+    if (!sourceFile) {return { file: displayPath, symbols };}
 
     const navTree = service.getNavigationTree(normalized);
     for (const item of navTree?.childItems ?? []) {
-      if (item.text.startsWith('<') || item.text.startsWith('_')) continue;
+      if (item.text.startsWith('<') || item.text.startsWith('_')) {continue;}
       const spans = item.spans;
-      if (!spans || spans.length === 0) continue;
+      if (!spans || spans.length === 0) {continue;}
 
       const pos = spans[0].start;
       const { line } = sourceFile.getLineAndCharacterOfPosition(pos);

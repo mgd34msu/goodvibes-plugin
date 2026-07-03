@@ -145,7 +145,7 @@ async function computeSurface(
   const internalApi: InternalApiExport[] = [];
 
   for (const [key, exp] of allExports) {
-    if (signal.aborted) break;
+    if (signal.aborted) {break;}
     if (publicKeys.has(key)) {
       const pub = publicExports.get(key)!;
       publicApi.push({
@@ -187,8 +187,8 @@ async function computeSurface(
  * envelope with honest `truncated` + `effective_caps`.
  */
 function capToTokens(env: Envelope<CodeSurfaceData>, maxTokens?: number): Envelope<CodeSurfaceData> {
-  if (!maxTokens || maxTokens <= 0 || !env.data) return env;
-  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) return env;
+  if (!maxTokens || maxTokens <= 0 || !env.data) {return env;}
+  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) {return env;}
 
   const data = env.data;
   const trim = (): Envelope<CodeSurfaceData> => ({
@@ -244,7 +244,7 @@ export async function handler(rawArgs: unknown): Promise<CallToolResult> {
       execution_ms: elapsed(),
       ...(outcome.budget_exceeded || partial ? { budget_exceeded: true } : {}),
     });
-    if (resolved.warning) env = { ...env, warning: resolved.warning };
+    if (resolved.warning) {env = { ...env, warning: resolved.warning };}
 
     const maxTokens = args.output?.max_tokens ?? cfg.max_tokens_default;
     env = capToTokens(env, maxTokens);

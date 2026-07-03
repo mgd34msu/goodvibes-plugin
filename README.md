@@ -16,7 +16,7 @@ it already does well.
 | Server | Tools | What it does |
 |---|---|---|
 | **intel** | 15 | Structure-first code reading (`code_read` outline/ranges), multi-query search (`code_grep` with count/locations formats, AST structural queries, `expand_to`, `preview_replace`), `code_glob` with per-file stats, TypeScript API-surface and safe-delete analysis on a single compiler host, API route/spec/contract analyzers, DB schema intelligence with Prisma usage analysis, React component/hook/boundary analyzers, a merged layout analyzer, project scaffolding — and `structural_edit`, the one write tool, preview-gated |
-| **analytics** | 7 | Per-session and cross-project token/cost analytics from transcript actuals with per-model cache-aware pricing, budgets, tags, export, tmux dashboards — plus live modes: `query {"mode":"live_cost"}` prices the running session, `"doctor"` surfaces host load and orphaned processes with ready-to-run cleanup commands (never auto-runs them), `"agents"` classifies background agents as thinking / executing / wedged |
+| **analytics** | 7 | Per-session and cross-project token/cost analytics from transcript actuals with per-model cache-aware pricing, budgets, tags, export, and a self-contained HTML report (`dashboard {"action":"report"}` writes it to `.goodvibes/reports/`) — plus live modes: `query {"mode":"live_cost"}` prices the running session, `"doctor"` surfaces host load and orphaned processes with ready-to-run cleanup commands (never auto-runs them), `"agents"` classifies background agents as thinking / executing / wedged |
 | **connect** | 3 | `api_request` (batched HTTP with per-entry error isolation), `service` (a credential registry: 0600 secrets file, env-var indirection, bounded OAuth2 refresh), `db_query` (live databases under the same trust model) |
 
 ## Measured, not promised
@@ -38,7 +38,7 @@ If a claim stops being true, it comes out of the README. That's the policy.
 - **Servers live for the life of your session.** No idle self-exit, ever (regression-tested). Orphan defense is a parent-liveness watchdog that fires only when the session itself dies.
 - **Every tool runs under a per-request time budget** and returns an honest partial rather than hanging a client forever.
 - **connect is restricted by default**: credentials are pinned to their registered origins (never toggleable), destinations are allowlisted, writes are per-service opt-in, and "open" mode is a human-only, ephemeral toggle that announces itself every session it persists.
-- **State is namespaced** under `.goodvibes/` in your project; nothing writes outside your project without explicit consent (`/goodvibes:plugin install-prompts` is opt-in and has a real uninstall).
+- **State is namespaced** under `.goodvibes/` in your project; outside it the plugin writes only its own dependency home under `~/.claude/.goodvibes/` (`/goodvibes:plugin install-prompts` remains opt-in and has a real uninstall).
 
 ## Install
 
@@ -51,18 +51,20 @@ Restart Claude Code to activate the servers. Tool schemas load on demand when
 your client has Tool Search active (the default in current Claude Code); the
 fixed context cost is the tool names only.
 
-Run `/goodvibes:setup` once to install each server's native dependencies with
-explicit consent. Installs live in `~/.claude/.goodvibes/deps/` and survive
-plugin updates — the SessionStart hook relinks them automatically, so setup only
-comes back if an update changes a server's dependency list. Until setup runs,
-the servers still boot and every non-native capability works; anything that
-needs a native dependency returns an honest "run /goodvibes:setup" message
-instead of failing.
+Native dependencies install automatically in the background: the first session
+after install spawns a detached installer and the tools are ready next session.
+Installs live in `~/.claude/.goodvibes/deps/` and survive plugin updates — the
+SessionStart hook relinks them automatically. If the background install fails,
+one line points at the log and `/goodvibes:setup`, the manual foreground repair
+path. Until an install lands, the servers still boot and every non-native
+capability works; anything that needs a native dependency returns an honest
+"run /goodvibes:setup" message instead of failing.
 
 ## Commands
 
-- `/goodvibes:plugin` — setup, status, prompt-pointer install/uninstall
-- `/goodvibes:analytics` — session cost, budgets, doctor, agent liveness
+- `/goodvibes:plugin` — status, native-dependency repair, prompt-pointer install/uninstall
+- `/goodvibes:setup` — re-run the native dependency install in the foreground (repair path)
+- `/goodvibes:analytics` — session cost, HTML report, budgets, doctor, agent liveness
 - `/goodvibes:services` — connect's registry and the restricted/open toggle
 - `/goodvibes:codebase-review` — an in-band review→fix workflow with refutation-based verdicts and grounded checks
 

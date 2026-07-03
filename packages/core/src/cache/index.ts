@@ -132,8 +132,8 @@ export class FileStateCache {
     let added = 0;
     let removed = 0;
     for (const line of diff.split('\n')) {
-      if (line.startsWith('+') && !line.startsWith('+++')) added++;
-      else if (line.startsWith('-') && !line.startsWith('---')) removed++;
+      if (line.startsWith('+') && !line.startsWith('+++')) {added++;}
+      else if (line.startsWith('-') && !line.startsWith('---')) {removed++;}
     }
     return { added, removed };
   }
@@ -143,7 +143,7 @@ export class FileStateCache {
   }
 
   private trackMemory(entry: CacheEntry, oldBytes?: number): void {
-    if (oldBytes !== undefined) this.totalContentBytes -= oldBytes;
+    if (oldBytes !== undefined) {this.totalContentBytes -= oldBytes;}
     this.totalContentBytes += entry.contentBytes;
     while (this.totalContentBytes > this.maxMemoryBytes && this.cache.size > 1) {
       this.evictLRU();
@@ -340,7 +340,7 @@ export class FileStateCache {
     existing.lastModifiedBy = agentId ?? tool;
     existing.lastModifiedAt = now;
     existing.modificationLog.push({ version: existing.version, agentId, tool, timestamp: now, summary });
-    if (existing.modificationLog.length > 10) existing.modificationLog.shift();
+    if (existing.modificationLog.length > 10) {existing.modificationLog.shift();}
     this.trackMemory(existing, oldBytes);
   }
 
@@ -367,7 +367,7 @@ export class FileStateCache {
     const fileStats = Array.from(this.cache.entries()).map(([p, entry]) => ({ path: p, reads: entry.readCount }));
     for (const entry of this.cache.values()) {
       totalReads += entry.readCount;
-      if (entry.readCount > 1) cacheHits += entry.readCount - 1;
+      if (entry.readCount > 1) {cacheHits += entry.readCount - 1;}
     }
     const cacheHitRate = totalReads > 0 ? `${((cacheHits / totalReads) * 100).toFixed(1)}%` : '0.0%';
     return {

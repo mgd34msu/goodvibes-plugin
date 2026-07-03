@@ -35,7 +35,7 @@ export function extractId(
 ): string | undefined {
   for (const attr of node.attributes.properties) {
     if (ts.isJsxAttribute(attr) && attr.name.getText(sourceFile) === 'id') {
-      if (attr.initializer && ts.isStringLiteral(attr.initializer)) return attr.initializer.text;
+      if (attr.initializer && ts.isStringLiteral(attr.initializer)) {return attr.initializer.text;}
     }
   }
   return undefined;
@@ -84,8 +84,8 @@ export function matchesSelector(
   id: string | undefined,
   selector: string,
 ): boolean {
-  if (selector.startsWith('#')) return id === selector.slice(1);
-  if (selector.startsWith('.')) return classes.includes(selector.slice(1));
+  if (selector.startsWith('#')) {return id === selector.slice(1);}
+  if (selector.startsWith('.')) {return classes.includes(selector.slice(1));}
   return tagName.toLowerCase() === selector.toLowerCase();
 }
 
@@ -106,13 +106,13 @@ export function parseJsxTree(
     if (matchesSelector(tagName, classes, id, selector)) {
       for (const child of node.children) {
         const childResult = parseJsxTreeForChildren(child, sourceFile, elementNode);
-        if (childResult) elementNode.children.push(childResult);
+        if (childResult) {elementNode.children.push(childResult);}
       }
       return elementNode;
     }
     for (const child of node.children) {
       const result = parseJsxTree(child, sourceFile, elementNode, selector);
-      if (result) return result;
+      if (result) {return result;}
     }
     return null;
   }
@@ -130,7 +130,7 @@ export function parseJsxTree(
   if (ts.isJsxFragment(node)) {
     for (const child of node.children) {
       const result = parseJsxTree(child, sourceFile, parent, selector);
-      if (result) return result;
+      if (result) {return result;}
     }
     return null;
   }
@@ -138,14 +138,14 @@ export function parseJsxTree(
   if (ts.isJsxExpression(node) && node.expression) {
     let result: ElementNode | null = null;
     ts.forEachChild(node.expression, (child) => {
-      if (!result) result = parseJsxTree(child, sourceFile, parent, selector);
+      if (!result) {result = parseJsxTree(child, sourceFile, parent, selector);}
     });
     return result;
   }
 
   let result: ElementNode | null = null;
   ts.forEachChild(node, (child) => {
-    if (!result) result = parseJsxTree(child, sourceFile, parent, selector);
+    if (!result) {result = parseJsxTree(child, sourceFile, parent, selector);}
   });
   return result;
 }
@@ -163,7 +163,7 @@ function parseJsxTreeForChildren(
     const elementNode = buildElementNode(tagName, classes, id, parent);
     for (const child of node.children) {
       const childResult = parseJsxTreeForChildren(child, sourceFile, elementNode);
-      if (childResult) elementNode.children.push(childResult);
+      if (childResult) {elementNode.children.push(childResult);}
     }
     return elementNode;
   }
@@ -178,7 +178,7 @@ function parseJsxTreeForChildren(
     fragmentNode.display = 'contents';
     for (const child of node.children) {
       const childResult = parseJsxTreeForChildren(child, sourceFile, fragmentNode);
-      if (childResult) fragmentNode.children.push(childResult);
+      if (childResult) {fragmentNode.children.push(childResult);}
     }
     return fragmentNode.children.length > 0 ? fragmentNode : null;
   }
@@ -190,7 +190,7 @@ export function findRootJsx(sourceFile: ts.SourceFile): ts.Node | null {
   let rootJsx: ts.Node | null = null;
 
   function visit(node: ts.Node): void {
-    if (rootJsx) return;
+    if (rootJsx) {return;}
     if (ts.isReturnStatement(node) && node.expression) {
       if (ts.isJsxElement(node.expression) || ts.isJsxSelfClosingElement(node.expression) || ts.isJsxFragment(node.expression)) {
         rootJsx = node.expression;

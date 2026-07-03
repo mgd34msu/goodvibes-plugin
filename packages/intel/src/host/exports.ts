@@ -141,21 +141,21 @@ function collectExportsFromFiles(
   const result = new Map<string, ExportWithOrigin>();
   const program = service.getProgram();
   const checker = program?.getTypeChecker();
-  if (!program || !checker) return result;
+  if (!program || !checker) {return result;}
 
   for (const filePath of files) {
     const sourceFile = program.getSourceFile(toTsPath(filePath));
-    if (!sourceFile) continue;
+    if (!sourceFile) {continue;}
 
     const moduleSymbol = checker.getSymbolAtLocation(sourceFile);
-    if (!moduleSymbol) continue;
+    if (!moduleSymbol) {continue;}
 
     for (const exportSymbol of checker.getExportsOfModule(moduleSymbol)) {
       const name = exportSymbol.getName();
-      if (name === '__export') continue;
+      if (name === '__export') {continue;}
 
       const declarations = exportSymbol.getDeclarations();
-      if (!declarations || declarations.length === 0) continue;
+      if (!declarations || declarations.length === 0) {continue;}
 
       const decl = declarations[0];
       const declSourceFile = decl.getSourceFile();

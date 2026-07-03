@@ -154,7 +154,7 @@ describe('CookieJar', () => {
   describe('overflow protection', () => {
     it('should enforce max cookie limit', async () => {
       const headers: string[] = [];
-      for (let i = 0; i < 1010; i++) headers.push(`cookie${i}=value${i}; Path=/`);
+      for (let i = 0; i < 1010; i++) {headers.push(`cookie${i}=value${i}; Path=/`);}
       await jar.setCookies('https://example.com/', headers);
       expect((await jar.getAllCookies()).length).toBeLessThanOrEqual(1000);
     });
@@ -162,7 +162,7 @@ describe('CookieJar', () => {
     it('should evict cookies when file size exceeds limit', async () => {
       const largeValue = 'x'.repeat(1000);
       const headers: string[] = [];
-      for (let i = 0; i < 600; i++) headers.push(`largecookie${i}=${largeValue}; Path=/; Max-Age=3600`);
+      for (let i = 0; i < 600; i++) {headers.push(`largecookie${i}=${largeValue}; Path=/; Max-Age=3600`);}
       await jar.setCookies('https://example.com/', headers);
 
       const cookiePath = path.join(tmpDir, ...STATE, 'goodvibes.cookies.json');
@@ -217,7 +217,7 @@ describe('CookieJar', () => {
     it('should evict session cookies before persistent cookies during file size overflow', async () => {
       const largeValue = 'x'.repeat(60000);
       const headers: string[] = [];
-      for (let i = 0; i < 5; i++) headers.push(`session_${i}=${largeValue}; Path=/`);
+      for (let i = 0; i < 5; i++) {headers.push(`session_${i}=${largeValue}; Path=/`);}
       for (let i = 0; i < 5; i++) {
         const maxAge = 3600 + i * 100;
         headers.push(`persistent_${i}=${largeValue}; Path=/; Max-Age=${maxAge}`);
@@ -235,13 +235,13 @@ describe('CookieJar', () => {
 
       expect(sessionCookies.length).toBeLessThan(5);
       expect(sessionCookies.length).toBeLessThanOrEqual(persistentCookies.length);
-      if (sessionCookies.length > 0) expect(persistentCookies.length).toBe(5);
+      if (sessionCookies.length > 0) {expect(persistentCookies.length).toBe(5);}
     });
 
     it('should preserve session cookies during count-based eviction', async () => {
       const smallValue = 'y';
       const headers: string[] = [];
-      for (let i = 0; i < 50; i++) headers.push(`count_session_${i}=${smallValue}; Path=/`);
+      for (let i = 0; i < 50; i++) {headers.push(`count_session_${i}=${smallValue}; Path=/`);}
       for (let i = 0; i < 1000; i++) {
         const maxAge = 60 + i;
         headers.push(`count_persistent_${i}=${smallValue}; Path=/; Max-Age=${maxAge}`);

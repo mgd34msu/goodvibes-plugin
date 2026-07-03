@@ -35,7 +35,7 @@ afterEach(() => {
 function writeAgent(id: string, lines: unknown[], ageMin: number, meta?: object): void {
   const file = path.join(subagentsDir, `agent-${id}.jsonl`);
   fs.writeFileSync(file, lines.map((l) => JSON.stringify(l)).join('\n') + '\n');
-  if (meta) fs.writeFileSync(file.replace(/\.jsonl$/, '.meta.json'), JSON.stringify(meta));
+  if (meta) {fs.writeFileSync(file.replace(/\.jsonl$/, '.meta.json'), JSON.stringify(meta));}
   const mtime = new Date(NOW - ageMin * MIN);
   fs.utimesSync(file, mtime, mtime);
 }

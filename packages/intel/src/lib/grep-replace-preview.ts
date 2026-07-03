@@ -118,16 +118,16 @@ export function generateReplacePreview(
 
   for (const fileResult of files) {
     const { file, resolved_path, matches: fileMatches } = fileResult;
-    if (!fileMatches || fileMatches.length === 0) continue;
+    if (!fileMatches || fileMatches.length === 0) {continue;}
 
     for (const match of fileMatches) {
       const { line, content, highlight } = match;
-      if (!content) continue;
+      if (!content) {continue;}
 
       const [modifiedContent, warning] = applyReplacement(content, searchPattern, replaceString, highlight);
-      if (modifiedContent === content) continue;
+      if (modifiedContent === content) {continue;}
 
-      if (warning) anyFallback = true;
+      if (warning) {anyFallback = true;}
       matches.push({
         file,
         resolved_path,

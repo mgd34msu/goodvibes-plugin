@@ -3,19 +3,21 @@ import { z } from 'zod';
 // === Input Schemas ===
 
 export const AnalyticsDashboardInput = z.object({
-  action: z.enum(['start', 'stop', 'status', 'doctor']),
   /**
-   * Target dashboard to operate on.
-   * 'dashboard' is the current name for the full TUI pane; 'full' is accepted
-   * as a backward-compatible alias.
+   * - 'report': write a self-contained HTML analytics report to
+   *   .goodvibes/reports/analytics-report.html and return the path plus a
+   *   short stats summary.
+   * - 'doctor': read-only host-health + agent-liveness report.
+   * - 'status': brief engine/server status text.
    */
-  target: z.enum(['mini', 'full', 'dashboard', 'both']).default('both'),
-  options: z
-    .object({
-      pane_position: z.enum(['bottom', 'top', 'left', 'right']).optional(),
-      pane_size: z.union([z.number(), z.string()]).optional(),
-    })
-    .optional(),
+  action: z.enum(['report', 'doctor', 'status']),
+  /**
+   * Report scope: 'session' limits the report to the current session,
+   * 'project' adds this project's history from the global DB, and
+   * 'all_projects' (default when omitted) also adds the cross-project
+   * summary. Sections backed by the global DB appear only when it has data.
+   */
+  scope: z.enum(['session', 'project', 'all_projects']).optional(),
 });
 
 export const AnalyticsQueryInput = z.object({
@@ -126,13 +128,14 @@ export const TOOL_DEFINITIONS = {
   analytics_dashboard: {
     name: 'analytics_dashboard',
     description:
-      'Launch, stop, or check status of the analytics TUI and mini dashboard. ' +
-      'The mini dashboard is a 4-line always-on tmux pane showing session metrics. ' +
-      'The full TUI (target="dashboard") is a 3-page interactive dashboard. ' +
-      'Calling start on a running target toggles it off (stop); calling stop on a stopped target is a no-op. ' +
+      'Generate an analytics report or check engine health. ' +
+      'action="report" writes a fully self-contained HTML report (session overview, per-model cost, ' +
+      'tool usage, agents, files touched, plus historical and cross-project sections when the global DB ' +
+      'has data) to .goodvibes/reports/analytics-report.html and returns the path with a short summary. ' +
       'action="doctor" prints a read-only host-health + agent-liveness report ' +
       '(load, session children, orphaned busy-loop plugin processes with ready-to-run kill commands, ' +
-      'and background-agent states) without launching any pane and never killing anything.',
+      'and background-agent states) and never kills anything. ' +
+      'action="status" returns brief engine/server status text.',
     inputSchema: AnalyticsDashboardInput,
   },
   analytics_query: {
@@ -148,7 +151,7 @@ export const TOOL_DEFINITIONS = {
   analytics_budget: {
     name: 'analytics_budget',
     description:
-      'Set, check, or clear a session budget (in dollars or tokens). When set, the mini dashboard shows remaining budget with color-coded thresholds.',
+      'Set, check, or clear a session budget (in dollars or tokens). Budget usage is checked against transcript-priced session cost; action="check" reports the amount set, used, remaining, and percent consumed.',
     inputSchema: AnalyticsBudgetInput,
   },
   analytics_tag: {

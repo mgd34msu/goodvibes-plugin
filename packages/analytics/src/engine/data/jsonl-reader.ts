@@ -92,20 +92,20 @@ export class JSONLReader {
 
   /** Get pricing info for a model from the pricing map, or null if not available. */
   private getPricingForModel(modelId: string | undefined): ModelPricingInfo | null {
-    if (!this.pricingMap || !modelId) return null;
+    if (!this.pricingMap || !modelId) {return null;}
     // Exact match.
-    if (this.pricingMap[modelId]) return this.pricingMap[modelId]!;
+    if (this.pricingMap[modelId]) {return this.pricingMap[modelId]!;}
     // Normalise dashes/dots: 'claude-sonnet-4-6' -> 'claude-sonnet-4.6'
     const normId = modelId.replace(/-/g, '.');
     const dotKey = Object.keys(this.pricingMap).find(
       (k) => k.replace(/-/g, '.') === normId,
     );
-    if (dotKey) return this.pricingMap[dotKey]!;
+    if (dotKey) {return this.pricingMap[dotKey]!;}
     // Prefix match.
     const prefixKey = Object.keys(this.pricingMap).find(
       (k) => modelId.startsWith(k),
     );
-    if (prefixKey) return this.pricingMap[prefixKey]!;
+    if (prefixKey) {return this.pricingMap[prefixKey]!;}
     return null;
   }
 
@@ -214,9 +214,9 @@ export class JSONLReader {
     const records: JSONLRecord[] = [];
     for (const line of lines) {
       const trimmed = line.trim();
-      if (trimmed === '') continue;
+      if (trimmed === '') {continue;}
       const record = this.parseLine(trimmed);
-      if (record !== null) records.push(record);
+      if (record !== null) {records.push(record);}
     }
     return records;
   }
@@ -243,15 +243,15 @@ export class JSONLReader {
   parseLineDetailed(line: string): { kind: 'record'; record: JSONLRecord } | { kind: 'skipped' } | { kind: 'error' } {
     try {
       const parsed: unknown = JSON.parse(line);
-      if (typeof parsed !== 'object' || parsed === null) return { kind: 'error' };
+      if (typeof parsed !== 'object' || parsed === null) {return { kind: 'error' };}
 
       const record = parsed as Record<string, unknown>;
       const type = record['type'];
 
-      if (type === 'assistant') return { kind: 'record', record: record as unknown as JSONLAssistantRecord };
-      if (type === 'user') return { kind: 'record', record: record as unknown as JSONLUserRecord };
-      if (type === 'progress') return { kind: 'record', record: record as unknown as JSONLProgressRecord };
-      if (type === 'file-history-snapshot') return { kind: 'record', record: record as unknown as JSONLFileHistoryRecord };
+      if (type === 'assistant') {return { kind: 'record', record: record as unknown as JSONLAssistantRecord };}
+      if (type === 'user') {return { kind: 'record', record: record as unknown as JSONLUserRecord };}
+      if (type === 'progress') {return { kind: 'record', record: record as unknown as JSONLProgressRecord };}
+      if (type === 'file-history-snapshot') {return { kind: 'record', record: record as unknown as JSONLFileHistoryRecord };}
 
       // Valid JSON but unrecognised record type — skip silently.
       return { kind: 'skipped' };
@@ -282,11 +282,11 @@ export class JSONLReader {
     const results: ApiCallRecord[] = [];
 
     for (const record of records) {
-      if (record.type !== 'assistant') continue;
+      if (record.type !== 'assistant') {continue;}
       const assistant = record as JSONLAssistantRecord;
 
       const usage = assistant.message?.usage;
-      if (usage === undefined) continue;
+      if (usage === undefined) {continue;}
 
       const modelId = assistant.message?.model;
       const inputTokens = usage.input_tokens ?? 0;
@@ -302,7 +302,7 @@ export class JSONLReader {
         : (usage.cache_creation_input_tokens ?? 0);
 
       // Skip records with no meaningful token data.
-      if (inputTokens === 0 && outputTokens === 0 && cacheReadTokens === 0 && cacheWriteTokens === 0) continue;
+      if (inputTokens === 0 && outputTokens === 0 && cacheReadTokens === 0 && cacheWriteTokens === 0) {continue;}
 
       let totalCost: number;
       const modelPricing = this.getPricingForModel(modelId);
@@ -369,10 +369,10 @@ export class JSONLReader {
     // Build a lookup map: tool_use_id -> ToolResultBlock
     const resultMap = new Map<string, ToolResultBlock>();
     for (const record of records) {
-      if (record.type !== 'user') continue;
+      if (record.type !== 'user') {continue;}
       const user = record as JSONLUserRecord;
       const content = user.message?.content;
-      if (!Array.isArray(content)) continue;
+      if (!Array.isArray(content)) {continue;}
 
       for (const block of content) {
         const b = block as ToolResultBlock;
@@ -384,15 +384,15 @@ export class JSONLReader {
 
     // Now extract tool_use blocks from assistant records.
     for (const record of records) {
-      if (record.type !== 'assistant') continue;
+      if (record.type !== 'assistant') {continue;}
       const assistant = record as JSONLAssistantRecord;
       const content = assistant.message?.content;
-      if (!Array.isArray(content)) continue;
+      if (!Array.isArray(content)) {continue;}
 
       for (const block of content) {
         const b = block as ToolUseBlock;
-        if (b?.type !== 'tool_use') continue;
-        if (b.id === undefined || b.name === undefined) continue;
+        if (b?.type !== 'tool_use') {continue;}
+        if (b.id === undefined || b.name === undefined) {continue;}
 
         const result = resultMap.get(b.id);
         results.push({
@@ -431,10 +431,10 @@ export class JSONLReader {
     // Build map: tool_use_id -> user record timestamp (= agent completion time).
     const resultTimestamps = new Map<string, string>();
     for (const record of records) {
-      if (record.type !== 'user') continue;
+      if (record.type !== 'user') {continue;}
       const user = record as JSONLUserRecord;
       const content = user.message?.content;
-      if (!Array.isArray(content)) continue;
+      if (!Array.isArray(content)) {continue;}
       for (const block of content) {
         const b = block as ToolResultBlock;
         if (b?.type === 'tool_result' && b.tool_use_id !== undefined && record.timestamp) {
@@ -499,7 +499,7 @@ export class JSONLReader {
       if (model === 'unknown' && record.type === 'assistant') {
         const assistantRecord = record as JSONLAssistantRecord;
         const m = assistantRecord.message?.model;
-        if (m !== undefined && m !== '') model = m;
+        if (m !== undefined && m !== '') {model = m;}
       }
     }
 
@@ -531,13 +531,13 @@ export class JSONLReader {
     const results: PrecisionToolTiming[] = [];
 
     for (const record of records) {
-      if (record.type !== 'progress') continue;
+      if (record.type !== 'progress') {continue;}
       const progress = record as JSONLProgressRecord;
 
       const data = progress.data;
-      if (data?.status !== 'completed') continue;
-      if (data.elapsedTimeMs === undefined) continue;
-      if (progress.toolUseID === undefined) continue;
+      if (data?.status !== 'completed') {continue;}
+      if (data.elapsedTimeMs === undefined) {continue;}
+      if (progress.toolUseID === undefined) {continue;}
 
       results.push({
         toolUseId: progress.toolUseID,
@@ -621,7 +621,7 @@ export async function findActiveJsonlFile(projectDir: string): Promise<string | 
   }
 
   const jsonlFiles = entries.filter(e => e.endsWith('.jsonl'));
-  if (jsonlFiles.length === 0) return null;
+  if (jsonlFiles.length === 0) {return null;}
 
   let latestPath: string | null = null;
   let latestMtime = 0;
@@ -665,6 +665,6 @@ export function sessionIdFromPath(jsonlPath: string): string {
  */
 export function resolveProjectsBaseDir(): string {
   const envDir = process.env['CLAUDE_PROJECTS_DIR'];
-  if (envDir !== undefined && envDir !== '') return envDir;
+  if (envDir !== undefined && envDir !== '') {return envDir;}
   return join(homedir(), '.claude', 'projects');
 }

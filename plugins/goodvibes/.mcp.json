@@ -11,6 +11,7 @@
     "analytics": {
       "command": "node",
       "args": ["${CLAUDE_PLUGIN_ROOT}/server/analytics/index.cjs"],
+      "alwaysLoad": true,
       "env": {
         "PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}",
         "NODE_ENV": "production"

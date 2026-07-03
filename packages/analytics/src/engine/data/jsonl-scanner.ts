@@ -107,10 +107,10 @@ export class JSONLScanner {
     try {
       const entries = fs.readdirSync(expanded, { withFileTypes: true });
       for (const entry of entries) {
-        if (!entry.isFile() || !entry.name.endsWith('.jsonl')) continue;
+        if (!entry.isFile() || !entry.name.endsWith('.jsonl')) {continue;}
         const filePath = path.join(expanded, entry.name);
         const info = this.buildFileInfo(projectHash, entry.name, filePath);
-        if (info) files.push(info);
+        if (info) {files.push(info);}
       }
     } catch {
       projectErrors = 1;
@@ -182,7 +182,7 @@ export class JSONLScanner {
         const match = files.some(
           (f) => f === `${sessionId}.jsonl` || f.startsWith(sessionId),
         );
-        if (match) return dir;
+        if (match) {return dir;}
       } catch {
         // Skip unreadable directories
       }

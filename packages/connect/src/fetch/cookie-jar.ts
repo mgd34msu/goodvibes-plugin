@@ -78,7 +78,7 @@ export class CookieJar {
 
   /** Save cookies to disk with 0600 permissions and size-based eviction. */
   async save(): Promise<void> {
-    if (!this.dirty) return;
+    if (!this.dirty) {return;}
 
     const cookiePath = this.getCookiePath();
     const cookieDir = path.dirname(cookiePath);
@@ -110,7 +110,7 @@ export class CookieJar {
   }
 
   private async ensureLoaded(): Promise<void> {
-    if (!this.loaded) await this.load();
+    if (!this.loaded) {await this.load();}
   }
 
   /** Parse Set-Cookie headers and store the cookies. */
@@ -121,7 +121,7 @@ export class CookieJar {
 
     for (const header of setCookieHeaders) {
       const cookie = this.parseSetCookie(header, domain);
-      if (!cookie) continue;
+      if (!cookie) {continue;}
 
       this.cookies = this.cookies.filter(
         (c) => !(c.name === cookie.name && c.domain === cookie.domain && c.path === cookie.path),
@@ -147,7 +147,7 @@ export class CookieJar {
     await this.ensureLoaded();
     const wasDirty = this.dirty;
     this.pruneExpired();
-    if (!wasDirty && this.dirty) await this.save();
+    if (!wasDirty && this.dirty) {await this.save();}
 
     const urlObj = new URL(url);
     const domain = urlObj.hostname;
@@ -155,9 +155,9 @@ export class CookieJar {
     const isSecure = urlObj.protocol === 'https:';
 
     return this.cookies.filter((cookie) => {
-      if (!this.domainMatches(domain, cookie.domain)) return false;
-      if (!urlPath.startsWith(cookie.path)) return false;
-      if (cookie.secure && !isSecure) return false;
+      if (!this.domainMatches(domain, cookie.domain)) {return false;}
+      if (!urlPath.startsWith(cookie.path)) {return false;}
+      if (cookie.secure && !isSecure) {return false;}
       return true;
     });
   }
@@ -187,15 +187,15 @@ export class CookieJar {
 
   private parseSetCookie(header: string, defaultDomain: string): StoredCookie | null {
     const parts = header.split(';').map((s) => s.trim());
-    if (parts.length === 0) return null;
+    if (parts.length === 0) {return null;}
 
     const [nameValue, ...attributes] = parts;
     const eqIndex = nameValue.indexOf('=');
-    if (eqIndex < 0) return null;
+    if (eqIndex < 0) {return null;}
 
     const name = nameValue.slice(0, eqIndex).trim();
     const value = nameValue.slice(eqIndex + 1).trim();
-    if (!name) return null;
+    if (!name) {return null;}
 
     const cookie: StoredCookie = { name, value, domain: defaultDomain, path: '/' };
 
@@ -218,7 +218,7 @@ export class CookieJar {
           break;
         case 'expires': {
           const date = new Date(attrValue);
-          if (!isNaN(date.getTime())) cookie.expires = date.getTime();
+          if (!isNaN(date.getTime())) {cookie.expires = date.getTime();}
           break;
         }
         case 'max-age': {
@@ -244,7 +244,7 @@ export class CookieJar {
   }
 
   private domainMatches(hostname: string, cookieDomain: string): boolean {
-    if (hostname === cookieDomain) return true;
+    if (hostname === cookieDomain) {return true;}
     return hostname.endsWith('.' + cookieDomain);
   }
 
@@ -252,7 +252,7 @@ export class CookieJar {
     const now = Date.now();
     const before = this.cookies.length;
     this.cookies = this.cookies.filter((c) => !c.expires || c.expires > now);
-    if (this.cookies.length !== before) this.dirty = true;
+    if (this.cookies.length !== before) {this.dirty = true;}
   }
 }
 

@@ -66,7 +66,7 @@ export function resolveInputPath(
 
 /** Resolve the effective base directory (absolute) for a request. */
 export function resolveBaseDir(basePath?: string, cwd: string = process.cwd()): string {
-  if (!basePath) return path.resolve(cwd);
+  if (!basePath) {return path.resolve(cwd);}
   return path.isAbsolute(basePath) ? path.resolve(basePath) : path.resolve(cwd, basePath);
 }
 
@@ -76,7 +76,7 @@ export function resolveBaseDir(basePath?: string, cwd: string = process.cwd()): 
  * @throws Error when `resolvedPath` escapes `root`
  */
 export function assertWithinRoot(resolvedPath: string, root?: string): void {
-  if (!root) return;
+  if (!root) {return;}
   const real = path.normalize(resolvedPath);
   const normRoot = path.normalize(root);
   const rootWithSep = normRoot.endsWith(path.sep) ? normRoot : normRoot + path.sep;
@@ -106,7 +106,7 @@ export async function validateDirectoryPath(
   } catch {
     throw new Error(`Invalid path: '${dirPath}' does not exist or is not accessible.`);
   }
-  if (enforceBoundary) assertWithinRoot(realPath, projectRoot);
+  if (enforceBoundary) {assertWithinRoot(realPath, projectRoot);}
   const stats = await fsPromises.stat(realPath);
   if (!stats.isDirectory()) {
     throw new Error(`Path '${dirPath}' is not a directory.`);
@@ -132,10 +132,10 @@ export async function validateFilePath(
   const absolutePath = path.isAbsolute(filePath) ? filePath : path.resolve(projectRoot, filePath);
   try {
     const realPath = await fsPromises.realpath(absolutePath);
-    if (enforceBoundary) assertWithinRoot(realPath, projectRoot);
+    if (enforceBoundary) {assertWithinRoot(realPath, projectRoot);}
     return realPath;
   } catch (e) {
-    if (e instanceof Error && e.message.includes('outside the project root')) throw e;
+    if (e instanceof Error && e.message.includes('outside the project root')) {throw e;}
     if (mustExist) {
       // fall through to ancestor validation for not-yet-created files
     }
@@ -143,7 +143,7 @@ export async function validateFilePath(
     for (;;) {
       try {
         const realAncestor = await fsPromises.realpath(ancestor);
-        if (enforceBoundary) assertWithinRoot(realAncestor, projectRoot);
+        if (enforceBoundary) {assertWithinRoot(realAncestor, projectRoot);}
         return absolutePath;
       } catch {
         const parent = path.dirname(ancestor);

@@ -105,7 +105,7 @@ let cachedRgPath: string | null = null;
 
 /** Resolve the ripgrep binary path: pinned `@vscode/ripgrep` first, PATH `rg` fallback. */
 function resolveRgPath(): string {
-  if (cachedRgPath) return cachedRgPath;
+  if (cachedRgPath) {return cachedRgPath;}
   try {
     const mod = require('@vscode/ripgrep') as { rgPath: string };
     cachedRgPath = mod.rgPath;
@@ -135,8 +135,8 @@ export class RipgrepCore {
     if (options.exclude && options.exclude.length > 0) {
       args.push(...options.exclude.flatMap((e) => ['--glob', `!${e}`]));
     }
-    if (options.hidden) args.push('--hidden');
-    if (options.noIgnore) args.push('--no-ignore');
+    if (options.hidden) {args.push('--hidden');}
+    if (options.noIgnore) {args.push('--no-ignore');}
     args.push(options.path);
     try {
       const output = await this.executeRipgrep(args, options.timeoutMs, options.path);
@@ -156,8 +156,8 @@ export class RipgrepCore {
     // --files-with-matches and --json are mutually exclusive in ripgrep;
     // plain mode emits one path per line, which is all this needs.
     const args = ['--files-with-matches', pattern];
-    if (glob) args.push('--glob', glob);
-    if (hidden) args.push('--hidden');
+    if (glob) {args.push('--glob', glob);}
+    if (hidden) {args.push('--hidden');}
     args.push(searchPath);
     try {
       const output = await this.executeRipgrep(args, timeoutMs, searchPath);
@@ -170,14 +170,14 @@ export class RipgrepCore {
   private buildSearchArgs(options: RipgrepSearchOptions): string[] {
     const args = ['--json'];
     args.push(options.pattern);
-    if (options.glob) args.push('--glob', options.glob);
+    if (options.glob) {args.push('--glob', options.glob);}
     if (options.exclude && options.exclude.length > 0) {
       options.exclude.forEach((pattern) => args.push('--glob', `!${pattern}`));
     }
-    if (options.caseInsensitive) args.push('--ignore-case');
-    if (options.wholeWord) args.push('--word-regexp');
-    if (options.multiline) args.push('--multiline');
-    if (options.includeBinary) args.push('--text');
+    if (options.caseInsensitive) {args.push('--ignore-case');}
+    if (options.wholeWord) {args.push('--word-regexp');}
+    if (options.multiline) {args.push('--multiline');}
+    if (options.includeBinary) {args.push('--text');}
     if (options.contextBefore !== undefined && options.contextBefore > 0) {
       args.push('--before-context', String(options.contextBefore));
     }
@@ -190,7 +190,7 @@ export class RipgrepCore {
     if (options.maxColumns !== undefined && options.maxColumns > 0) {
       args.push('--max-columns', String(options.maxColumns));
     }
-    if (options.hidden) args.push('--hidden');
+    if (options.hidden) {args.push('--hidden');}
     args.push(options.path);
     return args;
   }
@@ -268,7 +268,7 @@ export class RipgrepCore {
 
     for (let i = 0; i < records.length; i++) {
       const record = records[i];
-      if (record.type !== 'match') continue;
+      if (record.type !== 'match') {continue;}
       const { data } = record;
       const file = data.path.text;
       const lineNumber = data.line_number;
@@ -309,8 +309,8 @@ export class RipgrepCore {
         matchText: firstSubmatch ? firstSubmatch.match.text : '',
         lineContent,
       };
-      if (contextBefore.length > 0) match.contextBefore = contextBefore;
-      if (contextAfter.length > 0) match.contextAfter = contextAfter;
+      if (contextBefore.length > 0) {match.contextBefore = contextBefore;}
+      if (contextAfter.length > 0) {match.contextAfter = contextAfter;}
       matches.push(match);
     }
 

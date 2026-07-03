@@ -22,12 +22,12 @@ export function gitignoreLineToGlobs(pattern: string): string[] {
   let p = pattern;
 
   const dirOnly = p.endsWith('/');
-  if (dirOnly) p = p.slice(0, -1);
+  if (dirOnly) {p = p.slice(0, -1);}
 
   const anchored = p.startsWith('/') || p.includes('/');
-  if (p.startsWith('/')) p = p.slice(1);
+  if (p.startsWith('/')) {p = p.slice(1);}
 
-  if (!p) return [];
+  if (!p) {return [];}
 
   if (anchored) {
     return dirOnly ? [`${p}/**`] : [p, `${p}/**`];
@@ -40,8 +40,8 @@ export function parseGitignore(content: string): string[] {
   const globs: string[] = [];
   for (const rawLine of content.split(/\r?\n/)) {
     const line = rawLine.trim();
-    if (!line || line.startsWith('#')) continue;
-    if (line.startsWith('!')) continue;
+    if (!line || line.startsWith('#')) {continue;}
+    if (line.startsWith('!')) {continue;}
     const unescaped =
       line.startsWith('\\#') || line.startsWith('\\!') ? line.slice(1) : line;
     globs.push(...gitignoreLineToGlobs(unescaped));

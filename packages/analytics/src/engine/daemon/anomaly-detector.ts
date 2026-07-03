@@ -101,7 +101,7 @@ function anomalyId(type: AnomalyType): string {
  * Compute the average of a numeric array.  Returns 0 for empty arrays.
  */
 function average(values: number[]): number {
-  if (values.length === 0) return 0;
+  if (values.length === 0) {return 0;}
   return values.reduce((a, b) => a + b, 0) / values.length;
 }
 
@@ -127,7 +127,7 @@ const cacheDegradationRule: AnomalyRule = {
   description: 'Precision cache hit rate dropped >15pp vs session average in a 5-min window',
   check(telemetry, state) {
     const windowRecords = telemetry.getRecordsInWindow(WINDOW_5_MIN);
-    if (windowRecords.length === 0) return null;
+    if (windowRecords.length === 0) {return null;}
 
     const windowHits = windowRecords.filter((r) => r.cache_hit).length;
     const windowRate = windowHits / windowRecords.length;
@@ -165,7 +165,7 @@ const errorSpikeRule: AnomalyRule = {
   description: 'Error rate exceeds 25% in a 5-min window',
   check(telemetry, _state) {
     const windowRecords = telemetry.getRecordsInWindow(WINDOW_5_MIN);
-    if (windowRecords.length === 0) return null;
+    if (windowRecords.length === 0) {return null;}
 
     const failed = windowRecords.filter((r) => r.status === 'failed').length;
     const errorRate = failed / windowRecords.length;
@@ -200,7 +200,7 @@ const tokenBurnRule: AnomalyRule = {
   description: 'Token consumption rate >2x session average in a 5-min window',
   check(telemetry, state) {
     const windowRecords = telemetry.getRecordsInWindow(WINDOW_5_MIN);
-    if (windowRecords.length === 0) return null;
+    if (windowRecords.length === 0) {return null;}
 
     const windowTokens = windowRecords.reduce(
       (sum, r) => sum + (r.tokens_in ?? 0) + (r.tokens_out ?? 0),
@@ -215,10 +215,10 @@ const tokenBurnRule: AnomalyRule = {
 
     const sessionTotalTokens = state.metrics.tokens.total;
     const sessionUptimeMs = state.uptime_ms;
-    if (sessionUptimeMs <= 0 || sessionTotalTokens <= 0) return null;
+    if (sessionUptimeMs <= 0 || sessionTotalTokens <= 0) {return null;}
 
     const sessionRate = sessionTotalTokens / sessionUptimeMs;
-    if (sessionRate <= 0) return null;
+    if (sessionRate <= 0) {return null;}
 
     const ratio = windowRate / sessionRate;
     if (ratio > 2) {
@@ -259,23 +259,23 @@ const buildRegressionRule: AnomalyRule = {
         isBuildCommand(r.metadata),
     );
 
-    if (buildRecords.length < 2) return null;
+    if (buildRecords.length < 2) {return null;}
 
     const windowSince = Date.now() - WINDOW_5_MIN;
     const windowBuildRecords = buildRecords.filter(
       (r) => new Date(r.created_at).getTime() >= windowSince,
     );
-    if (windowBuildRecords.length === 0) return null;
+    if (windowBuildRecords.length === 0) {return null;}
 
     const sessionAvg = average(
       buildRecords.map((r) => r.duration_ms ?? 0).filter((d) => d > 0),
     );
-    if (sessionAvg <= 0) return null;
+    if (sessionAvg <= 0) {return null;}
 
     const windowAvg = average(
       windowBuildRecords.map((r) => r.duration_ms ?? 0).filter((d) => d > 0),
     );
-    if (windowAvg <= 0) return null;
+    if (windowAvg <= 0) {return null;}
 
     const ratio = windowAvg / sessionAvg;
     if (ratio > 2) {
@@ -310,7 +310,7 @@ const conflictStormRule: AnomalyRule = {
   check(telemetry, state) {
     // First check the aggregated conflict count from DashboardState
     // (faster than scanning records). If the session total is low, skip.
-    if (state.metrics.files.conflicts === 0) return null;
+    if (state.metrics.files.conflicts === 0) {return null;}
 
     const windowRecords = telemetry.getRecordsInWindow(WINDOW_5_MIN);
     const conflictRecords = windowRecords.filter((r) => isConflictRecord(r));
@@ -349,7 +349,7 @@ const agentStallRule: AnomalyRule = {
     const stalledAgents: string[] = [];
 
     for (const profile of state.agent_profiles) {
-      if (profile.status !== 'active') continue;
+      if (profile.status !== 'active') {continue;}
 
       // Find the most recent activity for this agent
       const agentActivity = state.recent_activity.filter(
@@ -415,8 +415,8 @@ function isBuildCommand(metadata: string): boolean {
  * Looks for conflict indicators in tool name and metadata.
  */
 function isConflictRecord(record: TelemetryRecord): boolean {
-  if (record.tool === 'conflict') return true;
-  if (!record.metadata) return false;
+  if (record.tool === 'conflict') {return true;}
+  if (!record.metadata) {return false;}
   try {
     const parsed: unknown = JSON.parse(record.metadata);
     const meta = typeof parsed === 'object' && parsed !== null ? parsed as Record<string, unknown> : {};
@@ -504,12 +504,12 @@ export class AnomalyDetector {
    * @returns Newly detected anomalies (may be empty).
    */
   detect(state: DashboardState): Anomaly[] {
-    if (!this.config.anomaly_detection) return [];
-    if (!this.telemetry.isAvailable()) return [];
+    if (!this.config.anomaly_detection) {return [];}
+    if (!this.telemetry.isAvailable()) {return [];}
 
     // Enforce minimum data threshold to avoid false positives at session start
     const allRecords = this.telemetry.getRecords();
-    if (allRecords.length < MIN_RECORDS_THRESHOLD) return [];
+    if (allRecords.length < MIN_RECORDS_THRESHOLD) {return [];}
 
     // Prune stale dedup entries on every cycle to bound Map growth.
     this.pruneStale(30 * 60 * 1_000);
@@ -575,8 +575,8 @@ export class AnomalyDetector {
     // Collect stale keys first, then delete — avoids mutating Map during iteration.
     const toDelete: string[] = [];
     for (const [key, ts] of this.fired.entries()) {
-      if (ts < cutoff) toDelete.push(key);
+      if (ts < cutoff) {toDelete.push(key);}
     }
-    for (const key of toDelete) this.fired.delete(key);
+    for (const key of toDelete) {this.fired.delete(key);}
   }
 }

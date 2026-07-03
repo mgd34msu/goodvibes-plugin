@@ -5,12 +5,12 @@
  * Handles NaN, Infinity, and negative values.
  */
 export function formatNumber(n: number): string {
-  if (!isFinite(n)) return '0'; // NaN is already non-finite
+  if (!isFinite(n)) {return '0';} // NaN is already non-finite
   const abs = Math.abs(n);
   const sign = n < 0 ? '-' : '';
-  if (abs >= 1_000_000_000) return `${sign}${(abs / 1_000_000_000).toFixed(1)}B`;
-  if (abs >= 1_000_000) return `${sign}${(abs / 1_000_000).toFixed(1)}M`;
-  if (abs >= 1_000) return `${sign}${(abs / 1_000).toFixed(1)}k`;
+  if (abs >= 1_000_000_000) {return `${sign}${(abs / 1_000_000_000).toFixed(1)}B`;}
+  if (abs >= 1_000_000) {return `${sign}${(abs / 1_000_000).toFixed(1)}M`;}
+  if (abs >= 1_000) {return `${sign}${(abs / 1_000).toFixed(1)}k`;}
   return `${sign}${Math.round(abs)}`;
 }
 
@@ -18,10 +18,10 @@ export function formatNumber(n: number): string {
  * Format bytes to human readable (B, KB, MB, GB).
  */
 export function formatBytes(bytes: number): string {
-  if (!isFinite(bytes) || bytes < 0) return '0 B'; // NaN is already non-finite
-  if (bytes >= 1_073_741_824) return `${(bytes / 1_073_741_824).toFixed(1)} GB`;
-  if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(1)} MB`;
-  if (bytes >= 1_024) return `${(bytes / 1_024).toFixed(1)} KB`;
+  if (!isFinite(bytes) || bytes < 0) {return '0 B';} // NaN is already non-finite
+  if (bytes >= 1_073_741_824) {return `${(bytes / 1_073_741_824).toFixed(1)} GB`;}
+  if (bytes >= 1_048_576) {return `${(bytes / 1_048_576).toFixed(1)} MB`;}
+  if (bytes >= 1_024) {return `${(bytes / 1_024).toFixed(1)} KB`;}
   return `${Math.round(bytes)} B`;
 }
 
@@ -30,14 +30,14 @@ export function formatBytes(bytes: number): string {
  * e.g. 61500 -> "1m 1s", 3661000 -> "1h 1m"
  */
 export function formatDuration(ms: number): string {
-  if (!isFinite(ms) || ms < 0) return '0ms'; // NaN is already non-finite
-  if (ms < 1_000) return `${Math.round(ms)}ms`;
+  if (!isFinite(ms) || ms < 0) {return '0ms';} // NaN is already non-finite
+  if (ms < 1_000) {return `${Math.round(ms)}ms`;}
   const totalSeconds = Math.floor(ms / 1_000);
   const hours = Math.floor(totalSeconds / 3_600);
   const minutes = Math.floor((totalSeconds % 3_600) / 60);
   const seconds = totalSeconds % 60;
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  if (hours > 0) {return `${hours}h ${minutes}m`;}
+  if (minutes > 0) {return `${minutes}m ${seconds}s`;}
   return `${seconds}s`;
 }
 
@@ -46,7 +46,7 @@ export function formatDuration(ms: number): string {
  * e.g. 0.68 -> "68.0%"
  */
 export function formatPercent(ratio: number): string {
-  if (!Number.isFinite(ratio)) return '0.0%';
+  if (!Number.isFinite(ratio)) {return '0.0%';}
   return `${(ratio * 100).toFixed(1)}%`;
 }
 
@@ -55,9 +55,9 @@ export function formatPercent(ratio: number): string {
  * e.g. 0.00153 -> "$0.0015", 1.5 -> "$1.50"
  */
 export function formatDollars(amount: number): string {
-  if (!isFinite(amount)) return '$0.00'; // NaN is already non-finite
-  if (amount < 0) return `-$${Math.abs(amount).toFixed(4)}`;
-  if (amount < 1) return `$${amount.toFixed(4)}`;
+  if (!isFinite(amount)) {return '$0.00';} // NaN is already non-finite
+  if (amount < 0) {return `-$${Math.abs(amount).toFixed(4)}`;}
+  if (amount < 1) {return `$${amount.toFixed(4)}`;}
   return `$${amount.toFixed(2)}`;
 }
 
@@ -74,7 +74,7 @@ export function formatBar(value: number, max: number, width: number): string {
   if (!isFinite(value) || !isFinite(max) || width <= 0) { // NaN is already non-finite
     return EMPTY_CHAR.repeat(Math.max(0, width));
   }
-  if (max <= 0) return EMPTY_CHAR.repeat(width);
+  if (max <= 0) {return EMPTY_CHAR.repeat(width);}
   const ratio = Math.max(0, Math.min(1, value / max));
   const filled = Math.round(ratio * width);
   return FILL_CHAR.repeat(filled) + EMPTY_CHAR.repeat(width - filled);
@@ -86,9 +86,9 @@ export function formatBar(value: number, max: number, width: number): string {
  * Format a timestamp ISO string to HH:MM:SS.
  */
 export function formatTime(iso: string): string {
-  if (!iso) return '--:--:--';
+  if (!iso) {return '--:--:--';}
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '--:--:--';
+  if (Number.isNaN(d.getTime())) {return '--:--:--';}
   const h = String(d.getHours()).padStart(2, '0');
   const m = String(d.getMinutes()).padStart(2, '0');
   const s = String(d.getSeconds()).padStart(2, '0');
@@ -100,13 +100,13 @@ export function formatTime(iso: string): string {
  * e.g. 3661000 -> "1h 1m 1s"
  */
 export function formatUptime(ms: number): string {
-  if (!isFinite(ms) || ms < 0) return '0s'; // NaN is already non-finite
+  if (!isFinite(ms) || ms < 0) {return '0s';} // NaN is already non-finite
   const totalSeconds = Math.floor(ms / 1_000);
   const hours = Math.floor(totalSeconds / 3_600);
   const minutes = Math.floor((totalSeconds % 3_600) / 60);
   const seconds = totalSeconds % 60;
-  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
-  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  if (hours > 0) {return `${hours}h ${minutes}m ${seconds}s`;}
+  if (minutes > 0) {return `${minutes}m ${seconds}s`;}
   return `${seconds}s`;
 }
 
@@ -116,9 +116,9 @@ export function formatUptime(ms: number): string {
  * Truncate a string to max width with ellipsis.
  */
 export function truncate(str: string, maxWidth: number): string {
-  if (maxWidth <= 0) return '';
-  if (str.length <= maxWidth) return str;
-  if (maxWidth <= 3) return str.slice(0, maxWidth);
+  if (maxWidth <= 0) {return '';}
+  if (str.length <= maxWidth) {return str;}
+  if (maxWidth <= 3) {return str.slice(0, maxWidth);}
   return str.slice(0, maxWidth - 3) + '...';
 }
 
@@ -126,11 +126,11 @@ export function truncate(str: string, maxWidth: number): string {
  * Pad a string to exact width (left or right aligned).
  */
 export function pad(str: string, width: number, align: 'left' | 'right' = 'left'): string {
-  if (width <= 0) return '';
+  if (width <= 0) {return '';}
   const s = str.length > width ? truncate(str, width) : str;
   const diff = width - s.length;
-  if (diff <= 0) return s;
-  if (align === 'right') return ' '.repeat(diff) + s;
+  if (diff <= 0) {return s;}
+  if (align === 'right') {return ' '.repeat(diff) + s;}
   return s + ' '.repeat(diff);
 }
 
@@ -190,8 +190,8 @@ export function formatDelta(current: number, baseline: number): string {
   if (!isFinite(current) || !isFinite(baseline)) { // NaN is already non-finite
     return '~0.0% ─';
   }
-  if (baseline === 0 && current === 0) return '~0.0% ─';
-  if (baseline === 0) return current > 0 ? '+\u221e% \u25b2' : '-\u221e% \u25bc';
+  if (baseline === 0 && current === 0) {return '~0.0% ─';}
+  if (baseline === 0) {return current > 0 ? '+\u221e% \u25b2' : '-\u221e% \u25bc';}
   const pct = ((current - baseline) / Math.abs(baseline)) * 100;
   if (Math.abs(pct) < 1) {
     return `~${Math.abs(pct).toFixed(1)}% ─`;
@@ -215,7 +215,7 @@ export function formatDelta(current: number, baseline: number): string {
  * Hours always have leading zero when < 10. Minutes and seconds always 2 digits.
  */
 export function formatUptimeProgressive(ms: number): string {
-  if (!isFinite(ms) || ms < 0) return '00h 00m 00s';
+  if (!isFinite(ms) || ms < 0) {return '00h 00m 00s';}
 
   const totalSeconds = Math.floor(ms / 1_000);
   const totalMinutes = Math.floor(totalSeconds / 60);
@@ -278,20 +278,20 @@ export function formatUptimeProgressive(ms: number): string {
  * Handles NaN, Infinity, and negative values (returns "0").
  */
 export function formatTokensSaved(n: number): string {
-  if (!isFinite(n) || n < 0) return '0';
+  if (!isFinite(n) || n < 0) {return '0';}
   const v = Math.round(n);
-  if (v < 1_000) return String(v);
+  if (v < 1_000) {return String(v);}
   if (v < 100_000) {
     const formatted = (v / 1_000).toFixed(1);
-    if (parseFloat(formatted) >= 100) return `${Math.floor(v / 1_000)}k`;
+    if (parseFloat(formatted) >= 100) {return `${Math.floor(v / 1_000)}k`;}
     return `${formatted}k`;
   }
-  if (v < 1_000_000) return `${Math.floor(v / 1_000)}k`;
+  if (v < 1_000_000) {return `${Math.floor(v / 1_000)}k`;}
   if (v < 100_000_000) {
     const formatted = (v / 1_000_000).toFixed(1);
-    if (parseFloat(formatted) >= 100) return `${Math.floor(v / 1_000_000)}M`;
+    if (parseFloat(formatted) >= 100) {return `${Math.floor(v / 1_000_000)}M`;}
     return `${formatted}M`;
   }
-  if (v < 1_000_000_000) return `${Math.floor(v / 1_000_000)}M`;
+  if (v < 1_000_000_000) {return `${Math.floor(v / 1_000_000)}M`;}
   return `${(v / 1_000_000_000).toFixed(1)}B`;
 }

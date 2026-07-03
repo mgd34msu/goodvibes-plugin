@@ -25,7 +25,7 @@ const EXTENSION_MAP: Record<string, SupportedLanguage> = {
 /** Detect the supported language from a file path's extension, or null. */
 export function getLanguageFromExtension(filePath: string): SupportedLanguage | null {
   const match = filePath.match(/\.[^.]+$/);
-  if (!match) return null;
+  if (!match) {return null;}
   return EXTENSION_MAP[match[0].toLowerCase()] ?? null;
 }
 

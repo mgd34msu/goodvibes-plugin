@@ -58,8 +58,8 @@ let treeSitterLoadFailed = false;
  * crash. Returns null when the dep is not installed yet.
  */
 async function loadTreeSitterRuntime(): Promise<TreeSitterRuntime | null> {
-  if (treeSitterRuntime) return treeSitterRuntime;
-  if (treeSitterLoadFailed) return null;
+  if (treeSitterRuntime) {return treeSitterRuntime;}
+  if (treeSitterLoadFailed) {return null;}
   try {
     const spec = ['web-tree', 'sitter'].join('-');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -138,7 +138,7 @@ const LANGUAGE_EXTENSIONS: Record<string, string[]> = {
 function getLanguageNameForFile(filePath: string): string | null {
   const ext = path.extname(filePath);
   for (const [name, exts] of Object.entries(LANGUAGE_EXTENSIONS)) {
-    if (exts.includes(ext)) return name;
+    if (exts.includes(ext)) {return name;}
   }
   return null;
 }
@@ -153,10 +153,10 @@ function toRange(node: Node): Range {
 
 function extractSymbolName(node: Node): string | null {
   const nameNode = node.childForFieldName('name');
-  if (nameNode) return nameNode.text;
+  if (nameNode) {return nameNode.text;}
   for (let i = 0; i < node.childCount; i++) {
     const child = node.child(i);
-    if (child?.type === 'identifier' || child?.type === 'type_identifier') return child.text;
+    if (child?.type === 'identifier' || child?.type === 'type_identifier') {return child.text;}
   }
   return null;
 }
@@ -165,9 +165,9 @@ function extractSymbolName(node: Node): string | null {
 function isDirectlyExported(node: Node): boolean {
   let current: Node | null = node;
   while (current) {
-    if (current.type === 'export_statement' || current.type === 'export_declaration') return true;
+    if (current.type === 'export_statement' || current.type === 'export_declaration') {return true;}
     const firstChild = current.child(0);
-    if (firstChild?.type === 'export') return true;
+    if (firstChild?.type === 'export') {return true;}
     current = current.parent;
   }
   return false;
@@ -254,8 +254,8 @@ function mapNodeTypeToKind(nodeType: string, language: string): SymbolKind | nul
 function extractSignature(node: Node, maxLength = 200): string {
   let text = node.text;
   const braceIndex = text.indexOf('{');
-  if (braceIndex !== -1) text = text.slice(0, braceIndex).trim();
-  if (text.length > maxLength) text = text.slice(0, maxLength) + '...';
+  if (braceIndex !== -1) {text = text.slice(0, braceIndex).trim();}
+  if (text.length > maxLength) {text = text.slice(0, maxLength) + '...';}
   return text;
 }
 
@@ -276,7 +276,7 @@ function candidateWasmDirs(): string[] {
 let wasmBasePath: string | null = null;
 
 async function findWasmBasePath(): Promise<string> {
-  if (wasmBasePath) return wasmBasePath;
+  if (wasmBasePath) {return wasmBasePath;}
   const candidates = candidateWasmDirs();
   for (const dir of candidates) {
     try {
@@ -309,11 +309,11 @@ export class TreeSitterCore {
    *   installed yet — callers surface the standard setup-pointer envelope.
    */
   async init(): Promise<void> {
-    if (this.initialized) return;
-    if (this.initPromise) return this.initPromise;
+    if (this.initialized) {return;}
+    if (this.initPromise) {return this.initPromise;}
     this.initPromise = (async () => {
       const runtime = await loadTreeSitterRuntime();
-      if (!runtime) throw new TreeSitterUnavailableError();
+      if (!runtime) {throw new TreeSitterUnavailableError();}
       this.runtime = runtime;
       await runtime.Parser.init();
       this.parser = new runtime.Parser();
@@ -334,9 +334,9 @@ export class TreeSitterCore {
 
   private async loadLanguage(langName: string): Promise<LanguageClass | null> {
     const cached = this.languages.get(langName);
-    if (cached) return cached;
+    if (cached) {return cached;}
     // `parse()` calls `init()` first, which sets `this.runtime`; guard anyway.
-    if (!this.runtime) return null;
+    if (!this.runtime) {return null;}
     try {
       const basePath = await findWasmBasePath();
       const wasmPath = path.join(basePath, `tree-sitter-${langName}.wasm`);
@@ -363,16 +363,16 @@ export class TreeSitterCore {
   async parse(content: string, filePath: string): Promise<Tree> {
     await this.init();
     const langName = getLanguageNameForFile(filePath);
-    if (!langName) throw new Error(`Unsupported file type: ${filePath}`);
+    if (!langName) {throw new Error(`Unsupported file type: ${filePath}`);}
     if (this.currentLanguage !== langName) {
       const lang = await this.loadLanguage(langName);
-      if (!lang) throw new Error(`Language not available: ${langName}. ${this.lastLoadError ?? 'WASM grammar not found.'}`);
+      if (!lang) {throw new Error(`Language not available: ${langName}. ${this.lastLoadError ?? 'WASM grammar not found.'}`);}
       this.parser!.setLanguage(lang);
       this.currentLanguage = langName;
     }
     this.lastParsedLanguage = langName;
     const tree = this.parser!.parse(content);
-    if (!tree) throw new Error(`Tree-sitter failed to parse: ${filePath}`);
+    if (!tree) {throw new Error(`Tree-sitter failed to parse: ${filePath}`);}
     return tree;
   }
 
@@ -386,7 +386,7 @@ export class TreeSitterCore {
     const rootNode = tree.rootNode;
 
     const buildOutline = (node: Node, topLevel: boolean): OutlineNode[] => {
-      if (!node?.type) return [];
+      if (!node?.type) {return [];}
       const nodes: OutlineNode[] = [];
       const kind = mapNodeTypeToKind(node.type, language);
 
@@ -401,15 +401,15 @@ export class TreeSitterCore {
             signature: extractSignature(node),
           };
           // Honest exported flags: only top-level declarations carry the flag.
-          if (topLevel) outlineNode.exported = isDirectlyExported(node);
+          if (topLevel) {outlineNode.exported = isDirectlyExported(node);}
 
           if (kind === 'class' || kind === 'interface' || kind === 'namespace') {
             const children: OutlineNode[] = [];
             for (let i = 0; i < node.childCount; i++) {
               const child = node.child(i);
-              if (child) children.push(...buildOutline(child, false));
+              if (child) {children.push(...buildOutline(child, false));}
             }
-            if (children.length > 0) outlineNode.children = children;
+            if (children.length > 0) {outlineNode.children = children;}
           }
 
           nodes.push(outlineNode);
@@ -419,7 +419,7 @@ export class TreeSitterCore {
 
       for (let i = 0; i < node.childCount; i++) {
         const child = node.child(i);
-        if (child) nodes.push(...buildOutline(child, topLevel));
+        if (child) {nodes.push(...buildOutline(child, topLevel));}
       }
       return nodes;
     };
@@ -443,7 +443,7 @@ export class TreeSitterCore {
         }
         for (let i = 0; i < node.childCount; i++) {
           const child = node.child(i);
-          if (child) findEnclosing(child);
+          if (child) {findEnclosing(child);}
         }
       }
     };
@@ -466,7 +466,7 @@ export class TreeSitterCore {
         }
         for (let i = 0; i < node.childCount; i++) {
           const child = node.child(i);
-          if (child) findEnclosing(child);
+          if (child) {findEnclosing(child);}
         }
       }
     };

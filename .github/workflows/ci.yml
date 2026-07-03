@@ -31,6 +31,20 @@ jobs:
       - run: npx tsc --noEmit -p packages/${{ matrix.pkg }}
       - run: npx vitest run --project ${{ matrix.pkg }}
 
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      # Gate: 0 eslint errors; warnings do not fail the job.
+      - run: npx eslint . --max-warnings=-1
+
   dist-match:
     name: dist match (rebuild + byte diff)
     runs-on: ubuntu-latest

@@ -113,7 +113,7 @@ export class CompilerHost {
           oldestKey = key;
         }
       }
-      if (oldestKey === undefined) break;
+      if (oldestKey === undefined) {break;}
       const victim = this.cache.get(oldestKey);
       try {
         victim?.service.dispose();
@@ -150,7 +150,7 @@ export class CompilerHost {
       getScriptSnapshot: (fileName) => {
         const normalized = toTsPath(fileName);
         const cached = files.get(normalized);
-        if (cached) return cached.snapshot;
+        if (cached) {return cached.snapshot;}
         // Fall back to disk so TS can pull in imports / lib / node_modules types.
         try {
           const content = fs.readFileSync(fileName, 'utf-8');

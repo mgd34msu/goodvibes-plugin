@@ -31,7 +31,7 @@ export class SessionReader {
    */
   getCurrentSessionFile(): string | null {
     const files = this.listSessionFiles();
-    if (files.length === 0) return null;
+    if (files.length === 0) {return null;}
 
     // Sort descending by mtime — most recent first.
     const sorted = files
@@ -65,7 +65,7 @@ export class SessionReader {
    */
   readCurrentSession(): SessionData | null {
     const filePath = this.getCurrentSessionFile();
-    if (!filePath) return null;
+    if (!filePath) {return null;}
     return this.parseSessionFile(filePath);
   }
 
@@ -88,7 +88,7 @@ export class SessionReader {
     const session = this.readSession(sessionId);
     const result: Record<string, unknown> = {};
     if (!session) {
-      for (const key of keys) result[key] = undefined;
+      for (const key of keys) {result[key] = undefined;}
       return result;
     }
     for (const key of keys) {
@@ -172,10 +172,10 @@ export class SessionReader {
 // ---------------------------------------------------------------------------
 
 function toNumber(value: unknown): number {
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'number' && Number.isFinite(value)) {return value;}
   if (typeof value === 'string') {
     const n = Number(value);
-    if (Number.isFinite(n)) return n;
+    if (Number.isFinite(n)) {return n;}
   }
   return 0;
 }

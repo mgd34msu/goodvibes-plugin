@@ -133,6 +133,17 @@ export const apiRequestTool = {
               type: 'string',
               description: 'Base64 body (alternate of body_plain; preferred when both present).',
             },
+            auth: {
+              type: 'object',
+              description:
+                'Per-request auth override, applied to the headers when the request is ' +
+                'built. One of: {type:"none"} | {type:"bearer",token} | ' +
+                '{type:"basic",username,password} | {type:"api-key",header,key} | ' +
+                '{type:"custom-headers",headers}. When the entry names a registered ' +
+                'service whose origin matches the final URL, the stored service ' +
+                'credential is applied after this override and wins on the same header ' +
+                '(usually Authorization).',
+            },
             timeout_ms: { type: 'number' },
             extract: { type: 'string', enum: ['json', 'text', 'headers', 'status'] },
           },
@@ -377,25 +388,25 @@ function capToBudget(
   const render = (): number =>
     estimatePayloadTokens(JSON.stringify({ mode, results }));
 
-  if (render() <= maxTokens) return { truncated: false };
+  if (render() <= maxTokens) {return { truncated: false };}
 
   let trimmedAny = false;
   for (let i = 0; i < 64; i++) {
     const est = render();
-    if (est <= maxTokens) break;
+    if (est <= maxTokens) {break;}
 
     // Pick the entry whose serialized body is largest.
     let pickKey: string | null = null;
     let pickLen = 0;
     for (const [key, r] of Object.entries(results)) {
-      if (r.body === undefined) continue;
+      if (r.body === undefined) {continue;}
       const text = typeof r.body === 'string' ? r.body : JSON.stringify(r.body);
       if (text.length > pickLen) {
         pickLen = text.length;
         pickKey = key;
       }
     }
-    if (pickKey === null || pickLen === 0) break;
+    if (pickKey === null || pickLen === 0) {break;}
 
     const r = results[pickKey];
     const text = typeof r.body === 'string' ? r.body : JSON.stringify(r.body);

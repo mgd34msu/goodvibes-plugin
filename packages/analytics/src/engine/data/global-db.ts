@@ -59,7 +59,7 @@ export class SqlJsUnavailableError extends Error {
 function rowsToObjects(
   result: ReturnType<Database['exec']>,
 ): Record<string, unknown>[] {
-  if (!result.length) return [];
+  if (!result.length) {return [];}
   const { columns, values } = result[0]!;
   return values.map((row) => {
     const obj: Record<string, unknown> = {};
@@ -188,7 +188,7 @@ export class GlobalDB {
    */
   async initialize(): Promise<void> {
     // Dynamically import sql.js to support both ESM and CJS bundles.
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+     
     const initSqlJs = await this.loadSqlJs();
 
     // Resolve WASM path: prefer adjacent dist/ copy (bundled plugin installs),
@@ -260,7 +260,7 @@ export class GlobalDB {
    * Called automatically (debounced) after each write operation.
    */
   saveToDisk(): void {
-    if (!this.db) return;
+    if (!this.db) {return;}
     try {
       const data = this.db.export();
       // Atomic temp-then-rename so a crash mid-write never corrupts the DB file.
@@ -349,7 +349,7 @@ export class GlobalDB {
   getSession(sessionId: string): GlobalSession | null {
     const db = this.getDb();
     const rows = rowsToObjects(db.exec('SELECT * FROM sessions WHERE session_id = ?', [sessionId]));
-    if (!rows.length) return null;
+    if (!rows.length) {return null;}
     const tags = this.getTagsForSession(sessionId).map((t) => t.tag);
     return rowToSession(rows[0]!, tags);
   }
@@ -380,7 +380,7 @@ export class GlobalDB {
    * @returns Array of matching GlobalSession objects.
    */
   getSessionsByTags(tags: string[]): GlobalSession[] {
-    if (tags.length === 0) return [];
+    if (tags.length === 0) {return [];}
     const db = this.getDb();
     const placeholders = tags.map(() => '?').join(',');
     const rows = rowsToObjects(
@@ -686,7 +686,7 @@ export class GlobalDB {
     const rows = rowsToObjects(
       db.exec('SELECT * FROM sync_state WHERE jsonl_path = ?', [jsonlPath]),
     );
-    if (!rows.length) return null;
+    if (!rows.length) {return null;}
     const row = rows[0]!;
     return {
       jsonl_path:     String(row['jsonl_path'] ?? ''),
@@ -728,7 +728,7 @@ export class GlobalDB {
    * @param calls - Array of API call records to insert.
    */
   batchInsertApiCalls(calls: ApiCallRecord[]): void {
-    if (calls.length === 0) return;
+    if (calls.length === 0) {return;}
     const db = this.getDb();
     db.run('BEGIN');
     try {
@@ -762,7 +762,7 @@ export class GlobalDB {
   batchUpsertSessions(
     sessions: Array<Partial<GlobalSession> & { session_id: string }>,
   ): void {
-    if (sessions.length === 0) return;
+    if (sessions.length === 0) {return;}
     const db = this.getDb();
     db.run('BEGIN');
     try {
@@ -877,7 +877,7 @@ export class GlobalDB {
    */
   private _batchGetTags(sessionIds: string[]): Map<string, string[]> {
     const result = new Map<string, string[]>();
-    if (sessionIds.length === 0) return result;
+    if (sessionIds.length === 0) {return result;}
     const db = this.getDb();
     const placeholders = sessionIds.map(() => '?').join(',');
     const rows = rowsToObjects(
@@ -906,7 +906,7 @@ export class GlobalDB {
    * single disk write, reducing I/O pressure during bulk operations.
    */
   private scheduleSave(): void {
-    if (this.saveTimer) clearTimeout(this.saveTimer);
+    if (this.saveTimer) {clearTimeout(this.saveTimer);}
     this.saveTimer = setTimeout(() => {
       this.saveTimer = null;
       this.saveToDisk();
@@ -931,7 +931,7 @@ export class GlobalDB {
     } catch {
       try {
         // CJS fallback — safe because esbuild bundles to CJS format
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
+         
         const mod = require('sql.js') as { default?: unknown };
         return (mod.default ?? mod) as (config: { locateFile: () => string }) => Promise<SqlJsStatic>;
       } catch {
@@ -967,15 +967,15 @@ export class GlobalDB {
     // (build.mjs copies sql-wasm.wasm to server/<name>/wasm/). This candidate
     // was missing in the v1-ported resolver and crashed the first live query.
     const subdirWasm = resolve(join(baseDir, 'wasm', 'sql-wasm.wasm'));
-    if (existsSync(subdirWasm)) return subdirWasm;
+    if (existsSync(subdirWasm)) {return subdirWasm;}
 
     // Option 2: bare sibling (v1's flat dist layout)
     const distWasm = resolve(join(baseDir, 'sql-wasm.wasm'));
-    if (existsSync(distWasm)) return distWasm;
+    if (existsSync(distWasm)) {return distWasm;}
 
     // Option 3: node_modules (development)
     const nodeWasm = resolve(join(baseDir, '..', '..', '..', 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm'));
-    if (existsSync(nodeWasm)) return nodeWasm;
+    if (existsSync(nodeWasm)) {return nodeWasm;}
 
     // Last resort: let sql.js use its own default resolution
     return resolve(join(baseDir, 'sql-wasm.wasm'));

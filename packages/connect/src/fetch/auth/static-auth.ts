@@ -10,7 +10,7 @@ import { resolveSecretValue, type ServiceAuth, type EnvRef } from '../secrets-st
 /** Apply a bearer token. Returns true when a non-empty token was applied. */
 export function applyBearerAuth(headers: Record<string, string>, token: string | EnvRef): boolean {
   const resolved = resolveSecretValue(token);
-  if (!resolved?.trim()) return false;
+  if (!resolved?.trim()) {return false;}
   headers['Authorization'] = `Bearer ${resolved}`;
   return true;
 }
@@ -23,7 +23,7 @@ export function applyBasicAuth(
 ): boolean {
   const user = resolveSecretValue(username);
   const pass = resolveSecretValue(password);
-  if (!user?.trim() || !pass?.trim()) return false;
+  if (!user?.trim() || !pass?.trim()) {return false;}
   const encoded = Buffer.from(`${user}:${pass}`, 'utf-8').toString('base64');
   headers['Authorization'] = `Basic ${encoded}`;
   return true;
@@ -36,7 +36,7 @@ export function applyApiKeyAuth(
   key: string | EnvRef,
 ): boolean {
   const resolved = resolveSecretValue(key);
-  if (!resolved?.trim()) return false;
+  if (!resolved?.trim()) {return false;}
   headers[headerName] = resolved;
   return true;
 }
@@ -46,7 +46,7 @@ export function applyCustomHeaders(
   headers: Record<string, string>,
   customHeaders: Record<string, string | EnvRef>,
 ): boolean {
-  if (Object.keys(customHeaders).length === 0) return false;
+  if (Object.keys(customHeaders).length === 0) {return false;}
 
   let applied = false;
   for (const [key, value] of Object.entries(customHeaders)) {
@@ -66,16 +66,16 @@ export function applyCustomHeaders(
 export function applyStaticAuth(headers: Record<string, string>, auth: ServiceAuth): boolean {
   switch (auth.type) {
     case 'bearer':
-      if (!auth.token) return false;
+      if (!auth.token) {return false;}
       return applyBearerAuth(headers, auth.token);
     case 'basic':
-      if (!auth.username || !auth.password) return false;
+      if (!auth.username || !auth.password) {return false;}
       return applyBasicAuth(headers, auth.username, auth.password);
     case 'api-key':
-      if (!auth.header || !auth.key) return false;
+      if (!auth.header || !auth.key) {return false;}
       return applyApiKeyAuth(headers, auth.header, auth.key);
     case 'custom-headers':
-      if (!auth.headers) return false;
+      if (!auth.headers) {return false;}
       return applyCustomHeaders(headers, auth.headers);
     case 'none':
       return true;

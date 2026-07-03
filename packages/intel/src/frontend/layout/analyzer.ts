@@ -52,7 +52,7 @@ export function extractId(
 ): string | undefined {
   for (const attr of node.attributes.properties) {
     if (ts.isJsxAttribute(attr) && attr.name.getText(sourceFile) === 'id') {
-      if (attr.initializer && ts.isStringLiteral(attr.initializer)) return attr.initializer.text;
+      if (attr.initializer && ts.isStringLiteral(attr.initializer)) {return attr.initializer.text;}
     }
   }
   return undefined;
@@ -82,21 +82,21 @@ export function buildLayoutNode(
       shrink: props.flexShrink ?? 1,
       basis: props.flexBasis || 'auto',
     };
-    if (props.flexWrap) flex_props.wrap = props.flexWrap;
-    if (props.alignItems) flex_props.align = props.alignItems;
-    if (props.justifyContent) flex_props.justify = props.justifyContent;
-    if (props.gap) flex_props.gap = props.gap;
+    if (props.flexWrap) {flex_props.wrap = props.flexWrap;}
+    if (props.alignItems) {flex_props.align = props.alignItems;}
+    if (props.justifyContent) {flex_props.justify = props.justifyContent;}
+    if (props.gap) {flex_props.gap = props.gap;}
   }
 
   let grid_props: GridProps | undefined;
   if (display === 'grid' || display === 'inline-grid' || props.gridColumn || props.gridRow || props.gridArea) {
     grid_props = {};
-    if (props.gridTemplateColumns) grid_props.template_columns = props.gridTemplateColumns;
-    if (props.gridTemplateRows) grid_props.template_rows = props.gridTemplateRows;
-    if (props.gap) grid_props.gap = props.gap;
-    if (props.gridColumn) grid_props.column = props.gridColumn;
-    if (props.gridRow) grid_props.row = props.gridRow;
-    if (props.gridArea) grid_props.area = props.gridArea;
+    if (props.gridTemplateColumns) {grid_props.template_columns = props.gridTemplateColumns;}
+    if (props.gridTemplateRows) {grid_props.template_rows = props.gridTemplateRows;}
+    if (props.gap) {grid_props.gap = props.gap;}
+    if (props.gridColumn) {grid_props.column = props.gridColumn;}
+    if (props.gridRow) {grid_props.row = props.gridRow;}
+    if (props.gridArea) {grid_props.area = props.gridArea;}
   }
 
   const overflow: Overflow = {
@@ -110,8 +110,8 @@ export function buildLayoutNode(
 
 /** Check if an element matches a `.class` / `#id` / `tag` selector. */
 export function matchesSelector(tagName: string, classes: string[], id: string | undefined, selector: string): boolean {
-  if (selector.startsWith('#')) return id === selector.slice(1);
-  if (selector.startsWith('.')) return classes.includes(selector.slice(1));
+  if (selector.startsWith('#')) {return id === selector.slice(1);}
+  if (selector.startsWith('.')) {return classes.includes(selector.slice(1));}
   return tagName.toLowerCase() === selector.toLowerCase();
 }
 
@@ -135,7 +135,7 @@ export function parseJsxElement(
     const children: LayoutNode[] = [];
     for (const child of node.children) {
       const childNode = parseJsxElement(child, sourceFile, selector, foundSelector || elementMatches);
-      if (childNode) children.push(childNode);
+      if (childNode) {children.push(childNode);}
     }
 
     if (selector && !foundSelector && !elementMatches) {
@@ -145,7 +145,7 @@ export function parseJsxElement(
       return null;
     }
 
-    if (shouldInclude) return buildLayoutNode(tagName, classes, id, props, children);
+    if (shouldInclude) {return buildLayoutNode(tagName, classes, id, props, children);}
     return null;
   }
 
@@ -166,9 +166,9 @@ export function parseJsxElement(
     const children: LayoutNode[] = [];
     for (const child of node.children) {
       const childNode = parseJsxElement(child, sourceFile, selector, foundSelector);
-      if (childNode) children.push(childNode);
+      if (childNode) {children.push(childNode);}
     }
-    if (children.length === 1) return children[0];
+    if (children.length === 1) {return children[0];}
     if (children.length > 0) {
       return {
         element: 'Fragment', tag: 'Fragment', classes: [],
@@ -182,7 +182,7 @@ export function parseJsxElement(
   if (ts.isJsxExpression(node) && node.expression) {
     let result: LayoutNode | null = null;
     ts.forEachChild(node.expression, (child) => {
-      if (!result) result = parseJsxElement(child, sourceFile, selector, foundSelector);
+      if (!result) {result = parseJsxElement(child, sourceFile, selector, foundSelector);}
     });
     return result;
   }

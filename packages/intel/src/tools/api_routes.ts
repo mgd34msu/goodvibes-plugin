@@ -90,8 +90,8 @@ const definition: Tool = {
 
 /** Trim `data.routes` from the end until the rendered envelope fits `maxTokens`. */
 function capToTokens(env: Envelope<ApiRoutesData>, maxTokens?: number): Envelope<ApiRoutesData> {
-  if (!maxTokens || maxTokens <= 0 || !env.data) return env;
-  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) return env;
+  if (!maxTokens || maxTokens <= 0 || !env.data) {return env;}
+  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) {return env;}
 
   const data = env.data;
   const trim = (): Envelope<ApiRoutesData> => ({
@@ -126,8 +126,8 @@ export async function handler(rawArgs: unknown): Promise<CallToolResult> {
 
   try {
     const stat = await fs.stat(absTarget).catch(() => null);
-    if (!stat) return toCallToolResult(errorEnvelope(`Path not found: ${absTarget}`));
-    if (!stat.isDirectory()) return toCallToolResult(errorEnvelope(`Path is not a directory: ${absTarget}`));
+    if (!stat) {return toCallToolResult(errorEnvelope(`Path not found: ${absTarget}`));}
+    if (!stat.isDirectory()) {return toCallToolResult(errorEnvelope(`Path is not a directory: ${absTarget}`));}
 
     const frameworkArg = args.framework ?? 'auto';
     let framework: Framework;
@@ -157,7 +157,7 @@ export async function handler(rawArgs: unknown): Promise<CallToolResult> {
       execution_ms: elapsed(),
       ...(outcome.budget_exceeded ? { budget_exceeded: true } : {}),
     });
-    if (resolved.warning) env = { ...env, warning: resolved.warning };
+    if (resolved.warning) {env = { ...env, warning: resolved.warning };}
 
     const maxTokens = args.output?.max_tokens ?? cfg.max_tokens_default;
     env = capToTokens(env, maxTokens);

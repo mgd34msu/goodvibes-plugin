@@ -48,9 +48,9 @@ async function scanGenericFramework(
   for (const dir of searchDirs) {
     const files = (await findSourceFiles(dir)).filter((f) => SCAN_EXT.test(f) && !f.endsWith('.d.ts'));
     for (const file of files) {
-      if (signal?.aborted) return routes;
+      if (signal?.aborted) {return routes;}
       const content = await fs.readFile(file, 'utf-8').catch(() => null);
-      if (content === null) continue;
+      if (content === null) {continue;}
       const relativePath = makeRelativePath(file, baseDir);
       routes.push(...parseFile(content, relativePath, file));
     }
@@ -63,12 +63,12 @@ async function scanNextJs(absTarget: string, baseDir: string, signal?: { aborted
 
   // App Router: prefer src/app/api, else app/api.
   for (const dir of [path.join(absTarget, 'src', 'app', 'api'), path.join(absTarget, 'app', 'api')]) {
-    if (!(await existsDir(dir))) continue;
+    if (!(await existsDir(dir))) {continue;}
     const files = (await findSourceFiles(dir)).filter((f) => /route\.(ts|tsx|js|jsx)$/.test(f));
     for (const file of files) {
-      if (signal?.aborted) return routes;
+      if (signal?.aborted) {return routes;}
       const content = await fs.readFile(file, 'utf-8').catch(() => null);
-      if (content === null) continue;
+      if (content === null) {continue;}
       routes.push(...parseNextJsAppRouterFile(content, makeRelativePath(file, baseDir), file));
     }
     break;
@@ -76,14 +76,14 @@ async function scanNextJs(absTarget: string, baseDir: string, signal?: { aborted
 
   // Pages Router: prefer src/pages/api, else pages/api.
   for (const dir of [path.join(absTarget, 'src', 'pages', 'api'), path.join(absTarget, 'pages', 'api')]) {
-    if (!(await existsDir(dir))) continue;
+    if (!(await existsDir(dir))) {continue;}
     const files = (await findSourceFiles(dir)).filter(
       (f) => /\.(ts|tsx|js|jsx)$/.test(f) && !/route\.(ts|tsx|js|jsx)$/.test(f),
     );
     for (const file of files) {
-      if (signal?.aborted) return routes;
+      if (signal?.aborted) {return routes;}
       const content = await fs.readFile(file, 'utf-8').catch(() => null);
-      if (content === null) continue;
+      if (content === null) {continue;}
       routes.push(...parseNextJsPagesRouterFile(content, makeRelativePath(file, baseDir), file));
     }
     break;

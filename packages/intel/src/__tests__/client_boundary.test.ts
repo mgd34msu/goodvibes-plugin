@@ -29,7 +29,7 @@ function parse(result: Awaited<ReturnType<typeof handler>>): { success: boolean;
 
 function byFile(data: Data, needle: string): Component {
   const c = data.components.find((c) => c.file.endsWith(needle));
-  if (!c) throw new Error(`component ${needle} not found in ${data.components.map((x) => x.file).join(', ')}`);
+  if (!c) {throw new Error(`component ${needle} not found in ${data.components.map((x) => x.file).join(', ')}`);}
   return c;
 }
 

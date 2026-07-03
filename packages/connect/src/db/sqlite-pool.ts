@@ -35,7 +35,7 @@ function sqlConfig(): { locateFile?: (file: string) => string } {
   // `__dirname` is defined in the CJS bundle and under Vitest; guard anyway so a
   // stray ESM context falls back to sql.js's node_modules default instead of throwing.
   const dir = typeof __dirname === 'string' ? __dirname : '';
-  if (!dir) return {};
+  if (!dir) {return {};}
   const candidates = [
     nodePath.join(dir, 'sql-wasm.wasm'),
     nodePath.join(dir, 'wasm', 'sql-wasm.wasm'),
@@ -51,7 +51,7 @@ function sqlConfig(): { locateFile?: (file: string) => string } {
 
 /** Load or return the cached sql.js module. @internal */
 async function getSqlJs(): Promise<SqlJsStatic> {
-  if (sqlJsInstance) return sqlJsInstance;
+  if (sqlJsInstance) {return sqlJsInstance;}
 
   try {
     const initSqlJs = (
@@ -133,7 +133,7 @@ class SqliteConnectionPool {
         const keyWaiters = this.waiters.get(key);
         if (keyWaiters) {
           const idx = keyWaiters.indexOf(waiter);
-          if (idx !== -1) keyWaiters.splice(idx, 1);
+          if (idx !== -1) {keyWaiters.splice(idx, 1);}
         }
         reject(new Error(`SQLite connection timeout after ${timeout}ms`));
       }, timeout);
@@ -153,7 +153,7 @@ class SqliteConnectionPool {
         return;
       }
 
-      if (!this.waiters.has(key)) this.waiters.set(key, []);
+      if (!this.waiters.has(key)) {this.waiters.set(key, []);}
       this.waiters.get(key)!.push(waiter);
     });
   }
@@ -172,7 +172,7 @@ class SqliteConnectionPool {
   }
 
   async saveToFile(connection: PooledConnection): Promise<void> {
-    if (connection.filepath === ':memory:' || connection.readonly) return;
+    if (connection.filepath === ':memory:' || connection.readonly) {return;}
     const data = connection.database.export();
     await writeFile(connection.filepath, Buffer.from(data));
   }
@@ -195,7 +195,7 @@ class SqliteConnectionPool {
     }
 
     try {
-      if (options.foreignKeys !== false) db.run('PRAGMA foreign_keys = ON');
+      if (options.foreignKeys !== false) {db.run('PRAGMA foreign_keys = ON');}
       db.run('PRAGMA busy_timeout = 5000');
     } catch (err) {
       logWarn('SQLite PRAGMA setup failed', err);
@@ -253,7 +253,7 @@ let poolInstance: SqliteConnectionPool | null = null;
 
 /** Get the global SQLite connection pool (created on first use). */
 export function getConnectionPool(): SqliteConnectionPool {
-  if (!poolInstance) poolInstance = new SqliteConnectionPool();
+  if (!poolInstance) {poolInstance = new SqliteConnectionPool();}
   return poolInstance;
 }
 
@@ -280,7 +280,7 @@ export async function withConnection<T>(
 
   try {
     const result = await callback(connection.database);
-    if (!options.readonly) await pool.saveToFile(connection);
+    if (!options.readonly) {await pool.saveToFile(connection);}
     return result;
   } finally {
     pool.release(connection);

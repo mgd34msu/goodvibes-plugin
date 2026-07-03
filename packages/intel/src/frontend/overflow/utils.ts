@@ -18,7 +18,7 @@ export function matchesSelector(
   }
   if (selector.startsWith('#')) {
     const hashIdx = node.element.indexOf('#');
-    if (hashIdx === -1) return false;
+    if (hashIdx === -1) {return false;}
     const idStart = hashIdx + 1;
     const dotIdx = node.element.indexOf('.', idStart);
     const elementId = dotIdx === -1 ? node.element.slice(idStart) : node.element.slice(idStart, dotIdx);
@@ -51,6 +51,6 @@ export function hasAutoHeightChildren(node: LayoutNode): boolean {
 
 /** Whether a layout node matches an optional element hint (selector). */
 export function matchesHint(node: LayoutNode, hint?: string): boolean {
-  if (!hint) return true;
+  if (!hint) {return true;}
   return matchesSelector(node, hint);
 }

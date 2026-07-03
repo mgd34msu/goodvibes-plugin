@@ -31,7 +31,7 @@ interface StateVar {
 function baseIdentifier(expr: ts.Expression, sourceFile: ts.SourceFile): string | null {
   let cur: ts.Expression = expr;
   for (;;) {
-    if (ts.isIdentifier(cur)) return cur.getText(sourceFile);
+    if (ts.isIdentifier(cur)) {return cur.getText(sourceFile);}
     if (ts.isPropertyAccessExpression(cur)) {
       cur = cur.expression;
       continue;
@@ -67,7 +67,7 @@ function collectStateVars(componentNode: ts.Node, sourceFile: ts.SourceFile): St
         if (elements.length >= 2 && ts.isBindingElement(elements[1]) && ts.isIdentifier(elements[1].name)) {
           setter = elements[1].name.getText(sourceFile);
         }
-        if (name) vars.push({ name, kind: fnName === 'useState' ? 'useState' : 'useReducer', setter });
+        if (name) {vars.push({ name, kind: fnName === 'useState' ? 'useState' : 'useReducer', setter });}
       }
 
       if (fnName === 'useRef' && ts.isVariableDeclaration(parent) && ts.isIdentifier(parent.name)) {
@@ -88,7 +88,7 @@ function collectStateVars(componentNode: ts.Node, sourceFile: ts.SourceFile): St
  */
 export function annotateState(componentNode: ts.Node, sourceFile: ts.SourceFile): StateAnnotation[] {
   const stateVars = collectStateVars(componentNode, sourceFile);
-  if (stateVars.length === 0) return [];
+  if (stateVars.length === 0) {return [];}
 
   // Index by the identifiers that reference each state var's value: the state
   // name itself (value flow). Setters are tracked too so passing a setter counts
@@ -97,7 +97,7 @@ export function annotateState(componentNode: ts.Node, sourceFile: ts.SourceFile)
   const annotations: StateAnnotation[] = stateVars.map((v) => {
     const ann: StateAnnotation = { name: v.name, kind: v.kind, flows_to: [] };
     byIdentifier.set(v.name, ann);
-    if (v.setter) byIdentifier.set(v.setter, ann);
+    if (v.setter) {byIdentifier.set(v.setter, ann);}
     return ann;
   });
 

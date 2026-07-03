@@ -63,12 +63,12 @@ function extractArchiveSections(
   const result: Record<string, unknown> = {};
   const m: SessionMetrics = archive.metrics;
 
-  if (sections.includes('tokens'))   result['tokens']   = m.tokens;
-  if (sections.includes('cache'))    result['cache']    = m.cache;
-  if (sections.includes('commands')) result['commands'] = m.tools;
-  if (sections.includes('agents'))   result['agents']   = m.agents;
-  if (sections.includes('files'))    result['files']    = m.files;
-  if (sections.includes('cost'))     result['cost']     = m.cost;
+  if (sections.includes('tokens'))   {result['tokens']   = m.tokens;}
+  if (sections.includes('cache'))    {result['cache']    = m.cache;}
+  if (sections.includes('commands')) {result['commands'] = m.tools;}
+  if (sections.includes('agents'))   {result['agents']   = m.agents;}
+  if (sections.includes('files'))    {result['files']    = m.files;}
+  if (sections.includes('cost'))     {result['cost']     = m.cost;}
   if (sections.includes('timeline')) {
     result['timeline'] = {
       session_id:       archive.session_id,

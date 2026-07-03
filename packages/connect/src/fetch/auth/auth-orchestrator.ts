@@ -75,7 +75,7 @@ export async function applyAuth(
         let currentAuth = auth;
         if (isTokenExpired(currentAuth) && canRefreshToken(currentAuth)) {
           const refreshedAuth = await refreshAndStore(serviceName, currentAuth);
-          if (refreshedAuth) currentAuth = refreshedAuth;
+          if (refreshedAuth) {currentAuth = refreshedAuth;}
         }
         if (currentAuth.access_token?.trim()) {
           headers['Authorization'] = `Bearer ${currentAuth.access_token}`;
@@ -117,17 +117,17 @@ export async function handleAuthFailure(
   response: { status: number },
   serviceName?: string,
 ): Promise<{ retry: boolean; hint?: string }> {
-  if (response.status !== 401) return { retry: false };
-  if (!serviceName) return { retry: false };
+  if (response.status !== 401) {return { retry: false };}
+  if (!serviceName) {return { retry: false };}
 
   try {
     const auth = await getServiceSecrets(serviceName);
-    if (!auth) return { retry: false };
+    if (!auth) {return { retry: false };}
 
     if (auth.type === 'oauth2') {
       if (canRefreshToken(auth)) {
         const refreshed = await refreshAndStore(serviceName, auth);
-        if (refreshed) return { retry: true };
+        if (refreshed) {return { retry: true };}
       }
       return { retry: false, hint: 'needs_browser_auth' };
     }
@@ -135,7 +135,7 @@ export async function handleAuthFailure(
     if (auth.type === 'session') {
       if (canAcquireSession(auth)) {
         const acquired = await acquireAndStore(serviceName, auth);
-        if (acquired) return { retry: true };
+        if (acquired) {return { retry: true };}
       }
       return { retry: false };
     }
@@ -150,7 +150,7 @@ export async function handleAuthFailure(
 export async function getAuthStatus(serviceName: string): Promise<AuthStatus> {
   try {
     const auth = await getServiceSecrets(serviceName);
-    if (!auth) return 'no_auth_configured';
+    if (!auth) {return 'no_auth_configured';}
 
     const hasCredentials = (() => {
       switch (auth.type) {
@@ -173,18 +173,18 @@ export async function getAuthStatus(serviceName: string): Promise<AuthStatus> {
       }
     })();
 
-    if (!hasCredentials) return 'no_credentials';
+    if (!hasCredentials) {return 'no_credentials';}
 
     if (auth.type === 'oauth2') {
       if (isTokenExpired(auth)) {
-        if (canRefreshToken(auth)) return 'needs_refresh';
+        if (canRefreshToken(auth)) {return 'needs_refresh';}
         return 'needs_browser_auth';
       }
     }
 
     if ('expires_at' in auth && typeof auth.expires_at === 'number') {
       if (auth.expires_at < Date.now()) {
-        if (auth.type !== 'oauth2' && !('login_url' in auth)) return 'expired';
+        if (auth.type !== 'oauth2' && !('login_url' in auth)) {return 'expired';}
       }
     }
 

@@ -90,7 +90,7 @@ export function parseDrizzleSchema(content: string, resolvedPath: string): Datab
       const fromCol = oneMatch[2]?.trim() || 'id';
       const toCol = oneMatch[3]?.trim() || 'id';
       const exists = relations.some((r) => r.from_table === tableName && r.to_table === targetTable && r.from_column === fromCol);
-      if (!exists) relations.push({ from_table: tableName, from_column: fromCol, to_table: targetTable, to_column: toCol, type: 'one-to-one' });
+      if (!exists) {relations.push({ from_table: tableName, from_column: fromCol, to_table: targetTable, to_column: toCol, type: 'one-to-one' });}
     }
 
     const manyRegex = /many\s*\(\s*(\w+)\s*(?:,\s*\{[^}]*\})?/g;
@@ -98,7 +98,7 @@ export function parseDrizzleSchema(content: string, resolvedPath: string): Datab
     while ((manyMatch = manyRegex.exec(relBlock)) !== null) {
       const targetTable = manyMatch[1];
       const exists = relations.some((r) => r.from_table === tableName && r.to_table === targetTable);
-      if (!exists) relations.push({ from_table: tableName, from_column: 'id', to_table: targetTable, to_column: `${tableName}Id`, type: 'one-to-many' });
+      if (!exists) {relations.push({ from_table: tableName, from_column: 'id', to_table: targetTable, to_column: `${tableName}Id`, type: 'one-to-many' });}
     }
   }
 

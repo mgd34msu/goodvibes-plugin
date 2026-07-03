@@ -87,7 +87,7 @@ export function generateOperationId(method: string, routePath: string): string {
 /** Extract the primary tag from a route path (first segment after /api). */
 export function extractTag(routePath: string): string {
   const match = routePath.match(/^\/api\/([^/[{]+)/);
-  if (match) return match[1].charAt(0).toUpperCase() + match[1].slice(1);
+  if (match) {return match[1].charAt(0).toUpperCase() + match[1].slice(1);}
   return 'Default';
 }
 
@@ -99,14 +99,14 @@ export function extractTag(routePath: string): string {
 export function typeToJsonSchema(typeStr: string): JSONSchema {
   const trimmed = typeStr.trim();
 
-  if (trimmed === 'string') return { type: 'string' };
-  if (trimmed === 'number') return { type: 'number' };
-  if (trimmed === 'boolean') return { type: 'boolean' };
-  if (trimmed === 'null') return { nullable: true };
-  if (trimmed === 'undefined') return { nullable: true };
-  if (trimmed === 'any' || trimmed === 'unknown') return { type: 'object', additionalProperties: true };
-  if (trimmed === 'void') return {};
-  if (trimmed === 'never') return { not: {} };
+  if (trimmed === 'string') {return { type: 'string' };}
+  if (trimmed === 'number') {return { type: 'number' };}
+  if (trimmed === 'boolean') {return { type: 'boolean' };}
+  if (trimmed === 'null') {return { nullable: true };}
+  if (trimmed === 'undefined') {return { nullable: true };}
+  if (trimmed === 'any' || trimmed === 'unknown') {return { type: 'object', additionalProperties: true };}
+  if (trimmed === 'void') {return {};}
+  if (trimmed === 'never') {return { not: {} };}
 
   const arrayMatch = trimmed.match(/^(.+)\[\]$/) || trimmed.match(/^Array<(.+)>$/);
   if (arrayMatch) {
@@ -140,25 +140,25 @@ export function typeToJsonSchema(typeStr: string): JSONSchema {
     return { type: 'string', enum: [value] };
   }
 
-  if (trimmed === 'Date') return { type: 'string', format: 'date-time' };
+  if (trimmed === 'Date') {return { type: 'string', format: 'date-time' };}
 
   return { $ref: `#/components/schemas/${trimmed}` };
 }
 
 /** Generate an example value from a JSON Schema, recursively. */
 export function generateExample(schema: JSONSchema): unknown {
-  if (schema.$ref) return { '...': 'Reference object' };
-  if (schema.example !== undefined) return schema.example;
-  if (schema.default !== undefined) return schema.default;
-  if (schema.enum && schema.enum.length > 0) return schema.enum[0];
+  if (schema.$ref) {return { '...': 'Reference object' };}
+  if (schema.example !== undefined) {return schema.example;}
+  if (schema.default !== undefined) {return schema.default;}
+  if (schema.enum && schema.enum.length > 0) {return schema.enum[0];}
 
   switch (schema.type) {
     case 'string':
-      if (schema.format === 'date-time') return '2024-01-15T10:30:00Z';
-      if (schema.format === 'date') return '2024-01-15';
-      if (schema.format === 'email') return 'user@example.com';
-      if (schema.format === 'uri') return 'https://example.com';
-      if (schema.format === 'uuid') return '550e8400-e29b-41d4-a716-446655440000';
+      if (schema.format === 'date-time') {return '2024-01-15T10:30:00Z';}
+      if (schema.format === 'date') {return '2024-01-15';}
+      if (schema.format === 'email') {return 'user@example.com';}
+      if (schema.format === 'uri') {return 'https://example.com';}
+      if (schema.format === 'uuid') {return '550e8400-e29b-41d4-a716-446655440000';}
       return 'string';
     case 'number':
     case 'integer':
@@ -168,7 +168,7 @@ export function generateExample(schema: JSONSchema): unknown {
     case 'array':
       return schema.items ? [generateExample(schema.items)] : [];
     case 'object': {
-      if (!schema.properties) return {};
+      if (!schema.properties) {return {};}
       const obj: Record<string, unknown> = {};
       for (const [key, propSchema] of Object.entries(schema.properties)) {
         obj[key] = generateExample(propSchema);
@@ -182,7 +182,7 @@ export function generateExample(schema: JSONSchema): unknown {
 
 /** Default request body schema for methods that typically carry one (POST/PUT/PATCH). */
 export function createDefaultRequestSchema(method: string): JSONSchema | null {
-  if (['GET', 'DELETE', 'HEAD', 'OPTIONS'].includes(method)) return null;
+  if (['GET', 'DELETE', 'HEAD', 'OPTIONS'].includes(method)) {return null;}
   return {
     type: 'object',
     properties: {},
@@ -229,8 +229,8 @@ function containsTopLevelUnion(typeStr: string): boolean {
   let depth = 0;
   for (let i = 0; i < typeStr.length - 2; i++) {
     const ch = typeStr[i];
-    if (ch === '<' || ch === '{' || ch === '(') depth++;
-    else if (ch === '>' || ch === '}' || ch === ')') depth--;
+    if (ch === '<' || ch === '{' || ch === '(') {depth++;}
+    else if (ch === '>' || ch === '}' || ch === ')') {depth--;}
     else if (depth === 0 && typeStr[i] === ' ' && typeStr[i + 1] === '|' && typeStr[i + 2] === ' ') {
       return true;
     }
@@ -246,8 +246,8 @@ function splitUnionAtTopLevel(typeStr: string): string[] {
 
   for (let i = 0; i < typeStr.length; i++) {
     const ch = typeStr[i];
-    if (ch === '<' || ch === '{' || ch === '(') depth++;
-    else if (ch === '>' || ch === '}' || ch === ')') depth--;
+    if (ch === '<' || ch === '{' || ch === '(') {depth++;}
+    else if (ch === '>' || ch === '}' || ch === ')') {depth--;}
     else if (depth === 0 && typeStr.slice(i, i + 3) === ' | ') {
       parts.push(typeStr.slice(start, i).trim());
       i += 2;

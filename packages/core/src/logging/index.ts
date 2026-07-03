@@ -76,7 +76,7 @@ export function createLogger(options: LoggerOptions = {}): Logger {
     } catch {
       return; // file does not exist yet — nothing to rotate
     }
-    if (size < maxBytes) return;
+    if (size < maxBytes) {return;}
     // Shift file.(keep-1) → file.keep, ... , file → file.1
     for (let i = keep; i >= 1; i--) {
       const from = i === 1 ? file : `${file}.${i - 1}`;
@@ -107,7 +107,7 @@ export function createLogger(options: LoggerOptions = {}): Logger {
       write('debug.log', line);
     } else {
       write('activity.log', line);
-      if (mirror) process.stderr.write(line);
+      if (mirror) {process.stderr.write(line);}
     }
   }
 

@@ -1,50 +1,29 @@
 #!/usr/bin/env node
 /**
- * Setup hook — plan §8 Setup row, REBUILD (tribunal 2026-07-02).
+ * Setup hook — fires on `claude init`.
  *
- * v1's setup hook (`plugins/goodvibes/hooks/scripts/src/setup.ts`, read-only)
- * wrote CLAUDE.md import-chain files to the global home directory silently and
- * re-wrote differing files on every `claude init`. That behavior does not port.
- *
- * v2 behavior — run once, marker-guarded, consent-gated:
- *  - Fires on `claude init`. Writes ONE marker file inside the PROJECT's own
- *    `.goodvibes/` state directory (never the global home directory, never
- *    outside the project) the first time it runs, and does nothing on every
- *    subsequent `claude init` in the same project (marker-guarded / run-once).
- *  - It does not install anything itself. The intel server's native
- *    dependencies (ripgrep, ast-grep) have no postinstall chain by design
- *    (carve-out architecture §1.2) — first-run install requires the user to
- *    explicitly run `/goodvibes:setup`, which is the actual
- *    consent point (a human typed a command), not a hook silently acting on
- *    their behalf. This hook's only job is to point at that command once.
+ * Native dependencies install themselves: when any server's probe is missing
+ * from the plugin copy, this hook kicks `lib/deps-install.mjs` as a DETACHED
+ * background process (stdio ignored, unref'd — init never waits on npm) and
+ * says nothing. The installer is single-instance (lock file) and a no-op when
+ * everything is already installed, so firing on every init is harmless.
+ * SessionStart owns the user-visible line about install progress or failure;
+ * /goodvibes:setup is the manual foreground repair path.
  */
 
-import { existsSync } from 'node:fs';
-import { runHook, createHookResponse, statePath, writeJsonSafe, isTestEnvironment } from './lib/common.mjs';
+import { runHook, createHookResponse, isTestEnvironment } from './lib/common.mjs';
+import { SERVER_PROBES, depsSatisfied } from './lib/deps-link.mjs';
+import { spawnDetachedInstall } from './lib/deps-install.mjs';
 
 const HOOK_EVENT = 'Setup';
 
-async function handleSetup(input) {
-  const cwd = input.cwd || process.cwd();
-  const markerPath = statePath(cwd, '.setup-marker.json');
-
-  if (existsSync(markerPath)) {
-    // Already run once for this project — stay silent.
-    return createHookResponse({ hookEventName: HOOK_EVENT });
+async function handleSetup() {
+  const root = process.env.CLAUDE_PLUGIN_ROOT;
+  if (root && process.env.GOODVIBES_NO_BG_INSTALL !== '1') {
+    const missing = Object.keys(SERVER_PROBES).some((server) => !depsSatisfied(root, server));
+    if (missing) spawnDetachedInstall(root);
   }
-
-  writeJsonSafe(markerPath, {
-    ranAt: new Date().toISOString(),
-    note: 'goodvibes Setup hook has run once for this project; see /goodvibes:setup for native-dependency install.',
-  });
-
-  return createHookResponse({
-    hookEventName: HOOK_EVENT,
-    systemMessage:
-      'goodvibes: first-time setup for this project. Run /goodvibes:setup ' +
-      'to install native dependencies (ripgrep, ast-grep) with your explicit consent — nothing ' +
-      'is installed automatically.',
-  });
+  return createHookResponse({ hookEventName: HOOK_EVENT });
 }
 
 if (!isTestEnvironment()) {

@@ -134,7 +134,7 @@ interface ProcStat {
 function parseStat(content: string): ProcStat | null {
   const open = content.indexOf('(');
   const close = content.lastIndexOf(')');
-  if (open < 0 || close < 0 || close < open) return null;
+  if (open < 0 || close < 0 || close < open) {return null;}
 
   const pid = Number(content.slice(0, open).trim());
   const comm = content.slice(open + 1, close);
@@ -144,7 +144,7 @@ function parseStat(content: string): ProcStat | null {
   const ppid = Number(rest[1]);
   const utime = Number(rest[11]);
   const stime = Number(rest[12]);
-  if (!Number.isFinite(pid) || !Number.isFinite(ppid)) return null;
+  if (!Number.isFinite(pid) || !Number.isFinite(ppid)) {return null;}
   const cpuJiffies =
     (Number.isFinite(utime) ? utime : 0) + (Number.isFinite(stime) ? stime : 0);
   return { pid, comm, ppid, cpuJiffies };
@@ -168,7 +168,7 @@ function readLoadavg(procRoot: string): [number, number, number] | null {
     const l1 = Number(parts[0]);
     const l5 = Number(parts[1]);
     const l15 = Number(parts[2]);
-    if (![l1, l5, l15].every(Number.isFinite)) return null;
+    if (![l1, l5, l15].every(Number.isFinite)) {return null;}
     return [l1, l5, l15];
   } catch {
     return null;
@@ -224,7 +224,7 @@ export class HostHealthSampler {
    * bug it hunts). Takes one sample immediately so a state file exists promptly.
    */
   start(): void {
-    if (this.timer) return;
+    if (this.timer) {return;}
     this.tick();
     this.timer = setInterval(() => this.tick(), SAMPLE_INTERVAL_MS);
     this.timer.unref?.();
@@ -297,7 +297,7 @@ export class HostHealthSampler {
         continue; // process vanished between readdir and read — normal, skip.
       }
       const stat = parseStat(statRaw);
-      if (!stat) continue;
+      if (!stat) {continue;}
       stats.set(pid, stat);
       if (stat.comm === 'systemd') {
         const cmd = readCmdline(this.procRoot, pid);
@@ -314,7 +314,7 @@ export class HostHealthSampler {
 
     for (const stat of stats.values()) {
       seenPids.add(stat.pid);
-      if (stat.ppid === this.sessionRootPid) sessionChildCount++;
+      if (stat.ppid === this.sessionRootPid) {sessionChildCount++;}
 
       // CPU%% delta vs the previous sample.
       const prev = this.prevCpu.get(stat.pid);
@@ -340,10 +340,10 @@ export class HostHealthSampler {
       const streak = over ? (this.sustained.get(stat.pid) ?? 0) + 1 : 0;
       this.sustained.set(stat.pid, streak);
 
-      if (!reparented) continue;
+      if (!reparented) {continue;}
       const cmdline = readCmdline(this.procRoot, stat.pid);
-      if (!this.pluginPathRe.test(cmdline)) continue;
-      if (streak < this.sustainedSamples) continue;
+      if (!this.pluginPathRe.test(cmdline)) {continue;}
+      if (streak < this.sustainedSamples) {continue;}
 
       orphans.push({
         pid: stat.pid,
@@ -357,8 +357,8 @@ export class HostHealthSampler {
     }
 
     // Forget history for pids that have gone away, so the maps can't grow without bound.
-    for (const pid of this.prevCpu.keys()) if (!seenPids.has(pid)) this.prevCpu.delete(pid);
-    for (const pid of this.sustained.keys()) if (!seenPids.has(pid)) this.sustained.delete(pid);
+    for (const pid of this.prevCpu.keys()) {if (!seenPids.has(pid)) {this.prevCpu.delete(pid);}}
+    for (const pid of this.sustained.keys()) {if (!seenPids.has(pid)) {this.sustained.delete(pid);}}
 
     const state: HealthState = {
       schema: 1,
@@ -396,8 +396,8 @@ export class HostHealthSampler {
  * per-core load above 1.5, or any orphan detected.
  */
 export function healthThresholdTripped(state: HealthState): boolean {
-  if (state.orphans.length > 0) return true;
-  if (state.load_per_core != null && state.load_per_core > LOAD_PER_CORE_NUDGE) return true;
+  if (state.orphans.length > 0) {return true;}
+  if (state.load_per_core != null && state.load_per_core > LOAD_PER_CORE_NUDGE) {return true;}
   return false;
 }
 

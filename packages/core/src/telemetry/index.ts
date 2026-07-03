@@ -44,8 +44,8 @@ let sqlJsLoadFailed = false;
  * retrying a missing module on every call.
  */
 async function loadSqlJsInit(): Promise<SqlJsInit | null> {
-  if (cachedSqlJsInit) return cachedSqlJsInit;
-  if (sqlJsLoadFailed) return null;
+  if (cachedSqlJsInit) {return cachedSqlJsInit;}
+  if (sqlJsLoadFailed) {return null;}
   try {
     const spec = ['sql', 'js'].join('.');
     const mod = (await import(spec as string)) as { default?: unknown };
@@ -214,7 +214,7 @@ export class Telemetry {
    * install never has a missing dep block a tool call.
    */
   public static async initialize(dbPath?: string): Promise<void> {
-    if (Telemetry.instance) return;
+    if (Telemetry.instance) {return;}
     const init = await loadSqlJsInit();
     if (!init) {
       Telemetry.unavailableReason = nativeDepMessage('Telemetry (session token accounting)');
@@ -328,7 +328,7 @@ export class Telemetry {
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
     const hasLimit = filter.limit !== undefined && filter.limit !== null;
     const sql = `${selectCols} ${where} ORDER BY created_at ASC ${hasLimit ? 'LIMIT ?' : ''}`;
-    if (hasLimit) params.push(Math.max(1, Math.floor(filter.limit as number)));
+    if (hasLimit) {params.push(Math.max(1, Math.floor(filter.limit as number)));}
     return this.resultsToRecords(this.db.exec(sql, params));
   }
 
@@ -354,7 +354,7 @@ export class Telemetry {
       const ms = row.duration_ms ?? 0;
       t.total_ms += ms;
       totalDurationMs += ms;
-      if (row.status === 'success') successCount++;
+      if (row.status === 'success') {successCount++;}
     }
 
     const byToolOut: Record<string, ToolStats> = {};
@@ -420,7 +420,7 @@ export class Telemetry {
   }
 
   private resultsToRecords(results: ReturnType<SqlJsDatabase['exec']>): TelemetryRecord[] {
-    if (!results || results.length === 0) return [];
+    if (!results || results.length === 0) {return [];}
     return results[0].values.map((row) => Telemetry.rowArrayToRecord(row as (string | number | null)[]));
   }
 
@@ -432,12 +432,12 @@ export class Telemetry {
       status: row[3] as 'success' | 'failed' | 'partial',
       created_at: row[11] as string,
     };
-    if (row[4] != null) rec.tokens_in = row[4] as number;
-    if (row[5] != null) rec.tokens_out = row[5] as number;
-    if (row[6] != null) rec.cache_hit = (row[6] as number) !== 0;
-    if (row[7] != null) rec.cache_bytes_saved = row[7] as number;
-    if (row[8] != null) rec.duration_ms = row[8] as number;
-    if (row[9] != null) rec.error = row[9] as string;
+    if (row[4] != null) {rec.tokens_in = row[4] as number;}
+    if (row[5] != null) {rec.tokens_out = row[5] as number;}
+    if (row[6] != null) {rec.cache_hit = (row[6] as number) !== 0;}
+    if (row[7] != null) {rec.cache_bytes_saved = row[7] as number;}
+    if (row[8] != null) {rec.duration_ms = row[8] as number;}
+    if (row[9] != null) {rec.error = row[9] as string;}
     if (row[10] != null) {
       try {
         rec.metadata = JSON.parse(row[10] as string);
@@ -495,7 +495,7 @@ export class KVState {
   async get(keys: string[]): Promise<Record<string, unknown>> {
     await this.ensureLoaded();
     const result: Record<string, unknown> = {};
-    for (const key of keys) result[key] = this.data[key];
+    for (const key of keys) {result[key] = this.data[key];}
     return result;
   }
 
@@ -503,7 +503,7 @@ export class KVState {
     await this.ensureLoaded();
     const RESERVED = new Set(['id', 'started_at', '__proto__', 'constructor', 'prototype']);
     for (const [key, value] of Object.entries(values)) {
-      if (RESERVED.has(key)) continue;
+      if (RESERVED.has(key)) {continue;}
       this.data[key] = value;
     }
     await this.persist();
@@ -513,7 +513,7 @@ export class KVState {
     await this.ensureLoaded();
     const result: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(this.data)) {
-      if (!prefix || key.startsWith(prefix)) result[key] = value;
+      if (!prefix || key.startsWith(prefix)) {result[key] = value;}
     }
     return result;
   }
@@ -521,7 +521,7 @@ export class KVState {
   async clear(keys: string[]): Promise<void> {
     await this.ensureLoaded();
     for (const key of keys) {
-      if (key === 'id' || key === 'started_at') continue;
+      if (key === 'id' || key === 'started_at') {continue;}
       delete this.data[key];
     }
     await this.persist();
@@ -565,7 +565,7 @@ export class KVState {
   }
 
   private async ensureLoaded(): Promise<void> {
-    if (!this.loaded) await this.load();
+    if (!this.loaded) {await this.load();}
   }
 
   async load(): Promise<void> {

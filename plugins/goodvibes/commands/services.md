@@ -72,6 +72,15 @@ Once a service or connection is registered, use `mcp__connect__api_request` (HTT
 that is neither a registered service origin nor an allowlisted host, `db_query` refuses a bare
 `database_url`, and both refuse write methods without the matching opt-in.
 
+An `api_request` entry may also carry a per-request `auth` override, applied to the headers when
+the request is built: `{ "type": "none" }`, `{ "type": "bearer", "token": ... }`,
+`{ "type": "basic", "username": ..., "password": ... }`,
+`{ "type": "api-key", "header": ..., "key": ... }`, or
+`{ "type": "custom-headers", "headers": {...} }`. It is caller-supplied, not origin-pinned — use it
+for one-off credentials on allowlisted URLs. When the entry names a registered service whose origin
+matches the final URL, the stored service credential is applied after the override and wins on the
+same header (usually `Authorization`), so registered credentials cannot be displaced by it.
+
 ## Arguments
 
 $ARGUMENTS

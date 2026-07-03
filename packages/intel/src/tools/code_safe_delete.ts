@@ -52,12 +52,12 @@ interface CodeSafeDeleteData extends SafeDeleteResult {
 
 /** Extract the identifier token spanning `offset` in `text`, or undefined. */
 function identifierAt(text: string, offset: number): string | undefined {
-  if (offset < 0 || offset > text.length) return undefined;
+  if (offset < 0 || offset > text.length) {return undefined;}
   const isWord = (c: string): boolean => /[A-Za-z0-9_$]/.test(c);
   let start = offset;
-  while (start > 0 && isWord(text[start - 1])) start--;
+  while (start > 0 && isWord(text[start - 1])) {start--;}
   let end = offset;
-  while (end < text.length && isWord(text[end])) end++;
+  while (end < text.length && isWord(text[end])) {end++;}
   const word = text.slice(start, end);
   return word.length > 0 ? word : undefined;
 }
@@ -156,7 +156,7 @@ export async function handler(rawArgs: unknown): Promise<CallToolResult> {
         if (isDefinitionRef(ref)) {
           definitionFile = ref.fileName;
           const defSource = program.getSourceFile(ref.fileName);
-          if (defSource) definitionLine = toLineColumn(defSource, ref.textSpan.start).line;
+          if (defSource) {definitionLine = toLineColumn(defSource, ref.textSpan.start).line;}
           break;
         }
       }
@@ -169,9 +169,9 @@ export async function handler(rawArgs: unknown): Promise<CallToolResult> {
       const selfReferences: ReferenceLocation[] = [];
 
       for (const ref of references) {
-        if (isDefinitionRef(ref)) continue;
+        if (isDefinitionRef(ref)) {continue;}
         const refSource = program.getSourceFile(ref.fileName);
-        if (!refSource) continue;
+        if (!refSource) {continue;}
 
         const { line: refLine, column: refColumn } = toLineColumn(refSource, ref.textSpan.start);
 
@@ -233,7 +233,7 @@ export async function handler(rawArgs: unknown): Promise<CallToolResult> {
       execution_ms: elapsed(),
       ...(outcome.budget_exceeded ? { budget_exceeded: true } : {}),
     });
-    if (resolved.warning) env = { ...env, warning: resolved.warning };
+    if (resolved.warning) {env = { ...env, warning: resolved.warning };}
     return toCallToolResult(env);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

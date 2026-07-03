@@ -1,5 +1,5 @@
 ---
-description: goodvibes plugin management — first-run native dependency setup (explicit consent), health status, and optional prompt-chain install
+description: goodvibes plugin management — native dependency repair, health status, and optional prompt-chain install
 argument-hint: <setup|status|install-prompts|uninstall-prompts>
 allowed-tools:
   - Bash
@@ -16,14 +16,13 @@ Manage the goodvibes plugin installation (intel / analytics / connect servers, h
 /goodvibes:plugin <subcommand>
 ```
 
-(`/goodvibes:setup` is the direct shortcut for `/goodvibes:plugin setup` — same steps, same
-consent point.)
+(`/goodvibes:setup` is the direct shortcut for `/goodvibes:plugin setup` — same steps.)
 
 ## Subcommands
 
 | Subcommand | Description |
 |------------|-------------|
-| `setup` | Install each server's native dependencies (intel, analytics, connect) — explicit consent, first run only. |
+| `setup` | Re-run the native dependency install in the foreground — the repair path when the automatic background install did not finish. |
 | `status` | Show plugin health: version, server bundle, hooks, native-dependency install state. |
 | `install-prompts` | Opt in: install a compact pointer file (may write to `~/.claude/`). |
 | `uninstall-prompts` | Cleanly remove everything `install-prompts` wrote. |
@@ -36,7 +35,7 @@ did not survive the carve-out).
 
 Parse the subcommand from $ARGUMENTS.
 
-### `setup` — Native Dependency Install
+### `setup` — Native Dependency Repair
 
 Each of the three committed server bundles externalizes a few runtime-only dependencies (native
 binaries and WASM loaders that do not bundle cleanly), listed in that server's own
@@ -45,54 +44,22 @@ binaries and WASM loaders that do not bundle cleanly), listed in that server's o
 | Server | Runtime-only dependencies |
 |--------|---------------------------|
 | `intel` | `@ast-grep/napi`, `@vscode/ripgrep`, `sql.js`, `web-tree-sitter` |
-| `analytics` | `ink`, `react`, `react-devtools-core`, `yoga-wasm-web`, `sql.js` |
+| `analytics` | `sql.js` |
 | `connect` | `sql.js` (database drivers resolve from the target project, not installed here) |
 
-There is no `postinstall` chain — installing them requires this explicit command, which is the
-actual consent point (the Setup hook only points here; it never installs anything itself).
+Installation is automatic: the first session after a plugin install (or after an update that
+changes a server's dependency list) spawns a detached background installer, which writes into
+the durable home `~/.claude/.goodvibes/deps/<server>/` and links each
+`${CLAUDE_PLUGIN_ROOT}/server/<name>/node_modules` to it. A plugin update replaces the plugin
+copy but not the durable home; the SessionStart hook silently relinks at the next session.
+Until an install lands, native-backed capabilities return an honest "run /goodvibes:setup"
+message and everything else keeps working — nothing crashes.
 
-Setup runs once: dependencies install into the durable home `~/.claude/.goodvibes/deps/<server>/`
-and the plugin's server directories get symlinks. A plugin update replaces the plugin copy but
-not the durable home; the SessionStart hook silently relinks at the next session, so setup only
-needs re-running when an update changes a server's dependency list. Until setup runs,
-native-backed capabilities return an honest "run /goodvibes:setup" message and everything else
-keeps working — nothing crashes.
-
-1. Check which servers still need their dependencies (a representative dependency probes each):
-   ```bash
-   for s in intel analytics connect; do
-     case $s in
-       intel) probe="@ast-grep/napi" ;;
-       analytics) probe="ink" ;;
-       connect) probe="sql.js" ;;
-     esac
-     test -d "${CLAUDE_PLUGIN_ROOT}/server/$s/node_modules/$probe" && echo "$s: INSTALLED" || echo "$s: NEEDS_INSTALL"
-   done
-   ```
-   If every server reports `INSTALLED`, report that and stop.
-2. If any server reports `NEEDS_INSTALL`, tell the user exactly what will happen — `npm install`
-   runs inside `~/.claude/.goodvibes/deps/<server>/` for each server (intel, analytics, connect),
-   installing only the dependencies in that server's `package.json` (native binaries + WASM
-   loaders; no other package on the system is touched), and each
-   `${CLAUDE_PLUGIN_ROOT}/server/<name>/node_modules` becomes a symlink to that durable
-   install — and confirm before proceeding.
-3. On confirmation, install into the durable home and symlink each server's `node_modules`
-   to it (`npm install` is idempotent — an already-installed server is a fast no-op):
-   ```bash
-   for s in intel analytics connect; do
-     dep_home="$HOME/.claude/.goodvibes/deps/$s"
-     mkdir -p "$dep_home"
-     cp "${CLAUDE_PLUGIN_ROOT}/server/$s/package.json" "$dep_home/package.json"
-     npm install --omit=dev --no-audit --no-fund --prefix "$dep_home"
-     rm -rf "${CLAUDE_PLUGIN_ROOT}/server/$s/node_modules"
-     ln -sfn "$dep_home/node_modules" "${CLAUDE_PLUGIN_ROOT}/server/$s/node_modules"
-   done
-   ```
-4. Report success or the exact error output per server. On success:
-   ```
-   Native dependencies installed for intel, analytics, and connect. goodvibes' structure-aware
-   search/analysis, the analytics dashboard, and registered service access are ready.
-   ```
+This subcommand is the repair path: it re-runs the same installer in the foreground with
+visible output. Follow the steps in `/goodvibes:setup` (probe each server, run
+`node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/deps-install.mjs" "${CLAUDE_PLUGIN_ROOT}"`, then report
+the outcome from `~/.claude/.goodvibes/deps/.last-result.json` and, on failure, the relevant
+tail of `~/.claude/.goodvibes/deps/install.log`).
 
 ### `status` — Plugin Health
 
@@ -105,8 +72,7 @@ one that never existed; it does not carry forward):
 3. Check `${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json` exists; list its registered event names.
 4. Check native-dependency install state per server the same way `setup` does (intel, analytics,
    connect each probed independently).
-5. Check the current project's `.goodvibes/.setup-marker.json` — has the Setup hook run here?
-6. Check the current project's `.goodvibes/` for `memory/`, `state/`, `cache/` presence.
+5. Check the current project's `.goodvibes/` for `memory/`, `state/`, `cache/` presence.
 
 Present as:
 ```
@@ -119,8 +85,8 @@ Native dependencies:
   intel:     {Installed | Not installed}
   analytics: {Installed | Not installed}
   connect:   {Installed | Not installed}
-  {if any are "Not installed": "Run /goodvibes:setup to install the missing ones."}
-Project setup: {marker present ? "Ran on <date>" : "Not yet run for this project"}
+  {if any are "Not installed": "The background installer may still be running — check
+   ~/.claude/.goodvibes/deps/.last-result.json, or run /goodvibes:setup to repair."}
 Project state: {.goodvibes/ present ? "Present" : "None yet"}
 ```
 
@@ -170,7 +136,7 @@ Removes exactly what `install-prompts` wrote and nothing else:
 Unknown subcommand: <subcommand>
 
 Available subcommands:
-  setup              - Install native dependencies (explicit consent)
+  setup              - Re-run the native dependency install in the foreground (repair)
   status             - Show plugin status
   install-prompts    - Opt in: install the compact pointer file
   uninstall-prompts  - Cleanly remove the installed pointer file

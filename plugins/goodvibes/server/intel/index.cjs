@@ -250077,11 +250077,15 @@ async function withBudget(ms, task) {
     budgetHit
   ]);
   if (first !== BUDGET_EXPIRED) {
-    if (timer) clearTimeout(timer);
+    if (timer) {
+      clearTimeout(timer);
+    }
     return { value: first.value, budget_exceeded: false, elapsed_ms: Date.now() - start };
   }
   const value = await taskP;
-  if (timer) clearTimeout(timer);
+  if (timer) {
+    clearTimeout(timer);
+  }
   return { value, budget_exceeded: true, elapsed_ms: Date.now() - start };
 }
 __name(withBudget, "withBudget");
@@ -250095,9 +250099,13 @@ function installProcessHygiene(options = {}) {
   let shuttingDown = false;
   const timers = [];
   function stop() {
-    if (stopped) return;
+    if (stopped) {
+      return;
+    }
     stopped = true;
-    for (const t of timers) clearInterval(t);
+    for (const t of timers) {
+      clearInterval(t);
+    }
     if (watchStdin) {
       try {
         process.stdin.off("end", onStdinEnd);
@@ -250112,7 +250120,9 @@ function installProcessHygiene(options = {}) {
   }
   __name(stop, "stop");
   async function shutdown(reason) {
-    if (shuttingDown) return;
+    if (shuttingDown) {
+      return;
+    }
     shuttingDown = true;
     stop();
     try {
@@ -250132,7 +250142,9 @@ function installProcessHygiene(options = {}) {
   __name(onSignal, "onSignal");
   const ppidTimer = setInterval(() => {
     const p = process.ppid;
-    if (p !== initialPpid || p === 1) void shutdown("reparented");
+    if (p !== initialPpid || p === 1) {
+      void shutdown("reparented");
+    }
   }, ppidPollMs);
   ppidTimer.unref?.();
   timers.push(ppidTimer);
@@ -250165,7 +250177,7 @@ __name(estimatePayloadTokens, "estimatePayloadTokens");
 
 // packages/core/src/envelope/errors.ts
 function nativeDepMessage(capability) {
-  return `${capability} needs native dependencies that are not installed yet - run /goodvibes:setup (once; the install survives plugin updates).`;
+  return `${capability} needs native dependencies that are not installed yet - they install automatically in the background on the first session, so this capability is ready shortly after that install completes; if it does not, run /goodvibes:setup to install them manually.`;
 }
 __name(nativeDepMessage, "nativeDepMessage");
 
@@ -250215,7 +250227,9 @@ function mergeMoveDir(src, dst) {
 }
 __name(mergeMoveDir, "mergeMoveDir");
 function migrateLegacyStateDir(root) {
-  if (migratedRoots.has(root)) return;
+  if (migratedRoots.has(root)) {
+    return;
+  }
   migratedRoots.add(root);
   try {
     const legacy = path.join(root, "v2");
@@ -250253,7 +250267,9 @@ function readJsonIfPresent(file) {
 }
 __name(readJsonIfPresent, "readJsonIfPresent");
 function mergeBudgets(base, override) {
-  if (!override || typeof override !== "object") return base;
+  if (!override || typeof override !== "object") {
+    return base;
+  }
   const o = override;
   const pick2 = /* @__PURE__ */ __name((k) => typeof o[k] === "number" && Number.isFinite(o[k]) && o[k] > 0 ? o[k] : base[k], "pick");
   return {
@@ -250271,7 +250287,9 @@ function loadConfig(cwd = process.cwd()) {
   const projFile = projectConfigPath(cwd);
   const userFile = userConfigPath();
   const cacheKey = `${userFile}::${projFile}`;
-  if (cached2 && cached2.key === cacheKey) return cached2.value;
+  if (cached2 && cached2.key === cacheKey) {
+    return cached2.value;
+  }
   const user = readJsonIfPresent(userFile);
   const project = readJsonIfPresent(projFile);
   const merged = { ...DEFAULT_CONFIG, ...user, ...project };
@@ -250301,7 +250319,9 @@ function errorEnvelope(error2, meta2 = {}) {
 }
 __name(errorEnvelope, "errorEnvelope");
 function renderEnvelope(env) {
-  if (!env.meta) return JSON.stringify(env);
+  if (!env.meta) {
+    return JSON.stringify(env);
+  }
   const provisional = JSON.stringify(env);
   const honest = {
     ...env,
@@ -253545,10 +253565,16 @@ var path2 = __toESM(require("path"), 1);
 function gitignoreLineToGlobs(pattern) {
   let p = pattern;
   const dirOnly = p.endsWith("/");
-  if (dirOnly) p = p.slice(0, -1);
+  if (dirOnly) {
+    p = p.slice(0, -1);
+  }
   const anchored = p.startsWith("/") || p.includes("/");
-  if (p.startsWith("/")) p = p.slice(1);
-  if (!p) return [];
+  if (p.startsWith("/")) {
+    p = p.slice(1);
+  }
+  if (!p) {
+    return [];
+  }
   if (anchored) {
     return dirOnly ? [`${p}/**`] : [p, `${p}/**`];
   }
@@ -253559,8 +253585,12 @@ function parseGitignore(content) {
   const globs = [];
   for (const rawLine of content.split(/\r?\n/)) {
     const line = rawLine.trim();
-    if (!line || line.startsWith("#")) continue;
-    if (line.startsWith("!")) continue;
+    if (!line || line.startsWith("#")) {
+      continue;
+    }
+    if (line.startsWith("!")) {
+      continue;
+    }
     const unescaped = line.startsWith("\\#") || line.startsWith("\\!") ? line.slice(1) : line;
     globs.push(...gitignoreLineToGlobs(unescaped));
   }
@@ -253593,12 +253623,16 @@ function resolveInputPath(input, basePath, cwd = process.cwd()) {
 }
 __name(resolveInputPath, "resolveInputPath");
 function resolveBaseDir(basePath, cwd = process.cwd()) {
-  if (!basePath) return path3.resolve(cwd);
+  if (!basePath) {
+    return path3.resolve(cwd);
+  }
   return path3.isAbsolute(basePath) ? path3.resolve(basePath) : path3.resolve(cwd, basePath);
 }
 __name(resolveBaseDir, "resolveBaseDir");
 function assertWithinRoot(resolvedPath, root) {
-  if (!root) return;
+  if (!root) {
+    return;
+  }
   const real = path3.normalize(resolvedPath);
   const normRoot = path3.normalize(root);
   const rootWithSep = normRoot.endsWith(path3.sep) ? normRoot : normRoot + path3.sep;
@@ -253617,7 +253651,9 @@ async function validateDirectoryPath(dirPath, projectRoot, enforceBoundary = fal
   } catch {
     throw new Error(`Invalid path: '${dirPath}' does not exist or is not accessible.`);
   }
-  if (enforceBoundary) assertWithinRoot(realPath, projectRoot);
+  if (enforceBoundary) {
+    assertWithinRoot(realPath, projectRoot);
+  }
   const stats = await fsPromises.stat(realPath);
   if (!stats.isDirectory()) {
     throw new Error(`Path '${dirPath}' is not a directory.`);
@@ -253638,7 +253674,9 @@ __name(templatesRoot, "templatesRoot");
 function findTemplateDir(templatesDir, template) {
   for (const category of TEMPLATE_CATEGORIES) {
     const candidate = path4.join(templatesDir, category, template);
-    if (fs3.existsSync(candidate)) return candidate;
+    if (fs3.existsSync(candidate)) {
+      return candidate;
+    }
   }
   return null;
 }
@@ -253884,7 +253922,9 @@ function createLogger(options = {}) {
     } catch {
       return;
     }
-    if (size < maxBytes) return;
+    if (size < maxBytes) {
+      return;
+    }
     for (let i = keep; i >= 1; i--) {
       const from = i === 1 ? file : `${file}.${i - 1}`;
       const to = `${file}.${i}`;
@@ -253912,7 +253952,9 @@ function createLogger(options = {}) {
       write("debug.log", line);
     } else {
       write("activity.log", line);
-      if (mirror) process.stderr.write(line);
+      if (mirror) {
+        process.stderr.write(line);
+      }
     }
   }
   __name(emit, "emit");
@@ -254049,7 +254091,9 @@ function findTsConfigSync(startPath) {
       return toTsPath(tsconfigPath);
     }
     const parentDir = path7.dirname(dir);
-    if (parentDir === dir) break;
+    if (parentDir === dir) {
+      break;
+    }
     dir = parentDir;
   }
   return null;
@@ -254074,9 +254118,13 @@ function findTypescriptLibDir(startDir) {
   const root = path7.parse(dir).root;
   while (dir !== root) {
     const tsLibDir = path7.join(dir, "node_modules", "typescript", "lib");
-    if (fs4.existsSync(tsLibDir)) return tsLibDir;
+    if (fs4.existsSync(tsLibDir)) {
+      return tsLibDir;
+    }
     const parent = path7.dirname(dir);
-    if (parent === dir) break;
+    if (parent === dir) {
+      break;
+    }
     dir = parent;
   }
   return null;
@@ -254158,7 +254206,9 @@ var CompilerHost = class {
           oldestKey = key;
         }
       }
-      if (oldestKey === void 0) break;
+      if (oldestKey === void 0) {
+        break;
+      }
       const victim = this.cache.get(oldestKey);
       try {
         victim?.service.dispose();
@@ -254184,7 +254234,9 @@ var CompilerHost = class {
       getScriptSnapshot: /* @__PURE__ */ __name((fileName) => {
         const normalized = toTsPath(fileName);
         const cached3 = files.get(normalized);
-        if (cached3) return cached3.snapshot;
+        if (cached3) {
+          return cached3.snapshot;
+        }
         try {
           const content = fs5.readFileSync(fileName, "utf-8");
           const snapshot = import_typescript3.default.ScriptSnapshot.fromString(content);
@@ -254303,7 +254355,9 @@ function getExportKind(kind) {
 __name(getExportKind, "getExportKind");
 function getJsDoc(node) {
   const jsDocs = import_typescript4.default.getJSDocCommentsAndTags(node);
-  if (jsDocs.length === 0) return null;
+  if (jsDocs.length === 0) {
+    return null;
+  }
   const comments = [];
   for (const doc of jsDocs) {
     if (import_typescript4.default.isJSDoc(doc) && doc.comment) {
@@ -254343,9 +254397,13 @@ __name(getTypeString, "getTypeString");
 function getLinePreview(service, fileName, line) {
   try {
     const sourceFile = service.getProgram()?.getSourceFile(fileName);
-    if (!sourceFile) return "";
+    if (!sourceFile) {
+      return "";
+    }
     const lineStarts = sourceFile.getLineStarts();
-    if (line < 1 || line > lineStarts.length) return "";
+    if (line < 1 || line > lineStarts.length) {
+      return "";
+    }
     const lineStart = lineStarts[line - 1];
     const lineEnd = line < lineStarts.length ? lineStarts[line] : sourceFile.text.length;
     const lineText = sourceFile.text.slice(lineStart, lineEnd).replace(/[\r\n]+$/, "").trim();
@@ -254362,17 +254420,27 @@ function collectExportsFromFiles(files, service, options) {
   const result = /* @__PURE__ */ new Map();
   const program = service.getProgram();
   const checker = program?.getTypeChecker();
-  if (!program || !checker) return result;
+  if (!program || !checker) {
+    return result;
+  }
   for (const filePath of files) {
     const sourceFile = program.getSourceFile(toTsPath(filePath));
-    if (!sourceFile) continue;
+    if (!sourceFile) {
+      continue;
+    }
     const moduleSymbol = checker.getSymbolAtLocation(sourceFile);
-    if (!moduleSymbol) continue;
+    if (!moduleSymbol) {
+      continue;
+    }
     for (const exportSymbol of checker.getExportsOfModule(moduleSymbol)) {
       const name = exportSymbol.getName();
-      if (name === "__export") continue;
+      if (name === "__export") {
+        continue;
+      }
       const declarations = exportSymbol.getDeclarations();
-      if (!declarations || declarations.length === 0) continue;
+      if (!declarations || declarations.length === 0) {
+        continue;
+      }
       const decl = declarations[0];
       const declSourceFile = decl.getSourceFile();
       const { line } = declSourceFile.getLineAndCharacterOfPosition(decl.getStart());
@@ -254441,7 +254509,9 @@ async function detectEntryPoints(dirPath) {
   const addIfExists = /* @__PURE__ */ __name(async (p) => {
     try {
       await node_fs.access(p);
-      if (!entryPoints.includes(p)) entryPoints.push(p);
+      if (!entryPoints.includes(p)) {
+        entryPoints.push(p);
+      }
     } catch {
     }
   }, "addIfExists");
@@ -254452,7 +254522,9 @@ async function detectEntryPoints(dirPath) {
       } else if (typeof exportPath === "object") {
         for (const key of ["default", "import", "require"]) {
           const val = exportPath[key];
-          if (typeof val === "string") await addIfExists(path9.resolve(dirPath, val));
+          if (typeof val === "string") {
+            await addIfExists(path9.resolve(dirPath, val));
+          }
         }
       }
     }, "addExportPath");
@@ -254460,7 +254532,9 @@ async function detectEntryPoints(dirPath) {
       const mainPath = path9.resolve(dirPath, packageJson.main);
       await addIfExists(mainPath);
       const tsVersion = mainPath.replace(/\.js$/, ".ts");
-      if (mainPath !== tsVersion) await addIfExists(tsVersion);
+      if (mainPath !== tsVersion) {
+        await addIfExists(tsVersion);
+      }
     }
     if (typeof packageJson.module === "string") {
       await addIfExists(path9.resolve(dirPath, packageJson.module));
@@ -254606,7 +254680,9 @@ async function computeSurface(absTarget, baseDir, explicitEntryPoints, signal) {
   const publicApi = [];
   const internalApi = [];
   for (const [key, exp] of allExports) {
-    if (signal.aborted) break;
+    if (signal.aborted) {
+      break;
+    }
     if (publicKeys.has(key)) {
       const pub = publicExports.get(key);
       publicApi.push({
@@ -254640,8 +254716,12 @@ async function computeSurface(absTarget, baseDir, explicitEntryPoints, signal) {
 }
 __name(computeSurface, "computeSurface");
 function capToTokens(env, maxTokens) {
-  if (!maxTokens || maxTokens <= 0 || !env.data) return env;
-  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) return env;
+  if (!maxTokens || maxTokens <= 0 || !env.data) {
+    return env;
+  }
+  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) {
+    return env;
+  }
   const data = env.data;
   const trim = /* @__PURE__ */ __name(() => ({
     ...env,
@@ -254686,7 +254766,9 @@ async function handler(rawArgs) {
       execution_ms: elapsed(),
       ...outcome.budget_exceeded || partial2 ? { budget_exceeded: true } : {}
     });
-    if (resolved.warning) env = { ...env, warning: resolved.warning };
+    if (resolved.warning) {
+      env = { ...env, warning: resolved.warning };
+    }
     const maxTokens = args.output?.max_tokens ?? cfg.max_tokens_default;
     env = capToTokens(env, maxTokens);
     return toCallToolResult(env);
@@ -254701,12 +254783,18 @@ var codeSurfaceTool = { definition, handler };
 // packages/intel/src/tools/code_safe_delete.ts
 var fs7 = __toESM(require("node:fs/promises"), 1);
 function identifierAt(text, offset) {
-  if (offset < 0 || offset > text.length) return void 0;
+  if (offset < 0 || offset > text.length) {
+    return void 0;
+  }
   const isWord = /* @__PURE__ */ __name((c) => /[A-Za-z0-9_$]/.test(c), "isWord");
   let start = offset;
-  while (start > 0 && isWord(text[start - 1])) start--;
+  while (start > 0 && isWord(text[start - 1])) {
+    start--;
+  }
   let end = offset;
-  while (end < text.length && isWord(text[end])) end++;
+  while (end < text.length && isWord(text[end])) {
+    end++;
+  }
   const word = text.slice(start, end);
   return word.length > 0 ? word : void 0;
 }
@@ -254781,7 +254869,9 @@ async function handler2(rawArgs) {
         if (isDefinitionRef(ref)) {
           definitionFile = ref.fileName;
           const defSource = program.getSourceFile(ref.fileName);
-          if (defSource) definitionLine = toLineColumn(defSource, ref.textSpan.start).line;
+          if (defSource) {
+            definitionLine = toLineColumn(defSource, ref.textSpan.start).line;
+          }
           break;
         }
       }
@@ -254792,9 +254882,13 @@ async function handler2(rawArgs) {
       const externalReferences = [];
       const selfReferences = [];
       for (const ref of references) {
-        if (isDefinitionRef(ref)) continue;
+        if (isDefinitionRef(ref)) {
+          continue;
+        }
         const refSource = program.getSourceFile(ref.fileName);
-        if (!refSource) continue;
+        if (!refSource) {
+          continue;
+        }
         const { line: refLine, column: refColumn } = toLineColumn(refSource, ref.textSpan.start);
         if (definitionFile && definitionLine !== void 0 && isInSameDeclaration(ref.fileName, refLine, definitionFile, definitionLine)) {
           continue;
@@ -254838,7 +254932,9 @@ async function handler2(rawArgs) {
       execution_ms: elapsed(),
       ...outcome.budget_exceeded ? { budget_exceeded: true } : {}
     });
-    if (resolved.warning) env = { ...env, warning: resolved.warning };
+    if (resolved.warning) {
+      env = { ...env, warning: resolved.warning };
+    }
     return toCallToolResult(env);
   } catch (error2) {
     const message = error2 instanceof Error ? error2.message : String(error2);
@@ -255342,8 +255438,11 @@ var FileStateCache = class _FileStateCache {
     let added = 0;
     let removed = 0;
     for (const line of diff.split("\n")) {
-      if (line.startsWith("+") && !line.startsWith("+++")) added++;
-      else if (line.startsWith("-") && !line.startsWith("---")) removed++;
+      if (line.startsWith("+") && !line.startsWith("+++")) {
+        added++;
+      } else if (line.startsWith("-") && !line.startsWith("---")) {
+        removed++;
+      }
     }
     return { added, removed };
   }
@@ -255351,7 +255450,9 @@ var FileStateCache = class _FileStateCache {
     return createPatch(filePath, oldContent, newContent, "", "", { context: 3 });
   }
   trackMemory(entry, oldBytes) {
-    if (oldBytes !== void 0) this.totalContentBytes -= oldBytes;
+    if (oldBytes !== void 0) {
+      this.totalContentBytes -= oldBytes;
+    }
     this.totalContentBytes += entry.contentBytes;
     while (this.totalContentBytes > this.maxMemoryBytes && this.cache.size > 1) {
       this.evictLRU();
@@ -255525,7 +255626,9 @@ var FileStateCache = class _FileStateCache {
     existing.lastModifiedBy = agentId ?? tool;
     existing.lastModifiedAt = now;
     existing.modificationLog.push({ version: existing.version, agentId, tool, timestamp: now, summary });
-    if (existing.modificationLog.length > 10) existing.modificationLog.shift();
+    if (existing.modificationLog.length > 10) {
+      existing.modificationLog.shift();
+    }
     this.trackMemory(existing, oldBytes);
   }
   invalidate(filePath) {
@@ -255548,7 +255651,9 @@ var FileStateCache = class _FileStateCache {
     const fileStats = Array.from(this.cache.entries()).map(([p, entry]) => ({ path: p, reads: entry.readCount }));
     for (const entry of this.cache.values()) {
       totalReads += entry.readCount;
-      if (entry.readCount > 1) cacheHits += entry.readCount - 1;
+      if (entry.readCount > 1) {
+        cacheHits += entry.readCount - 1;
+      }
     }
     const cacheHitRate = totalReads > 0 ? `${(cacheHits / totalReads * 100).toFixed(1)}%` : "0.0%";
     return {
@@ -255578,12 +255683,18 @@ function parseJsonField(value) {
 }
 __name(parseJsonField, "parseJsonField");
 function ensureArray(value) {
-  if (value === void 0 || value === null) return null;
-  if (Array.isArray(value)) return value;
+  if (value === void 0 || value === null) {
+    return null;
+  }
+  if (Array.isArray(value)) {
+    return value;
+  }
   if (typeof value === "string") {
     try {
       const parsed = JSON.parse(value);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) {
+        return parsed;
+      }
       value = parsed;
     } catch {
       return null;
@@ -255618,8 +255729,12 @@ function resolveStringOrBase64(obj, fieldName) {
       `Multiple input sources provided for '${fieldName}'. Found: ${fieldName}, ${fieldName}_base64. Provide only one.`
     );
   }
-  if (typeof base642 === "string") return decodeBase64(`${fieldName}_base64`, base642);
-  if (typeof direct === "string") return direct;
+  if (typeof base642 === "string") {
+    return decodeBase64(`${fieldName}_base64`, base642);
+  }
+  if (typeof direct === "string") {
+    return direct;
+  }
   return void 0;
 }
 __name(resolveStringOrBase64, "resolveStringOrBase64");
@@ -255641,8 +255756,12 @@ var path10 = __toESM(require("path"), 1);
 var treeSitterRuntime = null;
 var treeSitterLoadFailed = false;
 async function loadTreeSitterRuntime() {
-  if (treeSitterRuntime) return treeSitterRuntime;
-  if (treeSitterLoadFailed) return null;
+  if (treeSitterRuntime) {
+    return treeSitterRuntime;
+  }
+  if (treeSitterLoadFailed) {
+    return null;
+  }
   try {
     const spec = ["web-tree", "sitter"].join("-");
     const mod = await import(spec);
@@ -255677,7 +255796,9 @@ var LANGUAGE_EXTENSIONS = {
 function getLanguageNameForFile(filePath) {
   const ext = path10.extname(filePath);
   for (const [name, exts] of Object.entries(LANGUAGE_EXTENSIONS)) {
-    if (exts.includes(ext)) return name;
+    if (exts.includes(ext)) {
+      return name;
+    }
   }
   return null;
 }
@@ -255692,10 +255813,14 @@ function toRange(node) {
 __name(toRange, "toRange");
 function extractSymbolName(node) {
   const nameNode = node.childForFieldName("name");
-  if (nameNode) return nameNode.text;
+  if (nameNode) {
+    return nameNode.text;
+  }
   for (let i = 0; i < node.childCount; i++) {
     const child = node.child(i);
-    if (child?.type === "identifier" || child?.type === "type_identifier") return child.text;
+    if (child?.type === "identifier" || child?.type === "type_identifier") {
+      return child.text;
+    }
   }
   return null;
 }
@@ -255703,9 +255828,13 @@ __name(extractSymbolName, "extractSymbolName");
 function isDirectlyExported(node) {
   let current = node;
   while (current) {
-    if (current.type === "export_statement" || current.type === "export_declaration") return true;
+    if (current.type === "export_statement" || current.type === "export_declaration") {
+      return true;
+    }
     const firstChild = current.child(0);
-    if (firstChild?.type === "export") return true;
+    if (firstChild?.type === "export") {
+      return true;
+    }
     current = current.parent;
   }
   return false;
@@ -255792,8 +255921,12 @@ __name(mapNodeTypeToKind, "mapNodeTypeToKind");
 function extractSignature(node, maxLength = 200) {
   let text = node.text;
   const braceIndex = text.indexOf("{");
-  if (braceIndex !== -1) text = text.slice(0, braceIndex).trim();
-  if (text.length > maxLength) text = text.slice(0, maxLength) + "...";
+  if (braceIndex !== -1) {
+    text = text.slice(0, braceIndex).trim();
+  }
+  if (text.length > maxLength) {
+    text = text.slice(0, maxLength) + "...";
+  }
   return text;
 }
 __name(extractSignature, "extractSignature");
@@ -255812,7 +255945,9 @@ function candidateWasmDirs() {
 __name(candidateWasmDirs, "candidateWasmDirs");
 var wasmBasePath = null;
 async function findWasmBasePath() {
-  if (wasmBasePath) return wasmBasePath;
+  if (wasmBasePath) {
+    return wasmBasePath;
+  }
   const candidates = candidateWasmDirs();
   for (const dir of candidates) {
     try {
@@ -255844,11 +255979,17 @@ var TreeSitterCore = class {
    *   installed yet — callers surface the standard setup-pointer envelope.
    */
   async init() {
-    if (this.initialized) return;
-    if (this.initPromise) return this.initPromise;
+    if (this.initialized) {
+      return;
+    }
+    if (this.initPromise) {
+      return this.initPromise;
+    }
     this.initPromise = (async () => {
       const runtime = await loadTreeSitterRuntime();
-      if (!runtime) throw new TreeSitterUnavailableError();
+      if (!runtime) {
+        throw new TreeSitterUnavailableError();
+      }
       this.runtime = runtime;
       await runtime.Parser.init();
       this.parser = new runtime.Parser();
@@ -255865,8 +256006,12 @@ var TreeSitterCore = class {
   lastLoadError = null;
   async loadLanguage(langName) {
     const cached3 = this.languages.get(langName);
-    if (cached3) return cached3;
-    if (!this.runtime) return null;
+    if (cached3) {
+      return cached3;
+    }
+    if (!this.runtime) {
+      return null;
+    }
     try {
       const basePath = await findWasmBasePath();
       const wasmPath = path10.join(basePath, `tree-sitter-${langName}.wasm`);
@@ -255883,16 +256028,22 @@ var TreeSitterCore = class {
   async parse(content, filePath) {
     await this.init();
     const langName = getLanguageNameForFile(filePath);
-    if (!langName) throw new Error(`Unsupported file type: ${filePath}`);
+    if (!langName) {
+      throw new Error(`Unsupported file type: ${filePath}`);
+    }
     if (this.currentLanguage !== langName) {
       const lang = await this.loadLanguage(langName);
-      if (!lang) throw new Error(`Language not available: ${langName}. ${this.lastLoadError ?? "WASM grammar not found."}`);
+      if (!lang) {
+        throw new Error(`Language not available: ${langName}. ${this.lastLoadError ?? "WASM grammar not found."}`);
+      }
       this.parser.setLanguage(lang);
       this.currentLanguage = langName;
     }
     this.lastParsedLanguage = langName;
     const tree = this.parser.parse(content);
-    if (!tree) throw new Error(`Tree-sitter failed to parse: ${filePath}`);
+    if (!tree) {
+      throw new Error(`Tree-sitter failed to parse: ${filePath}`);
+    }
     return tree;
   }
   /**
@@ -255904,7 +256055,9 @@ var TreeSitterCore = class {
     const language = getLanguageNameForFile(filePath) ?? this.lastParsedLanguage ?? "typescript";
     const rootNode = tree.rootNode;
     const buildOutline = /* @__PURE__ */ __name((node, topLevel) => {
-      if (!node?.type) return [];
+      if (!node?.type) {
+        return [];
+      }
       const nodes = [];
       const kind = mapNodeTypeToKind(node.type, language);
       if (kind) {
@@ -255917,14 +256070,20 @@ var TreeSitterCore = class {
             end: toPosition(node.endPosition),
             signature: extractSignature(node)
           };
-          if (topLevel) outlineNode.exported = isDirectlyExported(node);
+          if (topLevel) {
+            outlineNode.exported = isDirectlyExported(node);
+          }
           if (kind === "class" || kind === "interface" || kind === "namespace") {
             const children = [];
             for (let i = 0; i < node.childCount; i++) {
               const child = node.child(i);
-              if (child) children.push(...buildOutline(child, false));
+              if (child) {
+                children.push(...buildOutline(child, false));
+              }
             }
-            if (children.length > 0) outlineNode.children = children;
+            if (children.length > 0) {
+              outlineNode.children = children;
+            }
           }
           nodes.push(outlineNode);
           return nodes;
@@ -255932,7 +256091,9 @@ var TreeSitterCore = class {
       }
       for (let i = 0; i < node.childCount; i++) {
         const child = node.child(i);
-        if (child) nodes.push(...buildOutline(child, topLevel));
+        if (child) {
+          nodes.push(...buildOutline(child, topLevel));
+        }
       }
       return nodes;
     }, "buildOutline");
@@ -255949,7 +256110,9 @@ var TreeSitterCore = class {
         }
         for (let i = 0; i < node.childCount; i++) {
           const child = node.child(i);
-          if (child) findEnclosing(child);
+          if (child) {
+            findEnclosing(child);
+          }
         }
       }
     }, "findEnclosing");
@@ -255967,7 +256130,9 @@ var TreeSitterCore = class {
         }
         for (let i = 0; i < node.childCount; i++) {
           const child = node.child(i);
-          if (child) findEnclosing(child);
+          if (child) {
+            findEnclosing(child);
+          }
         }
       }
     }, "findEnclosing");
@@ -255993,7 +256158,9 @@ var EXTENSION_MAP = {
 };
 function getLanguageFromExtension(filePath) {
   const match = filePath.match(/\.[^.]+$/);
-  if (!match) return null;
+  if (!match) {
+    return null;
+  }
   return EXTENSION_MAP[match[0].toLowerCase()] ?? null;
 }
 __name(getLanguageFromExtension, "getLanguageFromExtension");
@@ -256030,7 +256197,9 @@ var MAX_BINARY_PROBE_BYTES = 8192;
 function isBinaryFile(buffer) {
   const checkLength = Math.min(buffer.length, MAX_BINARY_PROBE_BYTES);
   for (let i = 0; i < checkLength; i++) {
-    if (buffer[i] === 0) return true;
+    if (buffer[i] === 0) {
+      return true;
+    }
   }
   return false;
 }
@@ -256046,19 +256215,30 @@ function decodeUtf8Prefix(buf) {
   if (i >= 0) {
     const lead = buf[i];
     let seqLen = 0;
-    if ((lead & 128) === 0) seqLen = 1;
-    else if ((lead & 224) === 192) seqLen = 2;
-    else if ((lead & 240) === 224) seqLen = 3;
-    else if ((lead & 248) === 240) seqLen = 4;
-    if (seqLen > 1 && continuationBytes + 1 < seqLen) end = i;
+    if ((lead & 128) === 0) {
+      seqLen = 1;
+    } else if ((lead & 224) === 192) {
+      seqLen = 2;
+    } else if ((lead & 240) === 224) {
+      seqLen = 3;
+    } else if ((lead & 248) === 240) {
+      seqLen = 4;
+    }
+    if (seqLen > 1 && continuationBytes + 1 < seqLen) {
+      end = i;
+    }
   }
   return buf.subarray(0, end).toString("utf-8");
 }
 __name(decodeUtf8Prefix, "decodeUtf8Prefix");
 function formatTimeAgo(timestamp2) {
   const seconds = Math.max(0, Math.round((Date.now() - timestamp2) / 1e3));
-  if (seconds < 60) return `${seconds}s ago`;
-  if (seconds < 3600) return `${Math.round(seconds / 60)}m ago`;
+  if (seconds < 60) {
+    return `${seconds}s ago`;
+  }
+  if (seconds < 3600) {
+    return `${Math.round(seconds / 60)}m ago`;
+  }
   return `${Math.round(seconds / 3600)}h ago`;
 }
 __name(formatTimeAgo, "formatTimeAgo");
@@ -256123,11 +256303,17 @@ async function readSingleFile(spec, globalExtract, output, defaultRange, workDir
       read_count: lookup2.entry.readCount,
       hash: lookup2.entry.contentHash.substring(0, 8)
     };
-    if (lookup2.previousReadAt !== void 0) result.cache.last_read = formatTimeAgo(lookup2.previousReadAt);
+    if (lookup2.previousReadAt !== void 0) {
+      result.cache.last_read = formatTimeAgo(lookup2.previousReadAt);
+    }
     if (lookup2.status === "modified") {
       result.cache.previous_lines = lookup2.previousLineCount;
-      if (lookup2.changes) result.cache.changes = lookup2.changes;
-      if (lookup2.modifiedBy) result.cache.modified_by = lookup2.modifiedBy;
+      if (lookup2.changes) {
+        result.cache.changes = lookup2.changes;
+      }
+      if (lookup2.modifiedBy) {
+        result.cache.modified_by = lookup2.modifiedBy;
+      }
     }
     return result;
   }
@@ -256178,7 +256364,9 @@ async function readSingleFile(spec, globalExtract, output, defaultRange, workDir
       read_count: lookup.entry.readCount,
       hash: lookup.entry.contentHash.substring(0, 8)
     };
-    if (lookup.previousReadAt !== void 0) result.cache.last_read = formatTimeAgo(lookup.previousReadAt);
+    if (lookup.previousReadAt !== void 0) {
+      result.cache.last_read = formatTimeAgo(lookup.previousReadAt);
+    }
   } else if (!spec.force && lookup.status === "modified") {
     result.cache = {
       status: "modified",
@@ -256247,7 +256435,9 @@ function paginateSingleResult(result, tokenBudget, requestedPage) {
       currentTokens = itemTokens;
     }
   }
-  if (current.length > 0) pages.push(current);
+  if (current.length > 0) {
+    pages.push(current);
+  }
   const totalPages = Math.max(pages.length, 1);
   const pageIndex = Math.min(Math.max(requestedPage, 1), totalPages) - 1;
   const selected = pages[pageIndex] ?? [];
@@ -256256,8 +256446,11 @@ function paginateSingleResult(result, tokenBudget, requestedPage) {
   const tokensUsed = resultCost(pageResult);
   pageResult.token_cost = tokensUsed;
   let warning;
-  if (requestedPage > totalPages) warning = `Requested page ${requestedPage} exceeds total pages (${totalPages}). Showing page ${totalPages} instead.`;
-  else if (requestedPage < 1) warning = `Requested page ${requestedPage} is invalid. Showing page 1 instead.`;
+  if (requestedPage > totalPages) {
+    warning = `Requested page ${requestedPage} exceeds total pages (${totalPages}). Showing page ${totalPages} instead.`;
+  } else if (requestedPage < 1) {
+    warning = `Requested page ${requestedPage} is invalid. Showing page 1 instead.`;
+  }
   return { page: pageResult, meta: { page: pageIndex + 1, total_pages: totalPages, tokens_used: tokensUsed, warning } };
 }
 __name(paginateSingleResult, "paginateSingleResult");
@@ -256288,13 +256481,17 @@ function paginateByTokenBudget(results, tokenBudget, requestedPage) {
       currentCost += cost;
     }
   }
-  if (current.length > 0) pageGroups.push(current);
+  if (current.length > 0) {
+    pageGroups.push(current);
+  }
   const totalPages = pageGroups.length || 1;
   const pageIndex = Math.min(requestedPage, totalPages) - 1;
   const selectedPage = pageGroups[pageIndex] ?? pageGroups[0] ?? [];
   const budgetExceeded = selectedPage.length === 1 && (costs[selectedPage[0]] ?? 0) > tokenBudget;
   let warning;
-  if (requestedPage > totalPages) warning = `Requested page ${requestedPage} exceeds total pages (${totalPages}). Showing page ${totalPages} instead.`;
+  if (requestedPage > totalPages) {
+    warning = `Requested page ${requestedPage} exceeds total pages (${totalPages}). Showing page ${totalPages} instead.`;
+  }
   const selectedSet = new Set(selectedPage);
   const pendingFiles = results.filter((_, i) => !selectedSet.has(i)).map((r) => r.path);
   const tokensUsed = selectedPage.reduce((sum, i) => sum + (costs[i] ?? 0), 0);
@@ -256394,7 +256591,9 @@ async function runCodeRead(args) {
     );
     const results = await Promise.all(fileSpecs.map((spec) => readSingleFile(spec, extract, output, input.default_range, workDir)));
     const pathCounts = /* @__PURE__ */ new Map();
-    for (const r of results) pathCounts.set(r.path, (pathCounts.get(r.path) ?? 0) + 1);
+    for (const r of results) {
+      pathCounts.set(r.path, (pathCounts.get(r.path) ?? 0) + 1);
+    }
     const usedKeys = /* @__PURE__ */ new Set();
     results.forEach((r, i) => {
       let key = r.path;
@@ -256406,7 +256605,9 @@ async function runCodeRead(args) {
       }
       let uniqueKey = key;
       let suffix = 2;
-      while (usedKeys.has(uniqueKey)) uniqueKey = `${key}#${suffix++}`;
+      while (usedKeys.has(uniqueKey)) {
+        uniqueKey = `${key}#${suffix++}`;
+      }
       usedKeys.add(uniqueKey);
       r.result_key = uniqueKey;
     });
@@ -256432,24 +256633,56 @@ async function runCodeRead(args) {
       truncated: anyTruncated,
       total_bytes: paginatedResults.reduce((sum, r) => sum + (r.size_bytes ?? 0), 0)
     };
-    if (paginationMeta) summary.pagination = paginationMeta;
-    if (paginationWarning) summary.warning = paginationWarning;
+    if (paginationMeta) {
+      summary.pagination = paginationMeta;
+    }
+    if (paginationWarning) {
+      summary.warning = paginationWarning;
+    }
     const buildEntry = /* @__PURE__ */ __name((r, verbose) => {
       const entry = { exists: r.exists };
-      if (r.lines !== void 0) entry.lines = r.lines;
-      if (r.outline !== void 0) entry.outline = r.outline;
-      if (r.line_count !== void 0) entry.line_count = r.line_count;
-      if (r.error) entry.error = r.error;
-      if (r.status !== void 0) entry.status = r.status;
-      if (r.truncated) entry.truncated = true;
-      if (r.size_bytes !== void 0) entry.size_bytes = r.size_bytes;
-      if (r.warning) entry.warning = r.warning;
-      if (r.pagination) entry.pagination = r.pagination;
-      if (r.cache) entry.cache = r.cache;
-      if (r.cache_hit !== void 0) entry.cache_hit = r.cache_hit;
-      if (r.probe) entry.probe = true;
-      if (r.metadata) entry.metadata = r.metadata;
-      if (verbose && r.token_cost !== void 0) entry.token_cost = r.token_cost;
+      if (r.lines !== void 0) {
+        entry.lines = r.lines;
+      }
+      if (r.outline !== void 0) {
+        entry.outline = r.outline;
+      }
+      if (r.line_count !== void 0) {
+        entry.line_count = r.line_count;
+      }
+      if (r.error) {
+        entry.error = r.error;
+      }
+      if (r.status !== void 0) {
+        entry.status = r.status;
+      }
+      if (r.truncated) {
+        entry.truncated = true;
+      }
+      if (r.size_bytes !== void 0) {
+        entry.size_bytes = r.size_bytes;
+      }
+      if (r.warning) {
+        entry.warning = r.warning;
+      }
+      if (r.pagination) {
+        entry.pagination = r.pagination;
+      }
+      if (r.cache) {
+        entry.cache = r.cache;
+      }
+      if (r.cache_hit !== void 0) {
+        entry.cache_hit = r.cache_hit;
+      }
+      if (r.probe) {
+        entry.probe = true;
+      }
+      if (r.metadata) {
+        entry.metadata = r.metadata;
+      }
+      if (verbose && r.token_cost !== void 0) {
+        entry.token_cost = r.token_cost;
+      }
       entry.resolved_path = r.resolved_path;
       return entry;
     }, "buildEntry");
@@ -256501,7 +256734,9 @@ async function runCodeRead(args) {
             owner = r;
           }
         }
-        if (!largest || !owner) break;
+        if (!largest || !owner) {
+          break;
+        }
         largest.length = Math.floor(largest.length / 2);
         owner.truncated = true;
         trimmedAny = true;
@@ -256512,14 +256747,20 @@ async function runCodeRead(args) {
         if (dataObj.files) {
           for (const r of paginatedResults) {
             const key = r.result_key ?? r.path;
-            if (r.truncated && dataObj.files[key]) dataObj.files[key].truncated = true;
+            if (r.truncated && dataObj.files[key]) {
+              dataObj.files[key].truncated = true;
+            }
           }
         }
-        if (dataObj.tokens_used !== void 0) dataObj.tokens_used = estimatePayloadTokens(JSON.stringify(paginatedResults));
+        if (dataObj.tokens_used !== void 0) {
+          dataObj.tokens_used = estimatePayloadTokens(JSON.stringify(paginatedResults));
+        }
       }
     }
     const env = successEnvelope(data, { execution_ms: Math.round(performance.now() - start) });
-    if (baseWarning) env.warning = baseWarning;
+    if (baseWarning) {
+      env.warning = baseWarning;
+    }
     return toCallToolResult(env);
   } catch (error2) {
     return toCallToolResult(
@@ -256538,7 +256779,9 @@ var path14 = __toESM(require("path"), 1);
 var import_child_process = require("child_process");
 var cachedRgPath = null;
 function resolveRgPath() {
-  if (cachedRgPath) return cachedRgPath;
+  if (cachedRgPath) {
+    return cachedRgPath;
+  }
   try {
     const mod = require("@vscode/ripgrep");
     cachedRgPath = mod.rgPath;
@@ -256569,8 +256812,12 @@ var RipgrepCore = class {
     if (options.exclude && options.exclude.length > 0) {
       args.push(...options.exclude.flatMap((e) => ["--glob", `!${e}`]));
     }
-    if (options.hidden) args.push("--hidden");
-    if (options.noIgnore) args.push("--no-ignore");
+    if (options.hidden) {
+      args.push("--hidden");
+    }
+    if (options.noIgnore) {
+      args.push("--no-ignore");
+    }
     args.push(options.path);
     try {
       const output = await this.executeRipgrep(args, options.timeoutMs, options.path);
@@ -256581,8 +256828,12 @@ var RipgrepCore = class {
   }
   async filesWithMatches(pattern, searchPath, glob, timeoutMs, hidden) {
     const args = ["--files-with-matches", pattern];
-    if (glob) args.push("--glob", glob);
-    if (hidden) args.push("--hidden");
+    if (glob) {
+      args.push("--glob", glob);
+    }
+    if (hidden) {
+      args.push("--hidden");
+    }
     args.push(searchPath);
     try {
       const output = await this.executeRipgrep(args, timeoutMs, searchPath);
@@ -256594,14 +256845,24 @@ var RipgrepCore = class {
   buildSearchArgs(options) {
     const args = ["--json"];
     args.push(options.pattern);
-    if (options.glob) args.push("--glob", options.glob);
+    if (options.glob) {
+      args.push("--glob", options.glob);
+    }
     if (options.exclude && options.exclude.length > 0) {
       options.exclude.forEach((pattern) => args.push("--glob", `!${pattern}`));
     }
-    if (options.caseInsensitive) args.push("--ignore-case");
-    if (options.wholeWord) args.push("--word-regexp");
-    if (options.multiline) args.push("--multiline");
-    if (options.includeBinary) args.push("--text");
+    if (options.caseInsensitive) {
+      args.push("--ignore-case");
+    }
+    if (options.wholeWord) {
+      args.push("--word-regexp");
+    }
+    if (options.multiline) {
+      args.push("--multiline");
+    }
+    if (options.includeBinary) {
+      args.push("--text");
+    }
     if (options.contextBefore !== void 0 && options.contextBefore > 0) {
       args.push("--before-context", String(options.contextBefore));
     }
@@ -256614,7 +256875,9 @@ var RipgrepCore = class {
     if (options.maxColumns !== void 0 && options.maxColumns > 0) {
       args.push("--max-columns", String(options.maxColumns));
     }
-    if (options.hidden) args.push("--hidden");
+    if (options.hidden) {
+      args.push("--hidden");
+    }
     args.push(options.path);
     return args;
   }
@@ -256684,7 +256947,9 @@ var RipgrepCore = class {
     const records = this.parseJsonOutput(output);
     for (let i = 0; i < records.length; i++) {
       const record2 = records[i];
-      if (record2.type !== "match") continue;
+      if (record2.type !== "match") {
+        continue;
+      }
       const { data } = record2;
       const file = data.path.text;
       const lineNumber = data.line_number;
@@ -256721,8 +256986,12 @@ var RipgrepCore = class {
         matchText: firstSubmatch ? firstSubmatch.match.text : "",
         lineContent
       };
-      if (contextBefore.length > 0) match.contextBefore = contextBefore;
-      if (contextAfter.length > 0) match.contextAfter = contextAfter;
+      if (contextBefore.length > 0) {
+        match.contextBefore = contextBefore;
+      }
+      if (contextAfter.length > 0) {
+        match.contextAfter = contextAfter;
+      }
       matches.push(match);
     }
     let truncated = false;
@@ -256875,13 +257144,21 @@ function generateReplacePreview(files, searchPattern, replaceString) {
   let anyFallback = false;
   for (const fileResult of files) {
     const { file, resolved_path, matches: fileMatches } = fileResult;
-    if (!fileMatches || fileMatches.length === 0) continue;
+    if (!fileMatches || fileMatches.length === 0) {
+      continue;
+    }
     for (const match of fileMatches) {
       const { line, content, highlight } = match;
-      if (!content) continue;
+      if (!content) {
+        continue;
+      }
       const [modifiedContent, warning] = applyReplacement(content, searchPattern, replaceString, highlight);
-      if (modifiedContent === content) continue;
-      if (warning) anyFallback = true;
+      if (modifiedContent === content) {
+        continue;
+      }
+      if (warning) {
+        anyFallback = true;
+      }
       matches.push({
         file,
         resolved_path,
@@ -256903,32 +257180,50 @@ __name(generateReplacePreview, "generateReplacePreview");
 
 // packages/intel/src/lib/grep-ranking.ts
 function scoreExactMatch(matches, pattern) {
-  if (!matches || matches.length === 0) return 0;
+  if (!matches || matches.length === 0) {
+    return 0;
+  }
   for (const match of matches) {
-    if (!match.content) continue;
+    if (!match.content) {
+      continue;
+    }
     if (match.highlight) {
       const [start, end] = match.highlight;
-      if (match.content.substring(start, end) === pattern) return 1;
+      if (match.content.substring(start, end) === pattern) {
+        return 1;
+      }
     }
-    if (match.content.trim() === pattern.trim()) return 1;
+    if (match.content.trim() === pattern.trim()) {
+      return 1;
+    }
   }
   return 0;
 }
 __name(scoreExactMatch, "scoreExactMatch");
 function scoreExported(matches) {
-  if (!matches || matches.length === 0) return 0;
+  if (!matches || matches.length === 0) {
+    return 0;
+  }
   for (const match of matches) {
-    if (!match.content) continue;
+    if (!match.content) {
+      continue;
+    }
     const trimmed = match.content.trim();
-    if (trimmed.startsWith("export ") || trimmed.includes(" export ")) return 1;
+    if (trimmed.startsWith("export ") || trimmed.includes(" export ")) {
+      return 1;
+    }
   }
   return 0;
 }
 __name(scoreExported, "scoreExported");
 function scorePathDepth(filePath) {
   const depth = filePath.split("/").length;
-  if (depth <= 1) return 1;
-  if (depth >= 5) return 0;
+  if (depth <= 1) {
+    return 1;
+  }
+  if (depth >= 5) {
+    return 0;
+  }
   return 1 - (depth - 1) / 4;
 }
 __name(scorePathDepth, "scorePathDepth");
@@ -256949,19 +257244,29 @@ function getFileExtension(filePath) {
 }
 __name(getFileExtension, "getFileExtension");
 function extractAlternationPatterns(pattern) {
-  if (!pattern.includes("|")) return null;
-  if (/[[\]{}()\\]/.test(pattern.replace(/\|/g, ""))) return null;
+  if (!pattern.includes("|")) {
+    return null;
+  }
+  if (/[[\]{}()\\]/.test(pattern.replace(/\|/g, ""))) {
+    return null;
+  }
   const subPatterns = pattern.split("|").map((p) => p.trim()).filter((p) => p.length > 0);
   return subPatterns.length > 1 ? subPatterns : null;
 }
 __name(extractAlternationPatterns, "extractAlternationPatterns");
 function countByPattern(files, subPatterns) {
   const counts = {};
-  for (const pattern of subPatterns) counts[pattern] = 0;
+  for (const pattern of subPatterns) {
+    counts[pattern] = 0;
+  }
   for (const file of files) {
-    if (!file.matches) continue;
+    if (!file.matches) {
+      continue;
+    }
     for (const match of file.matches) {
-      if (!match.content) continue;
+      if (!match.content) {
+        continue;
+      }
       for (const pattern of subPatterns) {
         try {
           if (new RegExp(pattern, "i").test(match.content)) {
@@ -256988,7 +257293,9 @@ function computeStats(files, pattern) {
   }
   for (const file of files) {
     const matchCount = file.match_count ?? file.matches?.length ?? 0;
-    if (matchCount === 0) continue;
+    if (matchCount === 0) {
+      continue;
+    }
     totalFiles++;
     totalMatches += matchCount;
     const dir = path13.dirname(file.file);
@@ -257009,7 +257316,9 @@ function computeStats(files, pattern) {
   };
   if (pattern) {
     const subPatterns = extractAlternationPatterns(pattern);
-    if (subPatterns) result.by_pattern = countByPattern(files, subPatterns);
+    if (subPatterns) {
+      result.by_pattern = countByPattern(files, subPatterns);
+    }
   }
   return result;
 }
@@ -257019,16 +257328,22 @@ __name(computeStats, "computeStats");
 var ripgrepCore2 = new RipgrepCore();
 var treeSitterCore2 = new TreeSitterCore();
 function truncateLine(line, maxLength) {
-  if (!maxLength || line.length <= maxLength) return line;
+  if (!maxLength || line.length <= maxLength) {
+    return line;
+  }
   return line.substring(0, maxLength) + "... [truncated]";
 }
 __name(truncateLine, "truncateLine");
 function splitGlobPattern(globPattern) {
   const match = globPattern.match(/^([^*?[\]{}]+\/)(.*)/);
-  if (!match) return null;
+  if (!match) {
+    return null;
+  }
   const [, literalPrefix, remainingGlob] = match;
   const dir = literalPrefix.replace(/\/$/, "");
-  if (!remainingGlob || !/[*?[\]{}]/.test(remainingGlob)) return null;
+  if (!remainingGlob || !/[*?[\]{}]/.test(remainingGlob)) {
+    return null;
+  }
   return { dir, glob: remainingGlob };
 }
 __name(splitGlobPattern, "splitGlobPattern");
@@ -257038,8 +257353,11 @@ async function transformRipgrepResult(ripgrepResult, output, workDir, caps) {
   for (const match of ripgrepResult.matches) {
     const relativePath = path14.relative(workDir, match.file);
     const existing = byFile.get(relativePath);
-    if (existing) existing.push(match);
-    else byFile.set(relativePath, [match]);
+    if (existing) {
+      existing.push(match);
+    } else {
+      byFile.set(relativePath, [match]);
+    }
   }
   const trueFileCount = byFile.size;
   const trueMatchCount = ripgrepResult.matches.length;
@@ -257068,7 +257386,9 @@ async function transformRipgrepResult(ripgrepResult, output, workDir, caps) {
       match_count: trueMatchCount,
       truncated
     };
-    if (truncated) filesOnlyResult.effective_caps = effectiveCaps;
+    if (truncated) {
+      filesOnlyResult.effective_caps = effectiveCaps;
+    }
     filesOnlyResult.tokens_used = estimatePayloadTokens(JSON.stringify(filesOnlyResult));
     return filesOnlyResult;
   }
@@ -257097,14 +257417,18 @@ async function transformRipgrepResult(ripgrepResult, output, workDir, caps) {
       }
       if (totalTokens >= maxTokens) {
         truncated = true;
-        if (output.max_tokens !== void 0) effectiveCaps.max_tokens = output.max_tokens;
+        if (output.max_tokens !== void 0) {
+          effectiveCaps.max_tokens = output.max_tokens;
+        }
         break outer;
       }
       const grepMatch = { line: match.line, column: match.column };
       if (output.mode === "matches" || output.mode === "context") {
         const originalLine = match.lineContent;
         grepMatch.content = truncateLine(match.lineContent, output.max_line_length);
-        if (grepMatch.content !== originalLine) linesTruncated++;
+        if (grepMatch.content !== originalLine) {
+          linesTruncated++;
+        }
         const matchStart = match.column - 1;
         grepMatch.highlight = [matchStart, matchStart + match.matchText.length];
         totalTokens += estimatePayloadTokens(grepMatch.content);
@@ -257123,7 +257447,9 @@ async function transformRipgrepResult(ripgrepResult, output, workDir, caps) {
               if (start < matchLineIndex) {
                 grepMatch.before = lines.slice(start, matchLineIndex).map((l) => {
                   const t = truncateLine(l, output.max_line_length);
-                  if (t !== l) linesTruncated++;
+                  if (t !== l) {
+                    linesTruncated++;
+                  }
                   return t;
                 });
                 totalTokens += estimatePayloadTokens(grepMatch.before.join("\n"));
@@ -257131,7 +257457,9 @@ async function transformRipgrepResult(ripgrepResult, output, workDir, caps) {
               if (end > matchLineIndex) {
                 grepMatch.after = lines.slice(matchLineIndex + 1, end + 1).map((l) => {
                   const t = truncateLine(l, output.max_line_length);
-                  if (t !== l) linesTruncated++;
+                  if (t !== l) {
+                    linesTruncated++;
+                  }
                   return t;
                 });
                 totalTokens += estimatePayloadTokens(grepMatch.after.join("\n"));
@@ -257141,7 +257469,9 @@ async function transformRipgrepResult(ripgrepResult, output, workDir, caps) {
             if (match.contextBefore) {
               grepMatch.before = match.contextBefore.map((l) => {
                 const t = truncateLine(l, output.max_line_length);
-                if (t !== l) linesTruncated++;
+                if (t !== l) {
+                  linesTruncated++;
+                }
                 return t;
               });
               totalTokens += estimatePayloadTokens(grepMatch.before.join("\n"));
@@ -257149,7 +257479,9 @@ async function transformRipgrepResult(ripgrepResult, output, workDir, caps) {
             if (match.contextAfter) {
               grepMatch.after = match.contextAfter.map((l) => {
                 const t = truncateLine(l, output.max_line_length);
-                if (t !== l) linesTruncated++;
+                if (t !== l) {
+                  linesTruncated++;
+                }
                 return t;
               });
               totalTokens += estimatePayloadTokens(grepMatch.after.join("\n"));
@@ -257159,7 +257491,9 @@ async function transformRipgrepResult(ripgrepResult, output, workDir, caps) {
           if (match.contextBefore) {
             grepMatch.before = match.contextBefore.map((l) => {
               const t = truncateLine(l, output.max_line_length);
-              if (t !== l) linesTruncated++;
+              if (t !== l) {
+                linesTruncated++;
+              }
               return t;
             });
             totalTokens += estimatePayloadTokens(grepMatch.before.join("\n"));
@@ -257167,7 +257501,9 @@ async function transformRipgrepResult(ripgrepResult, output, workDir, caps) {
           if (match.contextAfter) {
             grepMatch.after = match.contextAfter.map((l) => {
               const t = truncateLine(l, output.max_line_length);
-              if (t !== l) linesTruncated++;
+              if (t !== l) {
+                linesTruncated++;
+              }
               return t;
             });
             totalTokens += estimatePayloadTokens(grepMatch.after.join("\n"));
@@ -257179,7 +257515,9 @@ async function transformRipgrepResult(ripgrepResult, output, workDir, caps) {
     }
   }
   const result = { files, file_count: trueFileCount, match_count: trueMatchCount, truncated };
-  if (truncated) result.effective_caps = effectiveCaps;
+  if (truncated) {
+    result.effective_caps = effectiveCaps;
+  }
   if (linesTruncated > 0) {
     result.lines_truncated = linesTruncated;
     result.note = `${linesTruncated} lines truncated to ${output.max_line_length} chars. Omit max_line_length for full content.`;
@@ -257232,7 +257570,9 @@ async function executeQuery(query, output, workDir) {
       negation: negationResult,
       tokens_used: estimatePayloadTokens(JSON.stringify({ files: negationResult.files, negation: negationResult }))
     };
-    if (negationTruncated) negationReturn.effective_caps = { max_results: maxFiles };
+    if (negationTruncated) {
+      negationReturn.effective_caps = { max_results: maxFiles };
+    }
     return negationReturn;
   }
   let searchPath;
@@ -257401,11 +257741,15 @@ async function runCodeGrep(args) {
       const results = await Promise.all(queries.map((q) => executeQuery(q, output, workDir)));
       queries.forEach((q, i) => queryResults[q.id] = results[i]);
     } else {
-      for (const query of queries) queryResults[query.id] = await executeQuery(query, output, workDir);
+      for (const query of queries) {
+        queryResults[query.id] = await executeQuery(query, output, workDir);
+      }
     }
     for (const [queryId, result] of Object.entries(queryResults)) {
       const query = queries.find((q) => q.id === queryId);
-      if (!query) continue;
+      if (!query) {
+        continue;
+      }
       const patternStr = resolveStringOrBase64(query, "pattern") ?? "";
       try {
         if (output.mode === "stats" && result.files) {
@@ -257448,7 +257792,9 @@ async function runCodeGrep(args) {
     for (const result of Object.values(queryResults)) {
       totalFiles += result.file_count ?? 0;
       totalMatches += result.match_count ?? 0;
-      if (result.truncated) anyTruncated = true;
+      if (result.truncated) {
+        anyTruncated = true;
+      }
       cumulativeTokens += result.tokens_used ?? 0;
     }
     const data = {
@@ -257457,7 +257803,9 @@ async function runCodeGrep(args) {
       tokens_used: cumulativeTokens
     };
     const env = successEnvelope(data, { execution_ms: Math.round(performance.now() - start) });
-    if (baseWarning) env.warning = baseWarning;
+    if (baseWarning) {
+      env.warning = baseWarning;
+    }
     return toCallToolResult(env);
   } catch (error2) {
     return toCallToolResult(
@@ -257516,7 +257864,9 @@ async function listCandidateFiles(backend, workDir, patterns, excludePatterns, i
         files: raw.map((f) => typeof f === "string" ? { path: f, stats: null } : { path: f.path, stats: f.stats ?? null })
       };
     }
-    if (!fastGlobUnavailableWarned) fastGlobUnavailableWarned = true;
+    if (!fastGlobUnavailableWarned) {
+      fastGlobUnavailableWarned = true;
+    }
   }
   try {
     const filePaths = await ripgrepCore3.listFiles({
@@ -257710,7 +258060,9 @@ async function runCodeGlob(args, _signal) {
     const results = [];
     let totalSize = 0;
     for (const file of files) {
-      if (totalTokens >= maxTokens) break;
+      if (totalTokens >= maxTokens) {
+        break;
+      }
       const absolutePath = path15.isAbsolute(file.path) ? file.path : path15.resolve(workDir, file.path);
       const relativePath = path15.relative(workDir, absolutePath);
       const result = { path: relativePath, resolved_path: absolutePath };
@@ -257735,10 +258087,16 @@ async function runCodeGlob(args, _signal) {
     const truncatedByTokens = results.length < files.length;
     const truncated = truncatedByMaxFiles || truncatedByTokens;
     const effectiveCaps = {};
-    if (truncatedByMaxFiles) effectiveCaps.max_results = maxFiles;
-    if (truncatedByTokens && rawOutput.max_tokens !== void 0) effectiveCaps.max_tokens = rawOutput.max_tokens;
+    if (truncatedByMaxFiles) {
+      effectiveCaps.max_results = maxFiles;
+    }
+    if (truncatedByTokens && rawOutput.max_tokens !== void 0) {
+      effectiveCaps.max_tokens = rawOutput.max_tokens;
+    }
     const summary = { total_files: totalMatched, returned: results.length, total_size: totalSize, truncated };
-    if (truncated) summary.effective_caps = effectiveCaps;
+    if (truncated) {
+      summary.effective_caps = effectiveCaps;
+    }
     let data = { files: results.map((r) => r.path), summary, tokens_used: totalTokens };
     switch (mode) {
       case "count_only":
@@ -257756,7 +258114,9 @@ async function runCodeGlob(args, _signal) {
     }
     const warningParts = [baseWarning, listed.warning].filter((w) => !!w);
     const env = successEnvelope(data, { execution_ms: Math.round(performance.now() - start) });
-    if (warningParts.length > 0) env.warning = warningParts.join(" ");
+    if (warningParts.length > 0) {
+      env.warning = warningParts.join(" ");
+    }
     return toCallToolResult(env);
   } catch (error2) {
     return toCallToolResult(
@@ -257781,12 +258141,16 @@ var FRAMEWORK_DETECTION_PRIORITY = [
 ];
 function detectFramework(projectPath) {
   const packageJsonPath = path16.join(projectPath, "package.json");
-  if (!fs12.existsSync(packageJsonPath)) return null;
+  if (!fs12.existsSync(packageJsonPath)) {
+    return null;
+  }
   try {
     const packageJson = JSON.parse(fs12.readFileSync(packageJsonPath, "utf-8"));
     const allDeps = { ...packageJson.dependencies, ...packageJson.devDependencies };
     for (const { framework, packageName } of FRAMEWORK_DETECTION_PRIORITY) {
-      if (allDeps[packageName]) return framework;
+      if (allDeps[packageName]) {
+        return framework;
+      }
     }
     return null;
   } catch {
@@ -257832,7 +258196,9 @@ __name(parseExpressFileRoutes, "parseExpressFileRoutes");
 function extractExpressMiddleware(content, startIndex) {
   const middleware = [];
   const routeStart = content.indexOf("(", startIndex);
-  if (routeStart === -1) return middleware;
+  if (routeStart === -1) {
+    return middleware;
+  }
   const lineEnd = content.indexOf("\n", routeStart);
   const routeLine = content.substring(routeStart, lineEnd > -1 ? lineEnd : void 0);
   const middlewarePattern = /,\s*(\w+)(?=\s*,|\s*\(|\s*\))/g;
@@ -257953,7 +258319,9 @@ function parseNextJsPagesRouterFile(content, filePath, resolvedPath) {
   const routes = [];
   const routePath = extractNextJsPagesRoutePath(filePath);
   const defaultExportMatch = /export\s+default\s+(?:async\s+)?function/.exec(content);
-  if (!defaultExportMatch) return routes;
+  if (!defaultExportMatch) {
+    return routes;
+  }
   const line = getLineNumber(content, defaultExportMatch.index);
   const methods = detectPagesRouterMethods(content);
   for (const method of methods) {
@@ -257978,22 +258346,30 @@ function detectPagesRouterMethods(content) {
     { method: "PATCH", pattern: /req\.method\s*===?\s*['"]PATCH['"]|case\s*['"]PATCH['"]/ }
   ];
   for (const { method, pattern } of methodPatterns) {
-    if (pattern.test(content)) methods.push(method);
+    if (pattern.test(content)) {
+      methods.push(method);
+    }
   }
-  if (methods.length === 0) methods.push("GET");
+  if (methods.length === 0) {
+    methods.push("GET");
+  }
   return methods;
 }
 __name(detectPagesRouterMethods, "detectPagesRouterMethods");
 function extractNextJsRoutePath(filePath) {
   let routePath = filePath.replace(/^(src\/)?app/, "").replace(/\/route\.(ts|tsx|js|jsx)$/, "");
-  if (!routePath.startsWith("/")) routePath = "/" + routePath;
+  if (!routePath.startsWith("/")) {
+    routePath = "/" + routePath;
+  }
   return routePath || "/";
 }
 __name(extractNextJsRoutePath, "extractNextJsRoutePath");
 function extractNextJsPagesRoutePath(filePath) {
   let routePath = filePath.replace(/^(src\/)?pages/, "").replace(/\.(ts|tsx|js|jsx)$/, "");
   routePath = routePath.replace(/\/index$/, "") || "/";
-  if (!routePath.startsWith("/")) routePath = "/" + routePath;
+  if (!routePath.startsWith("/")) {
+    routePath = "/" + routePath;
+  }
   return routePath;
 }
 __name(extractNextJsPagesRoutePath, "extractNextJsPagesRoutePath");
@@ -258015,9 +258391,13 @@ async function scanGenericFramework(absTarget, baseDir, parseFile, signal) {
   for (const dir of searchDirs) {
     const files = (await findSourceFiles(dir)).filter((f) => SCAN_EXT.test(f) && !f.endsWith(".d.ts"));
     for (const file of files) {
-      if (signal?.aborted) return routes;
+      if (signal?.aborted) {
+        return routes;
+      }
       const content = await fs13.readFile(file, "utf-8").catch(() => null);
-      if (content === null) continue;
+      if (content === null) {
+        continue;
+      }
       const relativePath = makeRelativePath(file, baseDir);
       routes.push(...parseFile(content, relativePath, file));
     }
@@ -258028,25 +258408,37 @@ __name(scanGenericFramework, "scanGenericFramework");
 async function scanNextJs(absTarget, baseDir, signal) {
   const routes = [];
   for (const dir of [path17.join(absTarget, "src", "app", "api"), path17.join(absTarget, "app", "api")]) {
-    if (!await existsDir(dir)) continue;
+    if (!await existsDir(dir)) {
+      continue;
+    }
     const files = (await findSourceFiles(dir)).filter((f) => /route\.(ts|tsx|js|jsx)$/.test(f));
     for (const file of files) {
-      if (signal?.aborted) return routes;
+      if (signal?.aborted) {
+        return routes;
+      }
       const content = await fs13.readFile(file, "utf-8").catch(() => null);
-      if (content === null) continue;
+      if (content === null) {
+        continue;
+      }
       routes.push(...parseNextJsAppRouterFile(content, makeRelativePath(file, baseDir), file));
     }
     break;
   }
   for (const dir of [path17.join(absTarget, "src", "pages", "api"), path17.join(absTarget, "pages", "api")]) {
-    if (!await existsDir(dir)) continue;
+    if (!await existsDir(dir)) {
+      continue;
+    }
     const files = (await findSourceFiles(dir)).filter(
       (f) => /\.(ts|tsx|js|jsx)$/.test(f) && !/route\.(ts|tsx|js|jsx)$/.test(f)
     );
     for (const file of files) {
-      if (signal?.aborted) return routes;
+      if (signal?.aborted) {
+        return routes;
+      }
       const content = await fs13.readFile(file, "utf-8").catch(() => null);
-      if (content === null) continue;
+      if (content === null) {
+        continue;
+      }
       routes.push(...parseNextJsPagesRouterFile(content, makeRelativePath(file, baseDir), file));
     }
     break;
@@ -258104,8 +258496,12 @@ var definition6 = {
   }
 };
 function capToTokens2(env, maxTokens) {
-  if (!maxTokens || maxTokens <= 0 || !env.data) return env;
-  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) return env;
+  if (!maxTokens || maxTokens <= 0 || !env.data) {
+    return env;
+  }
+  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) {
+    return env;
+  }
   const data = env.data;
   const trim = /* @__PURE__ */ __name(() => ({
     ...env,
@@ -258132,8 +258528,12 @@ async function handler6(rawArgs) {
   const absTarget = resolved.resolved_path;
   try {
     const stat16 = await fs14.stat(absTarget).catch(() => null);
-    if (!stat16) return toCallToolResult(errorEnvelope(`Path not found: ${absTarget}`));
-    if (!stat16.isDirectory()) return toCallToolResult(errorEnvelope(`Path is not a directory: ${absTarget}`));
+    if (!stat16) {
+      return toCallToolResult(errorEnvelope(`Path not found: ${absTarget}`));
+    }
+    if (!stat16.isDirectory()) {
+      return toCallToolResult(errorEnvelope(`Path is not a directory: ${absTarget}`));
+    }
     const frameworkArg = args.framework ?? "auto";
     let framework;
     if (frameworkArg === "auto") {
@@ -258160,7 +258560,9 @@ async function handler6(rawArgs) {
       execution_ms: elapsed(),
       ...outcome.budget_exceeded ? { budget_exceeded: true } : {}
     });
-    if (resolved.warning) env = { ...env, warning: resolved.warning };
+    if (resolved.warning) {
+      env = { ...env, warning: resolved.warning };
+    }
     const maxTokens = args.output?.max_tokens ?? cfg.max_tokens_default;
     env = capToTokens2(env, maxTokens);
     return toCallToolResult(env);
@@ -258226,20 +258628,38 @@ function generateOperationId(method, routePath) {
 __name(generateOperationId, "generateOperationId");
 function extractTag(routePath) {
   const match = routePath.match(/^\/api\/([^/[{]+)/);
-  if (match) return match[1].charAt(0).toUpperCase() + match[1].slice(1);
+  if (match) {
+    return match[1].charAt(0).toUpperCase() + match[1].slice(1);
+  }
   return "Default";
 }
 __name(extractTag, "extractTag");
 function typeToJsonSchema(typeStr) {
   const trimmed = typeStr.trim();
-  if (trimmed === "string") return { type: "string" };
-  if (trimmed === "number") return { type: "number" };
-  if (trimmed === "boolean") return { type: "boolean" };
-  if (trimmed === "null") return { nullable: true };
-  if (trimmed === "undefined") return { nullable: true };
-  if (trimmed === "any" || trimmed === "unknown") return { type: "object", additionalProperties: true };
-  if (trimmed === "void") return {};
-  if (trimmed === "never") return { not: {} };
+  if (trimmed === "string") {
+    return { type: "string" };
+  }
+  if (trimmed === "number") {
+    return { type: "number" };
+  }
+  if (trimmed === "boolean") {
+    return { type: "boolean" };
+  }
+  if (trimmed === "null") {
+    return { nullable: true };
+  }
+  if (trimmed === "undefined") {
+    return { nullable: true };
+  }
+  if (trimmed === "any" || trimmed === "unknown") {
+    return { type: "object", additionalProperties: true };
+  }
+  if (trimmed === "void") {
+    return {};
+  }
+  if (trimmed === "never") {
+    return { not: {} };
+  }
   const arrayMatch = trimmed.match(/^(.+)\[\]$/) || trimmed.match(/^Array<(.+)>$/);
   if (arrayMatch) {
     return { type: "array", items: typeToJsonSchema(arrayMatch[1]) };
@@ -258266,22 +258686,42 @@ function typeToJsonSchema(typeStr) {
     const value = trimmed.slice(1, -1);
     return { type: "string", enum: [value] };
   }
-  if (trimmed === "Date") return { type: "string", format: "date-time" };
+  if (trimmed === "Date") {
+    return { type: "string", format: "date-time" };
+  }
   return { $ref: `#/components/schemas/${trimmed}` };
 }
 __name(typeToJsonSchema, "typeToJsonSchema");
 function generateExample(schema2) {
-  if (schema2.$ref) return { "...": "Reference object" };
-  if (schema2.example !== void 0) return schema2.example;
-  if (schema2.default !== void 0) return schema2.default;
-  if (schema2.enum && schema2.enum.length > 0) return schema2.enum[0];
+  if (schema2.$ref) {
+    return { "...": "Reference object" };
+  }
+  if (schema2.example !== void 0) {
+    return schema2.example;
+  }
+  if (schema2.default !== void 0) {
+    return schema2.default;
+  }
+  if (schema2.enum && schema2.enum.length > 0) {
+    return schema2.enum[0];
+  }
   switch (schema2.type) {
     case "string":
-      if (schema2.format === "date-time") return "2024-01-15T10:30:00Z";
-      if (schema2.format === "date") return "2024-01-15";
-      if (schema2.format === "email") return "user@example.com";
-      if (schema2.format === "uri") return "https://example.com";
-      if (schema2.format === "uuid") return "550e8400-e29b-41d4-a716-446655440000";
+      if (schema2.format === "date-time") {
+        return "2024-01-15T10:30:00Z";
+      }
+      if (schema2.format === "date") {
+        return "2024-01-15";
+      }
+      if (schema2.format === "email") {
+        return "user@example.com";
+      }
+      if (schema2.format === "uri") {
+        return "https://example.com";
+      }
+      if (schema2.format === "uuid") {
+        return "550e8400-e29b-41d4-a716-446655440000";
+      }
       return "string";
     case "number":
     case "integer":
@@ -258291,7 +258731,9 @@ function generateExample(schema2) {
     case "array":
       return schema2.items ? [generateExample(schema2.items)] : [];
     case "object": {
-      if (!schema2.properties) return {};
+      if (!schema2.properties) {
+        return {};
+      }
       const obj = {};
       for (const [key, propSchema] of Object.entries(schema2.properties)) {
         obj[key] = generateExample(propSchema);
@@ -258304,7 +258746,9 @@ function generateExample(schema2) {
 }
 __name(generateExample, "generateExample");
 function createDefaultRequestSchema(method) {
-  if (["GET", "DELETE", "HEAD", "OPTIONS"].includes(method)) return null;
+  if (["GET", "DELETE", "HEAD", "OPTIONS"].includes(method)) {
+    return null;
+  }
   return {
     type: "object",
     properties: {},
@@ -258330,9 +258774,11 @@ function containsTopLevelUnion(typeStr) {
   let depth = 0;
   for (let i = 0; i < typeStr.length - 2; i++) {
     const ch = typeStr[i];
-    if (ch === "<" || ch === "{" || ch === "(") depth++;
-    else if (ch === ">" || ch === "}" || ch === ")") depth--;
-    else if (depth === 0 && typeStr[i] === " " && typeStr[i + 1] === "|" && typeStr[i + 2] === " ") {
+    if (ch === "<" || ch === "{" || ch === "(") {
+      depth++;
+    } else if (ch === ">" || ch === "}" || ch === ")") {
+      depth--;
+    } else if (depth === 0 && typeStr[i] === " " && typeStr[i + 1] === "|" && typeStr[i + 2] === " ") {
       return true;
     }
   }
@@ -258345,9 +258791,11 @@ function splitUnionAtTopLevel(typeStr) {
   let start = 0;
   for (let i = 0; i < typeStr.length; i++) {
     const ch = typeStr[i];
-    if (ch === "<" || ch === "{" || ch === "(") depth++;
-    else if (ch === ">" || ch === "}" || ch === ")") depth--;
-    else if (depth === 0 && typeStr.slice(i, i + 3) === " | ") {
+    if (ch === "<" || ch === "{" || ch === "(") {
+      depth++;
+    } else if (ch === ">" || ch === "}" || ch === ")") {
+      depth--;
+    } else if (depth === 0 && typeStr.slice(i, i + 3) === " | ") {
       parts.push(typeStr.slice(start, i).trim());
       i += 2;
       start = i + 1;
@@ -258382,13 +258830,17 @@ function parseHandlerTypes(absoluteFilePath) {
     if (requestInterfaceMatch && requestInterfaceMatch.index !== void 0) {
       const bodyStart = content.indexOf("{", requestInterfaceMatch.index);
       const body = extractBracketBody(content, bodyStart);
-      if (body !== null) requestSchema = parseInterfaceToSchema(body, requestInterfaceMatch[1]);
+      if (body !== null) {
+        requestSchema = parseInterfaceToSchema(body, requestInterfaceMatch[1]);
+      }
     }
     const responseInterfaceMatch = content.match(/interface\s+(\w+Response)\s*\{/);
     if (responseInterfaceMatch && responseInterfaceMatch.index !== void 0) {
       const bodyStart = content.indexOf("{", responseInterfaceMatch.index);
       const body = extractBracketBody(content, bodyStart);
-      if (body !== null) responseSchema = parseInterfaceToSchema(body, responseInterfaceMatch[1]);
+      if (body !== null) {
+        responseSchema = parseInterfaceToSchema(body, responseInterfaceMatch[1]);
+      }
     }
     const nextResponseMatch = content.match(/return\s+(?:NextResponse\.json|Response\.json)\s*\(\s*\{([^}]+)\}/);
     if (nextResponseMatch && !responseSchema) {
@@ -258401,13 +258853,18 @@ function parseHandlerTypes(absoluteFilePath) {
 }
 __name(parseHandlerTypes, "parseHandlerTypes");
 function extractBracketBody(content, startIndex) {
-  if (content[startIndex] !== "{") return null;
+  if (content[startIndex] !== "{") {
+    return null;
+  }
   let depth = 0;
   for (let i = startIndex; i < content.length; i++) {
-    if (content[i] === "{") depth++;
-    else if (content[i] === "}") {
+    if (content[i] === "{") {
+      depth++;
+    } else if (content[i] === "}") {
       depth--;
-      if (depth === 0) return content.slice(startIndex + 1, i);
+      if (depth === 0) {
+        return content.slice(startIndex + 1, i);
+      }
     }
   }
   return null;
@@ -258423,7 +258880,9 @@ function parseInterfaceToSchema(interfaceBody, name) {
     const isOptional = match[2] === "?";
     const propType = match[3].trim();
     properties[propName] = typeToJsonSchema(propType);
-    if (!isOptional) required2.push(propName);
+    if (!isOptional) {
+      required2.push(propName);
+    }
   }
   return {
     type: "object",
@@ -258484,7 +258943,9 @@ function buildSpec(routes, args, pkg, baseDir) {
     components: { schemas: {} },
     tags: []
   };
-  if (args.server_url) spec.servers = [{ url: args.server_url }];
+  if (args.server_url) {
+    spec.servers = [{ url: args.server_url }];
+  }
   const includeExamples = args.include_examples !== false;
   const tagSet = /* @__PURE__ */ new Set();
   const routesByPath = {};
@@ -258528,7 +258989,9 @@ function buildSpec(routes, args, pkg, baseDir) {
         }
       };
       const pathParams = extractPathParameters(route.path);
-      if (pathParams.length > 0) operation.parameters = pathParams;
+      if (pathParams.length > 0) {
+        operation.parameters = pathParams;
+      }
       const defaultRequestSchema = createDefaultRequestSchema(route.method);
       const finalRequestSchema = requestSchema || defaultRequestSchema;
       if (finalRequestSchema) {
@@ -258571,8 +259034,12 @@ async function handler7(rawArgs) {
   const absTarget = resolved.resolved_path;
   try {
     const stat16 = await fs16.stat(absTarget).catch(() => null);
-    if (!stat16) return toCallToolResult(errorEnvelope(`Path not found: ${absTarget}`));
-    if (!stat16.isDirectory()) return toCallToolResult(errorEnvelope(`Path is not a directory: ${absTarget}`));
+    if (!stat16) {
+      return toCallToolResult(errorEnvelope(`Path not found: ${absTarget}`));
+    }
+    if (!stat16.isDirectory()) {
+      return toCallToolResult(errorEnvelope(`Path is not a directory: ${absTarget}`));
+    }
     const frameworkArg = args.framework ?? "auto";
     let framework;
     if (frameworkArg === "auto") {
@@ -258630,7 +259097,9 @@ async function handler7(rawArgs) {
       execution_ms: elapsed(),
       ...outcome.budget_exceeded ? { budget_exceeded: true } : {}
     });
-    if (resolved.warning) env = { ...env, warning: resolved.warning };
+    if (resolved.warning) {
+      env = { ...env, warning: resolved.warning };
+    }
     return toCallToolResult(env);
   } catch (error2) {
     const message = error2 instanceof Error ? error2.message : String(error2);
@@ -258654,7 +259123,9 @@ function extractParamNames(openApiPath) {
   const names = [];
   const re = /\{([^}]+)\}/g;
   let m;
-  while ((m = re.exec(openApiPath)) !== null) names.push(m[1]);
+  while ((m = re.exec(openApiPath)) !== null) {
+    names.push(m[1]);
+  }
   return names;
 }
 __name(extractParamNames, "extractParamNames");
@@ -258675,7 +259146,9 @@ function validateRoutesAgainstSpec(routes, spec) {
     }
     const item = pathItem;
     for (const method of METHODS) {
-      if (item[method]) methodMap.set(method.toUpperCase(), { specPath, params });
+      if (item[method]) {
+        methodMap.set(method.toUpperCase(), { specPath, params });
+      }
     }
   }
   const routeEntries = /* @__PURE__ */ new Map();
@@ -258835,7 +259308,9 @@ async function handler8(rawArgs) {
       return sum + ["get", "post", "put", "patch", "delete", "head", "options"].filter((m) => rec[m]).length;
     }, 0);
     const byType = {};
-    for (const issue2 of issues) byType[issue2.type] = (byType[issue2.type] ?? 0) + 1;
+    for (const issue2 of issues) {
+      byType[issue2.type] = (byType[issue2.type] ?? 0) + 1;
+    }
     const data = {
       valid: issues.length === 0,
       framework,
@@ -258849,7 +259324,9 @@ async function handler8(rawArgs) {
       execution_ms: elapsed(),
       ...outcome.budget_exceeded ? { budget_exceeded: true } : {}
     });
-    if (targetResolved.warning) env = { ...env, warning: targetResolved.warning };
+    if (targetResolved.warning) {
+      env = { ...env, warning: targetResolved.warning };
+    }
     return toCallToolResult(env);
   } catch (error2) {
     const message = error2 instanceof Error ? error2.message : String(error2);
@@ -258880,16 +259357,22 @@ function parsePrismaSchema(content, resolvedPath) {
     const indexes = [];
     for (const line of modelBody.split("\n")) {
       const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("//") || trimmed.startsWith("@@")) continue;
+      if (!trimmed || trimmed.startsWith("//") || trimmed.startsWith("@@")) {
+        continue;
+      }
       const fieldMatch = /^(\w+)\s+(\w+)(.*)$/.exec(trimmed);
       if (fieldMatch) {
         const [, fieldName, fieldType, rawRest] = fieldMatch;
         const rest = rawRest.trim();
         const isArray = rest.startsWith("[]");
         let cleanRest = rest;
-        if (isArray) cleanRest = cleanRest.slice(2).trim();
+        if (isArray) {
+          cleanRest = cleanRest.slice(2).trim();
+        }
         const nullable2 = isArray ? false : rest.startsWith("?");
-        if (nullable2) cleanRest = cleanRest.slice(1).trim();
+        if (nullable2) {
+          cleanRest = cleanRest.slice(1).trim();
+        }
         const isRelation = /^[A-Z]/.test(fieldType) && !prismaScalars.includes(fieldType);
         if (isRelation) {
           const relationMatch = cleanRest.match(/@relation\s*\([^)]*fields:\s*\[([^\]]+)\][^)]*references:\s*\[([^\]]+)\]/);
@@ -258924,7 +259407,9 @@ function parsePrismaSchema(content, resolvedPath) {
             const relationField = modelBody.match(new RegExp(`(\\w+)\\s+\\w+.*@relation.*fields:\\s*\\[${fieldName}\\]`));
             if (relationField) {
               const targetModel = modelBody.match(new RegExp(`${relationField[1]}\\s+(\\w+)`))?.[1];
-              if (targetModel) references = { table: targetModel, column: referencedColumn };
+              if (targetModel) {
+                references = { table: targetModel, column: referencedColumn };
+              }
             }
           }
           columns.push({ name: fieldName, type: fieldType, nullable: nullable2, primary_key: isPrimary, references });
@@ -258947,7 +259432,9 @@ function parsePrismaSchema(content, resolvedPath) {
       const pkColumns = compositeIdMatch[1].split(",").map((c) => c.trim());
       for (const pkCol of pkColumns) {
         const col = columns.find((c) => c.name === pkCol);
-        if (col) col.primary_key = true;
+        if (col) {
+          col.primary_key = true;
+        }
       }
     }
     tables.push({ name: modelName, columns, indexes });
@@ -259009,14 +259496,18 @@ function parseDrizzleSchema(content, resolvedPath) {
       const fromCol = oneMatch[2]?.trim() || "id";
       const toCol = oneMatch[3]?.trim() || "id";
       const exists = relations.some((r) => r.from_table === tableName && r.to_table === targetTable && r.from_column === fromCol);
-      if (!exists) relations.push({ from_table: tableName, from_column: fromCol, to_table: targetTable, to_column: toCol, type: "one-to-one" });
+      if (!exists) {
+        relations.push({ from_table: tableName, from_column: fromCol, to_table: targetTable, to_column: toCol, type: "one-to-one" });
+      }
     }
     const manyRegex = /many\s*\(\s*(\w+)\s*(?:,\s*\{[^}]*\})?/g;
     let manyMatch;
     while ((manyMatch = manyRegex.exec(relBlock)) !== null) {
       const targetTable = manyMatch[1];
       const exists = relations.some((r) => r.from_table === tableName && r.to_table === targetTable);
-      if (!exists) relations.push({ from_table: tableName, from_column: "id", to_table: targetTable, to_column: `${tableName}Id`, type: "one-to-many" });
+      if (!exists) {
+        relations.push({ from_table: tableName, from_column: "id", to_table: targetTable, to_column: `${tableName}Id`, type: "one-to-many" });
+      }
     }
   }
   return { source: "drizzle", tables, relations, raw_path: resolvedPath };
@@ -259038,16 +259529,23 @@ function parseSqlSchema(content, resolvedPath) {
     let parenDepth = 0;
     for (let i = 0; i < columnsBlock.length; i++) {
       const char = columnsBlock[i];
-      if (char === "(") parenDepth++;
-      else if (char === ")") parenDepth--;
+      if (char === "(") {
+        parenDepth++;
+      } else if (char === ")") {
+        parenDepth--;
+      }
       if (char === "," && parenDepth === 0) {
-        if (currentLine.trim()) lines.push(currentLine.trim());
+        if (currentLine.trim()) {
+          lines.push(currentLine.trim());
+        }
         currentLine = "";
       } else {
         currentLine += char;
       }
     }
-    if (currentLine.trim()) lines.push(currentLine.trim());
+    if (currentLine.trim()) {
+      lines.push(currentLine.trim());
+    }
     for (const line of lines) {
       const normalizedLine = line.replace(/\s+/g, " ").trim();
       if (/^(CONSTRAINT|PRIMARY|UNIQUE|CHECK|FOREIGN|INDEX|KEY)\b/i.test(normalizedLine)) {
@@ -259059,7 +259557,9 @@ function parseSqlSchema(content, resolvedPath) {
           const toTable = fkMatch[3];
           const toCol = fkMatch[4];
           const col = columns.find((c) => c.name === fromCol);
-          if (col) col.references = { table: toTable, column: toCol };
+          if (col) {
+            col.references = { table: toTable, column: toCol };
+          }
           relations.push({ from_table: tableName, from_column: fromCol, to_table: toTable, to_column: toCol, type: "one-to-many" });
         }
         const uniqueMatch = normalizedLine.match(
@@ -259103,7 +259603,9 @@ function parseSqlSchema(content, resolvedPath) {
     const [, isUnique, idxName, tblName, colsStr] = match;
     const idxCols = colsStr.split(",").map((c) => c.trim().replace(/[`"']/g, ""));
     const table = tables.find((t) => t.name === tblName);
-    if (table) table.indexes.push({ name: idxName, columns: idxCols, unique: !!isUnique });
+    if (table) {
+      table.indexes.push({ name: idxName, columns: idxCols, unique: !!isUnique });
+    }
   }
   return { source: "sql", tables, relations, raw_path: resolvedPath };
 }
@@ -259126,7 +259628,9 @@ async function discoverSchema(projectPath, source) {
       const content = await fs18.readFile(prismaPath, "utf-8");
       return parsePrismaSchema(content, prismaPath);
     }
-    if (source === "prisma") return null;
+    if (source === "prisma") {
+      return null;
+    }
   }
   if (source === "drizzle" || source === "auto") {
     const drizzleCandidates = [
@@ -259144,7 +259648,9 @@ async function discoverSchema(projectPath, source) {
     }
     const globDirs = [path20.join(projectPath, "drizzle"), path20.join(projectPath, "src", "db"), path20.join(projectPath, "db")];
     for (const dir of globDirs) {
-      if (!await fileExists(dir)) continue;
+      if (!await fileExists(dir)) {
+        continue;
+      }
       const entries = await fs18.readdir(dir).catch(() => []);
       const found = entries.filter((f) => f.endsWith(".schema.ts")).sort()[0];
       if (found) {
@@ -259153,7 +259659,9 @@ async function discoverSchema(projectPath, source) {
         return parseDrizzleSchema(content, p);
       }
     }
-    if (source === "drizzle") return null;
+    if (source === "drizzle") {
+      return null;
+    }
   }
   if (source === "sql" || source === "auto") {
     const sqlCandidates = [
@@ -259234,38 +259742,56 @@ __name(fileUsesPrisma, "fileUsesPrisma");
 function hasRelationInclusion(node, sourceFile) {
   for (const arg of node.arguments) {
     const text = arg.getText(sourceFile);
-    if (text.includes("include:") || text.includes("include :")) return true;
-    if (text.includes("select:") && text.includes(": {")) return true;
+    if (text.includes("include:") || text.includes("include :")) {
+      return true;
+    }
+    if (text.includes("select:") && text.includes(": {")) {
+      return true;
+    }
   }
   return false;
 }
 __name(hasRelationInclusion, "hasRelationInclusion");
 function extractModelFromPrismaCall(node, sourceFile) {
   const expr = node.expression;
-  if (!import_typescript8.default.isPropertyAccessExpression(expr)) return null;
+  if (!import_typescript8.default.isPropertyAccessExpression(expr)) {
+    return null;
+  }
   const operation = expr.name.getText(sourceFile);
-  if (!PRISMA_OPERATIONS.includes(operation)) return null;
+  if (!PRISMA_OPERATIONS.includes(operation)) {
+    return null;
+  }
   const modelAccess = expr.expression;
-  if (!import_typescript8.default.isPropertyAccessExpression(modelAccess)) return null;
+  if (!import_typescript8.default.isPropertyAccessExpression(modelAccess)) {
+    return null;
+  }
   const model = modelAccess.name.getText(sourceFile);
   const clientExpr = modelAccess.expression;
   const clientText = clientExpr.getText(sourceFile);
   const validClients = ["prisma", "db", "client", "this.prisma", "this.db", "ctx.prisma", "ctx.db"];
   const isValidClient = validClients.some((c) => clientText === c || clientText.endsWith("." + c.split(".").pop()));
-  if (!isValidClient) return null;
+  if (!isValidClient) {
+    return null;
+  }
   return { model, operation };
 }
 __name(extractModelFromPrismaCall, "extractModelFromPrismaCall");
 function isInsideLoop(node, sourceFile) {
   let current = node.parent;
   while (current) {
-    if (import_typescript8.default.isForStatement(current) || import_typescript8.default.isForInStatement(current) || import_typescript8.default.isForOfStatement(current)) return true;
-    if (import_typescript8.default.isWhileStatement(current) || import_typescript8.default.isDoStatement(current)) return true;
+    if (import_typescript8.default.isForStatement(current) || import_typescript8.default.isForInStatement(current) || import_typescript8.default.isForOfStatement(current)) {
+      return true;
+    }
+    if (import_typescript8.default.isWhileStatement(current) || import_typescript8.default.isDoStatement(current)) {
+      return true;
+    }
     if (import_typescript8.default.isCallExpression(current)) {
       const callExpr = current.expression;
       if (import_typescript8.default.isPropertyAccessExpression(callExpr)) {
         const methodName = callExpr.name.getText(sourceFile);
-        if (LOOP_KEYWORDS.includes(methodName)) return true;
+        if (LOOP_KEYWORDS.includes(methodName)) {
+          return true;
+        }
       }
     }
     current = current.parent;
@@ -259277,9 +259803,13 @@ async function scanPrismaUsage(baseDir, signal) {
   const allFiles = (await findSourceFiles(baseDir)).filter((f) => SCAN_EXT2.test(f) && !f.endsWith(".d.ts"));
   const candidateFiles = [];
   for (const file of allFiles) {
-    if (signal?.aborted) break;
+    if (signal?.aborted) {
+      break;
+    }
     const content = await fs19.readFile(file, "utf-8").catch(() => null);
-    if (content !== null && fileUsesPrisma(content)) candidateFiles.push(file);
+    if (content !== null && fileUsesPrisma(content)) {
+      candidateFiles.push(file);
+    }
   }
   if (candidateFiles.length === 0 || signal?.aborted) {
     return { call_sites: [], frequency: [] };
@@ -259289,9 +259819,13 @@ async function scanPrismaUsage(baseDir, signal) {
   const callSites = [];
   const modelCounts = /* @__PURE__ */ new Map();
   for (const file of candidateFiles) {
-    if (signal?.aborted) break;
+    if (signal?.aborted) {
+      break;
+    }
     const sourceFile = program.getSourceFile(toTsPath(file));
-    if (!sourceFile) continue;
+    if (!sourceFile) {
+      continue;
+    }
     const relativePath = makeRelativePath(file, baseDir);
     const visit = /* @__PURE__ */ __name((node) => {
       if (import_typescript8.default.isCallExpression(node)) {
@@ -259353,8 +259887,12 @@ var definition9 = {
   }
 };
 function capToTokens3(env, maxTokens) {
-  if (!maxTokens || maxTokens <= 0 || !env.data) return env;
-  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) return env;
+  if (!maxTokens || maxTokens <= 0 || !env.data) {
+    return env;
+  }
+  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) {
+    return env;
+  }
   const data = env.data;
   const trim = /* @__PURE__ */ __name(() => ({
     ...env,
@@ -259434,11 +259972,15 @@ function getSourceFile(absPath) {
 __name(getSourceFile, "getSourceFile");
 function getSourceFiles(absPaths) {
   const out = /* @__PURE__ */ new Map();
-  if (absPaths.length === 0) return out;
+  if (absPaths.length === 0) {
+    return out;
+  }
   const { program } = getCompilerHost().getServiceForFiles(absPaths);
   for (const abs of absPaths) {
     const sf = program.getSourceFile(toTsPath(abs));
-    if (sf) out.set(abs, sf);
+    if (sf) {
+      out.set(abs, sf);
+    }
   }
   return out;
 }
@@ -259459,7 +260001,7 @@ var HOC_WRAPPING_CALLEE = /* @__PURE__ */ new Set([
   ...FORWARD_REF_CALLEE,
   ...LAZY_CALLEE
 ]);
-function containsJsxReturn(node, sourceFile) {
+function containsJsxReturn(node, _sourceFile) {
   let hasJsx = false;
   function visit(n) {
     if (import_typescript9.default.isJsxElement(n) || import_typescript9.default.isJsxSelfClosingElement(n) || import_typescript9.default.isJsxFragment(n)) {
@@ -259579,27 +260121,47 @@ function unwrapHocCall(callExpr, sourceFile) {
 }
 __name(unwrapHocCall, "unwrapHocCall");
 function detectHocWrappedComponent(decl, sourceFile) {
-  if (!decl.initializer || !import_typescript10.default.isCallExpression(decl.initializer)) return null;
-  if (!import_typescript10.default.isIdentifier(decl.name)) return null;
+  if (!decl.initializer || !import_typescript10.default.isCallExpression(decl.initializer)) {
+    return null;
+  }
+  if (!import_typescript10.default.isIdentifier(decl.name)) {
+    return null;
+  }
   const varName = decl.name.getText(sourceFile);
-  if (!/^[A-Z]/.test(varName)) return null;
+  if (!/^[A-Z]/.test(varName)) {
+    return null;
+  }
   const unwrapped = unwrapHocCall(decl.initializer, sourceFile);
-  if (unwrapped.wrappers.length === 0) return null;
+  if (unwrapped.wrappers.length === 0) {
+    return null;
+  }
   if (!unwrapped.isLazy && !unwrapped.hoistedComponent) {
-    if (!unwrapped.innerFn) return null;
-    if (!containsJsxReturn(unwrapped.innerFn, sourceFile)) return null;
+    if (!unwrapped.innerFn) {
+      return null;
+    }
+    if (!containsJsxReturn(unwrapped.innerFn, sourceFile)) {
+      return null;
+    }
   }
   return unwrapped;
 }
 __name(detectHocWrappedComponent, "detectHocWrappedComponent");
 function detectDefaultExportHoc(node, sourceFile) {
   const expr = node.expression;
-  if (!import_typescript10.default.isCallExpression(expr)) return null;
+  if (!import_typescript10.default.isCallExpression(expr)) {
+    return null;
+  }
   const unwrapped = unwrapHocCall(expr, sourceFile);
-  if (unwrapped.wrappers.length === 0) return null;
+  if (unwrapped.wrappers.length === 0) {
+    return null;
+  }
   if (!unwrapped.isLazy && !unwrapped.hoistedComponent) {
-    if (!unwrapped.innerFn) return null;
-    if (!containsJsxReturn(unwrapped.innerFn, sourceFile)) return null;
+    if (!unwrapped.innerFn) {
+      return null;
+    }
+    if (!containsJsxReturn(unwrapped.innerFn, sourceFile)) {
+      return null;
+    }
   }
   const name = unwrapped.hoistedComponent ?? "DefaultExport";
   return { name, unwrapped };
@@ -259627,7 +260189,9 @@ function findUsedComponents(node, sourceFile) {
 __name(findUsedComponents, "findUsedComponents");
 function buildUsedByRelationships(components) {
   const componentMap = /* @__PURE__ */ new Map();
-  for (const comp of components) componentMap.set(comp.name, comp);
+  for (const comp of components) {
+    componentMap.set(comp.name, comp);
+  }
   for (const comp of components) {
     for (const usedName of comp.uses) {
       const usedComp = componentMap.get(usedName);
@@ -259639,14 +260203,20 @@ function buildUsedByRelationships(components) {
 }
 __name(buildUsedByRelationships, "buildUsedByRelationships");
 function buildTree(rootName, components, depth, visited = /* @__PURE__ */ new Set()) {
-  if (depth <= 0 || visited.has(rootName)) return null;
+  if (depth <= 0 || visited.has(rootName)) {
+    return null;
+  }
   const component = components.find((c) => c.name === rootName);
-  if (!component) return null;
+  if (!component) {
+    return null;
+  }
   visited.add(rootName);
   const children = [];
   for (const childName of component.uses) {
     const childNode = buildTree(childName, components, depth - 1, new Set(visited));
-    if (childNode) children.push(childNode);
+    if (childNode) {
+      children.push(childNode);
+    }
   }
   return {
     name: component.name,
@@ -259663,10 +260233,14 @@ function findRootComponents(components) {
   const priorityNames = ["App", "Main", "Root", "Application", "Layout"];
   for (const name of priorityNames) {
     const comp = components.find((c) => c.name === name);
-    if (comp) return [comp.name];
+    if (comp) {
+      return [comp.name];
+    }
   }
   const rootCandidates = components.filter((c) => c.used_by.length === 0);
-  if (rootCandidates.length > 0) return rootCandidates.map((c) => c.name);
+  if (rootCandidates.length > 0) {
+    return rootCandidates.map((c) => c.name);
+  }
   return components.length > 0 ? [components[0].name] : [];
 }
 __name(findRootComponents, "findRootComponents");
@@ -259773,15 +260347,21 @@ function findComponentFiles(absoluteDir) {
   const files = [];
   const extensions = [".tsx", ".jsx"];
   function walk(dir) {
-    if (!fs21.existsSync(dir)) return;
+    if (!fs21.existsSync(dir)) {
+      return;
+    }
     const entries = fs21.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
       const fullPath = path21.join(dir, entry.name);
       if (entry.isDirectory()) {
-        if (["node_modules", ".git", "dist", "build", ".next", "coverage"].includes(entry.name)) continue;
+        if (["node_modules", ".git", "dist", "build", ".next", "coverage"].includes(entry.name)) {
+          continue;
+        }
         walk(fullPath);
       } else if (entry.isFile()) {
-        if (extensions.includes(path21.extname(entry.name))) files.push(fullPath);
+        if (extensions.includes(path21.extname(entry.name))) {
+          files.push(fullPath);
+        }
       }
     }
   }
@@ -259813,7 +260393,9 @@ function analyzeFile(sourceFile, relativePath, resolvedPath, nodeIndex) {
           }
         }
         detectedNames.add(name);
-        if (nodeIndex && !nodeIndex.has(name)) nodeIndex.set(name, { sourceFile, node });
+        if (nodeIndex && !nodeIndex.has(name)) {
+          nodeIndex.set(name, { sourceFile, node });
+        }
         components.push({
           name,
           file: relativePath,
@@ -259833,7 +260415,9 @@ function analyzeFile(sourceFile, relativePath, resolvedPath, nodeIndex) {
         const { name, unwrapped } = detected;
         if (!detectedNames.has(name)) {
           detectedNames.add(name);
-          if (nodeIndex && !nodeIndex.has(name)) nodeIndex.set(name, { sourceFile, node });
+          if (nodeIndex && !nodeIndex.has(name)) {
+            nodeIndex.set(name, { sourceFile, node });
+          }
           components.push({
             name,
             file: relativePath,
@@ -259861,7 +260445,9 @@ var import_typescript13 = __toESM(require_typescript(), 1);
 function baseIdentifier(expr, sourceFile) {
   let cur = expr;
   for (; ; ) {
-    if (import_typescript13.default.isIdentifier(cur)) return cur.getText(sourceFile);
+    if (import_typescript13.default.isIdentifier(cur)) {
+      return cur.getText(sourceFile);
+    }
     if (import_typescript13.default.isPropertyAccessExpression(cur)) {
       cur = cur.expression;
       continue;
@@ -259894,7 +260480,9 @@ function collectStateVars(componentNode, sourceFile) {
         if (elements.length >= 2 && import_typescript13.default.isBindingElement(elements[1]) && import_typescript13.default.isIdentifier(elements[1].name)) {
           setter = elements[1].name.getText(sourceFile);
         }
-        if (name) vars.push({ name, kind: fnName === "useState" ? "useState" : "useReducer", setter });
+        if (name) {
+          vars.push({ name, kind: fnName === "useState" ? "useState" : "useReducer", setter });
+        }
       }
       if (fnName === "useRef" && import_typescript13.default.isVariableDeclaration(parent) && import_typescript13.default.isIdentifier(parent.name)) {
         vars.push({ name: parent.name.getText(sourceFile), kind: "useRef" });
@@ -259909,12 +260497,16 @@ function collectStateVars(componentNode, sourceFile) {
 __name(collectStateVars, "collectStateVars");
 function annotateState(componentNode, sourceFile) {
   const stateVars = collectStateVars(componentNode, sourceFile);
-  if (stateVars.length === 0) return [];
+  if (stateVars.length === 0) {
+    return [];
+  }
   const byIdentifier = /* @__PURE__ */ new Map();
   const annotations = stateVars.map((v) => {
     const ann = { name: v.name, kind: v.kind, flows_to: [] };
     byIdentifier.set(v.name, ann);
-    if (v.setter) byIdentifier.set(v.setter, ann);
+    if (v.setter) {
+      byIdentifier.set(v.setter, ann);
+    }
     return ann;
   });
   function visit(node) {
@@ -259962,10 +260554,14 @@ var REACT_ERROR_BOUNDARY_COMPONENTS = /* @__PURE__ */ new Set([
   "withErrorBoundary"
 ]);
 function findClass(node) {
-  if (import_typescript14.default.isClassDeclaration(node)) return node;
+  if (import_typescript14.default.isClassDeclaration(node)) {
+    return node;
+  }
   let found = null;
   import_typescript14.default.forEachChild(node, (child) => {
-    if (!found && import_typescript14.default.isClassDeclaration(child)) found = child;
+    if (!found && import_typescript14.default.isClassDeclaration(child)) {
+      found = child;
+    }
   });
   return found;
 }
@@ -259974,11 +260570,17 @@ function classMechanism(node) {
   const names = [];
   for (const member of node.members) {
     if ((import_typescript14.default.isMethodDeclaration(member) || import_typescript14.default.isPropertyDeclaration(member)) && member.name && import_typescript14.default.isIdentifier(member.name)) {
-      if (ERROR_BOUNDARY_METHODS.includes(member.name.text)) names.push(member.name.text);
+      if (ERROR_BOUNDARY_METHODS.includes(member.name.text)) {
+        names.push(member.name.text);
+      }
     }
   }
-  if (names.includes("getDerivedStateFromError")) return "getDerivedStateFromError";
-  if (names.length > 0) return names[0];
+  if (names.includes("getDerivedStateFromError")) {
+    return "getDerivedStateFromError";
+  }
+  if (names.length > 0) {
+    return names[0];
+  }
   return null;
 }
 __name(classMechanism, "classMechanism");
@@ -260001,7 +260603,9 @@ function classHasReset(node, sourceFile) {
   for (const member of node.members) {
     if ((import_typescript14.default.isMethodDeclaration(member) || import_typescript14.default.isPropertyDeclaration(member)) && member.name && import_typescript14.default.isIdentifier(member.name)) {
       const name = member.name.text.toLowerCase();
-      if (name.includes("reset") || name.includes("retry") || name.includes("recover")) return true;
+      if (name.includes("reset") || name.includes("retry") || name.includes("recover")) {
+        return true;
+      }
     }
   }
   const classText = node.getText(sourceFile);
@@ -260011,13 +260615,21 @@ __name(classHasReset, "classHasReset");
 function extractImports(sourceFile) {
   const imports = /* @__PURE__ */ new Map();
   import_typescript14.default.forEachChild(sourceFile, (node) => {
-    if (!import_typescript14.default.isImportDeclaration(node) || !import_typescript14.default.isStringLiteral(node.moduleSpecifier)) return;
+    if (!import_typescript14.default.isImportDeclaration(node) || !import_typescript14.default.isStringLiteral(node.moduleSpecifier)) {
+      return;
+    }
     const moduleName = node.moduleSpecifier.text;
     const clause = node.importClause;
-    if (!clause) return;
-    if (clause.name) imports.set(clause.name.text, moduleName);
+    if (!clause) {
+      return;
+    }
+    if (clause.name) {
+      imports.set(clause.name.text, moduleName);
+    }
     if (clause.namedBindings && import_typescript14.default.isNamedImports(clause.namedBindings)) {
-      for (const el of clause.namedBindings.elements) imports.set(el.name.text, moduleName);
+      for (const el of clause.namedBindings.elements) {
+        imports.set(el.name.text, moduleName);
+      }
     }
     if (clause.namedBindings && import_typescript14.default.isNamespaceImport(clause.namedBindings)) {
       imports.set(clause.namedBindings.name.text + ".*", moduleName);
@@ -260029,7 +260641,9 @@ __name(extractImports, "extractImports");
 function jsxHasProp(node, sourceFile, componentName, props) {
   let found = false;
   function visit(n) {
-    if (found) return;
+    if (found) {
+      return;
+    }
     if (import_typescript14.default.isJsxOpeningElement(n) || import_typescript14.default.isJsxSelfClosingElement(n)) {
       const tagName = n.tagName.getText(sourceFile);
       if (tagName === componentName || tagName.endsWith("." + componentName)) {
@@ -260093,7 +260707,9 @@ function annotateBoundaries(componentNode, sourceFile) {
       let matched = localName;
       if (!jsxNames.has(localName)) {
         const ns = Array.from(jsxNames).find((n) => n.startsWith(localName + "."));
-        if (!ns) continue;
+        if (!ns) {
+          continue;
+        }
         matched = ns;
       }
       return {
@@ -260153,10 +260769,14 @@ function isEventProp(prop) {
 }
 __name(isEventProp, "isEventProp");
 function resolveHandlerBody(handlerExpr, sourceFile) {
-  if (import_typescript15.default.isArrowFunction(handlerExpr) || import_typescript15.default.isFunctionExpression(handlerExpr)) return handlerExpr.body;
+  if (import_typescript15.default.isArrowFunction(handlerExpr) || import_typescript15.default.isFunctionExpression(handlerExpr)) {
+    return handlerExpr.body;
+  }
   if (import_typescript15.default.isIdentifier(handlerExpr)) {
     let find2 = function(node) {
-      if (foundBody) return;
+      if (foundBody) {
+        return;
+      }
       if (import_typescript15.default.isFunctionDeclaration(node) && node.name?.getText(sourceFile) === handlerName && node.body) {
         foundBody = node.body;
         return;
@@ -260186,7 +260806,9 @@ __name(resolveHandlerBody, "resolveHandlerBody");
 function containsStopPropagation(node, sourceFile) {
   let found = false;
   function visit(n) {
-    if (found) return;
+    if (found) {
+      return;
+    }
     if (import_typescript15.default.isCallExpression(n)) {
       const callText = n.expression.getText(sourceFile);
       if (callText.endsWith(".stopPropagation") || callText.endsWith(".stopImmediatePropagation") || callText === "stopPropagation") {
@@ -260207,7 +260829,9 @@ function annotateEvents(componentNode, sourceFile) {
     for (const attr of attrsHost.attributes.properties) {
       if (import_typescript15.default.isJsxAttribute(attr) && attr.name && attr.initializer) {
         const prop = attr.name.getText(sourceFile);
-        if (!isEventProp(prop)) continue;
+        if (!isEventProp(prop)) {
+          continue;
+        }
         let stops = false;
         if (import_typescript15.default.isJsxExpression(attr.initializer) && attr.initializer.expression) {
           const expr = attr.initializer.expression;
@@ -260227,7 +260851,9 @@ function annotateEvents(componentNode, sourceFile) {
       const el = { tag, line, parent, handlers: [] };
       allElements.push(el);
       processAttributes(opening, el);
-      for (const child of node.children) walk(child, el);
+      for (const child of node.children) {
+        walk(child, el);
+      }
       return;
     }
     if (import_typescript15.default.isJsxSelfClosingElement(node)) {
@@ -260245,7 +260871,9 @@ function annotateEvents(componentNode, sourceFile) {
   function ancestorHasClick(el) {
     let cur = el.parent;
     while (cur) {
-      if (cur.handlers.some((h) => h.event === "click")) return true;
+      if (cur.handlers.some((h) => h.event === "click")) {
+        return true;
+      }
       cur = cur.parent;
     }
     return false;
@@ -260335,25 +260963,43 @@ var ARIA_REQUIRED = {
 };
 function getRole(tag, attrs) {
   const explicit = attrs.get("role");
-  if (explicit) return explicit;
+  if (explicit) {
+    return explicit;
+  }
   if (tag === "input") {
     const type2 = attrs.get("type") || "text";
     return INPUT_TYPE_ROLES[type2] || "textbox";
   }
-  if (tag === "a" && !attrs.has("href")) return "generic";
+  if (tag === "a" && !attrs.has("href")) {
+    return "generic";
+  }
   return SEMANTIC_ROLES[tag] || "generic";
 }
 __name(getRole, "getRole");
-function attrValue(attr, sourceFile) {
-  if (!attr.initializer) return "true";
-  if (import_typescript16.default.isStringLiteral(attr.initializer)) return attr.initializer.text;
+function attrValue(attr, _sourceFile) {
+  if (!attr.initializer) {
+    return "true";
+  }
+  if (import_typescript16.default.isStringLiteral(attr.initializer)) {
+    return attr.initializer.text;
+  }
   if (import_typescript16.default.isJsxExpression(attr.initializer) && attr.initializer.expression) {
     const expr = attr.initializer.expression;
-    if (import_typescript16.default.isStringLiteral(expr)) return expr.text;
-    if (expr.kind === import_typescript16.default.SyntaxKind.TrueKeyword) return "true";
-    if (expr.kind === import_typescript16.default.SyntaxKind.FalseKeyword) return "false";
-    if (import_typescript16.default.isNumericLiteral(expr)) return expr.text;
-    if (import_typescript16.default.isIdentifier(expr)) return `[${expr.text}]`;
+    if (import_typescript16.default.isStringLiteral(expr)) {
+      return expr.text;
+    }
+    if (expr.kind === import_typescript16.default.SyntaxKind.TrueKeyword) {
+      return "true";
+    }
+    if (expr.kind === import_typescript16.default.SyntaxKind.FalseKeyword) {
+      return "false";
+    }
+    if (import_typescript16.default.isNumericLiteral(expr)) {
+      return expr.text;
+    }
+    if (import_typescript16.default.isIdentifier(expr)) {
+      return `[${expr.text}]`;
+    }
     return "[expression]";
   }
   return "";
@@ -260390,7 +261036,9 @@ function annotateAttributes(componentNode, sourceFile) {
     const issues = [];
     if (tag === "img" && !attrs.has("alt")) {
       const decorative = attrs.get("aria-hidden") === "true" || attrs.get("role") === "presentation" || attrs.get("role") === "none";
-      if (!decorative) issues.push("missing_alt");
+      if (!decorative) {
+        issues.push("missing_alt");
+      }
     }
     const hasClick = attrs.has("onClick") || attrs.has("onclick");
     const isInteractive = NATIVELY_FOCUSABLE.has(tag) || attrs.has("role");
@@ -260406,7 +261054,9 @@ function annotateAttributes(componentNode, sourceFile) {
         }
       } else {
         for (const req of required2) {
-          if (!attrs.has(req)) issues.push(`aria_required_missing:${req}`);
+          if (!attrs.has(req)) {
+            issues.push(`aria_required_missing:${req}`);
+          }
         }
       }
     }
@@ -260469,12 +261119,18 @@ function toMergedNode(node, modes, nodeIndex) {
   const ref = nodeIndex.get(node.name);
   if (ref && modes.length > 0) {
     const { node: cnode, sourceFile } = ref;
-    if (modes.includes("state")) merged.state = annotateState(cnode, sourceFile);
+    if (modes.includes("state")) {
+      merged.state = annotateState(cnode, sourceFile);
+    }
     if (modes.includes("boundaries")) {
       merged.boundaries = annotateBoundaries(cnode, sourceFile) ?? { is_boundary: false };
     }
-    if (modes.includes("events")) merged.events = annotateEvents(cnode, sourceFile);
-    if (modes.includes("attributes")) merged.attributes = annotateAttributes(cnode, sourceFile);
+    if (modes.includes("events")) {
+      merged.events = annotateEvents(cnode, sourceFile);
+    }
+    if (modes.includes("attributes")) {
+      merged.attributes = annotateAttributes(cnode, sourceFile);
+    }
   }
   return merged;
 }
@@ -260486,14 +261142,20 @@ function pruneOneLeaf(forest) {
       forest.splice(i, 1);
       return true;
     }
-    if (pruneOneLeaf(node.children)) return true;
+    if (pruneOneLeaf(node.children)) {
+      return true;
+    }
   }
   return false;
 }
 __name(pruneOneLeaf, "pruneOneLeaf");
 function capToTokens4(env, maxTokens) {
-  if (!maxTokens || maxTokens <= 0 || !env.data) return env;
-  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) return env;
+  if (!maxTokens || maxTokens <= 0 || !env.data) {
+    return env;
+  }
+  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) {
+    return env;
+  }
   const data = env.data;
   const trim = /* @__PURE__ */ __name(() => ({
     ...env,
@@ -260505,7 +261167,9 @@ function capToTokens4(env, maxTokens) {
     }
   }), "trim");
   while (estimatePayloadTokens(renderEnvelope(trim())) > maxTokens) {
-    if (!pruneOneLeaf(data.tree)) break;
+    if (!pruneOneLeaf(data.tree)) {
+      break;
+    }
   }
   return trim();
 }
@@ -260539,9 +261203,13 @@ async function handler10(rawArgs) {
         const files = findComponentFiles(absTarget);
         const sourceFiles = getSourceFiles(files);
         for (const abs of files) {
-          if (signal.aborted) break;
+          if (signal.aborted) {
+            break;
+          }
           const sf = sourceFiles.get(abs);
-          if (!sf) continue;
+          if (!sf) {
+            continue;
+          }
           allComponents.push(
             ...analyzeFile(sf, makeRelativePath(abs, baseDir), abs, nodeIndex)
           );
@@ -260555,7 +261223,9 @@ async function handler10(rawArgs) {
       const forest = [];
       for (const root of roots) {
         const bare = buildTree(root, allComponents, depth);
-        if (bare) forest.push(toMergedNode(bare, modes, nodeIndex));
+        if (bare) {
+          forest.push(toMergedNode(bare, modes, nodeIndex));
+        }
       }
       return { tree: forest, count: allComponents.length };
     });
@@ -260569,7 +261239,9 @@ async function handler10(rawArgs) {
       execution_ms: elapsed(),
       ...outcome.budget_exceeded ? { budget_exceeded: true } : {}
     });
-    if (resolved.warning) env = { ...env, warning: resolved.warning };
+    if (resolved.warning) {
+      env = { ...env, warning: resolved.warning };
+    }
     const maxTokens = args.output?.max_tokens ?? cfg.max_tokens_default;
     env = capToTokens4(env, maxTokens);
     return toCallToolResult(env);
@@ -260682,7 +261354,7 @@ function extractBodyRefs(node, sourceFile) {
   return refs;
 }
 __name(extractBodyRefs, "extractBodyRefs");
-function hasCleanupReturn(node, sourceFile) {
+function hasCleanupReturn(node, _sourceFile) {
   let hasCleanup = false;
   function visit(n) {
     if (import_typescript17.default.isReturnStatement(n) && n.expression) {
@@ -260690,7 +261362,9 @@ function hasCleanupReturn(node, sourceFile) {
         hasCleanup = true;
       }
     }
-    if (!hasCleanup) import_typescript17.default.forEachChild(n, visit);
+    if (!hasCleanup) {
+      import_typescript17.default.forEachChild(n, visit);
+    }
   }
   __name(visit, "visit");
   visit(node);
@@ -260820,11 +261494,15 @@ function buildComponentScope(componentNode, sourceFile) {
           const elements = parent.name.elements;
           if (elements.length >= 1 && import_typescript17.default.isBindingElement(elements[0])) {
             const valName = elements[0].name;
-            if (import_typescript17.default.isIdentifier(valName)) scope.stateVars.add(valName.getText(sourceFile));
+            if (import_typescript17.default.isIdentifier(valName)) {
+              scope.stateVars.add(valName.getText(sourceFile));
+            }
           }
           if (elements.length >= 2 && import_typescript17.default.isBindingElement(elements[1])) {
             const setterName = elements[1].name;
-            if (import_typescript17.default.isIdentifier(setterName)) scope.setterVars.add(setterName.getText(sourceFile));
+            if (import_typescript17.default.isIdentifier(setterName)) {
+              scope.setterVars.add(setterName.getText(sourceFile));
+            }
           }
         }
       }
@@ -260834,12 +261512,15 @@ function buildComponentScope(componentNode, sourceFile) {
           const elements = parent.name.elements;
           if (elements.length >= 1 && import_typescript17.default.isBindingElement(elements[0])) {
             const stateName = elements[0].name;
-            if (import_typescript17.default.isIdentifier(stateName)) scope.stateVars.add(stateName.getText(sourceFile));
+            if (import_typescript17.default.isIdentifier(stateName)) {
+              scope.stateVars.add(stateName.getText(sourceFile));
+            }
           }
           if (elements.length >= 2 && import_typescript17.default.isBindingElement(elements[1])) {
             const dispatchName = elements[1].name;
-            if (import_typescript17.default.isIdentifier(dispatchName))
+            if (import_typescript17.default.isIdentifier(dispatchName)) {
               scope.dispatchVars.add(dispatchName.getText(sourceFile));
+            }
           }
         }
       }
@@ -260964,13 +261645,21 @@ __name(analyzeDependencies, "analyzeDependencies");
 // packages/intel/src/frontend/hooks/issue-detector.ts
 var SET_STATE_PATTERN = /\bset[A-Z]\w*\s*\(/;
 function detectStaleClosure(hook, scope) {
-  if (hook.name !== "useEffect" && hook.name !== "useLayoutEffect") return [];
-  if (!hook.hasEmptyDeps) return [];
+  if (hook.name !== "useEffect" && hook.name !== "useLayoutEffect") {
+    return [];
+  }
+  if (!hook.hasEmptyDeps) {
+    return [];
+  }
   const staleRefs = [];
   for (const ref of hook.bodyRefs) {
-    if (scope.stateVars.has(ref)) staleRefs.push(ref);
+    if (scope.stateVars.has(ref)) {
+      staleRefs.push(ref);
+    }
   }
-  if (staleRefs.length === 0) return [];
+  if (staleRefs.length === 0) {
+    return [];
+  }
   return [{
     hookName: hook.name,
     hookLine: hook.line,
@@ -260983,20 +261672,30 @@ function detectStaleClosure(hook, scope) {
 }
 __name(detectStaleClosure, "detectStaleClosure");
 function detectMissingDeps(hook, scope, _analyzedDeps) {
-  if (hook.hasNoDeps) return [];
+  if (hook.hasNoDeps) {
+    return [];
+  }
   const depNames = new Set(hook.rawDeps.map((d) => d.trim()));
   const depBases = new Set(hook.rawDeps.map((d) => d.trim().split(".")[0]));
   const missing = [];
   for (const ref of hook.bodyRefs) {
-    if (depNames.has(ref) || depBases.has(ref)) continue;
+    if (depNames.has(ref) || depBases.has(ref)) {
+      continue;
+    }
     if (scope.setterVars.has(ref) || scope.dispatchVars.has(ref) || scope.refVars.has(ref) || scope.importedIdentifiers.has(ref) || scope.moduleScopeIdentifiers.has(ref) || scope.useCallbackVars.has(ref) || scope.useIdVars.has(ref)) {
       continue;
     }
-    if (GLOBAL_IDENTIFIERS.has(ref)) continue;
-    if (/^use[A-Z]/.test(ref)) continue;
+    if (GLOBAL_IDENTIFIERS.has(ref)) {
+      continue;
+    }
+    if (/^use[A-Z]/.test(ref)) {
+      continue;
+    }
     missing.push(ref);
   }
-  if (missing.length === 0) return [];
+  if (missing.length === 0) {
+    return [];
+  }
   return [{
     hookName: hook.name,
     hookLine: hook.line,
@@ -261009,14 +261708,20 @@ function detectMissingDeps(hook, scope, _analyzedDeps) {
 }
 __name(detectMissingDeps, "detectMissingDeps");
 function detectUnnecessaryDeps(hook) {
-  if (hook.hasNoDeps || hook.hasEmptyDeps) return [];
+  if (hook.hasNoDeps || hook.hasEmptyDeps) {
+    return [];
+  }
   const bodyRefSet = new Set(hook.bodyRefs);
   const unnecessary = [];
   for (const dep of hook.rawDeps) {
     const base = dep.trim().split(".")[0];
-    if (!bodyRefSet.has(base)) unnecessary.push(dep.trim());
+    if (!bodyRefSet.has(base)) {
+      unnecessary.push(dep.trim());
+    }
   }
-  if (unnecessary.length === 0) return [];
+  if (unnecessary.length === 0) {
+    return [];
+  }
   return [{
     hookName: hook.name,
     hookLine: hook.line,
@@ -261030,7 +261735,9 @@ function detectUnnecessaryDeps(hook) {
 __name(detectUnnecessaryDeps, "detectUnnecessaryDeps");
 function detectUnstableDeps(hook, analyzedDeps) {
   const unstable = analyzedDeps.filter((d) => d.stability === "unstable");
-  if (unstable.length === 0) return [];
+  if (unstable.length === 0) {
+    return [];
+  }
   return [{
     hookName: hook.name,
     hookLine: hook.line,
@@ -261043,15 +261750,23 @@ function detectUnstableDeps(hook, analyzedDeps) {
 }
 __name(detectUnstableDeps, "detectUnstableDeps");
 function detectDerivedState(hook) {
-  if (hook.name !== "useEffect") return [];
-  if (hook.hasCleanup || hook.hasSubscriptions) return [];
-  if (!SET_STATE_PATTERN.test(hook.body)) return [];
+  if (hook.name !== "useEffect") {
+    return [];
+  }
+  if (hook.hasCleanup || hook.hasSubscriptions) {
+    return [];
+  }
+  if (!SET_STATE_PATTERN.test(hook.body)) {
+    return [];
+  }
   const bodyWithoutWhitespace = hook.body.replace(/\s+/g, " ").trim();
   if (bodyWithoutWhitespace.includes("async") || bodyWithoutWhitespace.includes("await") || bodyWithoutWhitespace.includes("fetch") || bodyWithoutWhitespace.includes("if (") || bodyWithoutWhitespace.includes("if(") || bodyWithoutWhitespace.includes("for (") || bodyWithoutWhitespace.includes("while (") || bodyWithoutWhitespace.includes("?") && bodyWithoutWhitespace.includes(":")) {
     return [];
   }
   const setterCallCount = (hook.body.match(SET_STATE_PATTERN) || []).length;
-  if (setterCallCount !== 1) return [];
+  if (setterCallCount !== 1) {
+    return [];
+  }
   return [{
     hookName: hook.name,
     hookLine: hook.line,
@@ -261064,9 +261779,15 @@ function detectDerivedState(hook) {
 }
 __name(detectDerivedState, "detectDerivedState");
 function detectMissingCleanup(hook) {
-  if (hook.name !== "useEffect" && hook.name !== "useLayoutEffect") return [];
-  if (hook.hasCleanup) return [];
-  if (!hook.hasSubscriptions) return [];
+  if (hook.name !== "useEffect" && hook.name !== "useLayoutEffect") {
+    return [];
+  }
+  if (hook.hasCleanup) {
+    return [];
+  }
+  if (!hook.hasSubscriptions) {
+    return [];
+  }
   return [{
     hookName: hook.name,
     hookLine: hook.line,
@@ -261144,13 +261865,19 @@ function detectComponentName(sourceFile, filePath) {
 __name(detectComponentName, "detectComponentName");
 function filterHooks(hooks, hookFilter) {
   const lineNum = parseInt(hookFilter, 10);
-  if (!isNaN(lineNum)) return hooks.filter((h) => h.line === lineNum);
+  if (!isNaN(lineNum)) {
+    return hooks.filter((h) => h.line === lineNum);
+  }
   return hooks.filter((h) => h.variableName === hookFilter || h.name === hookFilter);
 }
 __name(filterHooks, "filterHooks");
 function capToTokens5(env, maxTokens) {
-  if (!maxTokens || maxTokens <= 0 || !env.data) return env;
-  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) return env;
+  if (!maxTokens || maxTokens <= 0 || !env.data) {
+    return env;
+  }
+  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) {
+    return env;
+  }
   const data = env.data;
   const trim = /* @__PURE__ */ __name(() => ({
     ...env,
@@ -261199,16 +261926,22 @@ async function handler11(rawArgs) {
       const componentName = detectComponentName(sourceFile, absFile);
       const scope = buildComponentScope(sourceFile, sourceFile);
       let hooks = extractHooksWithDeps(sourceFile, sourceFile, scope);
-      if (args.hook) hooks = filterHooks(hooks, args.hook);
+      if (args.hook) {
+        hooks = filterHooks(hooks, args.hook);
+      }
       const includeStable = args.include_stable_analysis !== false;
       for (const hook of hooks) {
-        if (signal.aborted) break;
+        if (signal.aborted) {
+          break;
+        }
         const analyzedDeps = analyzeDependencies(hook.rawDeps, scope, sourceFile);
         hook.deps = includeStable ? analyzedDeps : analyzedDeps.filter((d) => d.stability !== "stable");
       }
       const allIssues = [];
       for (const hook of hooks) {
-        if (signal.aborted) break;
+        if (signal.aborted) {
+          break;
+        }
         allIssues.push(...detectAllIssues(hook, scope));
       }
       const bySeverity = {};
@@ -261250,7 +261983,9 @@ async function handler11(rawArgs) {
       execution_ms: elapsed(),
       ...outcome.budget_exceeded ? { budget_exceeded: true } : {}
     });
-    if (resolved.warning) env = { ...env, warning: resolved.warning };
+    if (resolved.warning) {
+      env = { ...env, warning: resolved.warning };
+    }
     const maxTokens = args.output?.max_tokens ?? cfg.max_tokens_default;
     env = capToTokens5(env, maxTokens);
     return toCallToolResult(env);
@@ -261352,7 +262087,7 @@ var SERVER_ONLY_DB_PACKAGES = /* @__PURE__ */ new Set([
 ]);
 var SCANNABLE_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".mts"];
 function detectDirective(content) {
-  const stripped = content.replace(/^﻿/, "");
+  const stripped = content.replace(/^\uFEFF/, "");
   const lines = stripped.split("\n");
   for (const line of lines) {
     const trimmed = line.trim();
@@ -261360,8 +262095,12 @@ function detectDirective(content) {
       continue;
     }
     const normalized = trimmed.replace(/;+$/, "");
-    if (normalized === '"use client"' || normalized === "'use client'") return '"use client"';
-    if (normalized === '"use server"' || normalized === "'use server'") return '"use server"';
+    if (normalized === '"use client"' || normalized === "'use client'") {
+      return '"use client"';
+    }
+    if (normalized === '"use server"' || normalized === "'use server'") {
+      return '"use server"';
+    }
     break;
   }
   return null;
@@ -261370,7 +262109,9 @@ __name(detectDirective, "detectDirective");
 function findClientOnlyAPIs(sourceFile) {
   let found = false;
   function visit(node) {
-    if (found) return;
+    if (found) {
+      return;
+    }
     if (import_typescript19.default.isCallExpression(node)) {
       const expr = node.expression;
       if (import_typescript19.default.isIdentifier(expr)) {
@@ -261410,7 +262151,9 @@ __name(findClientOnlyAPIs, "findClientOnlyAPIs");
 function findServerOnlyImports(sourceFile) {
   let found = false;
   import_typescript19.default.forEachChild(sourceFile, (node) => {
-    if (found) return;
+    if (found) {
+      return;
+    }
     let moduleSpecifier;
     if (import_typescript19.default.isImportDeclaration(node) && import_typescript19.default.isStringLiteral(node.moduleSpecifier)) {
       moduleSpecifier = node.moduleSpecifier.text;
@@ -261443,8 +262186,12 @@ function findServerOnlyImports(sourceFile) {
 __name(findServerOnlyImports, "findServerOnlyImports");
 function collectScannableFiles(scanPath) {
   const stat16 = fs24.statSync(scanPath, { throwIfNoEntry: false });
-  if (!stat16) return [];
-  if (stat16.isFile()) return [scanPath];
+  if (!stat16) {
+    return [];
+  }
+  if (stat16.isFile()) {
+    return [scanPath];
+  }
   const results = [];
   function walk(dir) {
     let entries;
@@ -261456,11 +262203,15 @@ function collectScannableFiles(scanPath) {
     for (const entry of entries) {
       const fullPath = path23.join(dir, entry.name);
       if (entry.isDirectory()) {
-        if (entry.name === "node_modules" || entry.name.startsWith(".")) continue;
+        if (entry.name === "node_modules" || entry.name.startsWith(".")) {
+          continue;
+        }
         walk(fullPath);
       } else if (entry.isFile()) {
         const ext = path23.extname(entry.name).toLowerCase();
-        if (SCANNABLE_EXTENSIONS.includes(ext)) results.push(fullPath);
+        if (SCANNABLE_EXTENSIONS.includes(ext)) {
+          results.push(fullPath);
+        }
       }
     }
   }
@@ -261473,7 +262224,9 @@ function scanForDirectives(baseDir, absPaths, sourceFiles) {
   const results = [];
   for (const absPath of absPaths) {
     const sourceFile = sourceFiles.get(absPath);
-    if (!sourceFile) continue;
+    if (!sourceFile) {
+      continue;
+    }
     const directive = detectDirective(sourceFile.getFullText());
     results.push({
       file: makeRelativePath(absPath, baseDir),
@@ -261495,10 +262248,14 @@ function extractImports2(sourceFile) {
   import_typescript20.default.forEachChild(sourceFile, (node) => {
     if (import_typescript20.default.isImportDeclaration(node) && import_typescript20.default.isStringLiteral(node.moduleSpecifier)) {
       const spec = node.moduleSpecifier.text;
-      if (spec.startsWith(".")) imports.push(spec);
+      if (spec.startsWith(".")) {
+        imports.push(spec);
+      }
     } else if (import_typescript20.default.isExportDeclaration(node) && node.moduleSpecifier && import_typescript20.default.isStringLiteral(node.moduleSpecifier)) {
       const spec = node.moduleSpecifier.text;
-      if (spec.startsWith(".")) imports.push(spec);
+      if (spec.startsWith(".")) {
+        imports.push(spec);
+      }
     }
   });
   import_typescript20.default.forEachChild(sourceFile, /* @__PURE__ */ __name(function visitForRequire(node) {
@@ -261519,13 +262276,19 @@ function resolveImport(importSpec, fromFile) {
   const extensions = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".mts"];
   for (const ext of extensions) {
     const candidate = base + ext;
-    if (fs25.existsSync(candidate)) return candidate;
+    if (fs25.existsSync(candidate)) {
+      return candidate;
+    }
   }
   for (const ext of extensions) {
     const candidate = path24.join(base, `index${ext}`);
-    if (fs25.existsSync(candidate)) return candidate;
+    if (fs25.existsSync(candidate)) {
+      return candidate;
+    }
   }
-  if (fs25.existsSync(base)) return base;
+  if (fs25.existsSync(base)) {
+    return base;
+  }
   return null;
 }
 __name(resolveImport, "resolveImport");
@@ -261566,7 +262329,9 @@ function classifyComponents(graph, directiveMap) {
   }
   const queue = [];
   for (const [file, cls] of classifications) {
-    if (cls === "client") queue.push(file);
+    if (cls === "client") {
+      queue.push(file);
+    }
   }
   const visited = new Set(queue);
   while (queue.length > 0) {
@@ -261622,9 +262387,13 @@ var LARGE_CLIENT_SUBTREE_THRESHOLD = 5;
 function detectUnnecessaryClient(classifications, directiveMap) {
   const issues = [];
   for (const comp of classifications) {
-    if (comp.classification !== "client") continue;
+    if (comp.classification !== "client") {
+      continue;
+    }
     const info = directiveMap.get(comp.file);
-    if (!info) continue;
+    if (!info) {
+      continue;
+    }
     if (!info.hasClientAPIs && !info.hasServerOnlyImports) {
       issues.push({
         type: "unnecessary_client",
@@ -261641,9 +262410,13 @@ __name(detectUnnecessaryClient, "detectUnnecessaryClient");
 function detectMissingDirective(classifications, directiveMap) {
   const issues = [];
   for (const comp of classifications) {
-    if (comp.classification !== "server") continue;
+    if (comp.classification !== "server") {
+      continue;
+    }
     const info = directiveMap.get(comp.file);
-    if (!info) continue;
+    if (!info) {
+      continue;
+    }
     if (info.hasClientAPIs) {
       issues.push({
         type: "missing_directive",
@@ -261676,9 +262449,13 @@ __name(detectLargeClientSubtrees, "detectLargeClientSubtrees");
 function detectServerOnlyInClient(classifications, directiveMap) {
   const issues = [];
   for (const comp of classifications) {
-    if (comp.classification !== "client" && comp.classification !== "client-inherited") continue;
+    if (comp.classification !== "client" && comp.classification !== "client-inherited") {
+      continue;
+    }
     const info = directiveMap.get(comp.file);
-    if (!info) continue;
+    if (!info) {
+      continue;
+    }
     if (info.hasServerOnlyImports) {
       issues.push({
         type: "server_only_in_client",
@@ -261695,7 +262472,9 @@ __name(detectServerOnlyInClient, "detectServerOnlyInClient");
 function detectBoundaryOptimizations(_classifications, directiveMap, graph, boundaryMap) {
   const issues = [];
   for (const [boundaryFile, childCount] of boundaryMap) {
-    if (childCount < 3) continue;
+    if (childCount < 3) {
+      continue;
+    }
     const directImports = graph.get(boundaryFile) || [];
     const serverableChildren = directImports.filter((imp) => {
       const info = directiveMap.get(imp);
@@ -261781,8 +262560,12 @@ function resolveScanPath(baseDir, basePathArg, providedPath, entryFile) {
 }
 __name(resolveScanPath, "resolveScanPath");
 function capToTokens6(env, maxTokens) {
-  if (!maxTokens || maxTokens <= 0 || !env.data) return env;
-  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) return env;
+  if (!maxTokens || maxTokens <= 0 || !env.data) {
+    return env;
+  }
+  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) {
+    return env;
+  }
   const data = env.data;
   const trim = /* @__PURE__ */ __name(() => ({
     ...env,
@@ -261980,17 +262763,23 @@ function parseWidthClass(className) {
   const fixedMatch = className.match(/^w-(\d+(?:\.\d+)?|px)$/);
   if (fixedMatch) {
     const value = TAILWIND_SPACING[fixedMatch[1]];
-    if (value) return { strategy: "fixed", value };
+    if (value) {
+      return { strategy: "fixed", value };
+    }
   }
   const fractionMatch = className.match(/^w-(\d+\/\d+)$/);
   if (fractionMatch) {
     const value = TAILWIND_FRACTIONS[fractionMatch[1]];
-    if (value) return { strategy: "percentage", value };
+    if (value) {
+      return { strategy: "percentage", value };
+    }
   }
   const arbitraryMatch = className.match(/^w-\[(.+)\]$/);
   if (arbitraryMatch) {
     const value = arbitraryMatch[1];
-    if (value.endsWith("%")) return { strategy: "percentage", value };
+    if (value.endsWith("%")) {
+      return { strategy: "percentage", value };
+    }
     if (value.includes("vw") || value.includes("dvw") || value.includes("svw") || value.includes("lvw")) {
       return { strategy: "viewport", value };
     }
@@ -262014,17 +262803,23 @@ function parseHeightClass(className) {
   const fixedMatch = className.match(/^h-(\d+(?:\.\d+)?|px)$/);
   if (fixedMatch) {
     const value = TAILWIND_SPACING[fixedMatch[1]];
-    if (value) return { strategy: "fixed", value };
+    if (value) {
+      return { strategy: "fixed", value };
+    }
   }
   const fractionMatch = className.match(/^h-(\d+\/\d+)$/);
   if (fractionMatch) {
     const value = TAILWIND_FRACTIONS[fractionMatch[1]];
-    if (value) return { strategy: "percentage", value };
+    if (value) {
+      return { strategy: "percentage", value };
+    }
   }
   const arbitraryMatch = className.match(/^h-\[(.+)\]$/);
   if (arbitraryMatch) {
     const value = arbitraryMatch[1];
-    if (value.endsWith("%")) return { strategy: "percentage", value };
+    if (value.endsWith("%")) {
+      return { strategy: "percentage", value };
+    }
     if (value.includes("vh") || value.includes("dvh") || value.includes("svh") || value.includes("lvh")) {
       return { strategy: "viewport", value };
     }
@@ -262068,43 +262863,72 @@ function parseTailwindClasses(classes) {
     }
     if (className.startsWith("min-w-")) {
       const value = className.slice(6);
-      if (value === "full") props.minWidth = "100%";
-      else if (value === "min") props.minWidth = "min-content";
-      else if (value === "max") props.minWidth = "max-content";
-      else if (value === "fit") props.minWidth = "fit-content";
-      else if (value === "0") props.minWidth = "0px";
-      else if (value.startsWith("[") && value.endsWith("]")) props.minWidth = value.slice(1, -1);
-      else if (TAILWIND_SPACING[value]) props.minWidth = TAILWIND_SPACING[value];
+      if (value === "full") {
+        props.minWidth = "100%";
+      } else if (value === "min") {
+        props.minWidth = "min-content";
+      } else if (value === "max") {
+        props.minWidth = "max-content";
+      } else if (value === "fit") {
+        props.minWidth = "fit-content";
+      } else if (value === "0") {
+        props.minWidth = "0px";
+      } else if (value.startsWith("[") && value.endsWith("]")) {
+        props.minWidth = value.slice(1, -1);
+      } else if (TAILWIND_SPACING[value]) {
+        props.minWidth = TAILWIND_SPACING[value];
+      }
       continue;
     }
     if (className.startsWith("max-w-")) {
       const value = className.slice(6);
-      if (MAX_WIDTH_VALUES[value]) props.maxWidth = MAX_WIDTH_VALUES[value];
-      else if (value.startsWith("[") && value.endsWith("]")) props.maxWidth = value.slice(1, -1);
+      if (MAX_WIDTH_VALUES[value]) {
+        props.maxWidth = MAX_WIDTH_VALUES[value];
+      } else if (value.startsWith("[") && value.endsWith("]")) {
+        props.maxWidth = value.slice(1, -1);
+      }
       continue;
     }
     if (className.startsWith("min-h-")) {
       const value = className.slice(6);
-      if (value === "full") props.minHeight = "100%";
-      else if (value === "screen") props.minHeight = "100vh";
-      else if (value === "min") props.minHeight = "min-content";
-      else if (value === "max") props.minHeight = "max-content";
-      else if (value === "fit") props.minHeight = "fit-content";
-      else if (value === "0") props.minHeight = "0px";
-      else if (value.startsWith("[") && value.endsWith("]")) props.minHeight = value.slice(1, -1);
-      else if (TAILWIND_SPACING[value]) props.minHeight = TAILWIND_SPACING[value];
+      if (value === "full") {
+        props.minHeight = "100%";
+      } else if (value === "screen") {
+        props.minHeight = "100vh";
+      } else if (value === "min") {
+        props.minHeight = "min-content";
+      } else if (value === "max") {
+        props.minHeight = "max-content";
+      } else if (value === "fit") {
+        props.minHeight = "fit-content";
+      } else if (value === "0") {
+        props.minHeight = "0px";
+      } else if (value.startsWith("[") && value.endsWith("]")) {
+        props.minHeight = value.slice(1, -1);
+      } else if (TAILWIND_SPACING[value]) {
+        props.minHeight = TAILWIND_SPACING[value];
+      }
       continue;
     }
     if (className.startsWith("max-h-")) {
       const value = className.slice(6);
-      if (value === "full") props.maxHeight = "100%";
-      else if (value === "screen") props.maxHeight = "100vh";
-      else if (value === "min") props.maxHeight = "min-content";
-      else if (value === "max") props.maxHeight = "max-content";
-      else if (value === "fit") props.maxHeight = "fit-content";
-      else if (value === "none") props.maxHeight = "none";
-      else if (value.startsWith("[") && value.endsWith("]")) props.maxHeight = value.slice(1, -1);
-      else if (TAILWIND_SPACING[value]) props.maxHeight = TAILWIND_SPACING[value];
+      if (value === "full") {
+        props.maxHeight = "100%";
+      } else if (value === "screen") {
+        props.maxHeight = "100vh";
+      } else if (value === "min") {
+        props.maxHeight = "min-content";
+      } else if (value === "max") {
+        props.maxHeight = "max-content";
+      } else if (value === "fit") {
+        props.maxHeight = "fit-content";
+      } else if (value === "none") {
+        props.maxHeight = "none";
+      } else if (value.startsWith("[") && value.endsWith("]")) {
+        props.maxHeight = value.slice(1, -1);
+      } else if (TAILWIND_SPACING[value]) {
+        props.maxHeight = TAILWIND_SPACING[value];
+      }
       continue;
     }
     const displayClasses = {
@@ -262175,11 +262999,17 @@ function parseTailwindClasses(classes) {
     const basisMatch = className.match(/^basis-(.+)$/);
     if (basisMatch) {
       const value = basisMatch[1];
-      if (value === "auto") props.flexBasis = "auto";
-      else if (value === "full") props.flexBasis = "100%";
-      else if (TAILWIND_SPACING[value]) props.flexBasis = TAILWIND_SPACING[value];
-      else if (TAILWIND_FRACTIONS[value]) props.flexBasis = TAILWIND_FRACTIONS[value];
-      else if (value.startsWith("[") && value.endsWith("]")) props.flexBasis = value.slice(1, -1);
+      if (value === "auto") {
+        props.flexBasis = "auto";
+      } else if (value === "full") {
+        props.flexBasis = "100%";
+      } else if (TAILWIND_SPACING[value]) {
+        props.flexBasis = TAILWIND_SPACING[value];
+      } else if (TAILWIND_FRACTIONS[value]) {
+        props.flexBasis = TAILWIND_FRACTIONS[value];
+      } else if (value.startsWith("[") && value.endsWith("]")) {
+        props.flexBasis = value.slice(1, -1);
+      }
       continue;
     }
     const colSpanMatch = className.match(/^col-span-(\d+|full)$/);
@@ -262197,17 +263027,25 @@ function parseTailwindClasses(classes) {
     const gridColsMatch = className.match(/^grid-cols-(\d+|none|\[.+\])$/);
     if (gridColsMatch) {
       const value = gridColsMatch[1];
-      if (value === "none") props.gridTemplateColumns = "none";
-      else if (value.startsWith("[") && value.endsWith("]")) props.gridTemplateColumns = value.slice(1, -1);
-      else props.gridTemplateColumns = `repeat(${value}, minmax(0, 1fr))`;
+      if (value === "none") {
+        props.gridTemplateColumns = "none";
+      } else if (value.startsWith("[") && value.endsWith("]")) {
+        props.gridTemplateColumns = value.slice(1, -1);
+      } else {
+        props.gridTemplateColumns = `repeat(${value}, minmax(0, 1fr))`;
+      }
       continue;
     }
     const gridRowsMatch = className.match(/^grid-rows-(\d+|none|\[.+\])$/);
     if (gridRowsMatch) {
       const value = gridRowsMatch[1];
-      if (value === "none") props.gridTemplateRows = "none";
-      else if (value.startsWith("[") && value.endsWith("]")) props.gridTemplateRows = value.slice(1, -1);
-      else props.gridTemplateRows = `repeat(${value}, minmax(0, 1fr))`;
+      if (value === "none") {
+        props.gridTemplateRows = "none";
+      } else if (value.startsWith("[") && value.endsWith("]")) {
+        props.gridTemplateRows = value.slice(1, -1);
+      } else {
+        props.gridTemplateRows = `repeat(${value}, minmax(0, 1fr))`;
+      }
       continue;
     }
     const overflows = {
@@ -262275,43 +263113,72 @@ function parseTailwindClassesLayout(classes) {
     }
     if (className.startsWith("min-w-")) {
       const value = className.slice(6);
-      if (value === "full") props.minWidth = "100%";
-      else if (value === "min") props.minWidth = "min-content";
-      else if (value === "max") props.minWidth = "max-content";
-      else if (value === "fit") props.minWidth = "fit-content";
-      else if (value === "0") props.minWidth = "0px";
-      else if (value.startsWith("[") && value.endsWith("]")) props.minWidth = value.slice(1, -1);
-      else if (TAILWIND_SPACING[value]) props.minWidth = TAILWIND_SPACING[value];
+      if (value === "full") {
+        props.minWidth = "100%";
+      } else if (value === "min") {
+        props.minWidth = "min-content";
+      } else if (value === "max") {
+        props.minWidth = "max-content";
+      } else if (value === "fit") {
+        props.minWidth = "fit-content";
+      } else if (value === "0") {
+        props.minWidth = "0px";
+      } else if (value.startsWith("[") && value.endsWith("]")) {
+        props.minWidth = value.slice(1, -1);
+      } else if (TAILWIND_SPACING[value]) {
+        props.minWidth = TAILWIND_SPACING[value];
+      }
       continue;
     }
     if (className.startsWith("max-w-")) {
       const value = className.slice(6);
-      if (MAX_WIDTH_VALUES[value]) props.maxWidth = MAX_WIDTH_VALUES[value];
-      else if (value.startsWith("[") && value.endsWith("]")) props.maxWidth = value.slice(1, -1);
+      if (MAX_WIDTH_VALUES[value]) {
+        props.maxWidth = MAX_WIDTH_VALUES[value];
+      } else if (value.startsWith("[") && value.endsWith("]")) {
+        props.maxWidth = value.slice(1, -1);
+      }
       continue;
     }
     if (className.startsWith("min-h-")) {
       const value = className.slice(6);
-      if (value === "full") props.minHeight = "100%";
-      else if (value === "screen") props.minHeight = "100vh";
-      else if (value === "min") props.minHeight = "min-content";
-      else if (value === "max") props.minHeight = "max-content";
-      else if (value === "fit") props.minHeight = "fit-content";
-      else if (value === "0") props.minHeight = "0px";
-      else if (value.startsWith("[") && value.endsWith("]")) props.minHeight = value.slice(1, -1);
-      else if (TAILWIND_SPACING[value]) props.minHeight = TAILWIND_SPACING[value];
+      if (value === "full") {
+        props.minHeight = "100%";
+      } else if (value === "screen") {
+        props.minHeight = "100vh";
+      } else if (value === "min") {
+        props.minHeight = "min-content";
+      } else if (value === "max") {
+        props.minHeight = "max-content";
+      } else if (value === "fit") {
+        props.minHeight = "fit-content";
+      } else if (value === "0") {
+        props.minHeight = "0px";
+      } else if (value.startsWith("[") && value.endsWith("]")) {
+        props.minHeight = value.slice(1, -1);
+      } else if (TAILWIND_SPACING[value]) {
+        props.minHeight = TAILWIND_SPACING[value];
+      }
       continue;
     }
     if (className.startsWith("max-h-")) {
       const value = className.slice(6);
-      if (value === "full") props.maxHeight = "100%";
-      else if (value === "screen") props.maxHeight = "100vh";
-      else if (value === "min") props.maxHeight = "min-content";
-      else if (value === "max") props.maxHeight = "max-content";
-      else if (value === "fit") props.maxHeight = "fit-content";
-      else if (value === "none") props.maxHeight = "none";
-      else if (value.startsWith("[") && value.endsWith("]")) props.maxHeight = value.slice(1, -1);
-      else if (TAILWIND_SPACING[value]) props.maxHeight = TAILWIND_SPACING[value];
+      if (value === "full") {
+        props.maxHeight = "100%";
+      } else if (value === "screen") {
+        props.maxHeight = "100vh";
+      } else if (value === "min") {
+        props.maxHeight = "min-content";
+      } else if (value === "max") {
+        props.maxHeight = "max-content";
+      } else if (value === "fit") {
+        props.maxHeight = "fit-content";
+      } else if (value === "none") {
+        props.maxHeight = "none";
+      } else if (value.startsWith("[") && value.endsWith("]")) {
+        props.maxHeight = value.slice(1, -1);
+      } else if (TAILWIND_SPACING[value]) {
+        props.maxHeight = TAILWIND_SPACING[value];
+      }
       continue;
     }
     const displayClasses = {
@@ -262391,11 +263258,17 @@ function parseTailwindClassesLayout(classes) {
     const basisMatch = className.match(/^basis-(.+)$/);
     if (basisMatch) {
       const value = basisMatch[1];
-      if (value === "auto") props.flexBasis = "auto";
-      else if (value === "full") props.flexBasis = "100%";
-      else if (TAILWIND_SPACING[value]) props.flexBasis = TAILWIND_SPACING[value];
-      else if (TAILWIND_FRACTIONS[value]) props.flexBasis = TAILWIND_FRACTIONS[value];
-      else if (value.startsWith("[") && value.endsWith("]")) props.flexBasis = value.slice(1, -1);
+      if (value === "auto") {
+        props.flexBasis = "auto";
+      } else if (value === "full") {
+        props.flexBasis = "100%";
+      } else if (TAILWIND_SPACING[value]) {
+        props.flexBasis = TAILWIND_SPACING[value];
+      } else if (TAILWIND_FRACTIONS[value]) {
+        props.flexBasis = TAILWIND_FRACTIONS[value];
+      } else if (value.startsWith("[") && value.endsWith("]")) {
+        props.flexBasis = value.slice(1, -1);
+      }
       continue;
     }
     const alignItems = {
@@ -262447,24 +263320,35 @@ function parseTailwindClassesLayout(classes) {
     const gapMatch = className.match(/^gap-(\d+(?:\.\d+)?|px|\[.+\])$/);
     if (gapMatch) {
       const value = gapMatch[1];
-      if (value.startsWith("[") && value.endsWith("]")) props.gap = value.slice(1, -1);
-      else if (TAILWIND_SPACING[value]) props.gap = TAILWIND_SPACING[value];
+      if (value.startsWith("[") && value.endsWith("]")) {
+        props.gap = value.slice(1, -1);
+      } else if (TAILWIND_SPACING[value]) {
+        props.gap = TAILWIND_SPACING[value];
+      }
       continue;
     }
     const gridColsMatch = className.match(/^grid-cols-(\d+|none|\[.+\])$/);
     if (gridColsMatch) {
       const value = gridColsMatch[1];
-      if (value === "none") props.gridTemplateColumns = "none";
-      else if (value.startsWith("[") && value.endsWith("]")) props.gridTemplateColumns = value.slice(1, -1);
-      else props.gridTemplateColumns = `repeat(${value}, minmax(0, 1fr))`;
+      if (value === "none") {
+        props.gridTemplateColumns = "none";
+      } else if (value.startsWith("[") && value.endsWith("]")) {
+        props.gridTemplateColumns = value.slice(1, -1);
+      } else {
+        props.gridTemplateColumns = `repeat(${value}, minmax(0, 1fr))`;
+      }
       continue;
     }
     const gridRowsMatch = className.match(/^grid-rows-(\d+|none|\[.+\])$/);
     if (gridRowsMatch) {
       const value = gridRowsMatch[1];
-      if (value === "none") props.gridTemplateRows = "none";
-      else if (value.startsWith("[") && value.endsWith("]")) props.gridTemplateRows = value.slice(1, -1);
-      else props.gridTemplateRows = `repeat(${value}, minmax(0, 1fr))`;
+      if (value === "none") {
+        props.gridTemplateRows = "none";
+      } else if (value.startsWith("[") && value.endsWith("]")) {
+        props.gridTemplateRows = value.slice(1, -1);
+      } else {
+        props.gridTemplateRows = `repeat(${value}, minmax(0, 1fr))`;
+      }
       continue;
     }
     const colSpanMatch = className.match(/^col-span-(\d+|full)$/);
@@ -262530,7 +263414,9 @@ __name(parseTailwindClassesLayout, "parseTailwindClassesLayout");
 
 // packages/intel/src/frontend/tailwind/identifier.ts
 function createElementIdentifier(tagName, classes, id) {
-  if (id) return `${tagName}#${id}`;
+  if (id) {
+    return `${tagName}#${id}`;
+  }
   if (classes.length > 0) {
     const layoutClasses = classes.filter(
       (c) => c.startsWith("flex") || c.startsWith("grid") || c.startsWith("w-") || c.startsWith("h-") || c.startsWith("overflow") || c === "block" || c === "inline" || c === "hidden"
@@ -262547,13 +263433,17 @@ var import_typescript21 = __toESM(require_typescript(), 1);
 function extractClassesFromNode(node, out) {
   if (import_typescript21.default.isStringLiteral(node) || import_typescript21.default.isNoSubstitutionTemplateLiteral(node)) {
     const text = node.text.trim();
-    if (text) out.push(...text.split(/\s+/));
+    if (text) {
+      out.push(...text.split(/\s+/));
+    }
     return;
   }
   if (import_typescript21.default.isBinaryExpression(node) && node.operatorToken.kind === import_typescript21.default.SyntaxKind.AmpersandAmpersandToken) {
     if (import_typescript21.default.isStringLiteral(node.right) || import_typescript21.default.isNoSubstitutionTemplateLiteral(node.right)) {
       const text = node.right.text.trim();
-      if (text) out.push(...text.split(/\s+/));
+      if (text) {
+        out.push(...text.split(/\s+/));
+      }
     }
     return;
   }
@@ -262581,12 +263471,16 @@ function extractClassesFromNode(node, out) {
     return;
   }
   if (import_typescript21.default.isArrayLiteralExpression(node)) {
-    for (const element of node.elements) extractClassesFromNode(element, out);
+    for (const element of node.elements) {
+      extractClassesFromNode(element, out);
+    }
   }
 }
 __name(extractClassesFromNode, "extractClassesFromNode");
 function extractClassesFromAttribute(attr) {
-  if (!attr.initializer) return [];
+  if (!attr.initializer) {
+    return [];
+  }
   if (import_typescript21.default.isStringLiteral(attr.initializer)) {
     return attr.initializer.text.split(/\s+/).filter(Boolean);
   }
@@ -262597,22 +263491,30 @@ function extractClassesFromAttribute(attr) {
     }
     if (import_typescript21.default.isTemplateExpression(expr)) {
       const classes = [];
-      if (expr.head.text) classes.push(...expr.head.text.split(/\s+/).filter(Boolean));
+      if (expr.head.text) {
+        classes.push(...expr.head.text.split(/\s+/).filter(Boolean));
+      }
       for (const span of expr.templateSpans) {
-        if (span.literal.text) classes.push(...span.literal.text.split(/\s+/).filter(Boolean));
+        if (span.literal.text) {
+          classes.push(...span.literal.text.split(/\s+/).filter(Boolean));
+        }
       }
       return classes;
     }
     if (import_typescript21.default.isCallExpression(expr)) {
       const classes = [];
-      for (const arg of expr.arguments) extractClassesFromNode(arg, classes);
+      for (const arg of expr.arguments) {
+        extractClassesFromNode(arg, classes);
+      }
       return classes;
     }
     if (import_typescript21.default.isBinaryExpression(expr) && expr.operatorToken.kind === import_typescript21.default.SyntaxKind.AmpersandAmpersandToken) {
       const classes = [];
       if (import_typescript21.default.isStringLiteral(expr.right) || import_typescript21.default.isNoSubstitutionTemplateLiteral(expr.right)) {
         const text = expr.right.text.trim();
-        if (text) classes.push(...text.split(/\s+/));
+        if (text) {
+          classes.push(...text.split(/\s+/));
+        }
       }
       return classes;
     }
@@ -262639,7 +263541,9 @@ __name(extractClassName, "extractClassName");
 function extractId(node, sourceFile) {
   for (const attr of node.attributes.properties) {
     if (import_typescript22.default.isJsxAttribute(attr) && attr.name.getText(sourceFile) === "id") {
-      if (attr.initializer && import_typescript22.default.isStringLiteral(attr.initializer)) return attr.initializer.text;
+      if (attr.initializer && import_typescript22.default.isStringLiteral(attr.initializer)) {
+        return attr.initializer.text;
+      }
     }
   }
   return void 0;
@@ -262676,8 +263580,12 @@ function buildElementNode(tagName, classes, id, parent) {
 }
 __name(buildElementNode, "buildElementNode");
 function matchesSelector(tagName, classes, id, selector) {
-  if (selector.startsWith("#")) return id === selector.slice(1);
-  if (selector.startsWith(".")) return classes.includes(selector.slice(1));
+  if (selector.startsWith("#")) {
+    return id === selector.slice(1);
+  }
+  if (selector.startsWith(".")) {
+    return classes.includes(selector.slice(1));
+  }
   return tagName.toLowerCase() === selector.toLowerCase();
 }
 __name(matchesSelector, "matchesSelector");
@@ -262691,13 +263599,17 @@ function parseJsxTree(node, sourceFile, parent, selector) {
     if (matchesSelector(tagName, classes, id, selector)) {
       for (const child of node.children) {
         const childResult = parseJsxTreeForChildren(child, sourceFile, elementNode);
-        if (childResult) elementNode.children.push(childResult);
+        if (childResult) {
+          elementNode.children.push(childResult);
+        }
       }
       return elementNode;
     }
     for (const child of node.children) {
       const result2 = parseJsxTree(child, sourceFile, elementNode, selector);
-      if (result2) return result2;
+      if (result2) {
+        return result2;
+      }
     }
     return null;
   }
@@ -262713,20 +263625,26 @@ function parseJsxTree(node, sourceFile, parent, selector) {
   if (import_typescript22.default.isJsxFragment(node)) {
     for (const child of node.children) {
       const result2 = parseJsxTree(child, sourceFile, parent, selector);
-      if (result2) return result2;
+      if (result2) {
+        return result2;
+      }
     }
     return null;
   }
   if (import_typescript22.default.isJsxExpression(node) && node.expression) {
     let result2 = null;
     import_typescript22.default.forEachChild(node.expression, (child) => {
-      if (!result2) result2 = parseJsxTree(child, sourceFile, parent, selector);
+      if (!result2) {
+        result2 = parseJsxTree(child, sourceFile, parent, selector);
+      }
     });
     return result2;
   }
   let result = null;
   import_typescript22.default.forEachChild(node, (child) => {
-    if (!result) result = parseJsxTree(child, sourceFile, parent, selector);
+    if (!result) {
+      result = parseJsxTree(child, sourceFile, parent, selector);
+    }
   });
   return result;
 }
@@ -262740,7 +263658,9 @@ function parseJsxTreeForChildren(node, sourceFile, parent) {
     const elementNode = buildElementNode(tagName, classes, id, parent);
     for (const child of node.children) {
       const childResult = parseJsxTreeForChildren(child, sourceFile, elementNode);
-      if (childResult) elementNode.children.push(childResult);
+      if (childResult) {
+        elementNode.children.push(childResult);
+      }
     }
     return elementNode;
   }
@@ -262755,7 +263675,9 @@ function parseJsxTreeForChildren(node, sourceFile, parent) {
     fragmentNode.display = "contents";
     for (const child of node.children) {
       const childResult = parseJsxTreeForChildren(child, sourceFile, fragmentNode);
-      if (childResult) fragmentNode.children.push(childResult);
+      if (childResult) {
+        fragmentNode.children.push(childResult);
+      }
     }
     return fragmentNode.children.length > 0 ? fragmentNode : null;
   }
@@ -262765,7 +263687,9 @@ __name(parseJsxTreeForChildren, "parseJsxTreeForChildren");
 function findRootJsx(sourceFile) {
   let rootJsx = null;
   function visit(node) {
-    if (rootJsx) return;
+    if (rootJsx) {
+      return;
+    }
     if (import_typescript22.default.isReturnStatement(node) && node.expression) {
       if (import_typescript22.default.isJsxElement(node.expression) || import_typescript22.default.isJsxSelfClosingElement(node.expression) || import_typescript22.default.isJsxFragment(node.expression)) {
         rootJsx = node.expression;
@@ -262832,7 +263756,9 @@ __name(extractClassName2, "extractClassName");
 function extractId2(node, sourceFile) {
   for (const attr of node.attributes.properties) {
     if (import_typescript23.default.isJsxAttribute(attr) && attr.name.getText(sourceFile) === "id") {
-      if (attr.initializer && import_typescript23.default.isStringLiteral(attr.initializer)) return attr.initializer.text;
+      if (attr.initializer && import_typescript23.default.isStringLiteral(attr.initializer)) {
+        return attr.initializer.text;
+      }
     }
   }
   return void 0;
@@ -262853,20 +263779,40 @@ function buildLayoutNode(tagName, classes, id, props, children) {
       shrink: props.flexShrink ?? 1,
       basis: props.flexBasis || "auto"
     };
-    if (props.flexWrap) flex_props.wrap = props.flexWrap;
-    if (props.alignItems) flex_props.align = props.alignItems;
-    if (props.justifyContent) flex_props.justify = props.justifyContent;
-    if (props.gap) flex_props.gap = props.gap;
+    if (props.flexWrap) {
+      flex_props.wrap = props.flexWrap;
+    }
+    if (props.alignItems) {
+      flex_props.align = props.alignItems;
+    }
+    if (props.justifyContent) {
+      flex_props.justify = props.justifyContent;
+    }
+    if (props.gap) {
+      flex_props.gap = props.gap;
+    }
   }
   let grid_props;
   if (display === "grid" || display === "inline-grid" || props.gridColumn || props.gridRow || props.gridArea) {
     grid_props = {};
-    if (props.gridTemplateColumns) grid_props.template_columns = props.gridTemplateColumns;
-    if (props.gridTemplateRows) grid_props.template_rows = props.gridTemplateRows;
-    if (props.gap) grid_props.gap = props.gap;
-    if (props.gridColumn) grid_props.column = props.gridColumn;
-    if (props.gridRow) grid_props.row = props.gridRow;
-    if (props.gridArea) grid_props.area = props.gridArea;
+    if (props.gridTemplateColumns) {
+      grid_props.template_columns = props.gridTemplateColumns;
+    }
+    if (props.gridTemplateRows) {
+      grid_props.template_rows = props.gridTemplateRows;
+    }
+    if (props.gap) {
+      grid_props.gap = props.gap;
+    }
+    if (props.gridColumn) {
+      grid_props.column = props.gridColumn;
+    }
+    if (props.gridRow) {
+      grid_props.row = props.gridRow;
+    }
+    if (props.gridArea) {
+      grid_props.area = props.gridArea;
+    }
   }
   const overflow = {
     x: props.overflowX || props.overflow || "visible",
@@ -262877,8 +263823,12 @@ function buildLayoutNode(tagName, classes, id, props, children) {
 }
 __name(buildLayoutNode, "buildLayoutNode");
 function matchesSelector2(tagName, classes, id, selector) {
-  if (selector.startsWith("#")) return id === selector.slice(1);
-  if (selector.startsWith(".")) return classes.includes(selector.slice(1));
+  if (selector.startsWith("#")) {
+    return id === selector.slice(1);
+  }
+  if (selector.startsWith(".")) {
+    return classes.includes(selector.slice(1));
+  }
   return tagName.toLowerCase() === selector.toLowerCase();
 }
 __name(matchesSelector2, "matchesSelector");
@@ -262894,7 +263844,9 @@ function parseJsxElement(node, sourceFile, selector, foundSelector = false) {
     const children = [];
     for (const child of node.children) {
       const childNode = parseJsxElement(child, sourceFile, selector, foundSelector || elementMatches);
-      if (childNode) children.push(childNode);
+      if (childNode) {
+        children.push(childNode);
+      }
     }
     if (selector && !foundSelector && !elementMatches) {
       if (children.length > 0) {
@@ -262902,7 +263854,9 @@ function parseJsxElement(node, sourceFile, selector, foundSelector = false) {
       }
       return null;
     }
-    if (shouldInclude) return buildLayoutNode(tagName, classes, id, props, children);
+    if (shouldInclude) {
+      return buildLayoutNode(tagName, classes, id, props, children);
+    }
     return null;
   }
   if (import_typescript23.default.isJsxSelfClosingElement(node)) {
@@ -262920,9 +263874,13 @@ function parseJsxElement(node, sourceFile, selector, foundSelector = false) {
     const children = [];
     for (const child of node.children) {
       const childNode = parseJsxElement(child, sourceFile, selector, foundSelector);
-      if (childNode) children.push(childNode);
+      if (childNode) {
+        children.push(childNode);
+      }
     }
-    if (children.length === 1) return children[0];
+    if (children.length === 1) {
+      return children[0];
+    }
     if (children.length > 0) {
       return {
         element: "Fragment",
@@ -262940,7 +263898,9 @@ function parseJsxElement(node, sourceFile, selector, foundSelector = false) {
   if (import_typescript23.default.isJsxExpression(node) && node.expression) {
     let result = null;
     import_typescript23.default.forEachChild(node.expression, (child) => {
-      if (!result) result = parseJsxElement(child, sourceFile, selector, foundSelector);
+      if (!result) {
+        result = parseJsxElement(child, sourceFile, selector, foundSelector);
+      }
     });
     return result;
   }
@@ -262956,7 +263916,9 @@ function matchesSelector3(node, selector) {
   }
   if (selector.startsWith("#")) {
     const hashIdx = node.element.indexOf("#");
-    if (hashIdx === -1) return false;
+    if (hashIdx === -1) {
+      return false;
+    }
     const idStart = hashIdx + 1;
     const dotIdx = node.element.indexOf(".", idStart);
     const elementId = dotIdx === -1 ? node.element.slice(idStart) : node.element.slice(idStart, dotIdx);
@@ -262984,7 +263946,9 @@ function hasAutoHeightChildren(node) {
 }
 __name(hasAutoHeightChildren, "hasAutoHeightChildren");
 function matchesHint(node, hint) {
-  if (!hint) return true;
+  if (!hint) {
+    return true;
+  }
   return matchesSelector3(node, hint);
 }
 __name(matchesHint, "matchesHint");
@@ -263054,7 +264018,9 @@ function findOverflowPatterns(tree, hint) {
         parent: node.parent
       });
     }
-    for (const child of node.children) traverse(child);
+    for (const child of node.children) {
+      traverse(child);
+    }
   }
   __name(traverse, "traverse");
   traverse(tree);
@@ -263257,13 +264223,19 @@ function buildAncestorChain(element) {
     if (current.height?.strategy === "fixed" || current.height?.strategy === "percentage") {
       impacts.push(`height: ${current.height.value}`);
     }
-    if (current.maxWidth) impacts.push(`max-width: ${current.maxWidth}`);
-    if (current.maxHeight) impacts.push(`max-height: ${current.maxHeight}`);
+    if (current.maxWidth) {
+      impacts.push(`max-width: ${current.maxWidth}`);
+    }
+    if (current.maxHeight) {
+      impacts.push(`max-height: ${current.maxHeight}`);
+    }
     if (current.overflowX !== "visible" || current.overflowY !== "visible") {
       const overflow = current.overflowX === current.overflowY ? current.overflowX : `x: ${current.overflowX}, y: ${current.overflowY}`;
       impacts.push(`overflow: ${overflow}`);
     }
-    if (current.position !== "static") impacts.push(`position: ${current.position}`);
+    if (current.position !== "static") {
+      impacts.push(`position: ${current.position}`);
+    }
     if (impacts.length > 0) {
       chain.push({
         element: createElementIdentifier(current.tagName, current.classes, current.id),
@@ -263397,7 +264369,9 @@ var CONTEXT_CREATORS = {
   ), "transform"),
   opacity: /* @__PURE__ */ __name((classes) => classes.some((c) => {
     const match = c.match(/^opacity-(\d+)$/);
-    if (!match) return false;
+    if (!match) {
+      return false;
+    }
     return parseInt(match[1], 10) < 100;
   }), "opacity"),
   filter: /* @__PURE__ */ __name((classes) => classes.some(
@@ -263418,16 +264392,26 @@ __name(triggerLabel, "triggerLabel");
 function allStackingTriggers(classes) {
   const triggers = [];
   for (const [name, check] of Object.entries(CONTEXT_CREATORS)) {
-    if (check(classes)) triggers.push(triggerLabel(name));
+    if (check(classes)) {
+      triggers.push(triggerLabel(name));
+    }
   }
   return triggers;
 }
 __name(allStackingTriggers, "allStackingTriggers");
 function extractPosition(classes) {
-  if (classes.includes("fixed")) return "fixed";
-  if (classes.includes("absolute")) return "absolute";
-  if (classes.includes("sticky")) return "sticky";
-  if (classes.includes("relative")) return "relative";
+  if (classes.includes("fixed")) {
+    return "fixed";
+  }
+  if (classes.includes("absolute")) {
+    return "absolute";
+  }
+  if (classes.includes("sticky")) {
+    return "sticky";
+  }
+  if (classes.includes("relative")) {
+    return "relative";
+  }
   return "static";
 }
 __name(extractPosition, "extractPosition");
@@ -263441,15 +264425,27 @@ var TAILWIND_Z_INDEX_MAP = {
 };
 function extractZIndex(classes) {
   const zClass = classes.find((c) => /^-?z-/.test(c));
-  if (!zClass) return "auto";
-  if (zClass === "z-auto") return "auto";
-  if (TAILWIND_Z_INDEX_MAP[zClass] !== void 0) return TAILWIND_Z_INDEX_MAP[zClass];
+  if (!zClass) {
+    return "auto";
+  }
+  if (zClass === "z-auto") {
+    return "auto";
+  }
+  if (TAILWIND_Z_INDEX_MAP[zClass] !== void 0) {
+    return TAILWIND_Z_INDEX_MAP[zClass];
+  }
   const negativeMatch = zClass.match(/^-z-(\d+)$/);
-  if (negativeMatch) return -parseInt(negativeMatch[1], 10);
+  if (negativeMatch) {
+    return -parseInt(negativeMatch[1], 10);
+  }
   const arbitraryMatch = zClass.match(/^-?z-\[(-?\d+)\]$/);
-  if (arbitraryMatch) return parseInt(arbitraryMatch[1], 10);
+  if (arbitraryMatch) {
+    return parseInt(arbitraryMatch[1], 10);
+  }
   const numericMatch = zClass.match(/^z-(\d+)$/);
-  if (numericMatch) return parseInt(numericMatch[1], 10);
+  if (numericMatch) {
+    return parseInt(numericMatch[1], 10);
+  }
   return "auto";
 }
 __name(extractZIndex, "extractZIndex");
@@ -263546,7 +264542,9 @@ function layoutRole(node) {
     const dir = node.flex_props?.direction;
     return dir === "column" || dir === "column-reverse" ? "flex-col" : "flex-row";
   }
-  if (d === "grid" || d === "inline-grid") return "grid";
+  if (d === "grid" || d === "inline-grid") {
+    return "grid";
+  }
   return d;
 }
 __name(layoutRole, "layoutRole");
@@ -263567,14 +264565,20 @@ function pruneHierarchyLeaf(nodes) {
       nodes.splice(i, 1);
       return true;
     }
-    if (pruneHierarchyLeaf(nodes[i].children)) return true;
+    if (pruneHierarchyLeaf(nodes[i].children)) {
+      return true;
+    }
   }
   return false;
 }
 __name(pruneHierarchyLeaf, "pruneHierarchyLeaf");
 function capToTokens7(env, maxTokens) {
-  if (!maxTokens || maxTokens <= 0 || !env.data) return env;
-  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) return env;
+  if (!maxTokens || maxTokens <= 0 || !env.data) {
+    return env;
+  }
+  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) {
+    return env;
+  }
   const data = env.data;
   const trim = /* @__PURE__ */ __name(() => ({
     ...env,
@@ -263595,7 +264599,9 @@ function capToTokens7(env, maxTokens) {
       data.overflow.risks.pop();
       continue;
     }
-    if (!pruneHierarchyLeaf(data.hierarchy)) break;
+    if (!pruneHierarchyLeaf(data.hierarchy)) {
+      break;
+    }
   }
   return trim();
 }
@@ -263625,11 +264631,17 @@ async function handler13(rawArgs) {
     }
     const outcome = await withBudget(cfg.budgets.analyzer_ms, async () => {
       const sourceFile = getSourceFile(absFile);
-      if (!sourceFile) return { ok: false, error: `Failed to parse component file: ${absFile}` };
+      if (!sourceFile) {
+        return { ok: false, error: `Failed to parse component file: ${absFile}` };
+      }
       const rootJsx = findRootJsx(sourceFile);
-      if (!rootJsx) return { ok: false, error: "No JSX element found in file. Ensure the component returns JSX." };
+      if (!rootJsx) {
+        return { ok: false, error: "No JSX element found in file. Ensure the component returns JSX." };
+      }
       const tree = parseJsxElement(rootJsx, sourceFile);
-      if (!tree) return { ok: false, error: "Failed to parse layout hierarchy from JSX." };
+      if (!tree) {
+        return { ok: false, error: "Failed to parse layout hierarchy from JSX." };
+      }
       const data = {
         file: makeRelativePath(absFile, baseDir),
         resolved_path: absFile,
@@ -263691,7 +264703,9 @@ async function handler13(rawArgs) {
       execution_ms: elapsed(),
       ...outcome.budget_exceeded ? { budget_exceeded: true } : {}
     });
-    if (resolved.warning) env = { ...env, warning: resolved.warning };
+    if (resolved.warning) {
+      env = { ...env, warning: resolved.warning };
+    }
     const maxTokens = args.output?.max_tokens ?? cfg.max_tokens_default;
     env = capToTokens7(env, maxTokens);
     return toCallToolResult(env);
@@ -263763,14 +264777,18 @@ __name(normalizeWithMap, "normalizeWithMap");
 function exactMatchSpans(original, find, caseSensitive) {
   const { norm, map: map2 } = normalizeWithMap(original);
   const needleRaw = toLf(find);
-  if (needleRaw.length === 0) return [];
+  if (needleRaw.length === 0) {
+    return [];
+  }
   const hay = caseSensitive ? norm : norm.toLowerCase();
   const needle = caseSensitive ? needleRaw : needleRaw.toLowerCase();
   const spans = [];
   let pos = 0;
   for (; ; ) {
     const found = hay.indexOf(needle, pos);
-    if (found === -1) break;
+    if (found === -1) {
+      break;
+    }
     spans.push({ start: map2[found], end: map2[found + needle.length] });
     pos = found + needle.length;
   }
@@ -263778,7 +264796,9 @@ function exactMatchSpans(original, find, caseSensitive) {
 }
 __name(exactMatchSpans, "exactMatchSpans");
 function astMatchSpans(filePath, original, find) {
-  if (!isJavaScriptFile(filePath)) return [];
+  if (!isJavaScriptFile(filePath)) {
+    return [];
+  }
   let sourceFile;
   try {
     sourceFile = ts25.createSourceFile(
@@ -263894,7 +264914,9 @@ async function astPatternSpans(filePath, original, pattern, replaceTemplate, lan
     const { norm, map: map2 } = normalizeWithMap(original);
     const normLineStarts = [0];
     for (let i = 0; i < norm.length; i++) {
-      if (norm[i] === "\n") normLineStarts.push(i + 1);
+      if (norm[i] === "\n") {
+        normLineStarts.push(i + 1);
+      }
     }
     const root = napi.parse(langEnum, norm);
     const matches = root.root().findAll(toLf(pattern));
@@ -263904,7 +264926,9 @@ async function astPatternSpans(filePath, original, pattern, replaceTemplate, lan
       (raw, multi, single) => {
         if (multi !== void 0) {
           const nodes = m.getMultipleMatches(multi);
-          if (nodes.length === 0) return "";
+          if (nodes.length === 0) {
+            return "";
+          }
           const start = offsetOf(nodes[0].range().start);
           const end = offsetOf(nodes[nodes.length - 1].range().end);
           return norm.slice(start, end);
@@ -263932,10 +264956,18 @@ async function astPatternSpans(filePath, original, pattern, replaceTemplate, lan
 __name(astPatternSpans, "astPatternSpans");
 function selectSpans(spans, occurrence) {
   const sorted = [...spans].sort((a, b) => a.start - b.start);
-  if (sorted.length === 0) return [];
-  if (occurrence === "all") return sorted;
-  if (occurrence === "first") return [sorted[0]];
-  if (occurrence === "last") return [sorted[sorted.length - 1]];
+  if (sorted.length === 0) {
+    return [];
+  }
+  if (occurrence === "all") {
+    return sorted;
+  }
+  if (occurrence === "first") {
+    return [sorted[0]];
+  }
+  if (occurrence === "last") {
+    return [sorted[sorted.length - 1]];
+  }
   if (typeof occurrence === "number" && occurrence >= 1 && occurrence <= sorted.length) {
     return [sorted[occurrence - 1]];
   }
@@ -264015,7 +265047,9 @@ async function saveToken(tok) {
 }
 __name(saveToken, "saveToken");
 async function loadAndConsumeToken(token) {
-  if (typeof token !== "string" || !TOKEN_ID_RE.test(token)) return null;
+  if (typeof token !== "string" || !TOKEN_ID_RE.test(token)) {
+    return null;
+  }
   const file = path28.join(tokenDir(), `${token}.json`);
   let raw;
   try {
@@ -264064,7 +265098,9 @@ function diffCharCap(maxTokens, entryCount) {
 }
 __name(diffCharCap, "diffCharCap");
 function truncateDiff(diff, cap) {
-  if (diff.length <= cap) return { diff, truncated: false };
+  if (diff.length <= cap) {
+    return { diff, truncated: false };
+  }
   const head = Math.floor(cap * 0.6);
   const tail = Math.floor(cap * 0.25);
   return {
@@ -264120,8 +265156,12 @@ async function runPreview(input, startedAt) {
       }
       const find = resolveStringOrBase64(edit, "find");
       const replace = resolveStringOrBase64(edit, "replace");
-      if (find == null) throw new Error(`edits[${i}].find is required (provide find or find_base64).`);
-      if (replace == null) throw new Error(`edits[${i}].replace is required (provide replace or replace_base64).`);
+      if (find == null) {
+        throw new Error(`edits[${i}].find is required (provide find or find_base64).`);
+      }
+      if (replace == null) {
+        throw new Error(`edits[${i}].replace is required (provide replace or replace_base64).`);
+      }
       const resolved = resolveInputPath(edit.path, workDir).resolved_path;
       if (!originalContent.has(resolved)) {
         let content;
@@ -264131,7 +265171,9 @@ async function runPreview(input, startedAt) {
           content = null;
         }
         originalContent.set(resolved, content);
-        if (content !== null) workingContent.set(resolved, content);
+        if (content !== null) {
+          workingContent.set(resolved, content);
+        }
         touchedFiles.set(resolved, {
           resolved_path: resolved,
           hash: content !== null ? sha256(content) : "",
@@ -264165,7 +265207,9 @@ async function runPreview(input, startedAt) {
         const relName = path29.relative(workDir, resolved) || path29.basename(resolved);
         const rawDiff = createTwoFilesPatch(relName, relName, before, after, "", "", { context });
         const { diff, truncated } = truncateDiff(rawDiff, cap);
-        if (truncated) anyTruncated = true;
+        if (truncated) {
+          anyTruncated = true;
+        }
         entryOut = {
           id: edit.id,
           status: "ready",
@@ -264229,7 +265273,9 @@ async function runPreview(input, startedAt) {
     execution_ms: Math.round(performance.now() - startedAt),
     ...anyTruncated ? { truncated: true, effective_caps: { max_tokens: maxTokens } } : {}
   });
-  if (baseWarning) env.warning = baseWarning;
+  if (baseWarning) {
+    env.warning = baseWarning;
+  }
   return toCallToolResult(env);
 }
 __name(runPreview, "runPreview");
@@ -264270,7 +265316,9 @@ async function runApply(input, startedAt) {
     }
     currentSnapshot.set(f.resolved_path, current);
     const currentHash = current !== null ? sha256(current) : "";
-    if (currentHash !== f.hash) staleFiles.add(f.resolved_path);
+    if (currentHash !== f.hash) {
+      staleFiles.add(f.resolved_path);
+    }
   }
   const transaction = record2.transaction;
   const classified = record2.entries.map((e) => {
@@ -264297,13 +265345,17 @@ async function runApply(input, startedAt) {
   const anyBlocked = classified.some((c) => c.outcome !== "pending");
   const freshFilesToWrite = /* @__PURE__ */ new Set();
   for (const c of classified) {
-    if (c.outcome === "pending") freshFilesToWrite.add(c.resolved_path);
+    if (c.outcome === "pending") {
+      freshFilesToWrite.add(c.resolved_path);
+    }
   }
   const entriesOut = {};
   const filesWritten = [];
   const finalize2 = /* @__PURE__ */ __name((success2, errorMsg) => {
     const summary = { applied: 0, refused_stale: 0, rolled_back: 0, failed: 0 };
-    for (const out of Object.values(entriesOut)) summary[out.status]++;
+    for (const out of Object.values(entriesOut)) {
+      summary[out.status]++;
+    }
     const data = {
       action: "apply",
       transaction,
@@ -264427,8 +265479,12 @@ async function run(args) {
   const input = args ?? {};
   const action = input.action;
   try {
-    if (action === "preview") return await runPreview(input, start);
-    if (action === "apply") return await runApply(input, start);
+    if (action === "preview") {
+      return await runPreview(input, start);
+    }
+    if (action === "apply") {
+      return await runApply(input, start);
+    }
     return toCallToolResult(
       errorEnvelope(
         `Missing or invalid 'action'. Expected "preview" or "apply" (got ${JSON.stringify(action)}). structural_edit is preview-gated: preview first, then apply the returned token.`,

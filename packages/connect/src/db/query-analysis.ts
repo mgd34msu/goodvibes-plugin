@@ -29,12 +29,12 @@ export function isWriteOperation(query: string): boolean {
   const withoutComments = stripLeadingComments(normalizedQuery);
 
   for (const keyword of WRITE_KEYWORDS) {
-    if (withoutComments.startsWith(keyword)) return true;
+    if (withoutComments.startsWith(keyword)) {return true;}
   }
 
   if (withoutComments.startsWith('WITH')) {
     for (const keyword of WRITE_KEYWORDS) {
-      if (getCteEndPattern(keyword).test(withoutComments)) return true;
+      if (getCteEndPattern(keyword).test(withoutComments)) {return true;}
     }
   }
 
@@ -74,8 +74,8 @@ export function hasLimitClause(query: string): boolean {
 /** Add a LIMIT to a SELECT/CTE query that lacks one; otherwise return unchanged. */
 export function addLimitClause(query: string, limit: number): string {
   const trimmedQuery = query.trim();
-  if (!/^(SELECT|WITH)/i.test(trimmedQuery)) return trimmedQuery;
-  if (hasLimitClause(trimmedQuery)) return trimmedQuery;
+  if (!/^(SELECT|WITH)/i.test(trimmedQuery)) {return trimmedQuery;}
+  if (hasLimitClause(trimmedQuery)) {return trimmedQuery;}
   const withoutSemicolon = trimmedQuery.replace(/;\s*$/, '');
   return `${withoutSemicolon} LIMIT ${limit}`;
 }

@@ -136,7 +136,7 @@ export function analyzeFlexBehavior(element: ElementNode): FlexBehavior | undefi
   const hasFlex = element.flexGrow !== undefined || element.flexShrink !== undefined || element.flexBasis !== undefined;
   const isFlexContainer = element.display === 'flex' || element.display === 'inline-flex';
   const parentIsFlexContainer = element.parent?.display === 'flex' || element.parent?.display === 'inline-flex';
-  if (!hasFlex && !isFlexContainer && !parentIsFlexContainer) return undefined;
+  if (!hasFlex && !isFlexContainer && !parentIsFlexContainer) {return undefined;}
 
   const grow = element.flexGrow ?? 0;
   const shrink = element.flexShrink ?? 1;
@@ -149,7 +149,7 @@ export function analyzeGridBehavior(element: ElementNode): GridBehavior | undefi
   const hasGrid = element.gridColumn !== undefined || element.gridRow !== undefined || element.gridArea !== undefined;
   const isGridContainer = element.display === 'grid' || element.display === 'inline-grid';
   const parentIsGridContainer = element.parent?.display === 'grid' || element.parent?.display === 'inline-grid';
-  if (!hasGrid && !isGridContainer && !parentIsGridContainer) return undefined;
+  if (!hasGrid && !isGridContainer && !parentIsGridContainer) {return undefined;}
 
   const columnSpan = element.gridColumn?.match(/span\s+(\d+)/)?.[1];
   const rowSpan = element.gridRow?.match(/span\s+(\d+)/)?.[1];

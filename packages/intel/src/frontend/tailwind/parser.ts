@@ -45,17 +45,17 @@ export function parseWidthClass(className: string): { strategy: SizingStrategyTy
   const fixedMatch = className.match(/^w-(\d+(?:\.\d+)?|px)$/);
   if (fixedMatch) {
     const value = TAILWIND_SPACING[fixedMatch[1]];
-    if (value) return { strategy: 'fixed', value };
+    if (value) {return { strategy: 'fixed', value };}
   }
   const fractionMatch = className.match(/^w-(\d+\/\d+)$/);
   if (fractionMatch) {
     const value = TAILWIND_FRACTIONS[fractionMatch[1]];
-    if (value) return { strategy: 'percentage', value };
+    if (value) {return { strategy: 'percentage', value };}
   }
   const arbitraryMatch = className.match(/^w-\[(.+)\]$/);
   if (arbitraryMatch) {
     const value = arbitraryMatch[1];
-    if (value.endsWith('%')) return { strategy: 'percentage', value };
+    if (value.endsWith('%')) {return { strategy: 'percentage', value };}
     if (value.includes('vw') || value.includes('dvw') || value.includes('svw') || value.includes('lvw')) {
       return { strategy: 'viewport', value };
     }
@@ -80,17 +80,17 @@ export function parseHeightClass(className: string): { strategy: SizingStrategyT
   const fixedMatch = className.match(/^h-(\d+(?:\.\d+)?|px)$/);
   if (fixedMatch) {
     const value = TAILWIND_SPACING[fixedMatch[1]];
-    if (value) return { strategy: 'fixed', value };
+    if (value) {return { strategy: 'fixed', value };}
   }
   const fractionMatch = className.match(/^h-(\d+\/\d+)$/);
   if (fractionMatch) {
     const value = TAILWIND_FRACTIONS[fractionMatch[1]];
-    if (value) return { strategy: 'percentage', value };
+    if (value) {return { strategy: 'percentage', value };}
   }
   const arbitraryMatch = className.match(/^h-\[(.+)\]$/);
   if (arbitraryMatch) {
     const value = arbitraryMatch[1];
-    if (value.endsWith('%')) return { strategy: 'percentage', value };
+    if (value.endsWith('%')) {return { strategy: 'percentage', value };}
     if (value.includes('vh') || value.includes('dvh') || value.includes('svh') || value.includes('lvh')) {
       return { strategy: 'viewport', value };
     }
@@ -133,43 +133,43 @@ export function parseTailwindClasses(classes: string[]): Partial<ElementNode> {
     }
     if (className.startsWith('min-w-')) {
       const value = className.slice(6);
-      if (value === 'full') props.minWidth = '100%';
-      else if (value === 'min') props.minWidth = 'min-content';
-      else if (value === 'max') props.minWidth = 'max-content';
-      else if (value === 'fit') props.minWidth = 'fit-content';
-      else if (value === '0') props.minWidth = '0px';
-      else if (value.startsWith('[') && value.endsWith(']')) props.minWidth = value.slice(1, -1);
-      else if (TAILWIND_SPACING[value]) props.minWidth = TAILWIND_SPACING[value];
+      if (value === 'full') {props.minWidth = '100%';}
+      else if (value === 'min') {props.minWidth = 'min-content';}
+      else if (value === 'max') {props.minWidth = 'max-content';}
+      else if (value === 'fit') {props.minWidth = 'fit-content';}
+      else if (value === '0') {props.minWidth = '0px';}
+      else if (value.startsWith('[') && value.endsWith(']')) {props.minWidth = value.slice(1, -1);}
+      else if (TAILWIND_SPACING[value]) {props.minWidth = TAILWIND_SPACING[value];}
       continue;
     }
     if (className.startsWith('max-w-')) {
       const value = className.slice(6);
-      if (MAX_WIDTH_VALUES[value]) props.maxWidth = MAX_WIDTH_VALUES[value];
-      else if (value.startsWith('[') && value.endsWith(']')) props.maxWidth = value.slice(1, -1);
+      if (MAX_WIDTH_VALUES[value]) {props.maxWidth = MAX_WIDTH_VALUES[value];}
+      else if (value.startsWith('[') && value.endsWith(']')) {props.maxWidth = value.slice(1, -1);}
       continue;
     }
     if (className.startsWith('min-h-')) {
       const value = className.slice(6);
-      if (value === 'full') props.minHeight = '100%';
-      else if (value === 'screen') props.minHeight = '100vh';
-      else if (value === 'min') props.minHeight = 'min-content';
-      else if (value === 'max') props.minHeight = 'max-content';
-      else if (value === 'fit') props.minHeight = 'fit-content';
-      else if (value === '0') props.minHeight = '0px';
-      else if (value.startsWith('[') && value.endsWith(']')) props.minHeight = value.slice(1, -1);
-      else if (TAILWIND_SPACING[value]) props.minHeight = TAILWIND_SPACING[value];
+      if (value === 'full') {props.minHeight = '100%';}
+      else if (value === 'screen') {props.minHeight = '100vh';}
+      else if (value === 'min') {props.minHeight = 'min-content';}
+      else if (value === 'max') {props.minHeight = 'max-content';}
+      else if (value === 'fit') {props.minHeight = 'fit-content';}
+      else if (value === '0') {props.minHeight = '0px';}
+      else if (value.startsWith('[') && value.endsWith(']')) {props.minHeight = value.slice(1, -1);}
+      else if (TAILWIND_SPACING[value]) {props.minHeight = TAILWIND_SPACING[value];}
       continue;
     }
     if (className.startsWith('max-h-')) {
       const value = className.slice(6);
-      if (value === 'full') props.maxHeight = '100%';
-      else if (value === 'screen') props.maxHeight = '100vh';
-      else if (value === 'min') props.maxHeight = 'min-content';
-      else if (value === 'max') props.maxHeight = 'max-content';
-      else if (value === 'fit') props.maxHeight = 'fit-content';
-      else if (value === 'none') props.maxHeight = 'none';
-      else if (value.startsWith('[') && value.endsWith(']')) props.maxHeight = value.slice(1, -1);
-      else if (TAILWIND_SPACING[value]) props.maxHeight = TAILWIND_SPACING[value];
+      if (value === 'full') {props.maxHeight = '100%';}
+      else if (value === 'screen') {props.maxHeight = '100vh';}
+      else if (value === 'min') {props.maxHeight = 'min-content';}
+      else if (value === 'max') {props.maxHeight = 'max-content';}
+      else if (value === 'fit') {props.maxHeight = 'fit-content';}
+      else if (value === 'none') {props.maxHeight = 'none';}
+      else if (value.startsWith('[') && value.endsWith(']')) {props.maxHeight = value.slice(1, -1);}
+      else if (TAILWIND_SPACING[value]) {props.maxHeight = TAILWIND_SPACING[value];}
       continue;
     }
     const displayClasses: Record<string, DisplayType> = {
@@ -193,11 +193,11 @@ export function parseTailwindClasses(classes: string[]): Partial<ElementNode> {
     const basisMatch = className.match(/^basis-(.+)$/);
     if (basisMatch) {
       const value = basisMatch[1];
-      if (value === 'auto') props.flexBasis = 'auto';
-      else if (value === 'full') props.flexBasis = '100%';
-      else if (TAILWIND_SPACING[value]) props.flexBasis = TAILWIND_SPACING[value];
-      else if (TAILWIND_FRACTIONS[value]) props.flexBasis = TAILWIND_FRACTIONS[value];
-      else if (value.startsWith('[') && value.endsWith(']')) props.flexBasis = value.slice(1, -1);
+      if (value === 'auto') {props.flexBasis = 'auto';}
+      else if (value === 'full') {props.flexBasis = '100%';}
+      else if (TAILWIND_SPACING[value]) {props.flexBasis = TAILWIND_SPACING[value];}
+      else if (TAILWIND_FRACTIONS[value]) {props.flexBasis = TAILWIND_FRACTIONS[value];}
+      else if (value.startsWith('[') && value.endsWith(']')) {props.flexBasis = value.slice(1, -1);}
       continue;
     }
     const colSpanMatch = className.match(/^col-span-(\d+|full)$/);
@@ -215,17 +215,17 @@ export function parseTailwindClasses(classes: string[]): Partial<ElementNode> {
     const gridColsMatch = className.match(/^grid-cols-(\d+|none|\[.+\])$/);
     if (gridColsMatch) {
       const value = gridColsMatch[1];
-      if (value === 'none') props.gridTemplateColumns = 'none';
-      else if (value.startsWith('[') && value.endsWith(']')) props.gridTemplateColumns = value.slice(1, -1);
-      else props.gridTemplateColumns = `repeat(${value}, minmax(0, 1fr))`;
+      if (value === 'none') {props.gridTemplateColumns = 'none';}
+      else if (value.startsWith('[') && value.endsWith(']')) {props.gridTemplateColumns = value.slice(1, -1);}
+      else {props.gridTemplateColumns = `repeat(${value}, minmax(0, 1fr))`;}
       continue;
     }
     const gridRowsMatch = className.match(/^grid-rows-(\d+|none|\[.+\])$/);
     if (gridRowsMatch) {
       const value = gridRowsMatch[1];
-      if (value === 'none') props.gridTemplateRows = 'none';
-      else if (value.startsWith('[') && value.endsWith(']')) props.gridTemplateRows = value.slice(1, -1);
-      else props.gridTemplateRows = `repeat(${value}, minmax(0, 1fr))`;
+      if (value === 'none') {props.gridTemplateRows = 'none';}
+      else if (value.startsWith('[') && value.endsWith(']')) {props.gridTemplateRows = value.slice(1, -1);}
+      else {props.gridTemplateRows = `repeat(${value}, minmax(0, 1fr))`;}
       continue;
     }
     const overflows: Record<string, string> = {
@@ -277,43 +277,43 @@ export function parseTailwindClassesLayout(classes: string[]): ParsedCssProperti
     }
     if (className.startsWith('min-w-')) {
       const value = className.slice(6);
-      if (value === 'full') props.minWidth = '100%';
-      else if (value === 'min') props.minWidth = 'min-content';
-      else if (value === 'max') props.minWidth = 'max-content';
-      else if (value === 'fit') props.minWidth = 'fit-content';
-      else if (value === '0') props.minWidth = '0px';
-      else if (value.startsWith('[') && value.endsWith(']')) props.minWidth = value.slice(1, -1);
-      else if (TAILWIND_SPACING[value]) props.minWidth = TAILWIND_SPACING[value];
+      if (value === 'full') {props.minWidth = '100%';}
+      else if (value === 'min') {props.minWidth = 'min-content';}
+      else if (value === 'max') {props.minWidth = 'max-content';}
+      else if (value === 'fit') {props.minWidth = 'fit-content';}
+      else if (value === '0') {props.minWidth = '0px';}
+      else if (value.startsWith('[') && value.endsWith(']')) {props.minWidth = value.slice(1, -1);}
+      else if (TAILWIND_SPACING[value]) {props.minWidth = TAILWIND_SPACING[value];}
       continue;
     }
     if (className.startsWith('max-w-')) {
       const value = className.slice(6);
-      if (MAX_WIDTH_VALUES[value]) props.maxWidth = MAX_WIDTH_VALUES[value];
-      else if (value.startsWith('[') && value.endsWith(']')) props.maxWidth = value.slice(1, -1);
+      if (MAX_WIDTH_VALUES[value]) {props.maxWidth = MAX_WIDTH_VALUES[value];}
+      else if (value.startsWith('[') && value.endsWith(']')) {props.maxWidth = value.slice(1, -1);}
       continue;
     }
     if (className.startsWith('min-h-')) {
       const value = className.slice(6);
-      if (value === 'full') props.minHeight = '100%';
-      else if (value === 'screen') props.minHeight = '100vh';
-      else if (value === 'min') props.minHeight = 'min-content';
-      else if (value === 'max') props.minHeight = 'max-content';
-      else if (value === 'fit') props.minHeight = 'fit-content';
-      else if (value === '0') props.minHeight = '0px';
-      else if (value.startsWith('[') && value.endsWith(']')) props.minHeight = value.slice(1, -1);
-      else if (TAILWIND_SPACING[value]) props.minHeight = TAILWIND_SPACING[value];
+      if (value === 'full') {props.minHeight = '100%';}
+      else if (value === 'screen') {props.minHeight = '100vh';}
+      else if (value === 'min') {props.minHeight = 'min-content';}
+      else if (value === 'max') {props.minHeight = 'max-content';}
+      else if (value === 'fit') {props.minHeight = 'fit-content';}
+      else if (value === '0') {props.minHeight = '0px';}
+      else if (value.startsWith('[') && value.endsWith(']')) {props.minHeight = value.slice(1, -1);}
+      else if (TAILWIND_SPACING[value]) {props.minHeight = TAILWIND_SPACING[value];}
       continue;
     }
     if (className.startsWith('max-h-')) {
       const value = className.slice(6);
-      if (value === 'full') props.maxHeight = '100%';
-      else if (value === 'screen') props.maxHeight = '100vh';
-      else if (value === 'min') props.maxHeight = 'min-content';
-      else if (value === 'max') props.maxHeight = 'max-content';
-      else if (value === 'fit') props.maxHeight = 'fit-content';
-      else if (value === 'none') props.maxHeight = 'none';
-      else if (value.startsWith('[') && value.endsWith(']')) props.maxHeight = value.slice(1, -1);
-      else if (TAILWIND_SPACING[value]) props.maxHeight = TAILWIND_SPACING[value];
+      if (value === 'full') {props.maxHeight = '100%';}
+      else if (value === 'screen') {props.maxHeight = '100vh';}
+      else if (value === 'min') {props.maxHeight = 'min-content';}
+      else if (value === 'max') {props.maxHeight = 'max-content';}
+      else if (value === 'fit') {props.maxHeight = 'fit-content';}
+      else if (value === 'none') {props.maxHeight = 'none';}
+      else if (value.startsWith('[') && value.endsWith(']')) {props.maxHeight = value.slice(1, -1);}
+      else if (TAILWIND_SPACING[value]) {props.maxHeight = TAILWIND_SPACING[value];}
       continue;
     }
     const displayClasses: Record<string, DisplayType> = {
@@ -341,11 +341,11 @@ export function parseTailwindClassesLayout(classes: string[]): ParsedCssProperti
     const basisMatch = className.match(/^basis-(.+)$/);
     if (basisMatch) {
       const value = basisMatch[1];
-      if (value === 'auto') props.flexBasis = 'auto';
-      else if (value === 'full') props.flexBasis = '100%';
-      else if (TAILWIND_SPACING[value]) props.flexBasis = TAILWIND_SPACING[value];
-      else if (TAILWIND_FRACTIONS[value]) props.flexBasis = TAILWIND_FRACTIONS[value];
-      else if (value.startsWith('[') && value.endsWith(']')) props.flexBasis = value.slice(1, -1);
+      if (value === 'auto') {props.flexBasis = 'auto';}
+      else if (value === 'full') {props.flexBasis = '100%';}
+      else if (TAILWIND_SPACING[value]) {props.flexBasis = TAILWIND_SPACING[value];}
+      else if (TAILWIND_FRACTIONS[value]) {props.flexBasis = TAILWIND_FRACTIONS[value];}
+      else if (value.startsWith('[') && value.endsWith(']')) {props.flexBasis = value.slice(1, -1);}
       continue;
     }
     const alignItems: Record<string, string> = {
@@ -372,24 +372,24 @@ export function parseTailwindClassesLayout(classes: string[]): ParsedCssProperti
     const gapMatch = className.match(/^gap-(\d+(?:\.\d+)?|px|\[.+\])$/);
     if (gapMatch) {
       const value = gapMatch[1];
-      if (value.startsWith('[') && value.endsWith(']')) props.gap = value.slice(1, -1);
-      else if (TAILWIND_SPACING[value]) props.gap = TAILWIND_SPACING[value];
+      if (value.startsWith('[') && value.endsWith(']')) {props.gap = value.slice(1, -1);}
+      else if (TAILWIND_SPACING[value]) {props.gap = TAILWIND_SPACING[value];}
       continue;
     }
     const gridColsMatch = className.match(/^grid-cols-(\d+|none|\[.+\])$/);
     if (gridColsMatch) {
       const value = gridColsMatch[1];
-      if (value === 'none') props.gridTemplateColumns = 'none';
-      else if (value.startsWith('[') && value.endsWith(']')) props.gridTemplateColumns = value.slice(1, -1);
-      else props.gridTemplateColumns = `repeat(${value}, minmax(0, 1fr))`;
+      if (value === 'none') {props.gridTemplateColumns = 'none';}
+      else if (value.startsWith('[') && value.endsWith(']')) {props.gridTemplateColumns = value.slice(1, -1);}
+      else {props.gridTemplateColumns = `repeat(${value}, minmax(0, 1fr))`;}
       continue;
     }
     const gridRowsMatch = className.match(/^grid-rows-(\d+|none|\[.+\])$/);
     if (gridRowsMatch) {
       const value = gridRowsMatch[1];
-      if (value === 'none') props.gridTemplateRows = 'none';
-      else if (value.startsWith('[') && value.endsWith(']')) props.gridTemplateRows = value.slice(1, -1);
-      else props.gridTemplateRows = `repeat(${value}, minmax(0, 1fr))`;
+      if (value === 'none') {props.gridTemplateRows = 'none';}
+      else if (value.startsWith('[') && value.endsWith(']')) {props.gridTemplateRows = value.slice(1, -1);}
+      else {props.gridTemplateRows = `repeat(${value}, minmax(0, 1fr))`;}
       continue;
     }
     const colSpanMatch = className.match(/^col-span-(\d+|full)$/);

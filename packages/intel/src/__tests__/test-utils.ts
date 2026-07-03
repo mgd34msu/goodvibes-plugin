@@ -29,19 +29,19 @@ export interface Envelope<T = unknown> {
 
 export function parseResult<T = unknown>(result: CallToolResult): Envelope<T> {
   const content = result.content?.[0];
-  if (!content || content.type !== 'text') throw new Error('Expected text content in result');
+  if (!content || content.type !== 'text') {throw new Error('Expected text content in result');}
   return JSON.parse(content.text) as Envelope<T>;
 }
 
 export function expectSuccess<T = unknown>(result: CallToolResult): Envelope<T> {
   const parsed = parseResult<T>(result);
-  if (!parsed.success) throw new Error(`Expected success but got error: ${parsed.error}`);
+  if (!parsed.success) {throw new Error(`Expected success but got error: ${parsed.error}`);}
   return parsed;
 }
 
 export function expectError(result: CallToolResult): Envelope<never> {
   const parsed = parseResult(result);
-  if (parsed.success) throw new Error('Expected error but got success');
+  if (parsed.success) {throw new Error('Expected error but got success');}
   return parsed as Envelope<never>;
 }
 
@@ -88,7 +88,7 @@ export async function writeFiles(root: string, files: Record<string, string>): P
  */
 let outlineCapabilityCache: boolean | null = null;
 export async function treeSitterOutlineAvailable(): Promise<boolean> {
-  if (outlineCapabilityCache !== null) return outlineCapabilityCache;
+  if (outlineCapabilityCache !== null) {return outlineCapabilityCache;}
   try {
     const core = new TreeSitterCore();
     await core.parse('const x = 1;\n', 'probe.ts');

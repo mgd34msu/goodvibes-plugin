@@ -119,12 +119,12 @@ function analyseTail(records: JSONLRecord[]): TailState {
   // Collect resolved tool_use ids from user tool_result blocks.
   const resolved = new Set<string>();
   for (const rec of records) {
-    if (rec.type !== 'user') continue;
+    if (rec.type !== 'user') {continue;}
     const content = (rec as JSONLUserRecord).message?.content;
-    if (!Array.isArray(content)) continue;
+    if (!Array.isArray(content)) {continue;}
     for (const block of content) {
       const b = block as ToolResultBlock;
-      if (b?.type === 'tool_result' && b.tool_use_id) resolved.add(b.tool_use_id);
+      if (b?.type === 'tool_result' && b.tool_use_id) {resolved.add(b.tool_use_id);}
     }
   }
 
@@ -132,15 +132,15 @@ function analyseTail(records: JSONLRecord[]): TailState {
   let pendingCallAtMs: number | null = null;
   let pendingCallName: string | null = null;
   for (const rec of records) {
-    if (rec.type !== 'assistant') continue;
+    if (rec.type !== 'assistant') {continue;}
     const assistant = rec as JSONLAssistantRecord;
     const content = assistant.message?.content;
-    if (!Array.isArray(content)) continue;
+    if (!Array.isArray(content)) {continue;}
     const ts = assistant.timestamp ? new Date(assistant.timestamp).getTime() : NaN;
     for (const block of content) {
       const b = block as ToolUseBlock;
-      if (b?.type !== 'tool_use' || !b.id) continue;
-      if (resolved.has(b.id)) continue;
+      if (b?.type !== 'tool_use' || !b.id) {continue;}
+      if (resolved.has(b.id)) {continue;}
       if (Number.isFinite(ts) && (pendingCallAtMs === null || ts >= pendingCallAtMs)) {
         pendingCallAtMs = ts;
         pendingCallName = b.name ?? 'tool';
@@ -152,7 +152,7 @@ function analyseTail(records: JSONLRecord[]): TailState {
   let lastHadThinkingOrText = false;
   for (let i = records.length - 1; i >= 0; i--) {
     const rec = records[i]!;
-    if (rec.type !== 'assistant') continue;
+    if (rec.type !== 'assistant') {continue;}
     const content = (rec as JSONLAssistantRecord).message?.content;
     if (Array.isArray(content)) {
       lastHadThinkingOrText = content.some(
@@ -176,7 +176,7 @@ function collectAgentFiles(sessionDir: string): string[] {
   const subagentsDir = join(sessionDir, 'subagents');
   try {
     for (const e of readdirSync(subagentsDir)) {
-      if (e.startsWith('agent-') && e.endsWith('.jsonl')) files.push(join(subagentsDir, e));
+      if (e.startsWith('agent-') && e.endsWith('.jsonl')) {files.push(join(subagentsDir, e));}
     }
   } catch {
     /* no subagents dir — fine */
@@ -185,7 +185,7 @@ function collectAgentFiles(sessionDir: string): string[] {
   // tasks/ may nest a level; walk shallowly (2 levels) for *.jsonl.
   const tasksDir = join(sessionDir, 'tasks');
   const walk = (dir: string, depth: number): void => {
-    if (depth > 2) return;
+    if (depth > 2) {return;}
     let entries: import('node:fs').Dirent[];
     try {
       entries = readdirSync(dir, { withFileTypes: true });
@@ -194,8 +194,8 @@ function collectAgentFiles(sessionDir: string): string[] {
     }
     for (const ent of entries) {
       const full = join(dir, ent.name);
-      if (ent.isDirectory()) walk(full, depth + 1);
-      else if (ent.isFile() && ent.name.endsWith('.jsonl')) files.push(full);
+      if (ent.isDirectory()) {walk(full, depth + 1);}
+      else if (ent.isFile() && ent.name.endsWith('.jsonl')) {files.push(full);}
     }
   };
   walk(tasksDir, 0);
@@ -279,7 +279,7 @@ export function scanAgentLiveness(options: AgentLivenessOptions): AgentLivenessR
       if (prev && now() > prev.atMs) {
         const dBytes = sizeBytes - prev.size;
         const dMin = (now() - prev.atMs) / 60_000;
-        if (dMin > 0) writeRate = Math.max(0, Math.round(dBytes / dMin));
+        if (dMin > 0) {writeRate = Math.max(0, Math.round(dBytes / dMin));}
       }
       prevSizes.set(file, { size: sizeBytes, atMs: now() });
     }

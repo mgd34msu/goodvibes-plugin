@@ -77,18 +77,18 @@ export function detectHocWrappedComponent(
   decl: ts.VariableDeclaration,
   sourceFile: ts.SourceFile,
 ): UnwrapResult | null {
-  if (!decl.initializer || !ts.isCallExpression(decl.initializer)) return null;
-  if (!ts.isIdentifier(decl.name)) return null;
+  if (!decl.initializer || !ts.isCallExpression(decl.initializer)) {return null;}
+  if (!ts.isIdentifier(decl.name)) {return null;}
 
   const varName = decl.name.getText(sourceFile);
-  if (!/^[A-Z]/.test(varName)) return null;
+  if (!/^[A-Z]/.test(varName)) {return null;}
 
   const unwrapped = unwrapHocCall(decl.initializer, sourceFile);
-  if (unwrapped.wrappers.length === 0) return null;
+  if (unwrapped.wrappers.length === 0) {return null;}
 
   if (!unwrapped.isLazy && !unwrapped.hoistedComponent) {
-    if (!unwrapped.innerFn) return null;
-    if (!containsJsxReturn(unwrapped.innerFn, sourceFile)) return null;
+    if (!unwrapped.innerFn) {return null;}
+    if (!containsJsxReturn(unwrapped.innerFn, sourceFile)) {return null;}
   }
   return unwrapped;
 }
@@ -99,14 +99,14 @@ export function detectDefaultExportHoc(
   sourceFile: ts.SourceFile,
 ): { name: string; unwrapped: UnwrapResult } | null {
   const expr = node.expression;
-  if (!ts.isCallExpression(expr)) return null;
+  if (!ts.isCallExpression(expr)) {return null;}
 
   const unwrapped = unwrapHocCall(expr, sourceFile);
-  if (unwrapped.wrappers.length === 0) return null;
+  if (unwrapped.wrappers.length === 0) {return null;}
 
   if (!unwrapped.isLazy && !unwrapped.hoistedComponent) {
-    if (!unwrapped.innerFn) return null;
-    if (!containsJsxReturn(unwrapped.innerFn, sourceFile)) return null;
+    if (!unwrapped.innerFn) {return null;}
+    if (!containsJsxReturn(unwrapped.innerFn, sourceFile)) {return null;}
   }
 
   const name = unwrapped.hoistedComponent ?? 'DefaultExport';

@@ -32,7 +32,7 @@ export const FRAMEWORK_DETECTION_PRIORITY: Array<{ framework: Framework; package
  */
 export function detectFramework(projectPath: string): Framework | null {
   const packageJsonPath = path.join(projectPath, 'package.json');
-  if (!fs.existsSync(packageJsonPath)) return null;
+  if (!fs.existsSync(packageJsonPath)) {return null;}
 
   try {
     const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8')) as {
@@ -42,7 +42,7 @@ export function detectFramework(projectPath: string): Framework | null {
     const allDeps = { ...packageJson.dependencies, ...packageJson.devDependencies };
 
     for (const { framework, packageName } of FRAMEWORK_DETECTION_PRIORITY) {
-      if (allDeps[packageName]) return framework;
+      if (allDeps[packageName]) {return framework;}
     }
     return null;
   } catch {

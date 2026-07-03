@@ -75,7 +75,7 @@ export function errorEnvelope(error: string, meta: Partial<EnvelopeMeta> = {}): 
  * @returns compact JSON with payload-true token accounting
  */
 export function renderEnvelope<T>(env: Envelope<T>): string {
-  if (!env.meta) return JSON.stringify(env);
+  if (!env.meta) {return JSON.stringify(env);}
   const provisional = JSON.stringify(env);
   const honest: Envelope<T> = {
     ...env,
@@ -99,10 +99,10 @@ export function enforceMaxTokens<T extends { content?: string }>(
   env: Envelope<T>,
   maxTokens?: number,
 ): Envelope<T> {
-  if (!maxTokens || maxTokens <= 0) return env;
-  if (!env.data || typeof env.data.content !== 'string') return env;
+  if (!maxTokens || maxTokens <= 0) {return env;}
+  if (!env.data || typeof env.data.content !== 'string') {return env;}
 
-  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) return env;
+  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) {return env;}
 
   const original = env.data.content;
   // First guess: budget chars minus the envelope overhead (everything but content).

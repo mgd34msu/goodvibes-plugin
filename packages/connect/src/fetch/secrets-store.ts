@@ -141,9 +141,9 @@ export function isEnvRef(value: unknown): value is EnvRef {
  * `process.env`; unresolvable refs become undefined.
  */
 export function resolveSecretValue(value: string | EnvRef | undefined): string | undefined {
-  if (value === undefined) return undefined;
-  if (typeof value === 'string') return value;
-  if (isEnvRef(value)) return process.env[value.$env];
+  if (value === undefined) {return undefined;}
+  if (typeof value === 'string') {return value;}
+  if (isEnvRef(value)) {return process.env[value.$env];}
   return undefined;
 }
 
@@ -154,30 +154,30 @@ export function resolveSecretValue(value: string | EnvRef | undefined): string |
 export function resolveAuthConfig(auth: ServiceAuth): ServiceAuth {
   const resolved: ServiceAuth = { type: auth.type };
 
-  if (auth.token !== undefined) resolved.token = resolveSecretValue(auth.token) as string;
-  if (auth.username !== undefined) resolved.username = resolveSecretValue(auth.username) as string;
-  if (auth.password !== undefined) resolved.password = resolveSecretValue(auth.password) as string;
-  if (auth.key !== undefined) resolved.key = resolveSecretValue(auth.key) as string;
-  if (auth.client_id !== undefined) resolved.client_id = resolveSecretValue(auth.client_id) as string;
+  if (auth.token !== undefined) {resolved.token = resolveSecretValue(auth.token) as string;}
+  if (auth.username !== undefined) {resolved.username = resolveSecretValue(auth.username) as string;}
+  if (auth.password !== undefined) {resolved.password = resolveSecretValue(auth.password) as string;}
+  if (auth.key !== undefined) {resolved.key = resolveSecretValue(auth.key) as string;}
+  if (auth.client_id !== undefined) {resolved.client_id = resolveSecretValue(auth.client_id) as string;}
   if (auth.client_secret !== undefined)
-    resolved.client_secret = resolveSecretValue(auth.client_secret) as string;
-  if (auth.access_token !== undefined) resolved.access_token = auth.access_token;
-  if (auth.refresh_token !== undefined) resolved.refresh_token = auth.refresh_token;
+    {resolved.client_secret = resolveSecretValue(auth.client_secret) as string;}
+  if (auth.access_token !== undefined) {resolved.access_token = auth.access_token;}
+  if (auth.refresh_token !== undefined) {resolved.refresh_token = auth.refresh_token;}
 
-  if (auth.header !== undefined) resolved.header = auth.header;
-  if (auth.token_url !== undefined) resolved.token_url = auth.token_url;
-  if (auth.authorize_url !== undefined) resolved.authorize_url = auth.authorize_url;
-  if (auth.redirect_uri !== undefined) resolved.redirect_uri = auth.redirect_uri;
-  if (auth.scopes !== undefined) resolved.scopes = [...auth.scopes];
-  if (auth.expires_at !== undefined) resolved.expires_at = auth.expires_at;
-  if (auth.login_url !== undefined) resolved.login_url = auth.login_url;
-  if (auth.token_path !== undefined) resolved.token_path = auth.token_path;
+  if (auth.header !== undefined) {resolved.header = auth.header;}
+  if (auth.token_url !== undefined) {resolved.token_url = auth.token_url;}
+  if (auth.authorize_url !== undefined) {resolved.authorize_url = auth.authorize_url;}
+  if (auth.redirect_uri !== undefined) {resolved.redirect_uri = auth.redirect_uri;}
+  if (auth.scopes !== undefined) {resolved.scopes = [...auth.scopes];}
+  if (auth.expires_at !== undefined) {resolved.expires_at = auth.expires_at;}
+  if (auth.login_url !== undefined) {resolved.login_url = auth.login_url;}
+  if (auth.token_path !== undefined) {resolved.token_path = auth.token_path;}
 
   if (auth.headers) {
     resolved.headers = {};
     for (const [key, value] of Object.entries(auth.headers)) {
       const resolvedVal = resolveSecretValue(value);
-      if (resolvedVal !== undefined) resolved.headers[key] = resolvedVal;
+      if (resolvedVal !== undefined) {resolved.headers[key] = resolvedVal;}
     }
   }
 
@@ -185,7 +185,7 @@ export function resolveAuthConfig(auth: ServiceAuth): ServiceAuth {
     resolved.login_body = {};
     for (const [key, value] of Object.entries(auth.login_body)) {
       const resolvedVal = resolveSecretValue(value);
-      if (resolvedVal !== undefined) resolved.login_body[key] = resolvedVal;
+      if (resolvedVal !== undefined) {resolved.login_body[key] = resolvedVal;}
     }
   }
 

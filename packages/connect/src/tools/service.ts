@@ -160,16 +160,16 @@ export async function handleService(args: unknown): Promise<CallToolResult> {
         });
 
       case 'get': {
-        if (!input.name) return fail('`get` requires a service `name`.');
+        if (!input.name) {return fail('`get` requires a service `name`.');}
         const summary = getServiceSummary(input.name);
-        if (!summary) return fail(`Service "${input.name}" is not registered.`);
+        if (!summary) {return fail(`Service "${input.name}" is not registered.`);}
         const auth_status = await getAuthStatus(input.name);
         return ok({ ...summary, auth_status });
       }
 
       case 'register': {
-        if (!input.name) return fail('`register` requires a service `name`.');
-        if (!input.config?.base_url) return fail('`register` requires `config.base_url`.');
+        if (!input.name) {return fail('`register` requires a service `name`.');}
+        if (!input.config?.base_url) {return fail('`register` requires `config.base_url`.');}
         if (!originValid(input.config.base_url)) {
           return fail(`base_url "${input.config.base_url}" is not a valid absolute URL.`);
         }
@@ -178,14 +178,14 @@ export async function handleService(args: unknown): Promise<CallToolResult> {
       }
 
       case 'remove': {
-        if (!input.name) return fail('`remove` requires a service `name`.');
+        if (!input.name) {return fail('`remove` requires a service `name`.');}
         const removed = await removeService(input.name);
         return ok({ removed, name: input.name });
       }
 
       case 'set_auth': {
-        if (!input.name) return fail('`set_auth` requires a service `name`.');
-        if (!input.auth) return fail('`set_auth` requires an `auth` config.');
+        if (!input.name) {return fail('`set_auth` requires a service `name`.');}
+        if (!input.auth) {return fail('`set_auth` requires an `auth` config.');}
         await setServiceSecret(input.name, input.auth);
         // Credential-free: report only the resulting status, never the secret.
         const auth_status = await getAuthStatus(input.name);
@@ -201,19 +201,19 @@ export async function handleService(args: unknown): Promise<CallToolResult> {
       }
 
       case 'allow': {
-        if (!input.hostname) return fail('`allow` requires a `hostname`.');
+        if (!input.hostname) {return fail('`allow` requires a `hostname`.');}
         await addAllowlistHost(input.hostname);
         return ok({ allowlist: getAllowlist() });
       }
 
       case 'unallow': {
-        if (!input.hostname) return fail('`unallow` requires a `hostname`.');
+        if (!input.hostname) {return fail('`unallow` requires a `hostname`.');}
         const removed = await removeAllowlistHost(input.hostname);
         return ok({ removed, allowlist: getAllowlist() });
       }
 
       case 'register_connection': {
-        if (!input.name) return fail('`register_connection` requires a `name`.');
+        if (!input.name) {return fail('`register_connection` requires a `name`.');}
         if (!input.connection || (!input.connection.url && !input.connection.url_env)) {
           return fail('`register_connection` requires `connection.url` or `connection.url_env`.');
         }
@@ -222,7 +222,7 @@ export async function handleService(args: unknown): Promise<CallToolResult> {
       }
 
       case 'remove_connection': {
-        if (!input.name) return fail('`remove_connection` requires a `name`.');
+        if (!input.name) {return fail('`remove_connection` requires a `name`.');}
         const removed = await removeConnection(input.name);
         return ok({ removed, name: input.name });
       }

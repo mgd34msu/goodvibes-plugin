@@ -34,9 +34,9 @@ function parse(result: Awaited<ReturnType<typeof handler>>): { success: boolean;
 
 function findNode(nodes: Node[], name: string): Node | undefined {
   for (const n of nodes) {
-    if (n.name === name) return n;
+    if (n.name === name) {return n;}
     const found = findNode(n.children, name);
-    if (found) return found;
+    if (found) {return found;}
   }
   return undefined;
 }

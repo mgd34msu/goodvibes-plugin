@@ -11,13 +11,13 @@ import ts from 'typescript';
 export function extractClassesFromNode(node: ts.Node, out: string[]): void {
   if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
     const text = node.text.trim();
-    if (text) out.push(...text.split(/\s+/));
+    if (text) {out.push(...text.split(/\s+/));}
     return;
   }
   if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) {
     if (ts.isStringLiteral(node.right) || ts.isNoSubstitutionTemplateLiteral(node.right)) {
       const text = node.right.text.trim();
-      if (text) out.push(...text.split(/\s+/));
+      if (text) {out.push(...text.split(/\s+/));}
     }
     return;
   }
@@ -45,13 +45,13 @@ export function extractClassesFromNode(node: ts.Node, out: string[]): void {
     return;
   }
   if (ts.isArrayLiteralExpression(node)) {
-    for (const element of node.elements) extractClassesFromNode(element, out);
+    for (const element of node.elements) {extractClassesFromNode(element, out);}
   }
 }
 
 /** Extract CSS classes from a JSX className/class attribute. */
 export function extractClassesFromAttribute(attr: ts.JsxAttribute): string[] {
-  if (!attr.initializer) return [];
+  if (!attr.initializer) {return [];}
   if (ts.isStringLiteral(attr.initializer)) {
     return attr.initializer.text.split(/\s+/).filter(Boolean);
   }
@@ -62,22 +62,22 @@ export function extractClassesFromAttribute(attr: ts.JsxAttribute): string[] {
     }
     if (ts.isTemplateExpression(expr)) {
       const classes: string[] = [];
-      if (expr.head.text) classes.push(...expr.head.text.split(/\s+/).filter(Boolean));
+      if (expr.head.text) {classes.push(...expr.head.text.split(/\s+/).filter(Boolean));}
       for (const span of expr.templateSpans) {
-        if (span.literal.text) classes.push(...span.literal.text.split(/\s+/).filter(Boolean));
+        if (span.literal.text) {classes.push(...span.literal.text.split(/\s+/).filter(Boolean));}
       }
       return classes;
     }
     if (ts.isCallExpression(expr)) {
       const classes: string[] = [];
-      for (const arg of expr.arguments) extractClassesFromNode(arg, classes);
+      for (const arg of expr.arguments) {extractClassesFromNode(arg, classes);}
       return classes;
     }
     if (ts.isBinaryExpression(expr) && expr.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) {
       const classes: string[] = [];
       if (ts.isStringLiteral(expr.right) || ts.isNoSubstitutionTemplateLiteral(expr.right)) {
         const text = expr.right.text.trim();
-        if (text) classes.push(...text.split(/\s+/));
+        if (text) {classes.push(...text.split(/\s+/));}
       }
       return classes;
     }

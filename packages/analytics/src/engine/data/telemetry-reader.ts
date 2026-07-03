@@ -163,7 +163,7 @@ export class TelemetryReader {
     session_id?: string;
     limit?: number;
   }): TelemetryRecord[] {
-    if (!this.db) return [];
+    if (!this.db) {return [];}
 
     try {
       const conditions: string[] = [];
@@ -217,10 +217,10 @@ export class TelemetryReader {
     total_duration_ms: number;
     success_rate: number;
   } | null {
-    if (!this.db) return null;
+    if (!this.db) {return null;}
 
     const sid = sessionId ?? this.getCurrentSessionId();
-    if (!sid) return null;
+    if (!sid) {return null;}
 
     try {
       const results = this.db.exec(
@@ -228,7 +228,7 @@ export class TelemetryReader {
         [sid],
       );
       const records = this.resultsToRecords(results);
-      if (records.length === 0) return null;
+      if (records.length === 0) {return null;}
 
       const byTool: Record<
         string,
@@ -305,12 +305,12 @@ export class TelemetryReader {
    * Returns null if unavailable or DB is empty.
    */
   getCurrentSessionId(): string | null {
-    if (!this.db) return null;
+    if (!this.db) {return null;}
     try {
       const results = this.db.exec(
         `SELECT session_id FROM calls ORDER BY created_at DESC LIMIT 1`,
       );
-      if (!results.length || !results[0].values.length) return null;
+      if (!results.length || !results[0].values.length) {return null;}
       return results[0].values[0][0] as string;
     } catch (err) {
       console.warn('[TelemetryReader] getCurrentSessionId error:', String(err));
@@ -322,12 +322,12 @@ export class TelemetryReader {
    * List all distinct session IDs in the database, ordered by first appearance.
    */
   listSessionIds(): string[] {
-    if (!this.db) return [];
+    if (!this.db) {return [];}
     try {
       const results = this.db.exec(
         `SELECT session_id FROM calls GROUP BY session_id ORDER BY MIN(created_at) ASC`,
       );
-      if (!results.length) return [];
+      if (!results.length) {return [];}
       return results[0].values.map((row) => row[0] as string);
     } catch (err) {
       console.warn('[TelemetryReader] listSessionIds error:', String(err));
@@ -365,7 +365,7 @@ export class TelemetryReader {
       cache_write: 0,
     };
 
-    if (!this.db) return empty;
+    if (!this.db) {return empty;}
 
     try {
       // Default to current session — avoids summing all historical sessions.
@@ -378,7 +378,7 @@ export class TelemetryReader {
         params,
       );
 
-      if (!results.length) return empty;
+      if (!results.length) {return empty;}
 
       let totalIn = 0;
       let totalOut = 0;
@@ -418,7 +418,7 @@ export class TelemetryReader {
    * Returns [] if unavailable.
    */
   getRecentRecords(limit: number): TelemetryRecord[] {
-    if (!this.db) return [];
+    if (!this.db) {return [];}
     try {
       const n = Math.max(1, Math.floor(limit));
       // Use a subquery to get the last N records in ascending order without in-memory reverse()
@@ -450,8 +450,8 @@ export class TelemetryReader {
       this._available = false;
     }
 
-    if (!existsSync(this.dbPath)) return;
-    if (!this._SQL) return; // Must initialize() first
+    if (!existsSync(this.dbPath)) {return;}
+    if (!this._SQL) {return;} // Must initialize() first
 
     try {
       const buffer = readFileSync(this.dbPath);
@@ -488,7 +488,7 @@ export class TelemetryReader {
   private resultsToRecords(
     results: ReturnType<Database['exec']>,
   ): TelemetryRecord[] {
-    if (!results || results.length === 0) return [];
+    if (!results || results.length === 0) {return [];}
     const { values } = results[0];
     return values.map((row) => TelemetryReader.rowToRecord(row as (string | number | null)[]));
   }

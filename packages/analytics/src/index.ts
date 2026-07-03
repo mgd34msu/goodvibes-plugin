@@ -75,9 +75,9 @@ export function createServer(options: CreateServerOptions = {}): Server {
   );
 
   const goodvibesDir = options.goodvibesDir ?? statePath();
-  // Downstream engine readers and the tmux dashboard subprocess resolve state
-  // from GOODVIBES_DIR; pin it to the project state root.
-  if (!process.env.GOODVIBES_DIR) process.env.GOODVIBES_DIR = goodvibesDir;
+  // Downstream engine readers resolve state from GOODVIBES_DIR; pin it to the
+  // project state root.
+  if (!process.env.GOODVIBES_DIR) {process.env.GOODVIBES_DIR = goodvibesDir;}
 
   const budgetMs = loadConfig().budgets.analytics_ms;
   const byName = new Map(TOOL_MODULES.map((m) => [m.name, m]));
@@ -89,7 +89,7 @@ export function createServer(options: CreateServerOptions = {}): Server {
       engine = new AnalyticsEngine(goodvibesDir);
       options.onEngine?.(engine);
     }
-    if (!initPromise) initPromise = engine.initialize();
+    if (!initPromise) {initPromise = engine.initialize();}
     try {
       await initPromise;
     } catch (err) {

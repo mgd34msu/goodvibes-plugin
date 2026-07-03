@@ -95,12 +95,6 @@ import type { AnalyticsConfig } from '../../types.js';
 
 const MINIMAL_CONFIG: AnalyticsConfig = {
   enabled: true,
-  auto_start_mini: false,
-  auto_start_full: false,
-  auto_start_dashboard: false,
-  refresh_rate_ms: 2000,
-  full_tui_refresh_rate_ms: 2000,
-  dashboard_refresh_rate_ms: 2000,
   cost_per_1k_input_tokens: 0.003,
   cost_per_1k_output_tokens: 0.015,
   budget: null,
@@ -111,14 +105,6 @@ const MINIMAL_CONFIG: AnalyticsConfig = {
   webhook_events: [],
   global_db_path: '/mock/global.db',
   jsonl_base_path: '~/.claude/projects',
-  tmux: {
-    mini_pane_size: 5,
-    mini_position: 'bottom',
-    full_pane_size: '60%',
-    dashboard_pane_size: '60%',
-    full_position: 'right',
-    dashboard_position: 'right',
-  },
 };
 
 /**
@@ -161,10 +147,10 @@ function setInternals(
 ) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const a = agg as any;
-  if ('jsonlReader' in overrides) a.jsonlReader = overrides.jsonlReader;
-  if ('jsonlRecords' in overrides) a.jsonlRecords = overrides.jsonlRecords;
-  if ('cumulativeToolTotal' in overrides) a.cumulativeToolTotal = overrides.cumulativeToolTotal;
-  if ('cumulativeToolFailures' in overrides) a.cumulativeToolFailures = overrides.cumulativeToolFailures;
+  if ('jsonlReader' in overrides) {a.jsonlReader = overrides.jsonlReader;}
+  if ('jsonlRecords' in overrides) {a.jsonlRecords = overrides.jsonlRecords;}
+  if ('cumulativeToolTotal' in overrides) {a.cumulativeToolTotal = overrides.cumulativeToolTotal;}
+  if ('cumulativeToolFailures' in overrides) {a.cumulativeToolFailures = overrides.cumulativeToolFailures;}
 }
 
 /**

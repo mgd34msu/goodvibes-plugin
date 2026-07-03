@@ -27,7 +27,7 @@ export const CONTEXT_CREATORS: Record<string, (classes: string[]) => boolean> = 
   opacity: (classes) =>
     classes.some((c) => {
       const match = c.match(/^opacity-(\d+)$/);
-      if (!match) return false;
+      if (!match) {return false;}
       return parseInt(match[1], 10) < 100;
     }),
   filter: (classes) =>
@@ -54,7 +54,7 @@ function triggerLabel(name: string): string {
 /** First matching trigger (kept for parity). */
 export function createsStackingContext(classes: string[]): { creates: boolean; reason?: string } {
   for (const [name, check] of Object.entries(CONTEXT_CREATORS)) {
-    if (check(classes)) return { creates: true, reason: triggerLabel(name) };
+    if (check(classes)) {return { creates: true, reason: triggerLabel(name) };}
   }
   return { creates: false };
 }
@@ -63,17 +63,17 @@ export function createsStackingContext(classes: string[]): { creates: boolean; r
 export function allStackingTriggers(classes: string[]): string[] {
   const triggers: string[] = [];
   for (const [name, check] of Object.entries(CONTEXT_CREATORS)) {
-    if (check(classes)) triggers.push(triggerLabel(name));
+    if (check(classes)) {triggers.push(triggerLabel(name));}
   }
   return triggers;
 }
 
 /** Extract the position type from classes. */
 export function extractPosition(classes: string[]): 'relative' | 'absolute' | 'fixed' | 'sticky' | 'static' {
-  if (classes.includes('fixed')) return 'fixed';
-  if (classes.includes('absolute')) return 'absolute';
-  if (classes.includes('sticky')) return 'sticky';
-  if (classes.includes('relative')) return 'relative';
+  if (classes.includes('fixed')) {return 'fixed';}
+  if (classes.includes('absolute')) {return 'absolute';}
+  if (classes.includes('sticky')) {return 'sticky';}
+  if (classes.includes('relative')) {return 'relative';}
   return 'static';
 }
 
@@ -84,14 +84,14 @@ const TAILWIND_Z_INDEX_MAP: Record<string, number> = {
 /** Extract the z-index value from classes ('auto' when unset). */
 export function extractZIndex(classes: string[]): number | 'auto' {
   const zClass = classes.find((c) => /^-?z-/.test(c));
-  if (!zClass) return 'auto';
-  if (zClass === 'z-auto') return 'auto';
-  if (TAILWIND_Z_INDEX_MAP[zClass] !== undefined) return TAILWIND_Z_INDEX_MAP[zClass];
+  if (!zClass) {return 'auto';}
+  if (zClass === 'z-auto') {return 'auto';}
+  if (TAILWIND_Z_INDEX_MAP[zClass] !== undefined) {return TAILWIND_Z_INDEX_MAP[zClass];}
   const negativeMatch = zClass.match(/^-z-(\d+)$/);
-  if (negativeMatch) return -parseInt(negativeMatch[1], 10);
+  if (negativeMatch) {return -parseInt(negativeMatch[1], 10);}
   const arbitraryMatch = zClass.match(/^-?z-\[(-?\d+)\]$/);
-  if (arbitraryMatch) return parseInt(arbitraryMatch[1], 10);
+  if (arbitraryMatch) {return parseInt(arbitraryMatch[1], 10);}
   const numericMatch = zClass.match(/^z-(\d+)$/);
-  if (numericMatch) return parseInt(numericMatch[1], 10);
+  if (numericMatch) {return parseInt(numericMatch[1], 10);}
   return 'auto';
 }

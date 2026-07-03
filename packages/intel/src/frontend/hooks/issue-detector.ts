@@ -12,14 +12,14 @@ const SET_STATE_PATTERN = /\bset[A-Z]\w*\s*\(/;
 
 /** Detect stale closure: effect uses a state var but dep array is []. */
 export function detectStaleClosure(hook: HookInfo, scope: ComponentScope): HookIssue[] {
-  if (hook.name !== 'useEffect' && hook.name !== 'useLayoutEffect') return [];
-  if (!hook.hasEmptyDeps) return [];
+  if (hook.name !== 'useEffect' && hook.name !== 'useLayoutEffect') {return [];}
+  if (!hook.hasEmptyDeps) {return [];}
 
   const staleRefs: string[] = [];
   for (const ref of hook.bodyRefs) {
-    if (scope.stateVars.has(ref)) staleRefs.push(ref);
+    if (scope.stateVars.has(ref)) {staleRefs.push(ref);}
   }
-  if (staleRefs.length === 0) return [];
+  if (staleRefs.length === 0) {return [];}
 
   return [{
     hookName: hook.name,
@@ -38,14 +38,14 @@ export function detectMissingDeps(
   scope: ComponentScope,
   _analyzedDeps: DependencyInfo[],
 ): HookIssue[] {
-  if (hook.hasNoDeps) return [];
+  if (hook.hasNoDeps) {return [];}
 
   const depNames = new Set(hook.rawDeps.map((d) => d.trim()));
   const depBases = new Set(hook.rawDeps.map((d) => d.trim().split('.')[0]));
 
   const missing: string[] = [];
   for (const ref of hook.bodyRefs) {
-    if (depNames.has(ref) || depBases.has(ref)) continue;
+    if (depNames.has(ref) || depBases.has(ref)) {continue;}
     if (
       scope.setterVars.has(ref) ||
       scope.dispatchVars.has(ref) ||
@@ -57,12 +57,12 @@ export function detectMissingDeps(
     ) {
       continue;
     }
-    if (GLOBAL_IDENTIFIERS.has(ref)) continue;
-    if (/^use[A-Z]/.test(ref)) continue;
+    if (GLOBAL_IDENTIFIERS.has(ref)) {continue;}
+    if (/^use[A-Z]/.test(ref)) {continue;}
     missing.push(ref);
   }
 
-  if (missing.length === 0) return [];
+  if (missing.length === 0) {return [];}
 
   return [{
     hookName: hook.name,
@@ -77,15 +77,15 @@ export function detectMissingDeps(
 
 /** Detect unnecessary dependencies: deps not referenced in body. */
 export function detectUnnecessaryDeps(hook: HookInfo): HookIssue[] {
-  if (hook.hasNoDeps || hook.hasEmptyDeps) return [];
+  if (hook.hasNoDeps || hook.hasEmptyDeps) {return [];}
 
   const bodyRefSet = new Set(hook.bodyRefs);
   const unnecessary: string[] = [];
   for (const dep of hook.rawDeps) {
     const base = dep.trim().split('.')[0];
-    if (!bodyRefSet.has(base)) unnecessary.push(dep.trim());
+    if (!bodyRefSet.has(base)) {unnecessary.push(dep.trim());}
   }
-  if (unnecessary.length === 0) return [];
+  if (unnecessary.length === 0) {return [];}
 
   return [{
     hookName: hook.name,
@@ -101,7 +101,7 @@ export function detectUnnecessaryDeps(hook: HookInfo): HookIssue[] {
 /** Detect unstable dependencies: deps classified 'unstable'. */
 export function detectUnstableDeps(hook: HookInfo, analyzedDeps: DependencyInfo[]): HookIssue[] {
   const unstable = analyzedDeps.filter((d) => d.stability === 'unstable');
-  if (unstable.length === 0) return [];
+  if (unstable.length === 0) {return [];}
 
   return [{
     hookName: hook.name,
@@ -116,9 +116,9 @@ export function detectUnstableDeps(hook: HookInfo, analyzedDeps: DependencyInfo[
 
 /** Detect derived-state anti-pattern: useEffect that only calls setState based on deps. */
 export function detectDerivedState(hook: HookInfo): HookIssue[] {
-  if (hook.name !== 'useEffect') return [];
-  if (hook.hasCleanup || hook.hasSubscriptions) return [];
-  if (!SET_STATE_PATTERN.test(hook.body)) return [];
+  if (hook.name !== 'useEffect') {return [];}
+  if (hook.hasCleanup || hook.hasSubscriptions) {return [];}
+  if (!SET_STATE_PATTERN.test(hook.body)) {return [];}
 
   const bodyWithoutWhitespace = hook.body.replace(/\s+/g, ' ').trim();
   if (
@@ -135,7 +135,7 @@ export function detectDerivedState(hook: HookInfo): HookIssue[] {
   }
 
   const setterCallCount = (hook.body.match(SET_STATE_PATTERN) || []).length;
-  if (setterCallCount !== 1) return [];
+  if (setterCallCount !== 1) {return [];}
 
   return [{
     hookName: hook.name,
@@ -150,9 +150,9 @@ export function detectDerivedState(hook: HookInfo): HookIssue[] {
 
 /** Detect missing cleanup: effect with subscriptions/timers but no cleanup return. */
 export function detectMissingCleanup(hook: HookInfo): HookIssue[] {
-  if (hook.name !== 'useEffect' && hook.name !== 'useLayoutEffect') return [];
-  if (hook.hasCleanup) return [];
-  if (!hook.hasSubscriptions) return [];
+  if (hook.name !== 'useEffect' && hook.name !== 'useLayoutEffect') {return [];}
+  if (hook.hasCleanup) {return [];}
+  if (!hook.hasSubscriptions) {return [];}
 
   return [{
     hookName: hook.name,

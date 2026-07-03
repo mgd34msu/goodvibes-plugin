@@ -3,7 +3,6 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { fileURLToPath } from 'url';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';

@@ -97,8 +97,8 @@ export async function initializeGlobalDb(dbPath?: string): Promise<GlobalDB> {
     return db;
   }
 
-  if (_singleton) return _singleton;
-  if (_singletonPromise) return _singletonPromise;
+  if (_singleton) {return _singleton;}
+  if (_singletonPromise) {return _singletonPromise;}
 
   _singletonPromise = (async () => {
     ensureGlobalAnalyticsDir();

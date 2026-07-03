@@ -21,7 +21,7 @@ import { join, dirname, basename } from 'node:path';
 import { JSONLReader } from '../data/jsonl-reader.js';
 import type { ModelPricingMap } from '../config.js';
 import { pricingProvenance } from '../config.js';
-import { formatNumber, formatDollars } from '../tui/mini/format.js';
+import { formatNumber, formatDollars } from '../format.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -119,7 +119,7 @@ function collectSubagentTranscripts(sessionDir: string): string[] {
   const subagentsDir = join(sessionDir, 'subagents');
   try {
     for (const e of readdirSync(subagentsDir)) {
-      if (e.startsWith('agent-') && e.endsWith('.jsonl')) files.push(join(subagentsDir, e));
+      if (e.startsWith('agent-') && e.endsWith('.jsonl')) {files.push(join(subagentsDir, e));}
     }
   } catch {
     /* no subagents dir */
@@ -127,7 +127,7 @@ function collectSubagentTranscripts(sessionDir: string): string[] {
 
   const tasksDir = join(sessionDir, 'tasks');
   const walk = (dir: string, depth: number): void => {
-    if (depth > 2) return;
+    if (depth > 2) {return;}
     let entries: import('node:fs').Dirent[];
     try {
       entries = readdirSync(dir, { withFileTypes: true });
@@ -136,8 +136,8 @@ function collectSubagentTranscripts(sessionDir: string): string[] {
     }
     for (const ent of entries) {
       const full = join(dir, ent.name);
-      if (ent.isDirectory()) walk(full, depth + 1);
-      else if (ent.isFile() && ent.name.endsWith('.jsonl')) files.push(full);
+      if (ent.isDirectory()) {walk(full, depth + 1);}
+      else if (ent.isFile() && ent.name.endsWith('.jsonl')) {files.push(full);}
     }
   };
   walk(tasksDir, 0);
@@ -202,7 +202,7 @@ export async function computeLiveSessionCost(options: LiveCostOptions): Promise<
     try {
       const cost = await costTranscript(reader, file, labelForSubagent(file));
       // Skip transcripts with no priced activity to keep the table compact.
-      if (cost.api_calls > 0) subagents.push(cost);
+      if (cost.api_calls > 0) {subagents.push(cost);}
     } catch {
       /* one bad subagent file must not fail the whole report */
     }

@@ -25,12 +25,12 @@ export function parseJsonField<T>(value: T | string | undefined): T | undefined 
  * when the value cannot be converted.
  */
 export function ensureArray<T>(value: unknown): T[] | null {
-  if (value === undefined || value === null) return null;
-  if (Array.isArray(value)) return value as T[];
+  if (value === undefined || value === null) {return null;}
+  if (Array.isArray(value)) {return value as T[];}
   if (typeof value === 'string') {
     try {
       const parsed = JSON.parse(value);
-      if (Array.isArray(parsed)) return parsed as T[];
+      if (Array.isArray(parsed)) {return parsed as T[];}
       value = parsed;
     } catch {
       return null;
@@ -76,7 +76,7 @@ export function resolveStringOrBase64(
         `Provide only one.`,
     );
   }
-  if (typeof base64 === 'string') return decodeBase64(`${fieldName}_base64`, base64);
-  if (typeof direct === 'string') return direct;
+  if (typeof base64 === 'string') {return decodeBase64(`${fieldName}_base64`, base64);}
+  if (typeof direct === 'string') {return direct;}
   return undefined;
 }

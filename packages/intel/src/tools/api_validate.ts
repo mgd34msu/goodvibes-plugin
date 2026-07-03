@@ -150,7 +150,7 @@ export async function handler(rawArgs: unknown): Promise<CallToolResult> {
     }, 0);
 
     const byType: Record<string, number> = {};
-    for (const issue of issues) byType[issue.type] = (byType[issue.type] ?? 0) + 1;
+    for (const issue of issues) {byType[issue.type] = (byType[issue.type] ?? 0) + 1;}
 
     const data: ApiValidateResult = {
       valid: issues.length === 0,
@@ -166,7 +166,7 @@ export async function handler(rawArgs: unknown): Promise<CallToolResult> {
       execution_ms: elapsed(),
       ...(outcome.budget_exceeded ? { budget_exceeded: true } : {}),
     });
-    if (targetResolved.warning) env = { ...env, warning: targetResolved.warning };
+    if (targetResolved.warning) {env = { ...env, warning: targetResolved.warning };}
     return toCallToolResult(env);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

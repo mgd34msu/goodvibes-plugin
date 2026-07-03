@@ -36,7 +36,7 @@ export function parsePrismaSchema(content: string, resolvedPath: string): Databa
 
     for (const line of modelBody.split('\n')) {
       const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('@@')) continue;
+      if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('@@')) {continue;}
 
       const fieldMatch = /^(\w+)\s+(\w+)(.*)$/.exec(trimmed);
       if (fieldMatch) {
@@ -44,11 +44,11 @@ export function parsePrismaSchema(content: string, resolvedPath: string): Databa
         const rest = rawRest.trim();
         const isArray = rest.startsWith('[]');
         let cleanRest = rest;
-        if (isArray) cleanRest = cleanRest.slice(2).trim();
+        if (isArray) {cleanRest = cleanRest.slice(2).trim();}
         // Prisma does not support nullable arrays (Type[]? is invalid syntax),
         // so nullable is only checked on non-array fields.
         const nullable = isArray ? false : rest.startsWith('?');
-        if (nullable) cleanRest = cleanRest.slice(1).trim();
+        if (nullable) {cleanRest = cleanRest.slice(1).trim();}
 
         const isRelation = /^[A-Z]/.test(fieldType) && !prismaScalars.includes(fieldType);
 
@@ -86,7 +86,7 @@ export function parsePrismaSchema(content: string, resolvedPath: string): Databa
             const relationField = modelBody.match(new RegExp(`(\\w+)\\s+\\w+.*@relation.*fields:\\s*\\[${fieldName}\\]`));
             if (relationField) {
               const targetModel = modelBody.match(new RegExp(`${relationField[1]}\\s+(\\w+)`))?.[1];
-              if (targetModel) references = { table: targetModel, column: referencedColumn };
+              if (targetModel) {references = { table: targetModel, column: referencedColumn };}
             }
           }
 
@@ -113,7 +113,7 @@ export function parsePrismaSchema(content: string, resolvedPath: string): Databa
       const pkColumns = compositeIdMatch[1].split(',').map((c) => c.trim());
       for (const pkCol of pkColumns) {
         const col = columns.find((c) => c.name === pkCol);
-        if (col) col.primary_key = true;
+        if (col) {col.primary_key = true;}
       }
     }
 

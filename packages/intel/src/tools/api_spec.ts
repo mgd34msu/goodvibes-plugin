@@ -134,7 +134,7 @@ function buildSpec(
     components: { schemas: {} },
     tags: [],
   };
-  if (args.server_url) spec.servers = [{ url: args.server_url }];
+  if (args.server_url) {spec.servers = [{ url: args.server_url }];}
 
   const includeExamples = args.include_examples !== false;
   const tagSet = new Set<string>();
@@ -186,7 +186,7 @@ function buildSpec(
       };
 
       const pathParams = extractPathParameters(route.path);
-      if (pathParams.length > 0) operation.parameters = pathParams;
+      if (pathParams.length > 0) {operation.parameters = pathParams;}
 
       const defaultRequestSchema = createDefaultRequestSchema(route.method);
       const finalRequestSchema = requestSchema || defaultRequestSchema;
@@ -240,8 +240,8 @@ export async function handler(rawArgs: unknown): Promise<CallToolResult> {
 
   try {
     const stat = await fs.stat(absTarget).catch(() => null);
-    if (!stat) return toCallToolResult(errorEnvelope(`Path not found: ${absTarget}`));
-    if (!stat.isDirectory()) return toCallToolResult(errorEnvelope(`Path is not a directory: ${absTarget}`));
+    if (!stat) {return toCallToolResult(errorEnvelope(`Path not found: ${absTarget}`));}
+    if (!stat.isDirectory()) {return toCallToolResult(errorEnvelope(`Path is not a directory: ${absTarget}`));}
 
     const frameworkArg = args.framework ?? 'auto';
     let framework: Framework;
@@ -306,7 +306,7 @@ export async function handler(rawArgs: unknown): Promise<CallToolResult> {
       execution_ms: elapsed(),
       ...(outcome.budget_exceeded ? { budget_exceeded: true } : {}),
     });
-    if (resolved.warning) env = { ...env, warning: resolved.warning };
+    if (resolved.warning) {env = { ...env, warning: resolved.warning };}
     return toCallToolResult(env);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

@@ -178,7 +178,7 @@ function mergeMoveDir(src: string, dst: string): void {
  * checked once per root per process.
  */
 function migrateLegacyStateDir(root: string): void {
-  if (migratedRoots.has(root)) return;
+  if (migratedRoots.has(root)) {return;}
   migratedRoots.add(root);
   try {
     const legacy = path.join(root, 'v2');
@@ -229,7 +229,7 @@ function readJsonIfPresent(file: string): Record<string, unknown> {
 }
 
 function mergeBudgets(base: Budgets, override: unknown): Budgets {
-  if (!override || typeof override !== 'object') return base;
+  if (!override || typeof override !== 'object') {return base;}
   const o = override as Record<string, unknown>;
   const pick = (k: keyof Budgets): number =>
     typeof o[k] === 'number' && Number.isFinite(o[k]) && (o[k] as number) > 0
@@ -259,7 +259,7 @@ export function loadConfig(cwd: string = process.cwd()): GoodvibesConfig {
   const projFile = projectConfigPath(cwd);
   const userFile = userConfigPath();
   const cacheKey = `${userFile}::${projFile}`;
-  if (cached && cached.key === cacheKey) return cached.value;
+  if (cached && cached.key === cacheKey) {return cached.value;}
 
   const user = readJsonIfPresent(userFile);
   const project = readJsonIfPresent(projFile);

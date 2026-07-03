@@ -15,7 +15,6 @@
  */
 
 import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
 
 import type { CallToolResult, Tool } from '@modelcontextprotocol/sdk/types.js';
 import type { ToolDefinition } from './types.js';
@@ -148,12 +147,12 @@ function toMergedNode(
   const ref = nodeIndex.get(node.name);
   if (ref && modes.length > 0) {
     const { node: cnode, sourceFile } = ref;
-    if (modes.includes('state')) merged.state = annotateState(cnode, sourceFile);
+    if (modes.includes('state')) {merged.state = annotateState(cnode, sourceFile);}
     if (modes.includes('boundaries')) {
       merged.boundaries = annotateBoundaries(cnode, sourceFile) ?? { is_boundary: false };
     }
-    if (modes.includes('events')) merged.events = annotateEvents(cnode, sourceFile);
-    if (modes.includes('attributes')) merged.attributes = annotateAttributes(cnode, sourceFile);
+    if (modes.includes('events')) {merged.events = annotateEvents(cnode, sourceFile);}
+    if (modes.includes('attributes')) {merged.attributes = annotateAttributes(cnode, sourceFile);}
   }
   return merged;
 }
@@ -166,7 +165,7 @@ function pruneOneLeaf(forest: MergedNode[]): boolean {
       forest.splice(i, 1);
       return true;
     }
-    if (pruneOneLeaf(node.children)) return true;
+    if (pruneOneLeaf(node.children)) {return true;}
   }
   return false;
 }
@@ -176,8 +175,8 @@ function capToTokens(
   env: Envelope<ComponentTreeData>,
   maxTokens?: number,
 ): Envelope<ComponentTreeData> {
-  if (!maxTokens || maxTokens <= 0 || !env.data) return env;
-  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) return env;
+  if (!maxTokens || maxTokens <= 0 || !env.data) {return env;}
+  if (estimatePayloadTokens(renderEnvelope(env)) <= maxTokens) {return env;}
 
   const data = env.data;
   const trim = (): Envelope<ComponentTreeData> => ({
@@ -191,7 +190,7 @@ function capToTokens(
   });
 
   while (estimatePayloadTokens(renderEnvelope(trim())) > maxTokens) {
-    if (!pruneOneLeaf(data.tree)) break;
+    if (!pruneOneLeaf(data.tree)) {break;}
   }
   return trim();
 }
@@ -233,9 +232,9 @@ export async function handler(rawArgs: unknown): Promise<CallToolResult> {
         const files = findComponentFiles(absTarget);
         const sourceFiles = getSourceFiles(files);
         for (const abs of files) {
-          if (signal.aborted) break;
+          if (signal.aborted) {break;}
           const sf = sourceFiles.get(abs);
-          if (!sf) continue;
+          if (!sf) {continue;}
           allComponents.push(
             ...analyzeFile(sf, makeRelativePath(abs, baseDir), abs, nodeIndex),
           );
@@ -252,7 +251,7 @@ export async function handler(rawArgs: unknown): Promise<CallToolResult> {
       const forest: MergedNode[] = [];
       for (const root of roots) {
         const bare = buildTree(root, allComponents, depth);
-        if (bare) forest.push(toMergedNode(bare, modes, nodeIndex));
+        if (bare) {forest.push(toMergedNode(bare, modes, nodeIndex));}
       }
       return { tree: forest, count: allComponents.length };
     });
@@ -268,7 +267,7 @@ export async function handler(rawArgs: unknown): Promise<CallToolResult> {
       execution_ms: elapsed(),
       ...(outcome.budget_exceeded ? { budget_exceeded: true } : {}),
     });
-    if (resolved.warning) env = { ...env, warning: resolved.warning };
+    if (resolved.warning) {env = { ...env, warning: resolved.warning };}
 
     const maxTokens = args.output?.max_tokens ?? cfg.max_tokens_default;
     env = capToTokens(env, maxTokens);

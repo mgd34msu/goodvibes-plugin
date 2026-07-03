@@ -7,7 +7,7 @@
 
 /** Create a human-readable element identifier from tag, classes, and id. */
 export function createElementIdentifier(tagName: string, classes: string[], id?: string): string {
-  if (id) return `${tagName}#${id}`;
+  if (id) {return `${tagName}#${id}`;}
   if (classes.length > 0) {
     const layoutClasses = classes.filter(
       (c) =>

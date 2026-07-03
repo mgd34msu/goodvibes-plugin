@@ -86,7 +86,7 @@ function extractBodyRefs(node: ts.Node, sourceFile: ts.SourceFile): Set<string> 
   return refs;
 }
 
-function hasCleanupReturn(node: ts.Node, sourceFile: ts.SourceFile): boolean {
+function hasCleanupReturn(node: ts.Node, _sourceFile: ts.SourceFile): boolean {
   let hasCleanup = false;
   function visit(n: ts.Node): void {
     if (ts.isReturnStatement(n) && n.expression) {
@@ -94,7 +94,7 @@ function hasCleanupReturn(node: ts.Node, sourceFile: ts.SourceFile): boolean {
         hasCleanup = true;
       }
     }
-    if (!hasCleanup) ts.forEachChild(n, visit);
+    if (!hasCleanup) {ts.forEachChild(n, visit);}
   }
   visit(node);
   return hasCleanup;
@@ -250,11 +250,11 @@ export function buildComponentScope(
           const elements = parent.name.elements;
           if (elements.length >= 1 && ts.isBindingElement(elements[0])) {
             const valName = elements[0].name;
-            if (ts.isIdentifier(valName)) scope.stateVars.add(valName.getText(sourceFile));
+            if (ts.isIdentifier(valName)) {scope.stateVars.add(valName.getText(sourceFile));}
           }
           if (elements.length >= 2 && ts.isBindingElement(elements[1])) {
             const setterName = elements[1].name;
-            if (ts.isIdentifier(setterName)) scope.setterVars.add(setterName.getText(sourceFile));
+            if (ts.isIdentifier(setterName)) {scope.setterVars.add(setterName.getText(sourceFile));}
           }
         }
       }
@@ -265,12 +265,12 @@ export function buildComponentScope(
           const elements = parent.name.elements;
           if (elements.length >= 1 && ts.isBindingElement(elements[0])) {
             const stateName = elements[0].name;
-            if (ts.isIdentifier(stateName)) scope.stateVars.add(stateName.getText(sourceFile));
+            if (ts.isIdentifier(stateName)) {scope.stateVars.add(stateName.getText(sourceFile));}
           }
           if (elements.length >= 2 && ts.isBindingElement(elements[1])) {
             const dispatchName = elements[1].name;
             if (ts.isIdentifier(dispatchName))
-              scope.dispatchVars.add(dispatchName.getText(sourceFile));
+              {scope.dispatchVars.add(dispatchName.getText(sourceFile));}
           }
         }
       }

@@ -30,7 +30,7 @@ export async function detectEntryPoints(dirPath: string): Promise<string[]> {
   const addIfExists = async (p: string): Promise<void> => {
     try {
       await node_fs.access(p);
-      if (!entryPoints.includes(p)) entryPoints.push(p);
+      if (!entryPoints.includes(p)) {entryPoints.push(p);}
     } catch {
       // does not exist — skip
     }
@@ -45,7 +45,7 @@ export async function detectEntryPoints(dirPath: string): Promise<string[]> {
       } else if (typeof exportPath === 'object') {
         for (const key of ['default', 'import', 'require'] as const) {
           const val = exportPath[key];
-          if (typeof val === 'string') await addIfExists(path.resolve(dirPath, val));
+          if (typeof val === 'string') {await addIfExists(path.resolve(dirPath, val));}
         }
       }
     };
@@ -54,7 +54,7 @@ export async function detectEntryPoints(dirPath: string): Promise<string[]> {
       const mainPath = path.resolve(dirPath, packageJson.main);
       await addIfExists(mainPath);
       const tsVersion = mainPath.replace(/\.js$/, '.ts');
-      if (mainPath !== tsVersion) await addIfExists(tsVersion);
+      if (mainPath !== tsVersion) {await addIfExists(tsVersion);}
     }
 
     if (typeof packageJson.module === 'string') {

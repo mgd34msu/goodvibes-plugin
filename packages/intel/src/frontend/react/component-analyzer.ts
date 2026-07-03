@@ -136,15 +136,15 @@ export function findComponentFiles(absoluteDir: string): string[] {
   const files: string[] = [];
   const extensions = ['.tsx', '.jsx'];
   function walk(dir: string): void {
-    if (!fs.existsSync(dir)) return;
+    if (!fs.existsSync(dir)) {return;}
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
-        if (['node_modules', '.git', 'dist', 'build', '.next', 'coverage'].includes(entry.name)) continue;
+        if (['node_modules', '.git', 'dist', 'build', '.next', 'coverage'].includes(entry.name)) {continue;}
         walk(fullPath);
       } else if (entry.isFile()) {
-        if (extensions.includes(path.extname(entry.name))) files.push(fullPath);
+        if (extensions.includes(path.extname(entry.name))) {files.push(fullPath);}
       }
     }
   }
@@ -189,7 +189,7 @@ export function analyzeFile(
         }
 
         detectedNames.add(name);
-        if (nodeIndex && !nodeIndex.has(name)) nodeIndex.set(name, { sourceFile, node });
+        if (nodeIndex && !nodeIndex.has(name)) {nodeIndex.set(name, { sourceFile, node });}
         components.push({
           name,
           file: relativePath,
@@ -210,7 +210,7 @@ export function analyzeFile(
         const { name, unwrapped } = detected;
         if (!detectedNames.has(name)) {
           detectedNames.add(name);
-          if (nodeIndex && !nodeIndex.has(name)) nodeIndex.set(name, { sourceFile, node });
+          if (nodeIndex && !nodeIndex.has(name)) {nodeIndex.set(name, { sourceFile, node });}
           components.push({
             name,
             file: relativePath,

@@ -31,9 +31,9 @@ export const HOC_WRAPPING_CALLEE = new Set([
 /**
  * Check if an AST node contains a JSX return (element / self-closing / fragment).
  * @param node - node to inspect (e.g. a function body)
- * @param sourceFile - the source file context
+ * @param _sourceFile - the source file context (unused; kept for call-site parity)
  */
-export function containsJsxReturn(node: ts.Node, sourceFile: ts.SourceFile): boolean {
+export function containsJsxReturn(node: ts.Node, _sourceFile: ts.SourceFile): boolean {
   let hasJsx = false;
   function visit(n: ts.Node): void {
     if (ts.isJsxElement(n) || ts.isJsxSelfClosingElement(n) || ts.isJsxFragment(n)) {

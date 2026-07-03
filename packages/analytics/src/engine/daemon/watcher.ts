@@ -127,7 +127,7 @@ export class DataWatcher extends EventEmitter {
       });
       // Attach listeners once in the constructor to prevent leaks on start/stop cycles.
       this.jsonlWatcher.on('records', (records: JSONLRecord[]) => {
-        if (this.running) this.emit('jsonl-records', records);
+        if (this.running) {this.emit('jsonl-records', records);}
       });
       this.jsonlWatcher.on('error', (err: Error) => {
         // JSONL errors are non-fatal; log and continue.
@@ -147,7 +147,7 @@ export class DataWatcher extends EventEmitter {
    * Safe to call multiple times — subsequent calls are no-ops if already running.
    */
   start(): void {
-    if (this.running) return;
+    if (this.running) {return;}
     this.running = true;
     this.attachWatchers();
 
@@ -162,7 +162,7 @@ export class DataWatcher extends EventEmitter {
    * Safe to call multiple times — subsequent calls on a stopped watcher are no-ops.
    */
   stop(): void {
-    if (!this.running) return;
+    if (!this.running) {return;}
     this.running = false;
 
     // Stop the JSONL watcher if active.
@@ -282,7 +282,7 @@ export class DataWatcher extends EventEmitter {
       } else {
         // Watching parent directory for target creation.
         // Only react when the target file itself appears.
-        if (filename !== targetBasename) return;
+        if (filename !== targetBasename) {return;}
         // File appeared — re-watch directly and fire immediately.
         if (existsSync(targetPath)) {
           this.rewatchPath(targetPath, event);
@@ -335,7 +335,7 @@ export class DataWatcher extends EventEmitter {
    */
   private attachPollingFallback(targetPath: string, event: Exclude<WatcherEventName, 'jsonl-records'>): void {
     // Guard against double-attach.
-    if (this.watchers.has(targetPath)) return;
+    if (this.watchers.has(targetPath)) {return;}
 
     let lastMtime = 0;
     try { lastMtime = statSync(targetPath).mtimeMs; } catch { /* file may not exist yet */ }

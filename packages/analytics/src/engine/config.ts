@@ -1,8 +1,8 @@
 /**
  * Shared analytics configuration loader.
  *
- * Extracted here to avoid circular imports between index.ts, mini.ts, and full.ts.
- * All entry points should import `loadConfig` from this module.
+ * Extracted here to avoid circular imports between the engine entry point and
+ * its data readers. All entry points should import `loadConfig` from this module.
  *
  * Config resolution order:
  *   1. Global: ~/.claude/.goodvibes/analytics/analytics.json
@@ -167,14 +167,14 @@ export function getModelRates(
   pricingMap: ModelPricingMap,
 ): ModelPricingInfo {
   // Exact match first.
-  if (pricingMap[modelId]) return pricingMap[modelId]!;
+  if (pricingMap[modelId]) {return pricingMap[modelId]!;}
 
   // Try normalised key: e.g. 'claude-sonnet-4-6' matches 'claude-sonnet-4.6'
   const normalisedId = modelId.replace(/-/g, '.');
   const dotKey = Object.keys(pricingMap).find(
     (k) => k.replace(/-/g, '.') === normalisedId,
   );
-  if (dotKey) return pricingMap[dotKey]!;
+  if (dotKey) {return pricingMap[dotKey]!;}
 
   // Partial prefix match: model ID from JSONL is typically longer than the pricing key.
   // Only match in one direction: normalizedId starts with the key (not the reverse).
@@ -183,12 +183,12 @@ export function getModelRates(
     const normalizedKey = k.replace(/\./g, '-');
     return normalizedId.startsWith(normalizedKey);
   });
-  if (prefixKey) return pricingMap[prefixKey]!;
+  if (prefixKey) {return pricingMap[prefixKey]!;}
 
   // Final fallback: explicit opus key lookup.
   const opusKey = 'claude-opus-4-5';
   const opusPricing = pricingMap[opusKey];
-  if (opusPricing) return opusPricing;
+  if (opusPricing) {return opusPricing;}
 
   // Last-resort defaults ($/MTok equivalent of old $/1k config).
   return {
@@ -227,7 +227,7 @@ const GLOBAL_CONFIG_PATH = join(
  * Returns null if the file does not exist or cannot be parsed.
  */
 function tryLoadFile(filePath: string): AnalyticsConfig | null {
-  if (!existsSync(filePath)) return null;
+  if (!existsSync(filePath)) {return null;}
   try {
     const raw = readFileSync(filePath, 'utf-8');
     const parsed: unknown = JSON.parse(raw);
@@ -264,11 +264,11 @@ function tryLoadFile(filePath: string): AnalyticsConfig | null {
 export function loadConfig(goodvibesDir: string): AnalyticsConfig {
   // 1. Try global config
   const globalConfig = tryLoadFile(GLOBAL_CONFIG_PATH);
-  if (globalConfig) return globalConfig;
+  if (globalConfig) {return globalConfig;}
 
   // 2. Try per-project config
   const projectConfig = tryLoadFile(join(goodvibesDir, 'analytics.json'));
-  if (projectConfig) return projectConfig;
+  if (projectConfig) {return projectConfig;}
 
   // 3. Fall back to defaults
   return { ...DEFAULT_CONFIG };
@@ -319,11 +319,11 @@ export function watchConfig(
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   const handler = () => {
-    if (debounceTimer) clearTimeout(debounceTimer);
+    if (debounceTimer) {clearTimeout(debounceTimer);}
     debounceTimer = setTimeout(() => {
       debounceTimer = null;
       const config = tryLoadFile(filePath);
-      if (config) callback(config);
+      if (config) {callback(config);}
     }, WATCH_DEBOUNCE_MS);
     // Never hold the event loop open for a debounced config reload (issue 9).
     debounceTimer.unref?.();

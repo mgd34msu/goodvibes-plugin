@@ -69,9 +69,9 @@ export async function handleOverflow(
   if (output.length > 0) {
     totalLines = 1;
     for (let i = 0; i < output.length; i++) {
-      if (output[i] === '\n') totalLines++;
+      if (output[i] === '\n') {totalLines++;}
     }
-    if (output[output.length - 1] === '\n') totalLines--;
+    if (output[output.length - 1] === '\n') {totalLines--;}
   }
 
   return {
@@ -104,7 +104,7 @@ export async function cleanupOverflowFiles(
     for (const entry of entries) {
       const filePath = path.join(dir, entry);
       const resolved = path.resolve(filePath);
-      if (!resolved.startsWith(path.resolve(dir) + path.sep)) continue;
+      if (!resolved.startsWith(path.resolve(dir) + path.sep)) {continue;}
       try {
         const stats = await fs.stat(filePath);
         if (now - stats.mtimeMs > maxAgeMs) {

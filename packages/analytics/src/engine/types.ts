@@ -1,24 +1,10 @@
 // === Configuration ===
 export interface AnalyticsConfig {
   enabled: boolean;
-  auto_start_mini: boolean;
-  /** @deprecated Use auto_start_dashboard */
-  auto_start_full: boolean;
-  auto_start_dashboard: boolean;
-  refresh_rate_ms: number;
-  /** @deprecated Use dashboard_refresh_rate_ms */
-  full_tui_refresh_rate_ms: number;
-  dashboard_refresh_rate_ms: number;
   cost_per_1k_input_tokens: number;
   cost_per_1k_output_tokens: number;
   budget: { amount: number; unit: 'dollars' | 'tokens' } | null;
   budget_warn_thresholds: number[];
-  /** When true, show the graphical budget progress bar in the mini dashboard header. Default: false. */
-  mini_budget_bar?: boolean;
-  /** Minimum terminal width for mini dashboard rendering (default: 160). */
-  mini_min_width?: number;
-  /** Uniform width for each section column in mini dashboard lines 2-3 (default: 32). */
-  mini_section_width?: number;
   /**
    * Claude context window size in tokens used to compute context_percent.
    * Defaults to 200_000 (Claude's current context window).
@@ -32,49 +18,22 @@ export interface AnalyticsConfig {
   global_db_path: string;
   /** Base path for Claude JSONL session files (default: ~/.claude/projects). */
   jsonl_base_path: string;
-  tmux: TmuxConfig;
-}
-
-export interface TmuxConfig {
-  mini_pane_size: number;
-  mini_position: 'bottom' | 'top' | 'left' | 'right';
-  /** @deprecated Use dashboard_pane_size */
-  full_pane_size: string;
-  dashboard_pane_size: string;
-  /** @deprecated Use dashboard_position */
-  full_position: 'bottom' | 'top' | 'left' | 'right';
-  dashboard_position: 'bottom' | 'top' | 'left' | 'right';
 }
 
 export type WebhookEvent = 'session_end' | 'budget_warning' | 'anomaly_detected';
 
 export const DEFAULT_CONFIG: Readonly<AnalyticsConfig> = {
   enabled: true,
-  auto_start_mini: true,
-  auto_start_full: false,
-  auto_start_dashboard: false,
-  refresh_rate_ms: 1000,
-  full_tui_refresh_rate_ms: 5000,
-  dashboard_refresh_rate_ms: 5000,
   cost_per_1k_input_tokens: 0.003,
   cost_per_1k_output_tokens: 0.015,
   budget: null,
   budget_warn_thresholds: [0.5, 0.8, 1.0],
-  mini_budget_bar: false,
   anomaly_detection: true,
   auto_report_on_shutdown: true,
   webhook_url: null,
   webhook_events: ['session_end'],
   global_db_path: '~/.claude/.goodvibes/analytics/analytics.db',
   jsonl_base_path: '~/.claude/projects',
-  tmux: {
-    mini_pane_size: 5,
-    mini_position: 'bottom',
-    full_pane_size: '60%',
-    dashboard_pane_size: '60%',
-    full_position: 'right',
-    dashboard_position: 'right',
-  },
 } as const;
 
 // === Metrics ===
@@ -365,7 +324,7 @@ export interface ToolResponse {
  */
 export function toolResponse(text: string, isError = false): ToolResponse {
   const response: ToolResponse = { content: [{ type: 'text', text }] };
-  if (isError) response.isError = true;
+  if (isError) {response.isError = true;}
   return response;
 }
 

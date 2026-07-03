@@ -50,7 +50,12 @@ const baseRules = {
   'no-console': ['warn', { allow: ['warn', 'error'] }],
   'prefer-const': 'error',
   'no-var': 'error',
-  eqeqeq: ['error', 'always'],
+  // null: 'ignore' keeps the codebase's `x != null` null-or-undefined checks.
+  eqeqeq: ['error', 'always', { null: 'ignore' }],
+  // Off for TypeScript, matching typescript-eslint's eslint-recommended
+  // overrides: tsc reports real redeclarations, and the rule misreads the zod
+  // pattern where a schema const and its inferred type share a name.
+  'no-redeclare': 'off',
   curly: ['error', 'all'],
 };
 

@@ -1,66 +1,58 @@
 ---
-description: Install the goodvibes native dependencies (explicit consent, once) — installs land in a durable home and survive plugin updates
+description: Re-run the goodvibes native dependency install in the foreground — the manual repair path when the automatic background install did not finish
 allowed-tools:
   - Bash
+  - Read
 ---
 
-# GoodVibes Setup
+# GoodVibes Setup (manual repair)
 
-Install the native dependencies for the three goodvibes servers (native binaries and WASM
-loaders that do not bundle cleanly, listed per server in
-`${CLAUDE_PLUGIN_ROOT}/server/<name>/package.json`):
+Native dependencies normally install automatically: the first session after a plugin install
+(or after an update that changes a server's dependency list) spawns a detached background
+installer, and the tools are ready by the next session. This command is the repair path for
+when that did not work — it re-runs the same installer in the foreground so the output is
+visible.
+
+Per-server runtime-only dependencies (native binaries and WASM loaders that do not bundle
+cleanly, listed in `${CLAUDE_PLUGIN_ROOT}/server/<name>/package.json`):
 
 | Server | Runtime-only dependencies |
 |--------|---------------------------|
 | `intel` | `@ast-grep/napi`, `@vscode/ripgrep`, `sql.js`, `web-tree-sitter` |
-| `analytics` | `ink`, `react`, `react-devtools-core`, `yoga-wasm-web`, `sql.js` |
+| `analytics` | `sql.js` |
 | `connect` | `sql.js` (database drivers resolve from the target project, not installed here) |
 
-This command is the consent point: nothing is ever installed automatically — not by hooks, not
-by a postinstall chain. It runs **once**: dependencies install into the durable home
-`~/.claude/.goodvibes/deps/<server>/` and the plugin's server directories get symlinks to it.
-A plugin update replaces the plugin copy (dropping the symlinks) but not the durable home —
-the SessionStart hook silently relinks at the next session, so setup never needs re-running
-unless an update actually changes a server's dependency list (the nudge will say so). Until
-setup runs, native-backed capabilities return an honest "run /goodvibes:setup" message and
-everything else keeps working; nothing crashes.
+Installs land in the durable home `~/.claude/.goodvibes/deps/<server>/`, and each
+`${CLAUDE_PLUGIN_ROOT}/server/<name>/node_modules` is a link to it — so installs survive
+plugin updates (the SessionStart hook relinks after an update). Until an install lands, the
+servers still boot and every non-native capability works; native-backed capabilities return an
+honest pointer here instead of crashing.
 
 ## Instructions
 
-1. Check which servers still need their dependencies (a representative dependency probes each):
+1. Check the install state per server (a representative dependency probes each):
    ```bash
    for s in intel analytics connect; do
      case $s in
        intel) probe="@ast-grep/napi" ;;
-       analytics) probe="ink" ;;
+       analytics) probe="sql.js" ;;
        connect) probe="sql.js" ;;
      esac
      test -d "${CLAUDE_PLUGIN_ROOT}/server/$s/node_modules/$probe" && echo "$s: INSTALLED" || echo "$s: NEEDS_INSTALL"
    done
    ```
    If every server reports `INSTALLED`, report that and stop.
-2. If any server reports `NEEDS_INSTALL`, tell the user exactly what will happen — `npm install`
-   runs inside `~/.claude/.goodvibes/deps/<server>/` for each server (intel, analytics, connect),
-   installing only the dependencies in that server's `package.json` (native binaries + WASM
-   loaders; no other package on the system is touched), and each
-   `${CLAUDE_PLUGIN_ROOT}/server/<name>/node_modules` becomes a symlink to that durable
-   install — and confirm before proceeding.
-3. On confirmation, install into the durable home and symlink each server's `node_modules`
-   to it (`npm install` is idempotent — an already-installed server is a fast no-op):
+2. Run the installer in the foreground (safe to run repeatedly — servers that are already
+   installed are skipped, and a stale lock older than 10 minutes is ignored):
    ```bash
-   for s in intel analytics connect; do
-     dep_home="$HOME/.claude/.goodvibes/deps/$s"
-     mkdir -p "$dep_home"
-     cp "${CLAUDE_PLUGIN_ROOT}/server/$s/package.json" "$dep_home/package.json"
-     npm install --omit=dev --no-audit --no-fund --prefix "$dep_home"
-     rm -rf "${CLAUDE_PLUGIN_ROOT}/server/$s/node_modules"
-     ln -sfn "$dep_home/node_modules" "${CLAUDE_PLUGIN_ROOT}/server/$s/node_modules"
-   done
+   node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/deps-install.mjs" "${CLAUDE_PLUGIN_ROOT}"
    ```
-4. Report success or the exact error output per server. On success:
+3. Read `~/.claude/.goodvibes/deps/.last-result.json` and report the outcome. On success:
    ```
    Native dependencies installed for intel, analytics, and connect. goodvibes' structure-aware
-   search/analysis, the analytics dashboard, and registered service access are ready.
+   search/analysis, the analytics report, and registered service access are ready.
    ```
+   On failure, name the failing servers and show the relevant tail of
+   `~/.claude/.goodvibes/deps/install.log`.
 
 `/goodvibes:plugin status` shows overall plugin health, including per-server install state.
