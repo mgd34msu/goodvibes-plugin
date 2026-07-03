@@ -19,7 +19,7 @@
  *    — the v1 schema bug plan §8 calls out by name).
  *
  * Retired from v1: the CLAUDE.md/prompt-chain writing half (moved to the
- * explicit `/goodvibes-intel:plugin install-prompts` command — plan §8), crash
+ * explicit `/goodvibes:plugin install-prompts` command — plan §8), crash
  * recovery, project file indexing, version/pricing fetch, and the runtime-engine
  * (automation) integration — automation was cut for v2.0-alpha (plan §11).
  */
@@ -213,7 +213,7 @@ async function handleSessionStart(input) {
   if (fastData.frameworks.length) stackBits.push(fastData.frameworks.join(', '));
   if (fastData.packageManager) stackBits.push(fastData.packageManager);
 
-  const lines = ['[goodvibes-intel] Session context'];
+  const lines = ['[goodvibes] Session context'];
   if (stackBits.length) lines.push(`Stack: ${stackBits.join(' | ')}`);
   if (fastData.branch) {
     const uncommitted = fastData.uncommittedCount > 0 ? `, ${fastData.uncommittedCount} uncommitted` : '';
@@ -237,7 +237,7 @@ async function handleSessionStart(input) {
   const summaryBits = [...stackBits];
   if (fastData.branch) summaryBits.push(`on ${fastData.branch}`);
   if (todoCount) summaryBits.push(`${todoCount} TODOs`);
-  const systemMessage = `goodvibes-intel ready.${summaryBits.length ? ' ' + summaryBits.join(' | ') : ''}${nudge ? ' | host health alert' : ''}`;
+  const systemMessage = `goodvibes ready.${summaryBits.length ? ' ' + summaryBits.join(' | ') : ''}${nudge ? ' | host health alert' : ''}`;
 
   return createHookResponse({
     hookEventName: HOOK_EVENT,

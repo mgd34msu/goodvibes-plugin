@@ -11,10 +11,10 @@
  * name via the Skill tool when the task actually calls for it.
  *
  * Also writes a minimal entry to the project's `.goodvibes/v2/state/
- * agent-tracking.json` (shared project state, R15) so goodvibes-analytics'
- * SubagentStop hook — a different plugin, but reading the same project-scoped
- * namespace — can correlate a completion back to its start time and compute
- * duration even when the two plugins run as separate processes.
+ * agent-tracking.json` (shared project state, R15) so the analytics
+ * SubagentStop hook — reading the same project-scoped namespace — can correlate
+ * a completion back to its start time and compute duration even though the two
+ * hooks run as separate short-lived processes.
  */
 
 import { runHook, createHookResponse, isTestEnvironment, v2StatePath, readJsonSafe, writeJsonSafe } from './lib/common.mjs';
@@ -29,7 +29,7 @@ const SKILL_CATALOG = {
   'goodvibes-memory': 'Cross-session memory: decisions, patterns, failures in .goodvibes/v2/memory.',
   'task-orchestration': 'Parallel agent decomposition using native Workflow + the WRFC template.',
   'review-scoring': 'Refutation-based review rubric: defect list + severity, tries to disprove the work.',
-  'service-integration': 'Registered-service API calls via goodvibes-connect (separate plugin).',
+  'service-integration': 'Registered-service API calls via the goodvibes connect server.',
 };
 
 /** Which skills each of the four v2 agents (plan §9.2) reaches for first. */
@@ -72,7 +72,7 @@ async function handleSubagentStart(input) {
   const agentType = normalizeAgentType(input);
   recordTracking(input, agentType);
   const lines = [
-    `[goodvibes-intel] Agent: ${agentType}`,
+    `[goodvibes] Agent: ${agentType}`,
     'Suggested skills (load by name via the Skill tool when the task calls for it — do not preload):',
     buildPointers(agentType),
   ];

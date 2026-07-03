@@ -1,5 +1,5 @@
 /**
- * Tests for the `/goodvibes-intel:plugin install-prompts`/`uninstall-prompts`
+ * Tests for the `/goodvibes:plugin install-prompts`/`uninstall-prompts`
  * helper script (`plugins/goodvibes/commands/lib/prompt-installer.mjs`).
  *
  * SAFETY: this script's target-resolution logic prefers the real `~/.claude/`
@@ -76,7 +76,7 @@ describe('prompt-installer.mjs', () => {
     expect(fs.existsSync(path.join(claudeDir, '.goodvibes', 'GOODVIBES.md'))).toBe(false);
   });
 
-  it('deletes CLAUDE.md entirely on uninstall when goodvibes-intel wrote the whole file', () => {
+  it('deletes CLAUDE.md entirely on uninstall when goodvibes wrote the whole file', () => {
     const fakeHome = makeTmpDir();
     fs.mkdirSync(path.join(fakeHome, '.claude'), { recursive: true });
     const projectDir = makeTmpDir();

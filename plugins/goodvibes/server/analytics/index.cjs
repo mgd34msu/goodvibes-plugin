@@ -40884,7 +40884,7 @@ var configTool = {
 };
 
 // packages/analytics/src/index.ts
-var SERVER_NAME = "goodvibes-analytics";
+var SERVER_NAME = "analytics";
 var SERVER_VERSION = "2.0.0-alpha.1";
 var TOOL_MODULES = [
   queryTool,

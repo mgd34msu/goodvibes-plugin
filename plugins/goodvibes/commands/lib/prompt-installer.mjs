@@ -30,7 +30,7 @@ const HUB_CONTENT = `# GoodVibes
 Structure-aware code intelligence, session cost telemetry, and a connect workbench — opt-in,
 measured, and honest about when native tools are the right choice.
 
-## On-demand skills (goodvibes-intel)
+## On-demand skills
 Load by name via the Skill tool when the task calls for it — none of these are always-on:
 - \`intel-mastery\` — usage guide for the intel MCP tools (code_read/code_grep/code_glob/...).
 - \`project-onboarding\` — mapping an unfamiliar codebase with the intel analyzers.
@@ -42,11 +42,12 @@ Load by name via the Skill tool when the task calls for it — none of these are
 \`engineer\`, \`refutation-reviewer\`, \`tester\`, \`architect\` — delegate via the Task tool.
 
 ## Analytics
-\`/goodvibes:analytics\` for session cost/token telemetry (a separate opt-in plugin).
+\`/goodvibes:analytics\` for session cost/token telemetry from the analytics server.
 
 ## Connect
-\`goodvibes-connect\` (a separate opt-in plugin) for registered external services and databases —
-install it only if the project needs credentialed API/DB access.
+The connect server's \`service\`/\`api_request\`/\`db_query\` tools — registered external APIs and
+databases under an explicit trust boundary (restricted by default). Manage the registry with
+\`/goodvibes:services\`.
 
 ---
 *Installed by \`/goodvibes:plugin install-prompts\`. Remove with \`uninstall-prompts\`.*

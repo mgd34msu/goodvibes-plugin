@@ -29,11 +29,10 @@ interface CommitGuardHook {
     toolName?: string;
     command?: string;
     cwd?: string;
-    env?: Record<string, string | undefined>;
     gitStatus?: () => string;
     exists?: (p: string) => boolean;
     writeMarker?: (cwd: string) => void;
-  }) => { action: 'allow' | 'warn' | 'block' | 'yield'; message?: string };
+  }) => { action: 'allow' | 'warn' | 'block'; message?: string };
 }
 
 let hook: CommitGuardHook;
@@ -103,15 +102,10 @@ describe('commit-guard hook', () => {
   describe('evaluateCommit (end to end, injected I/O)', () => {
     const base = {
       cwd: '/proj',
-      env: {} as Record<string, string | undefined>,
       gitStatus: () => '',
       exists: () => false,
       writeMarker: () => {},
     };
-
-    it('yields to v1 when present', () => {
-      expect(hook.evaluateCommit({ ...base, env: { GOODVIBES_V1_ACTIVE: '1' }, toolName: 'Bash', command: 'git add -A' }).action).toBe('yield');
-    });
 
     it('allows non-Bash tools and non-git commands', () => {
       expect(hook.evaluateCommit({ ...base, toolName: 'Read', command: 'anything' }).action).toBe('allow');

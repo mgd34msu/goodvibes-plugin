@@ -1,6 +1,6 @@
 ---
 name: project-onboarding
-description: Step-by-step approach to mapping an unfamiliar codebase's architecture using goodvibes-intel's analyzers before making changes to it. Load when starting work in a codebase you haven't worked in before.
+description: Step-by-step approach to mapping an unfamiliar codebase's architecture using the goodvibes intel server's analyzers before making changes to it. Load when starting work in a codebase you haven't worked in before.
 ---
 
 # project-onboarding

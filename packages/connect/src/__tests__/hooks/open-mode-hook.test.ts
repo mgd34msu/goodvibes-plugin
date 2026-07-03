@@ -19,18 +19,11 @@ const hookUrl = pathToFileURL(
 ).href;
 
 interface OpenModeHook {
-  V1_YIELD_LINE: string;
-  detectV1: (opts?: {
-    env?: Record<string, string | undefined>;
-    cwd?: string;
-    exists?: (p: string) => boolean;
-  }) => boolean;
   computeOpenModeAction: (cfg: { mode: string; persist: boolean }) => {
     announce: string | null;
     revert: boolean;
   };
-  applyOpenMode: (opts?: { cwd?: string; env?: Record<string, string | undefined> }) => {
-    yielded: boolean;
+  applyOpenMode: (opts?: { cwd?: string }) => {
     announce: string | null;
     reverted: boolean;
   };
@@ -60,19 +53,6 @@ describe('session-start open-mode hook', () => {
     if (originalHome === undefined) delete process.env.HOME;
     else process.env.HOME = originalHome;
     await fs.promises.rm(tmpDir, { recursive: true, force: true });
-  });
-
-  describe('detectV1 (R16 yield guard)', () => {
-    it('respects the explicit env override', () => {
-      expect(hook.detectV1({ env: { GOODVIBES_V1_ACTIVE: '1' }, cwd: tmpDir })).toBe(true);
-      expect(hook.detectV1({ env: { GOODVIBES_V1_ACTIVE: '0' }, cwd: tmpDir })).toBe(false);
-    });
-
-    it('detects the un-namespaced v1 runtime-config marker', async () => {
-      expect(hook.detectV1({ env: {}, cwd: tmpDir })).toBe(false);
-      await fs.promises.writeFile(path.join(tmpDir, '.goodvibes', 'goodvibes.json'), '{}', 'utf-8');
-      expect(hook.detectV1({ env: {}, cwd: tmpDir })).toBe(true);
-    });
   });
 
   describe('computeOpenModeAction', () => {
@@ -106,13 +86,13 @@ describe('session-start open-mode hook', () => {
     }
 
     it('is silent when restricted', () => {
-      const r = hook.applyOpenMode({ cwd: tmpDir, env: {} });
-      expect(r).toEqual({ yielded: false, announce: null, reverted: false });
+      const r = hook.applyOpenMode({ cwd: tmpDir });
+      expect(r).toEqual({ announce: null, reverted: false });
     });
 
     it('re-announces persisted open mode and leaves the file open', async () => {
       await writeProjectConfig({ mode: 'open', dangerously_persist_across_sessions: true });
-      const r = hook.applyOpenMode({ cwd: tmpDir, env: {} });
+      const r = hook.applyOpenMode({ cwd: tmpDir });
       expect(r.reverted).toBe(false);
       expect(r.announce).toContain('PERSISTED');
       const cfg = JSON.parse(await fs.promises.readFile(path.join(tmpDir, ...V2, 'config.json'), 'utf-8'));
@@ -121,22 +101,11 @@ describe('session-start open-mode hook', () => {
 
     it('reverts ephemeral open mode to restricted', async () => {
       await writeProjectConfig({ mode: 'open' });
-      const r = hook.applyOpenMode({ cwd: tmpDir, env: {} });
+      const r = hook.applyOpenMode({ cwd: tmpDir });
       expect(r.reverted).toBe(true);
       expect(r.announce).toContain('ephemeral');
       const cfg = JSON.parse(await fs.promises.readFile(path.join(tmpDir, ...V2, 'config.json'), 'utf-8'));
       expect(cfg.mode).toBe('restricted');
-    });
-
-    it('yields to v1 when the marker is present', async () => {
-      await fs.promises.writeFile(path.join(tmpDir, '.goodvibes', 'goodvibes.json'), '{}', 'utf-8');
-      await writeProjectConfig({ mode: 'open' });
-      const r = hook.applyOpenMode({ cwd: tmpDir, env: {} });
-      expect(r.yielded).toBe(true);
-      expect(r.announce).toBe(hook.V1_YIELD_LINE);
-      // Yielding must NOT touch the config.
-      const cfg = JSON.parse(await fs.promises.readFile(path.join(tmpDir, ...V2, 'config.json'), 'utf-8'));
-      expect(cfg.mode).toBe('open');
     });
   });
 });

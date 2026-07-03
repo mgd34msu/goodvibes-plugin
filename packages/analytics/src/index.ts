@@ -34,7 +34,7 @@ import { tagTool } from './tools/tag.js';
 import { syncTool } from './tools/sync.js';
 import { configTool } from './tools/config.js';
 
-export const SERVER_NAME = 'goodvibes-analytics';
+export const SERVER_NAME = 'analytics';
 export const SERVER_VERSION = '2.0.0-alpha.1';
 
 /** The seven analytics tools, in surface order. */

@@ -3,14 +3,12 @@
  *
  * The single goodvibes plugin ships all lifecycle hooks side by side under
  * hooks/, so they share this one dependency-free helper module (no build step,
- * no import from @goodvibes/core). R16 (coexistence): every hook starts with
- * `shouldYieldToV1()` — when a v1 install is detected alongside, the hook
- * responds with a single explanatory line instead of its normal work. R15
- * (state namespacing): hooks that touch project state use `v2StatePath()`
- * (`.goodvibes/v2/...`), mirroring core/config's getStatePath convention.
+ * no import from @goodvibes/core). R15 (state namespacing): hooks that touch
+ * project state use `v2StatePath()` (`.goodvibes/v2/...`), mirroring
+ * core/config's getStatePath convention.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 
 /** Read and JSON-parse stdin. Never throws — malformed/empty input becomes `{}`. */
@@ -86,32 +84,11 @@ export function appendJsonlSafe(file, entry) {
 }
 
 /**
- * R16: yield to v1 when its plugin is installed alongside this one. Cheap
- * check — v1's own `.cache/` directory, sibling to this plugin's root.
- */
-export function shouldYieldToV1() {
-  const pluginRoot = process.env.CLAUDE_PLUGIN_ROOT;
-  if (!pluginRoot) return false;
-  try {
-    return existsSync(path.resolve(pluginRoot, '..', 'goodvibes', '.cache'));
-  } catch {
-    return false;
-  }
-}
-
-export const V1_YIELD_MESSAGE =
-  'v2 hooks yielding to v1 — uninstall goodvibes v1 to activate them.';
-
-/**
- * Fail-open hook runner: reads stdin, applies the R16 yield guard, calls
- * `handler(input)`, and always emits SOME valid response.
+ * Fail-open hook runner: reads stdin, calls `handler(input)`, and always emits
+ * SOME valid response — a bug in the handler still yields `{ continue: true }`.
  */
 export async function runHook(hookEventName, handler) {
   try {
-    if (shouldYieldToV1()) {
-      respond(createHookResponse({ hookEventName, systemMessage: V1_YIELD_MESSAGE }));
-      return;
-    }
     const input = await readHookInput();
     const result = await handler(input);
     respond(result ?? createHookResponse({ hookEventName }));
