@@ -87,14 +87,29 @@ describe('goodvibes intel hooks: valid JSON (fail-open)', () => {
 });
 
 describe('goodvibes intel hooks: schema and content', () => {
-  it('session-start.mjs uses hookSpecificOutput.additionalContext, not top-level additionalContext', () => {
+  it('session-start.mjs is COMPLETELY silent for a healthy, ordinary project (the 2.0.3 contract)', () => {
     const cwd = makeTmpCwd();
+    const { stdout } = runHook('session-start.mjs', { session_id: 'abc12345', cwd, hook_event_name: 'SessionStart' });
+    const parsed = JSON.parse(stdout);
+    expect(parsed.continue).toBe(true);
+    expect(parsed.systemMessage).toBeUndefined();
+    expect(parsed.hookSpecificOutput).toBeUndefined();
+    expect(parsed.additionalContext).toBeUndefined();
+  });
+
+  it('session-start.mjs emits problems via hookSpecificOutput.additionalContext when something needs attention', () => {
+    const cwd = makeTmpCwd();
+    // package.json without node_modules is a real, actionable problem note.
+    fs.writeFileSync(path.join(cwd, 'package.json'), '{"name":"x","version":"0.0.0"}\n');
     const { stdout } = runHook('session-start.mjs', { session_id: 'abc12345', cwd, hook_event_name: 'SessionStart' });
     const parsed = JSON.parse(stdout);
     expect(parsed.additionalContext).toBeUndefined();
     expect(parsed.hookSpecificOutput?.hookEventName).toBe('SessionStart');
-    expect(typeof parsed.hookSpecificOutput?.additionalContext).toBe('string');
-    expect(parsed.hookSpecificOutput.additionalContext).toContain('[goodvibes] Session context');
+    expect(parsed.hookSpecificOutput.additionalContext).toContain('[goodvibes] Needs attention');
+    expect(parsed.hookSpecificOutput.additionalContext).toContain('dependencies not installed');
+    expect(parsed.systemMessage).toMatch(/project note/);
+    // The retired filler must never come back.
+    expect(parsed.hookSpecificOutput.additionalContext).not.toMatch(/Stack:|Git: on|TODO/);
   });
 
   it('setup.mjs writes a marker once and stays silent on the second run', () => {
@@ -197,7 +212,7 @@ describe('goodvibes intel hooks: host-health nudge (lane 9 loose coupling)', () 
     const { stdout } = runHook('session-start.mjs', { session_id: 'abc12345', cwd, hook_event_name: 'SessionStart' });
     const parsed = JSON.parse(stdout);
     expect(parsed.continue).toBe(true);
-    expect(parsed.hookSpecificOutput.additionalContext).not.toMatch(/Host health/);
+    expect(parsed.hookSpecificOutput?.additionalContext ?? '').not.toMatch(/Host health/);
   });
 
   it('session-start does not nudge when thresholds are not tripped', () => {
@@ -216,6 +231,6 @@ describe('goodvibes intel hooks: host-health nudge (lane 9 loose coupling)', () 
     });
     const { stdout } = runHook('session-start.mjs', { session_id: 'abc12345', cwd, hook_event_name: 'SessionStart' });
     const parsed = JSON.parse(stdout);
-    expect(parsed.hookSpecificOutput.additionalContext).not.toMatch(/Host health/);
+    expect(parsed.hookSpecificOutput?.additionalContext ?? '').not.toMatch(/Host health/);
   });
 });

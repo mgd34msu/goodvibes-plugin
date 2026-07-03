@@ -9,10 +9,18 @@
  */
 
 import * as esbuild from 'esbuild';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { copyFile, mkdir } from 'fs/promises';
 import { createRequire } from 'module';
+
+// Version is injected from the single source of truth (plugin.json) so the
+// SERVER_VERSION constant can never drift from releases again (2.0.2 lesson).
+const PLUGIN_VERSION = JSON.parse(
+  readFileSync(new URL('../../plugins/goodvibes/.claude-plugin/plugin.json', import.meta.url), 'utf8'),
+).version;
+
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
@@ -38,6 +46,7 @@ const SHARED = {
   sourcemap: true,
   minify: false,
   keepNames: true,
+  define: { __GV_VERSION__: JSON.stringify(PLUGIN_VERSION) },
   external: ['ink', 'react', 'react-devtools-core', 'yoga-wasm-web', 'sql.js'],
 };
 

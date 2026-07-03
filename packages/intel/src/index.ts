@@ -39,7 +39,10 @@ import { layoutAnalysisTool } from './tools/layout_analysis.js';
 import { structuralEditTool } from './tools/structural_edit.js';
 
 export const SERVER_NAME = 'intel';
-export const SERVER_VERSION = '2.0.2';
+// Injected by build.mjs from plugin.json (the single version source);
+// falls back in unbundled dev/test runs where no injection happens.
+declare const __GV_VERSION__: string | undefined;
+export const SERVER_VERSION = typeof __GV_VERSION__ !== 'undefined' ? __GV_VERSION__ : '0.0.0-dev';
 
 /**
  * Every tool this server serves. One module per tool under `src/tools/`; each
