@@ -39,7 +39,7 @@ import { layoutAnalysisTool } from './tools/layout_analysis.js';
 import { structuralEditTool } from './tools/structural_edit.js';
 
 export const SERVER_NAME = 'intel';
-export const SERVER_VERSION = '2.0.0-alpha.1';
+export const SERVER_VERSION = '2.0.2';
 
 /**
  * Every tool this server serves. One module per tool under `src/tools/`; each

@@ -90,10 +90,15 @@ export class TelemetryReader {
         // CJS bundle: import.meta.url is undefined — fall back to __dirname or process.argv[1]
         bundleDir = typeof __dirname !== 'undefined' ? __dirname : path.dirname(process.argv[1]);
       }
+      // v2 ships the WASM in a wasm/ subdirectory beside the bundle; v1 shipped
+      // it flat. Try both before falling back to sql.js default resolution.
+      const wasmSubdir = path.join(bundleDir, 'wasm', 'sql-wasm.wasm');
       const wasmBesideBundle = path.join(bundleDir, 'sql-wasm.wasm');
-      const sqlConfig = existsSync(wasmBesideBundle)
-        ? { locateFile: (file: string) => path.join(bundleDir, file) }
-        : {};
+      const sqlConfig = existsSync(wasmSubdir)
+        ? { locateFile: (file: string) => path.join(bundleDir, 'wasm', file) }
+        : existsSync(wasmBesideBundle)
+          ? { locateFile: (file: string) => path.join(bundleDir, file) }
+          : {};
 
       this._SQL = await initSqlJs(sqlConfig);
       const buffer = readFileSync(this.dbPath);

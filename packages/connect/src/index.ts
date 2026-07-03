@@ -18,7 +18,7 @@ import { loadConfig, configForEnvelope } from '@goodvibes/core/config';
 import { TOOLS, HANDLERS } from './tools/index.js';
 
 export const SERVER_NAME = 'connect';
-export const SERVER_VERSION = '2.0.0-alpha.1';
+export const SERVER_VERSION = '2.0.2';
 
 /** Build the configured MCP server. `onActivity` resets the idle timer. */
 export function createServer(onActivity?: () => void): Server {

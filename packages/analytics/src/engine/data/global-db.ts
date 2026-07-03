@@ -944,11 +944,17 @@ export class GlobalDB {
       baseDir = process.cwd();
     }
 
-    // Option 1: dist/ sibling (plugin install)
+    // Option 1: wasm/ subdirectory beside the bundle — the v2 shipped layout
+    // (build.mjs copies sql-wasm.wasm to server/<name>/wasm/). This candidate
+    // was missing in the v1-ported resolver and crashed the first live query.
+    const subdirWasm = resolve(join(baseDir, 'wasm', 'sql-wasm.wasm'));
+    if (existsSync(subdirWasm)) return subdirWasm;
+
+    // Option 2: bare sibling (v1's flat dist layout)
     const distWasm = resolve(join(baseDir, 'sql-wasm.wasm'));
     if (existsSync(distWasm)) return distWasm;
 
-    // Option 2: node_modules (development)
+    // Option 3: node_modules (development)
     const nodeWasm = resolve(join(baseDir, '..', '..', '..', 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm'));
     if (existsSync(nodeWasm)) return nodeWasm;
 

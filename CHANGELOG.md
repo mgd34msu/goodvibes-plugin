@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.2] - 2026-07-02
+
+First dogfooding session found and fixed two defects within minutes of
+first live use — exactly what dogfooding is for.
+
+### Fixed
+- **Analytics WASM resolution**: the v1-ported sql.js resolvers (global DB
+  and telemetry reader) never tried the `wasm/` subdirectory where v2's
+  build actually ships `sql-wasm.wasm`, so the first real `query` call
+  failed with ENOENT. Both resolvers now try the shipped layout first.
+- **Server death on failed engine init**: a failed lazy initialization left
+  a half-started engine whose timers later threw outside any handler and
+  killed the process. Init failure now tears the engine down, resets, and
+  retries on the next call; fatal faults log a diagnostic to the error
+  channel and exit gracefully instead of dying silently (no keep-alive —
+  visible death, not immortality).
+- `SERVER_VERSION` constants were still `2.0.0-alpha.1`; now track releases.
+- Stale idle-exit mention removed from the analytics server docstring.
+
+### Added
+- Bundle-level regression gate: spawns the committed analytics bundle over
+  stdio and makes a real `query` call, asserting a response and a surviving
+  process — the test that would have caught both defects pre-release.
+
 ## [2.0.1] - 2026-07-02
 
 A patch pass over 2.0.0 — corrections and coherence, no new behavior.
