@@ -1,12 +1,12 @@
 /**
  * Hook smoke tests (§ lane 7 brief: "Hooks get smoke tests — node script piping
- * synthetic stdin"). Each goodvibes-intel hook is a plain, unbuilt `.mjs` file
+ * synthetic stdin"). Each goodvibes intel hook is a plain, unbuilt `.mjs` file
  * (§7 R8) — these tests spawn it as a REAL `node` subprocess (not an in-process
  * import) and pipe synthetic hook input on stdin, exactly like Claude Code
  * would invoke it, then assert on the JSON it writes to stdout.
  *
- * Covers: valid-JSON-always, the corrected `hookSpecificOutput.additionalContext`
- * schema (the v1 bug plan §8 calls out), and the R16 v1-yield guard.
+ * Covers: valid-JSON-always and the corrected `hookSpecificOutput.additionalContext`
+ * schema (the v1 bug plan §8 calls out).
  */
 
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
@@ -19,13 +19,6 @@ import * as os from 'node:os';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const HOOKS_DIR = path.resolve(__dirname, '../../../../plugins/goodvibes/hooks');
 const FAKE_PLUGIN_ROOT = path.join(os.tmpdir(), 'gv-fake-plugin-root-intel');
-// R16 "v1 present" fixture: a plugin root whose sibling `goodvibes/.cache`
-// directory exists (shouldYieldToV1 checks `<pluginRoot>/../goodvibes/.cache`).
-// Built under a unique temp base in beforeAll so the test is self-contained and
-// independent of the repo layout — FAKE_PLUGIN_ROOT, whose own sibling has no
-// such dir, stays the "v1 absent" fixture.
-const V1_PRESENT_BASE = path.join(os.tmpdir(), 'gv-v1-present-intel');
-const V1_PRESENT_ROOT = path.join(V1_PRESENT_BASE, 'plugin');
 
 const tmpDirs: string[] = [];
 function makeTmpCwd(): string {
@@ -70,14 +63,13 @@ function runHook(hookFile: string, input: unknown, opts: SpawnOpts = {}): { code
 
 beforeAll(() => {
   fs.mkdirSync(FAKE_PLUGIN_ROOT, { recursive: true });
-  fs.mkdirSync(path.join(V1_PRESENT_BASE, 'goodvibes', '.cache'), { recursive: true });
 });
 
-describe('goodvibes-intel hooks: valid JSON + R16 yield guard', () => {
+describe('goodvibes intel hooks: valid JSON (fail-open)', () => {
   const hooks = ['session-start.mjs', 'setup.mjs', 'subagent-start.mjs', 'post-tool-use-failure.mjs'];
 
   for (const hook of hooks) {
-    it(`${hook} always emits valid JSON with continue:true (no v1 present)`, () => {
+    it(`${hook} always emits valid JSON with continue:true`, () => {
       const cwd = makeTmpCwd();
       const { code, stdout } = runHook(hook, {
         session_id: 'test-session',
@@ -85,27 +77,16 @@ describe('goodvibes-intel hooks: valid JSON + R16 yield guard', () => {
         hook_event_name: hook.replace('.mjs', ''),
         tool_name: 'Bash',
         error: 'npm ERR! ERESOLVE could not resolve dependency',
-        agent_type: 'goodvibes-intel:engineer',
+        agent_type: 'goodvibes:engineer',
       });
       expect(code).toBe(0);
       const parsed = JSON.parse(stdout);
       expect(parsed.continue).toBe(true);
     });
-
-    it(`${hook} yields to v1 when v1's cache directory is present (R16)`, () => {
-      // V1_PRESENT_ROOT's sibling goodvibes/.cache is created in beforeAll —
-      // the self-contained R16 fixture.
-      const cwd = makeTmpCwd();
-      const { code, stdout } = runHook(hook, { session_id: 'test-session', cwd, hook_event_name: hook.replace('.mjs', '') }, { pluginRoot: V1_PRESENT_ROOT });
-      expect(code).toBe(0);
-      const parsed = JSON.parse(stdout);
-      expect(parsed.continue).toBe(true);
-      expect(parsed.systemMessage).toMatch(/yielding to v1/);
-    });
   }
 });
 
-describe('goodvibes-intel hooks: schema and content', () => {
+describe('goodvibes intel hooks: schema and content', () => {
   it('session-start.mjs uses hookSpecificOutput.additionalContext, not top-level additionalContext', () => {
     const cwd = makeTmpCwd();
     const { stdout } = runHook('session-start.mjs', { session_id: 'abc12345', cwd, hook_event_name: 'SessionStart' });
@@ -113,7 +94,7 @@ describe('goodvibes-intel hooks: schema and content', () => {
     expect(parsed.additionalContext).toBeUndefined();
     expect(parsed.hookSpecificOutput?.hookEventName).toBe('SessionStart');
     expect(typeof parsed.hookSpecificOutput?.additionalContext).toBe('string');
-    expect(parsed.hookSpecificOutput.additionalContext).toContain('[goodvibes-intel] Session context');
+    expect(parsed.hookSpecificOutput.additionalContext).toContain('[goodvibes] Session context');
   });
 
   it('setup.mjs writes a marker once and stays silent on the second run', () => {
@@ -135,7 +116,7 @@ describe('goodvibes-intel hooks: schema and content', () => {
       cwd,
       hook_event_name: 'SubagentStart',
       agent_id: 'agent-1',
-      agent_type: 'goodvibes-intel:engineer',
+      agent_type: 'goodvibes:engineer',
     });
     const parsed = JSON.parse(stdout);
     const ctx = parsed.hookSpecificOutput.additionalContext as string;
@@ -171,7 +152,7 @@ describe('goodvibes-intel hooks: schema and content', () => {
   });
 });
 
-describe('goodvibes-intel hooks: host-health nudge (lane 9 loose coupling)', () => {
+describe('goodvibes intel hooks: host-health nudge (lane 9 loose coupling)', () => {
   function writeHealthState(cwd: string, state: object): void {
     const dir = path.join(cwd, '.goodvibes', 'v2', 'health');
     fs.mkdirSync(dir, { recursive: true });

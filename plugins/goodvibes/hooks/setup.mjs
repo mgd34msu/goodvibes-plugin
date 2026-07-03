@@ -14,7 +14,7 @@
  *  - It does not install anything itself. The intel server's native
  *    dependencies (ripgrep, ast-grep) have no postinstall chain by design
  *    (carve-out architecture §1.2) — first-run install requires the user to
- *    explicitly run `/goodvibes-intel:plugin setup`, which is the actual
+ *    explicitly run `/goodvibes:plugin setup`, which is the actual
  *    consent point (a human typed a command), not a hook silently acting on
  *    their behalf. This hook's only job is to point at that command once.
  */
@@ -35,13 +35,13 @@ async function handleSetup(input) {
 
   writeJsonSafe(markerPath, {
     ranAt: new Date().toISOString(),
-    note: 'goodvibes-intel Setup hook has run once for this project; see /goodvibes-intel:plugin setup for native-dependency install.',
+    note: 'goodvibes Setup hook has run once for this project; see /goodvibes:plugin setup for native-dependency install.',
   });
 
   return createHookResponse({
     hookEventName: HOOK_EVENT,
     systemMessage:
-      'goodvibes-intel: first-time setup for this project. Run /goodvibes-intel:plugin setup ' +
+      'goodvibes: first-time setup for this project. Run /goodvibes:plugin setup ' +
       'to install native dependencies (ripgrep, ast-grep) with your explicit consent — nothing ' +
       'is installed automatically.',
   });

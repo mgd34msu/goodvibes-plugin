@@ -1,11 +1,11 @@
 ---
 name: intel-mastery
-description: Usage guide for goodvibes-intel's structure-aware tools (code_read, code_grep, code_glob, code_surface, code_safe_delete, api_*, db_schema, component_tree, hook_dependencies, client_boundary, layout_analysis, scaffold). Load when working in a codebase and deciding between intel tools and native Read/Grep/Glob.
+description: Usage guide for the goodvibes intel server's structure-aware tools (code_read, code_grep, code_glob, code_surface, code_safe_delete, api_*, db_schema, component_tree, hook_dependencies, client_boundary, layout_analysis, scaffold). Load when working in a codebase and deciding between intel tools and native Read/Grep/Glob.
 ---
 
 # intel-mastery
 
-goodvibes-intel's tools are opt-in, not mandatory. They're worth reaching for on the operations
+The goodvibes intel tools are opt-in, not mandatory. They're worth reaching for on the operations
 they're actually measured to beat native tools on (structure-aware search, safe-delete
 reference checking, API/schema/component analysis); they're not worth forcing where a native
 tool is simpler or where intel doesn't cover the case. This skill is the honest usage guide —
@@ -55,8 +55,8 @@ you need file sizes/mtimes; otherwise leave it off to keep the response small.
   compiler references (not a text search for the symbol name).
 - **`api_routes` / `api_spec` / `api_validate`** — route detection across Express/Fastify/Hono/
   Next.js, an OpenAPI-shaped spec extraction, and static spec-vs-routes mismatch checking.
-  `api_validate` is static only — it never makes live requests (that's `goodvibes-connect`'s
-  trust model, a different plugin, for a reason).
+  `api_validate` is static only — it never makes live requests (that's the `connect` server's
+  trust model, for a reason).
 - **`db_schema`** — Prisma/Drizzle/SQL schema extraction, with an opt-in `usage: true` mode that
   maps real Prisma call sites (including query-in-a-loop detection) via the compiler, not a
   string search for `.findMany(`.
@@ -72,7 +72,7 @@ you need file sizes/mtimes; otherwise leave it off to keep the response small.
 
 ## When native tools are the better choice
 
-Editing, writing, and running commands are native Edit/Write/Bash's job — goodvibes-intel is a
+Editing, writing, and running commands are native Edit/Write/Bash's job — the intel server is a
 search/read/analysis server, not a write path (that's a deliberate scope cut from v1, which
 retired its own edit/write/exec tools after field-tested defects in that area). A one-off search
 in a tiny directory, or anything intel's analyzers don't cover, is often faster with native

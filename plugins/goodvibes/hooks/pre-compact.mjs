@@ -72,7 +72,7 @@ async function handlePreCompact(input) {
     summary || '(no transcript context available)',
     '',
     '---',
-    '*Observe-only: goodvibes-analytics does not commit or otherwise modify the working tree.*',
+    '*Observe-only: goodvibes does not commit or otherwise modify the working tree.*',
   ].join('\n');
 
   try {

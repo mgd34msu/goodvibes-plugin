@@ -1,5 +1,5 @@
 /**
- * Minimal JSON-RPC-over-stdio client for the built goodvibes-intel bundle.
+ * Minimal JSON-RPC-over-stdio client for the built goodvibes intel bundle.
  *
  * Deliberately dependency-free (no `@modelcontextprotocol/sdk` client import)
  * so these scripts run with plain `node` against the committed bundle, the
@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-export const SERVER_PATH = path.join(__dirname, '..', '..', '..', '..', 'plugins', 'goodvibes-intel', 'server', 'index.cjs');
+export const SERVER_PATH = path.join(__dirname, '..', '..', '..', '..', 'plugins', 'goodvibes', 'server', 'intel', 'index.cjs');
 
 /**
  * Spawn the built server, run `fn(callTool)` against it, then shut it down.

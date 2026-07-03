@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-07-02
+
+A patch pass over 2.0.0 — corrections and coherence, no new behavior.
+
+### Fixed
+- Removed the vestigial v1-coexistence yield guard from every hook and the shared
+  hook lib (`hooks/lib/common.mjs`, `session-start-open-mode.mjs`, `commit-guard.mjs`).
+  v1 can no longer be installed from the marketplace, so the check and its yield path
+  were dead code; hooks now do their real work unconditionally, with fail-open
+  discipline and `.goodvibes/v2/` state namespacing unchanged.
+- Corrected hook output and doc labels: `[goodvibes-intel]`-style prefixes and prose
+  describing the analytics/connect servers as "separate plugins" are now plain
+  `goodvibes` (the three are servers in the one plugin), and stale
+  `/goodvibes-intel:plugin` references are now `/goodvibes:plugin`.
+- Aligned each server's internal `serverInfo.name` with its `.mcp.json` key
+  (`intel` / `analytics` / `connect`, dropping the `goodvibes-` prefix).
+- Reviewed the connect `services` command and `service-integration` skill against the
+  real implementation and corrected them: the `{ "$env": "VAR_NAME" }` credential
+  reference shape, the `service status` vs `get` response split, the register `config`
+  fields, the per-service `write_methods` opt-in, `set_url_pattern` semantics, and
+  documented `db_query` `url_env` connections and origin-scoped credential pinning.
+
+### Changed
+- `/goodvibes:plugin setup` and `status` now install and report native dependencies for
+  all three servers (intel, analytics, connect) — each carries its own runtime-only
+  `package.json` — instead of intel alone. Still fully consent-gated: nothing installs
+  unless the user invokes `setup`.
+
 ## [2.0.0] - 2026-07-02
 
 A ground-up rewrite driven by a measured deep review of v1. One plugin

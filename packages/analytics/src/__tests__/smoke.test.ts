@@ -9,7 +9,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { createServer, SERVER_NAME, SERVER_VERSION, TOOL_MODULES } from '../index.js';
 
-describe('goodvibes-analytics server', () => {
+describe('goodvibes analytics server', () => {
   it('completes initialize and lists the seven analytics tools', async () => {
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
     const server = createServer();

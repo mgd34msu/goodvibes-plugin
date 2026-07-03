@@ -20,7 +20,7 @@ Manage the goodvibes plugin installation (intel / analytics / connect servers, h
 
 | Subcommand | Description |
 |------------|-------------|
-| `setup` | Install native dependencies (`@ast-grep/napi`, `@vscode/ripgrep`) — explicit consent, first run only. |
+| `setup` | Install each server's native dependencies (intel, analytics, connect) — explicit consent, first run only. |
 | `status` | Show plugin health: version, server bundle, hooks, native-dependency install state. |
 | `install-prompts` | Opt in: install a compact pointer file (may write to `~/.claude/`). |
 | `uninstall-prompts` | Cleanly remove everything `install-prompts` wrote. |
@@ -35,31 +35,46 @@ Parse the subcommand from $ARGUMENTS.
 
 ### `setup` — Native Dependency Install
 
-The committed intel server bundle (`${CLAUDE_PLUGIN_ROOT}/server/intel/index.cjs`) externalizes
-three runtime-only dependencies listed in `${CLAUDE_PLUGIN_ROOT}/server/intel/package.json`:
-`@ast-grep/napi`, `@vscode/ripgrep`, `sql.js`. There is no `postinstall` chain — installing them
-requires this explicit command, which is the actual consent point (the Setup hook only points
-here; it never installs anything itself).
+Each of the three committed server bundles externalizes a few runtime-only dependencies (native
+binaries and WASM loaders that do not bundle cleanly), listed in that server's own
+`${CLAUDE_PLUGIN_ROOT}/server/<name>/package.json`:
 
-1. Check whether they're already installed:
+| Server | Runtime-only dependencies |
+|--------|---------------------------|
+| `intel` | `@ast-grep/napi`, `@vscode/ripgrep`, `sql.js`, `web-tree-sitter` |
+| `analytics` | `ink`, `react`, `react-devtools-core`, `yoga-wasm-web`, `sql.js` |
+| `connect` | `sql.js` (database drivers resolve from the target project, not installed here) |
+
+There is no `postinstall` chain — installing them requires this explicit command, which is the
+actual consent point (the Setup hook only points here; it never installs anything itself).
+
+1. Check which servers still need their dependencies (a representative dependency probes each):
    ```bash
-   test -d "${CLAUDE_PLUGIN_ROOT}/server/intel/node_modules/@ast-grep/napi" && test -d "${CLAUDE_PLUGIN_ROOT}/server/intel/node_modules/@vscode/ripgrep" && echo ALREADY_INSTALLED || echo NEEDS_INSTALL
+   for s in intel analytics connect; do
+     case $s in
+       intel) probe="@ast-grep/napi" ;;
+       analytics) probe="ink" ;;
+       connect) probe="sql.js" ;;
+     esac
+     test -d "${CLAUDE_PLUGIN_ROOT}/server/$s/node_modules/$probe" && echo "$s: INSTALLED" || echo "$s: NEEDS_INSTALL"
+   done
    ```
-   If `ALREADY_INSTALLED`, report that and stop.
-2. If `NEEDS_INSTALL`, tell the user exactly what will happen — `npm install` will run inside
-   `${CLAUDE_PLUGIN_ROOT}/server/intel/`, installing `@ast-grep/napi`, `@vscode/ripgrep`, and `sql.js`
-   (native binaries + one WASM loader; no other package on the system is touched) — and confirm
-   before proceeding.
-3. On confirmation, run:
+   If every server reports `INSTALLED`, report that and stop.
+2. If any server reports `NEEDS_INSTALL`, tell the user exactly what will happen — `npm install`
+   runs inside each `${CLAUDE_PLUGIN_ROOT}/server/<name>/` directory (intel, analytics, connect),
+   installing only the dependencies in that server's `package.json` (native binaries + WASM
+   loaders; no other package on the system is touched) — and confirm before proceeding.
+3. On confirmation, install every server's dependencies (`npm install` is idempotent — an
+   already-installed server is a fast no-op):
    ```bash
-   npm install --omit=dev --no-audit --no-fund --prefix "${CLAUDE_PLUGIN_ROOT}/server/intel"
+   for s in intel analytics connect; do
+     npm install --omit=dev --no-audit --no-fund --prefix "${CLAUDE_PLUGIN_ROOT}/server/$s"
+   done
    ```
-   (The analytics and connect servers under `${CLAUDE_PLUGIN_ROOT}/server/analytics` and
-   `${CLAUDE_PLUGIN_ROOT}/server/connect` carry their own runtime-only `package.json`; install
-   those the same way with the matching `--prefix` if their tools report a missing dependency.)
-4. Report success or the exact error output. On success:
+4. Report success or the exact error output per server. On success:
    ```
-   Native dependencies installed. goodvibes' structure-aware search/analysis tools are ready.
+   Native dependencies installed for intel, analytics, and connect. goodvibes' structure-aware
+   search/analysis, the analytics dashboard, and registered service access are ready.
    ```
 
 ### `status` — Plugin Health
@@ -71,7 +86,8 @@ one that never existed; it does not carry forward):
 2. Check `${CLAUDE_PLUGIN_ROOT}/server/intel/index.cjs`, `.../server/analytics/index.cjs`, and
    `.../server/connect/index.cjs` exist (the three server bundles present).
 3. Check `${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json` exists; list its registered event names.
-4. Check native-dependency install state the same way `setup` does.
+4. Check native-dependency install state per server the same way `setup` does (intel, analytics,
+   connect each probed independently).
 5. Check the current project's `.goodvibes/v2/.setup-marker.json` — has the Setup hook run here?
 6. Check the current project's `.goodvibes/v2/` for `memory/`, `state/`, `cache/` presence.
 
@@ -80,9 +96,13 @@ Present as:
 goodvibes Status
 =======================
 Version: {version}
-Server bundle: {present ? "Found" : "MISSING"}
+Server bundles: intel {Found|MISSING} | analytics {Found|MISSING} | connect {Found|MISSING}
 Hooks registered: {event list, or "MISSING hooks.json"}
-Native dependencies: {installed ? "Installed" : "Not installed — run /goodvibes:plugin setup"}
+Native dependencies:
+  intel:     {Installed | Not installed}
+  analytics: {Installed | Not installed}
+  connect:   {Installed | Not installed}
+  {if any are "Not installed": "Run /goodvibes:plugin setup to install the missing ones."}
 Project setup: {marker present ? "Ran on <date>" : "Not yet run for this project (runs on next `claude init`)"}
 Project state: {.goodvibes/v2/ present ? "Present" : "None yet"}
 ```

@@ -11,7 +11,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { createServer, SERVER_NAME, SERVER_VERSION } from '../index.js';
 
-describe('goodvibes-intel skeleton', () => {
+describe('goodvibes intel server', () => {
   it('completes initialize and serves well-formed tool definitions', async () => {
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
     const server = createServer();

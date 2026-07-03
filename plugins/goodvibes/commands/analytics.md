@@ -47,7 +47,7 @@ Parse the subcommand from $ARGUMENTS. If $ARGUMENTS is empty, default to the ses
 are available (ToolSearch for "analytics" if they're deferred behind Tool Search). If none are
 found, inform the user:
 ```
-goodvibes-analytics is not available. Ensure the goodvibes-analytics plugin is installed and its MCP server is running.
+The goodvibes analytics tools are not available. Ensure the goodvibes plugin is installed and its analytics MCP server is running.
 ```
 
 ---

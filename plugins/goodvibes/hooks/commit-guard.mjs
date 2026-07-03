@@ -12,9 +12,6 @@
  * then escalates warn → block: the FIRST risky attempt warns (and drops a marker),
  * a SECOND risky attempt (marker present) is denied.
  *
- * R16: yields to an installed v1 plugin (v1 ships its own guard) so it never
- * double-fires.
- *
  * Pure functions are exported for the connect test suite; `main()` runs only when
  * executed directly.
  */
@@ -23,7 +20,6 @@ import { existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname, basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { detectV1 } from './session-start-open-mode.mjs';
 
 /** Credential files that must never be committed (basenames). */
 export const PROTECTED_FILES = ['goodvibes.secrets.json', 'goodvibes.cookies.json'];
@@ -83,7 +79,7 @@ export function decideCommitGuard(input) {
     return {
       action: 'warn',
       message:
-        `goodvibes-connect: this git command would stage ${files}, which holds credentials ` +
+        `goodvibes: this git command would stage ${files}, which holds credentials ` +
         `and must never be committed (it is gitignored). Proceeding this once — repeat the ` +
         `command and it will be BLOCKED. Remove it from staging or add it to .gitignore.`,
     };
@@ -91,7 +87,7 @@ export function decideCommitGuard(input) {
   return {
     action: 'block',
     message:
-      `goodvibes-connect: BLOCKED — this git command would commit ${files}, which holds ` +
+      `goodvibes: BLOCKED — this git command would commit ${files}, which holds ` +
       `credentials. You were warned once. Unstage it (git restore --staged ${files}) before committing.`,
   };
 }
@@ -105,17 +101,14 @@ function markerPath(cwd) {
  * the whole decision is testable without a repo.
  * @param {{
  *   toolName?: string, command?: string, cwd?: string,
- *   env?: Record<string,string|undefined>,
  *   gitStatus?: () => string, exists?: (p:string)=>boolean, writeMarker?: (cwd:string)=>void
  * }} opts
- * @returns {{ action: 'allow'|'warn'|'block'|'yield', message?: string }}
+ * @returns {{ action: 'allow'|'warn'|'block', message?: string }}
  */
 export function evaluateCommit(opts = {}) {
   const cwd = opts.cwd ?? process.cwd();
-  const env = opts.env ?? process.env;
   const exists = opts.exists ?? existsSync;
 
-  if (detectV1({ env, cwd, exists })) return { action: 'yield' };
   if (opts.toolName !== 'Bash') return { action: 'allow' };
 
   const analysis = analyzeCommitCommand(opts.command ?? '');
@@ -198,7 +191,7 @@ async function main() {
     );
     return;
   }
-  // allow / yield: say nothing, let the command proceed.
+  // allow: say nothing, let the command proceed.
   process.stdout.write(JSON.stringify({ continue: true }));
 }
 

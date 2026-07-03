@@ -264436,7 +264436,7 @@ __name(handler14, "handler");
 var structuralEditTool = { definition: definition14, handler: handler14 };
 
 // packages/intel/src/index.ts
-var SERVER_NAME = "goodvibes-intel";
+var SERVER_NAME = "intel";
 var SERVER_VERSION = "2.0.0-alpha.1";
 var TOOLS = [
   scaffoldTool,

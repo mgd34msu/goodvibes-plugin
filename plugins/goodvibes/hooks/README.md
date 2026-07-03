@@ -17,12 +17,11 @@ analytics, and connect lifecycle hooks side by side.
 | `subagent-stop.mjs` | SubagentStop | analytics | Telemetry-only: correlates with the SubagentStart tracking entry (R15), runs a bounded `tsc --noEmit` when TypeScript files were touched, writes one JSONL record. No systemMessage/additionalContext. |
 | `pre-compact.mjs` | PreCompact | analytics | Observe-only: writes a session summary (`.goodvibes/v2/state/last-session-summary.md`) and a small backup marker. Never mutates the working tree. |
 
-`lib/common.mjs` — shared stdin/response/state helpers, the R16 v1-yield guard, and
-`.goodvibes/v2/` path namespacing (R15). Every hook is fail-open: a bug in the handler still emits
-a valid `{ continue: true }` response, and every hook yields with a single explanatory line when a
-v1 `goodvibes` install is detected alongside.
+`lib/common.mjs` — shared stdin/response/state helpers and `.goodvibes/v2/` path namespacing
+(R15). Every hook is fail-open: a bug in the handler still emits a valid `{ continue: true }`
+response and never blocks the native tool it observes.
 
 Smoke tests: `packages/intel/src/__tests__/hooks-smoke.test.ts` and
 `packages/analytics/src/__tests__/hooks-smoke.test.ts` spawn each hook as a real `node` subprocess
-with synthetic stdin and assert valid JSON output, the correct schema where applicable, and the
-R16 yield path. connect's hooks are covered by `packages/connect/src/__tests__/hooks/`.
+with synthetic stdin and assert valid JSON output and the correct schema where applicable.
+connect's hooks are covered by `packages/connect/src/__tests__/hooks/`.

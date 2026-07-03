@@ -38,7 +38,7 @@ import { layoutAnalysisTool } from './tools/layout_analysis.js';
 // write surface on an otherwise read-only server.
 import { structuralEditTool } from './tools/structural_edit.js';
 
-export const SERVER_NAME = 'goodvibes-intel';
+export const SERVER_NAME = 'intel';
 export const SERVER_VERSION = '2.0.0-alpha.1';
 
 /**

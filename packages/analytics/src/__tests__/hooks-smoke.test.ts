@@ -1,6 +1,6 @@
 /**
  * Hook smoke tests (§ lane 7 brief: "Hooks get smoke tests — node script piping
- * synthetic stdin"). Each goodvibes-analytics hook is a plain, unbuilt `.mjs`
+ * synthetic stdin"). Each goodvibes analytics hook is a plain, unbuilt `.mjs`
  * file (§7 R8) — these tests spawn it as a real `node` subprocess and pipe
  * synthetic hook input on stdin, then assert on the JSON it writes to stdout.
  */
@@ -15,11 +15,6 @@ import * as os from 'node:os';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const HOOKS_DIR = path.resolve(__dirname, '../../../../plugins/goodvibes/hooks');
 const FAKE_PLUGIN_ROOT = path.join(os.tmpdir(), 'gv-fake-plugin-root-analytics');
-// R16 "v1 present" fixture: a plugin root whose sibling `goodvibes/.cache`
-// exists (shouldYieldToV1 checks `<pluginRoot>/../goodvibes/.cache`). Built in
-// beforeAll under a unique temp base — self-contained, independent of the repo.
-const V1_PRESENT_BASE = path.join(os.tmpdir(), 'gv-v1-present-analytics');
-const V1_PRESENT_ROOT = path.join(V1_PRESENT_BASE, 'plugin');
 
 const tmpDirs: string[] = [];
 function makeTmpCwd(): string {
@@ -37,7 +32,6 @@ afterEach(() => {
 
 beforeAll(() => {
   fs.mkdirSync(FAKE_PLUGIN_ROOT, { recursive: true });
-  fs.mkdirSync(path.join(V1_PRESENT_BASE, 'goodvibes', '.cache'), { recursive: true });
 });
 
 interface SpawnOpts {
@@ -64,36 +58,27 @@ function runHook(hookFile: string, input: unknown, opts: SpawnOpts = {}): { code
   }
 }
 
-describe('goodvibes-analytics hooks: valid JSON + R16 yield guard', () => {
+describe('goodvibes analytics hooks: valid JSON (fail-open)', () => {
   const hooks = ['session-end.mjs', 'stop.mjs', 'subagent-stop.mjs', 'pre-compact.mjs'];
 
   for (const hook of hooks) {
-    it(`${hook} always emits valid JSON with continue:true (no v1 present)`, () => {
+    it(`${hook} always emits valid JSON with continue:true`, () => {
       const cwd = makeTmpCwd();
       const { code, stdout } = runHook(hook, {
         session_id: 'test-session',
         cwd,
         hook_event_name: hook.replace('.mjs', ''),
         agent_id: 'agent-1',
-        agent_type: 'goodvibes-intel:engineer',
+        agent_type: 'goodvibes:engineer',
       });
       expect(code).toBe(0);
       const parsed = JSON.parse(stdout);
       expect(parsed.continue).toBe(true);
     });
-
-    it(`${hook} yields to v1 when v1's cache directory is present (R16)`, () => {
-      const cwd = makeTmpCwd();
-      const { code, stdout } = runHook(hook, { session_id: 'test-session', cwd, hook_event_name: hook.replace('.mjs', '') }, { pluginRoot: V1_PRESENT_ROOT });
-      expect(code).toBe(0);
-      const parsed = JSON.parse(stdout);
-      expect(parsed.continue).toBe(true);
-      expect(parsed.systemMessage).toMatch(/yielding to v1/);
-    });
   }
 });
 
-describe('goodvibes-analytics hooks: content and silence', () => {
+describe('goodvibes analytics hooks: content and silence', () => {
   it('session-end.mjs writes a session-close marker under .goodvibes/v2/cache/', () => {
     const cwd = makeTmpCwd();
     runHook('session-end.mjs', { session_id: 'sess-42', cwd, hook_event_name: 'SessionEnd' });
@@ -117,7 +102,7 @@ describe('goodvibes-analytics hooks: content and silence', () => {
 
   it('subagent-stop.mjs is telemetry-only (no injection) and consumes the SubagentStart tracking entry', () => {
     const cwd = makeTmpCwd();
-    // Simulate goodvibes-intel's SubagentStart having already written a tracking entry.
+    // Simulate the intel SubagentStart having already written a tracking entry.
     const trackingPath = path.join(cwd, '.goodvibes', 'v2', 'state', 'agent-tracking.json');
     fs.mkdirSync(path.dirname(trackingPath), { recursive: true });
     fs.writeFileSync(
@@ -130,7 +115,7 @@ describe('goodvibes-analytics hooks: content and silence', () => {
       cwd,
       hook_event_name: 'SubagentStop',
       agent_id: 'agent-1',
-      agent_type: 'goodvibes-intel:engineer',
+      agent_type: 'goodvibes:engineer',
     });
     const parsed = JSON.parse(stdout);
     expect(parsed.systemMessage).toBeUndefined();

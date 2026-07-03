@@ -10,39 +10,14 @@
  *    next session. (The human enabled it mid-session; this fires at the NEXT start.)
  *  - `mode: restricted`  → nothing is said.
  *
- * R16 coexistence: if the v1 plugin is present, this hook yields — it emits a single
- * explanatory line into the SessionStart context and changes nothing else, so the v1
- * hooks are not double-fired.
- *
  * The pure functions are exported for the connect test suite; `main()` runs only when
  * the file is executed directly by Claude Code.
  */
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { pathToFileURL } from 'node:url';
-
-/** The single line emitted when v2 hooks yield to an installed v1 plugin (R16). */
-export const V1_YIELD_LINE =
-  'goodvibes v2 hooks are yielding to v1 — uninstall the goodvibes v1 plugin to activate them.';
-
-/**
- * Cheap v1-detection (R16). v1's precision-engine writes an un-namespaced
- * `.goodvibes/goodvibes.json` runtime-config that v2 never creates (v2 state is
- * namespaced under `.goodvibes/v2/`), so its presence marks v1 as active in this
- * project. An explicit `GOODVIBES_V1_ACTIVE` env var overrides the heuristic.
- * @param {{ env?: Record<string,string|undefined>, cwd?: string, exists?: (p:string)=>boolean }} [opts]
- * @returns {boolean}
- */
-export function detectV1(opts = {}) {
-  const env = opts.env ?? process.env;
-  const cwd = opts.cwd ?? process.cwd();
-  const exists = opts.exists ?? existsSync;
-  if (env.GOODVIBES_V1_ACTIVE === '1') return true;
-  if (env.GOODVIBES_V1_ACTIVE === '0') return false;
-  return exists(join(cwd, '.goodvibes', 'goodvibes.json'));
-}
 
 /**
  * Decide what the announcement hook should do given the effective config.
@@ -54,7 +29,7 @@ export function computeOpenModeAction(cfg) {
   if (cfg.persist) {
     return {
       announce:
-        'goodvibes-connect: OPEN trust mode is ACTIVE and PERSISTED across sessions ' +
+        'goodvibes: OPEN trust mode is ACTIVE and PERSISTED across sessions ' +
         '(dangerously_persist_across_sessions=true). The destination allowlist is lifted; ' +
         'credentials remain pinned to their registered origins. Set mode=restricted to close it.',
       revert: false,
@@ -62,7 +37,7 @@ export function computeOpenModeAction(cfg) {
   }
   return {
     announce:
-      'goodvibes-connect: OPEN trust mode was set without dangerously_persist_across_sessions, ' +
+      'goodvibes: OPEN trust mode was set without dangerously_persist_across_sessions, ' +
       'so it is ephemeral — it has been reset to restricted for this session. Re-enable it per ' +
       'session, or set dangerously_persist_across_sessions=true to keep it.',
     revert: true,
@@ -111,16 +86,11 @@ function revertProjectToRestricted(projectPath) {
 /**
  * Run the announcement logic for a project. Pure except for the (documented)
  * ephemeral revert write. Returns what happened for testing.
- * @param {{ cwd?: string, env?: Record<string,string|undefined> }} [opts]
- * @returns {{ yielded: boolean, announce: string|null, reverted: boolean }}
+ * @param {{ cwd?: string }} [opts]
+ * @returns {{ announce: string|null, reverted: boolean }}
  */
 export function applyOpenMode(opts = {}) {
   const cwd = opts.cwd ?? process.cwd();
-  const env = opts.env ?? process.env;
-
-  if (detectV1({ env, cwd })) {
-    return { yielded: true, announce: V1_YIELD_LINE, reverted: false };
-  }
 
   const { mode, persist, projectPath } = readMergedConfig(cwd);
   const action = computeOpenModeAction({ mode, persist });
@@ -129,7 +99,7 @@ export function applyOpenMode(opts = {}) {
     revertProjectToRestricted(projectPath);
     reverted = true;
   }
-  return { yielded: false, announce: action.announce, reverted };
+  return { announce: action.announce, reverted };
 }
 
 async function readStdin() {
