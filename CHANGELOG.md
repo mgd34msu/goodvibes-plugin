@@ -199,7 +199,7 @@ A ground-up rewrite driven by a measured deep review of v1. One plugin
   Everything remains permanently archived on the
   [`v1` branch](https://github.com/mgd34msu/goodvibes-plugin/tree/v1).
 - Retired tools whose survival tests failed (accuracy or redundancy), per the
-  tribunal record in `docs/goodvibes-v2-plan.md`.
+  tribunal record in `docs/goodvibes-plan.md`.
 
 ### Fixed
 - All nine v1 field-defect classes, each with a regression test: silent

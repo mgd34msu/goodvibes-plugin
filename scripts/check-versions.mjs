@@ -5,10 +5,9 @@
  * Verifies the single goodvibes plugin's version is in lockstep across its
  * plugin.json and its marketplace.json entry.
  *
- *   node scripts/check-versions.mjs        # same check
- *   node scripts/check-versions.mjs --v2   # same check (CI v2-manifests job)
+ *   node scripts/check-versions.mjs
  *
- * (v2 consolidated three plugins into one named "goodvibes" at
+ * (The 2.0 carve-out consolidated three plugins into one named "goodvibes" at
  * plugins/goodvibes/. The plugin ships no root package.json — its runtime
  * manifests live under server/<name>/package.json — so only plugin.json ↔
  * marketplace.json are compared.)

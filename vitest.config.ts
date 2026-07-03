@@ -1,5 +1,5 @@
 /**
- * Root Vitest config for the v2 packages.
+ * Root Vitest config for the workspace packages.
  *
  * Vitest 4 removed the standalone `vitest.workspace.ts` file; the multi-project
  * workspace is now declared here via `test.projects`. Each package's own

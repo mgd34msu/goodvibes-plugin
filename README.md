@@ -74,8 +74,8 @@ and retired the rest. The complete v1 lives forever on the
 [`v1` branch](https://github.com/mgd34msu/goodvibes-plugin/tree/v1); the full
 investigative record — the deep review, the field-issue reports, the plan —
 lives in [`docs/history/`](docs/history/). The living architecture record is
-[`docs/goodvibes-v2-plan.md`](docs/goodvibes-v2-plan.md) and
-[`docs/v2-carveout-architecture.md`](docs/v2-carveout-architecture.md).
+[`docs/goodvibes-plan.md`](docs/goodvibes-plan.md) and
+[`docs/carveout-architecture.md`](docs/carveout-architecture.md).
 
 ## Versioning
 

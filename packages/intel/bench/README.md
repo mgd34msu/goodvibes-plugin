@@ -2,7 +2,7 @@
 
 Ported from `docs/deep-review-2026-07-01.md` Appendix A (token-cost measurements
 that grounded the "keep code_read outline / code_grep" call in
-`docs/goodvibes-v2-plan.md`), scoped to the operations v2 actually kept:
+`docs/goodvibes-plan.md`), scoped to the operations v2 actually kept:
 `code_read`'s `outline` extract (EXP3) and `code_grep` search (EXP4). The
 retired `content`/`symbols`/`ast` extract modes (EXP1, EXP2, EXP5–7) do not
 port — there is nothing left in v2 to measure them against.

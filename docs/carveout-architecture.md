@@ -1,7 +1,7 @@
 # GoodVibes v2.0-alpha — Carve-out Architecture
 
 Date: 2026-07-02
-Inputs: `docs/goodvibes-v2-plan.md` (authoritative; §11 final surface, all 29 tribunal verdicts banked), `docs/deep-review-2026-07-01.md` Part 5, `docs/precision-engine-field-issues-2026-07-01.md` (issues 1–9, non-negotiable requirements on the new servers).
+Inputs: `docs/goodvibes-plan.md` (authoritative; §11 final surface, all 29 tribunal verdicts banked), `docs/deep-review-2026-07-01.md` Part 5, `docs/precision-engine-field-issues-2026-07-01.md` (issues 1–9, non-negotiable requirements on the new servers).
 Status: design ruling for the alpha carve-out. Open rulings in §7 are vetoable; everything else restates plan decisions in implementation terms.
 
 ---
@@ -350,7 +350,7 @@ everywhere. `@goodvibes/core` has no build — it is source consumed by the thre
 
 **One vitest major everywhere: ^4** (analytics and frontend are already there; the v1 v2/v4 skew
 dies in v2 — §7 R12). Root `vitest.workspace.ts` covering `packages/*`; tests colocated at
-`packages/<name>/src/__tests__/**` mirroring v1 precision-engine's layout. `npm run test:v2` at
+`packages/<name>/src/__tests__/**` mirroring v1 precision-engine's layout. `npm run test` at
 root runs the workspace; v1 suites keep their per-engine invocation until the sweep.
 
 ### 5.3 Regression suites (release gates 2–3, plan §10)
@@ -369,7 +369,7 @@ v2-packages:            # gating, matrix: [core, intel, analytics, connect]
 v2-dist-match:          # gating
   - node packages/*/build.mjs && git diff --exit-code plugins/goodvibes-*/server
 v2-manifests:           # gating
-  - node scripts/check-versions.mjs --v2   # 3× plugin.json ↔ marketplace.json lockstep
+  - node scripts/check-versions.mjs   # plugin.json ↔ marketplace.json lockstep
 ```
 The advisory job's known-red baselines stay scoped to v1 and are deleted with it.
 

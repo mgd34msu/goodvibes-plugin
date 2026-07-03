@@ -1,9 +1,9 @@
-# CI for the goodvibes plugin monorepo (v2).
+# CI for the goodvibes plugin monorepo.
 #
-# v2 code starts clean, so every job gates (no advisory group): 0 tsc errors,
-# green vitest, byte-identical rebuilt bundles, and manifest lockstep. The v1
-# engine/hooks jobs and the known-red advisory baselines were removed with the
-# v1 tree (swept in b03c0db1); the permanent v1 branch is the archive.
+# Every job gates (no advisory group): 0 tsc errors, green vitest,
+# byte-identical rebuilt bundles, and manifest lockstep. The v1 engine/hooks
+# jobs and the known-red advisory baselines were removed with the v1 tree
+# (swept in b03c0db1); the permanent v1 branch is the archive.
 name: CI
 
 on:
@@ -12,11 +12,8 @@ on:
   pull_request:
 
 jobs:
-  # ---------------------------------------------------------------------
-  # v2 gating jobs (§5.4).
-  # ---------------------------------------------------------------------
-  v2-packages:
-    name: v2 packages (${{ matrix.pkg }})
+  packages:
+    name: packages (${{ matrix.pkg }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -30,12 +27,12 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
-      # Gate 1: new code starts clean — 0 tsc errors.
+      # Gate 1: code stays clean — 0 tsc errors.
       - run: npx tsc --noEmit -p packages/${{ matrix.pkg }}
       - run: npx vitest run --project ${{ matrix.pkg }}
 
-  v2-dist-match:
-    name: v2 dist match (rebuild + byte diff)
+  dist-match:
+    name: dist match (rebuild + byte diff)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -46,15 +43,12 @@ jobs:
           cache-dependency-path: package-lock.json
       - run: npm ci
       - name: Rebuild server bundles
-        run: |
-          node packages/intel/build.mjs
-          node packages/analytics/build.mjs
-          node packages/connect/build.mjs
+        run: npm run build
       - name: Assert committed bundles are byte-identical to a fresh rebuild
         run: git diff --exit-code -- plugins/goodvibes/server
 
-  v2-manifests:
-    name: v2 manifest lockstep
+  manifests:
+    name: manifest lockstep
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -62,4 +56,4 @@ jobs:
         with:
           node-version: 20
       # plugin.json ↔ marketplace.json lockstep for the goodvibes plugin.
-      - run: node scripts/check-versions.mjs --v2
+      - run: node scripts/check-versions.mjs
