@@ -43,9 +43,8 @@ async function main(): Promise<void> {
 
   // Parent-liveness watchdog + plain signal death from core/proc. Idle-exit is
   // set far out and refreshed on every frame below, so a live rendering pane
-  // never idle-exits, while an orphaned one is caught by the ppid poll.
+  // An orphaned pane is caught by the ppid poll; there is no idle exit.
   const hygiene = installProcessHygiene({
-    idleExitMinutes: 24 * 60,
     onShutdown: cleanup,
   });
 

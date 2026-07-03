@@ -5,7 +5,7 @@
  * react-devtools-core, yoga-wasm-web, sql.js (none bundle cleanly; they ship as
  * runtime deps in server/package.json). sql-wasm.wasm is copied to server/wasm/
  * (sql.js loads its WASM at runtime; every server imports core/telemetry).
- * Output is committed under plugins/goodvibes-analytics/server/.
+ * Output is committed under plugins/goodvibes/server/analytics/.
  */
 
 import * as esbuild from 'esbuild';
@@ -16,7 +16,7 @@ import { createRequire } from 'module';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
-const serverDir = join(__dirname, '../../plugins/goodvibes-analytics/server');
+const serverDir = join(__dirname, '../../plugins/goodvibes/server/analytics');
 const wasmDir = join(serverDir, 'wasm');
 
 async function tryCopy(resolveSpec, destName) {
@@ -50,7 +50,7 @@ async function build() {
     entryPoints: [join(__dirname, 'src/index.ts')],
     outfile: join(serverDir, 'index.cjs'),
   });
-  console.log('Build completed: plugins/goodvibes-analytics/server/index.cjs');
+  console.log('Build completed: plugins/goodvibes/server/analytics/index.cjs');
 
   // Mini-dashboard pane bundle, spawned by the `dashboard` tool via tmux.
   // (The full interactive ink TUI is deferred in the alpha — no @types/react.)
@@ -59,7 +59,7 @@ async function build() {
     entryPoints: [join(__dirname, 'src/engine/mini.ts')],
     outfile: join(serverDir, 'mini.cjs'),
   });
-  console.log('Build completed: plugins/goodvibes-analytics/server/mini.cjs');
+  console.log('Build completed: plugins/goodvibes/server/analytics/mini.cjs');
 
   await tryCopy('sql.js/dist/sql-wasm.wasm', 'sql-wasm.wasm');
 }

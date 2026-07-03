@@ -1,48 +1,24 @@
 {
   "mcpServers": {
-    "precision-engine": {
+    "intel": {
       "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/tools/implementations/precision-engine/dist/index.cjs"],
+      "args": ["${CLAUDE_PLUGIN_ROOT}/server/intel/index.cjs"],
       "env": {
         "PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}",
         "NODE_ENV": "production"
       }
     },
-    "registry-engine": {
+    "analytics": {
       "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/tools/implementations/registry-engine/dist/index.cjs"],
+      "args": ["${CLAUDE_PLUGIN_ROOT}/server/analytics/index.cjs"],
       "env": {
         "PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}",
         "NODE_ENV": "production"
       }
     },
-    "frontend-engine": {
+    "connect": {
       "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/tools/implementations/frontend-engine/dist/index.cjs"],
-      "env": {
-        "PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}",
-        "NODE_ENV": "production"
-      }
-    },
-    "project-engine": {
-      "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/tools/implementations/project-engine/dist/index.cjs"],
-      "env": {
-        "PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}",
-        "NODE_ENV": "production"
-      }
-    },
-    "analytics-engine": {
-      "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/tools/implementations/analytics-engine/dist/server.cjs"],
-      "env": {
-        "PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}",
-        "NODE_ENV": "production"
-      }
-    },
-    "runtime-engine": {
-      "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/tools/implementations/runtime-engine/dist/index.cjs"],
+      "args": ["${CLAUDE_PLUGIN_ROOT}/server/connect/index.cjs"],
       "env": {
         "PLUGIN_ROOT": "${CLAUDE_PLUGIN_ROOT}",
         "NODE_ENV": "production"

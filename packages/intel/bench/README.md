@@ -16,7 +16,7 @@ decides gate 5 from the output.
 ## Prerequisites
 
 ```sh
-node packages/intel/build.mjs   # produces plugins/goodvibes-intel/server/index.cjs
+node packages/intel/build.mjs   # produces plugins/goodvibes/server/intel/index.cjs
 ```
 
 `measure-grep.mjs` also needs `git` on PATH (used as the native baseline —

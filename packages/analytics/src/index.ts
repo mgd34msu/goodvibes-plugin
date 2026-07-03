@@ -144,7 +144,6 @@ export async function main(): Promise<void> {
   healthSampler.start();
 
   const hygiene = installProcessHygiene({
-    idleExitMinutes: cfg.idle_exit_minutes,
     ppidPollMs: cfg.ppid_poll_ms,
     onShutdown: async () => {
       healthSampler.stop();

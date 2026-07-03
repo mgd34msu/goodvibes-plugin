@@ -4,7 +4,7 @@
  * Ported from `PJ/extensions/standalone/scaffold.ts` (`plugins/goodvibes/tools/
  * implementations/project-engine/src/extensions/standalone/scaffold.ts`, read-only
  * quarry) with the plan §9.5 fixes: the two phantom-manifest templates are fixed
- * at the content layer (`plugins/goodvibes-intel/templates/`, see its README),
+ * at the content layer (`plugins/goodvibes/templates/`, see its README),
  * `latest`-pinned dependencies are replaced with tested versions, and
  * `_registry.yaml` does not carry forward.
  *

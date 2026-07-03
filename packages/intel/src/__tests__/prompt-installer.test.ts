@@ -1,6 +1,6 @@
 /**
  * Tests for the `/goodvibes-intel:plugin install-prompts`/`uninstall-prompts`
- * helper script (`plugins/goodvibes-intel/commands/lib/prompt-installer.mjs`).
+ * helper script (`plugins/goodvibes/commands/lib/prompt-installer.mjs`).
  *
  * SAFETY: this script's target-resolution logic prefers the real `~/.claude/`
  * directory over an explicit project directory when it exists and is
@@ -17,7 +17,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SCRIPT = path.resolve(__dirname, '../../../../plugins/goodvibes-intel/commands/lib/prompt-installer.mjs');
+const SCRIPT = path.resolve(__dirname, '../../../../plugins/goodvibes/commands/lib/prompt-installer.mjs');
 
 const tmpDirs: string[] = [];
 function makeTmpDir(): string {

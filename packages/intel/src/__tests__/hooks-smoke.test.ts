@@ -17,12 +17,15 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const HOOKS_DIR = path.resolve(__dirname, '../../../../plugins/goodvibes-intel/hooks');
+const HOOKS_DIR = path.resolve(__dirname, '../../../../plugins/goodvibes/hooks');
 const FAKE_PLUGIN_ROOT = path.join(os.tmpdir(), 'gv-fake-plugin-root-intel');
-// The real repo has v1 installed (plugins/goodvibes/.cache exists) during the
-// alpha coexistence window — use that as the R16 "v1 present" fixture, and a
-// plugin root with no such sibling as the "v1 absent" fixture.
-const REAL_PLUGIN_ROOT = path.resolve(__dirname, '../../../../plugins/goodvibes-intel');
+// R16 "v1 present" fixture: a plugin root whose sibling `goodvibes/.cache`
+// directory exists (shouldYieldToV1 checks `<pluginRoot>/../goodvibes/.cache`).
+// Built under a unique temp base in beforeAll so the test is self-contained and
+// independent of the repo layout — FAKE_PLUGIN_ROOT, whose own sibling has no
+// such dir, stays the "v1 absent" fixture.
+const V1_PRESENT_BASE = path.join(os.tmpdir(), 'gv-v1-present-intel');
+const V1_PRESENT_ROOT = path.join(V1_PRESENT_BASE, 'plugin');
 
 const tmpDirs: string[] = [];
 function makeTmpCwd(): string {
@@ -67,6 +70,7 @@ function runHook(hookFile: string, input: unknown, opts: SpawnOpts = {}): { code
 
 beforeAll(() => {
   fs.mkdirSync(FAKE_PLUGIN_ROOT, { recursive: true });
+  fs.mkdirSync(path.join(V1_PRESENT_BASE, 'goodvibes', '.cache'), { recursive: true });
 });
 
 describe('goodvibes-intel hooks: valid JSON + R16 yield guard', () => {
@@ -89,10 +93,10 @@ describe('goodvibes-intel hooks: valid JSON + R16 yield guard', () => {
     });
 
     it(`${hook} yields to v1 when v1's cache directory is present (R16)`, () => {
-      // REAL_PLUGIN_ROOT's sibling plugins/goodvibes/.cache exists in this repo
-      // during the alpha coexistence window — this is the real R16 fixture.
+      // V1_PRESENT_ROOT's sibling goodvibes/.cache is created in beforeAll —
+      // the self-contained R16 fixture.
       const cwd = makeTmpCwd();
-      const { code, stdout } = runHook(hook, { session_id: 'test-session', cwd, hook_event_name: hook.replace('.mjs', '') }, { pluginRoot: REAL_PLUGIN_ROOT });
+      const { code, stdout } = runHook(hook, { session_id: 'test-session', cwd, hook_event_name: hook.replace('.mjs', '') }, { pluginRoot: V1_PRESENT_ROOT });
       expect(code).toBe(0);
       const parsed = JSON.parse(stdout);
       expect(parsed.continue).toBe(true);
@@ -192,7 +196,7 @@ describe('goodvibes-intel hooks: host-health nudge (lane 9 loose coupling)', () 
           reparented_to: 'init',
           cpu_percent: 88,
           sustained_windows: 3,
-          cmdline: 'node /home/u/.claude/plugins/goodvibes-analytics/server/index.cjs',
+          cmdline: 'node /home/u/.claude/plugins/goodvibes/server/analytics/index.cjs',
           kill_command: 'kill -TERM 4242',
         },
       ],

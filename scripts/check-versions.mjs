@@ -2,19 +2,18 @@
 /**
  * check-versions.mjs
  *
- * Default mode (v1): verifies the single goodvibes v1 plugin version agrees
- * across its plugin.json, package.json, and the marketplace entry.
+ * Verifies the single goodvibes plugin's version is in lockstep across its
+ * plugin.json and its marketplace.json entry.
  *
- *   node scripts/check-versions.mjs
+ *   node scripts/check-versions.mjs        # same check
+ *   node scripts/check-versions.mjs --v2   # same check (CI v2-manifests job)
  *
- * --v2 mode: verifies the three v2 plugins are in lockstep — each
- * plugins/goodvibes-<name>/.claude-plugin/plugin.json matches its
- * .claude-plugin/marketplace.json entry, AND all three plugin.json versions
- * agree with each other.
+ * (v2 consolidated three plugins into one named "goodvibes" at
+ * plugins/goodvibes/. The plugin ships no root package.json — its runtime
+ * manifests live under server/<name>/package.json — so only plugin.json ↔
+ * marketplace.json are compared.)
  *
- *   node scripts/check-versions.mjs --v2
- *
- * Prints every version found and exits non-zero when any disagree (or when a
+ * Prints every version found and exits non-zero when they disagree (or when a
  * manifest is missing/unreadable).
  */
 
@@ -35,15 +34,11 @@ function printTable(rows) {
   }
 }
 
-function checkV1() {
+function checkGoodvibes() {
   const checks = [
     {
       source: 'plugins/goodvibes/.claude-plugin/plugin.json',
       extract: () => readJson('plugins/goodvibes/.claude-plugin/plugin.json').version,
-    },
-    {
-      source: 'plugins/goodvibes/package.json',
-      extract: () => readJson('plugins/goodvibes/package.json').version,
     },
     {
       source: '.claude-plugin/marketplace.json (plugins[name=goodvibes])',
@@ -83,68 +78,7 @@ function checkV1() {
     console.error(`\nFAIL: version mismatch across manifests (${[...versions].join(' vs ')}).`);
     process.exit(1);
   }
-  console.log(`\nOK: all manifests agree on version ${[...versions][0]}.`);
+  console.log(`\nOK: plugin.json and marketplace.json agree on version ${[...versions][0]}.`);
 }
 
-function checkV2() {
-  const names = ['goodvibes-intel', 'goodvibes-analytics', 'goodvibes-connect'];
-  let hadError = false;
-  const rows = [];
-  const pluginVersions = [];
-
-  let marketplace;
-  try {
-    marketplace = readJson('.claude-plugin/marketplace.json');
-  } catch (err) {
-    console.error(`FAIL: cannot read marketplace.json: ${err.message}`);
-    process.exit(1);
-  }
-
-  for (const name of names) {
-    let pluginVersion;
-    try {
-      pluginVersion = readJson(`plugins/${name}/.claude-plugin/plugin.json`).version;
-      if (typeof pluginVersion !== 'string' || pluginVersion.length === 0) {
-        throw new Error('version field missing or empty');
-      }
-    } catch (err) {
-      hadError = true;
-      pluginVersion = `ERROR: ${err.message}`;
-    }
-    rows.push({ source: `plugins/${name}/.claude-plugin/plugin.json`, version: pluginVersion });
-
-    const entry = (marketplace.plugins ?? []).find((p) => p.name === name);
-    const marketVersion = entry ? entry.version : `ERROR: no marketplace entry for ${name}`;
-    if (!entry) hadError = true;
-    rows.push({ source: `.claude-plugin/marketplace.json (${name})`, version: marketVersion });
-
-    if (!String(pluginVersion).startsWith('ERROR:') && !String(marketVersion).startsWith('ERROR:')) {
-      if (pluginVersion !== marketVersion) {
-        hadError = true;
-        console.error(
-          `MISMATCH: ${name} plugin.json ${pluginVersion} != marketplace ${marketVersion}`,
-        );
-      }
-      pluginVersions.push(pluginVersion);
-    }
-  }
-
-  printTable(rows);
-
-  const distinct = new Set(pluginVersions);
-  if (hadError) {
-    console.error('\nFAIL: v2 manifest versions are not in lockstep.');
-    process.exit(1);
-  }
-  if (distinct.size > 1) {
-    console.error(`\nFAIL: the three v2 plugins disagree (${[...distinct].join(' vs ')}).`);
-    process.exit(1);
-  }
-  console.log(`\nOK: all three v2 plugins lockstep at ${[...distinct][0]}.`);
-}
-
-if (process.argv.includes('--v2')) {
-  checkV2();
-} else {
-  checkV1();
-}
+checkGoodvibes();

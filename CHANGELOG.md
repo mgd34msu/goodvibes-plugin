@@ -7,6 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-07-02
+
+A ground-up rewrite driven by a measured deep review of v1. One plugin
+(`goodvibes`), three MCP servers (intel / analytics / connect), 25 tools.
+
+### Added
+- **intel** (15 tools): outline/ranged `code_read`, multi-query `code_grep`
+  (honest caps, AST structural queries, `expand_to`, `preview_replace`,
+  rebuilt `ranked`), `code_glob` with per-file stats, single-compiler-host
+  code intelligence (`code_surface`, `code_safe_delete` with full-program
+  reference search), API analyzers (`api_routes`/`api_spec`/`api_validate`),
+  `db_schema` with merged Prisma usage analysis, React analyzers
+  (`component_tree` with four annotation modes, `hook_dependencies`,
+  `client_boundary`), merged `layout_analysis`, `scaffold`, and
+  `structural_edit` — a preview-gated AST editor with apply tokens,
+  content-hash preconditions, byte-exact newline preservation, and
+  first-class rollback reporting.
+- **analytics** (7 tools): transcript-actual token accounting, per-model
+  cache-aware pricing, live session cost (`query mode=live_cost`), host-health
+  doctor (orphan detection with never-auto-run cleanup commands), background
+  agent liveness classification.
+- **connect** (3 tools): batched `api_request` with per-entry error isolation,
+  the `service` credential registry (origin-pinned credentials, restricted by
+  default, human-only ephemeral open mode), `db_query` under the same trust
+  model.
+- Process hygiene in every server: parent-liveness watchdog, per-request time
+  budgets with honest partial results, plain SIGTERM death. **No idle
+  self-exit** — servers run for the life of their session (regression-tested).
+- Measurement harness (`packages/intel/bench/`) — the README's numbers rerun
+  on demand: outline −40% to −72%, grep −63% at identical ground truth.
+
+### Changed
+- Native tools are never blocked or redirected; all hooks observe/inform only
+  and fail open. The always-on prompt chain is gone (~13,500 tokens/session →
+  ~0; an optional ≤1,500-token pointer installs by explicit consent).
+- Project state is namespaced under `.goodvibes/v2/`; logs are level-split
+  and rotated. Response envelopes are compact JSON with payload-true
+  `token_estimate`, enforced `output.max_tokens`, and truthful
+  `truncated`/`effective_caps`.
+- Skills flattened to the discoverable layout (6 remain); agents consolidated
+  to 4; commands live under `/goodvibes:*`.
+
+### Removed
+- The v1 tree in its entirety — six engines, 77 tools, the native-tool
+  blocking hooks, output styles, the WRFC daemon, the registry pipeline.
+  Everything remains permanently archived on the
+  [`v1` branch](https://github.com/mgd34msu/goodvibes-plugin/tree/v1).
+- Retired tools whose survival tests failed (accuracy or redundancy), per the
+  tribunal record in `docs/goodvibes-v2-plan.md`.
+
+### Fixed
+- All nine v1 field-defect classes, each with a regression test: silent
+  cross-tree writes (base_path + resolved-path echo everywhere), silent grep
+  truncation, same-path batch collapse, content-stub cache reads, dropped
+  stdout, doubled pagination payloads, rollback misreporting, mixed
+  plain/encoded field rejection, and orphaned servers spinning after session
+  death.
+
 ## [1.10.0] - 2026-03-29
 
 ### Added

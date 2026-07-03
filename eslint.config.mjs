@@ -1,14 +1,8 @@
 /**
- * Root ESLint Configuration for Vibeplug Monorepo
+ * Root ESLint Configuration for the GoodVibes monorepo (v2).
  *
- * This configuration provides baseline linting for the root level and
- * delegates to workspace-specific configs where they exist.
- *
- * Workspaces with their own eslint.config.js:
- * - plugins/goodvibes/hooks/scripts (comprehensive TypeScript config)
- *
- * WHY flat config: ESLint 9+ uses flat config by default, providing
- * better performance and clearer configuration inheritance.
+ * Lints the v2 engineering base under packages/* and the plugin content
+ * under plugins/goodvibes (hooks .mjs, commands lib). Flat config, ESLint 9+.
  */
 
 import { createRequire } from 'module';
@@ -83,8 +77,8 @@ export default [
       '**/__tests__/fixtures/**',
       '**/test-fixtures/**',
 
-      // Workspaces with their own ESLint config (they handle their own linting)
-      'plugins/goodvibes/hooks/scripts/**',
+      // Committed server bundles (build outputs, not source)
+      'plugins/goodvibes/server/**',
 
       // Generated files
       '**/*.generated.*',
@@ -103,31 +97,16 @@ export default [
   eslint.configs.recommended,
 
   /**
-   * TypeScript files in plugins/goodvibes (excluding hooks/scripts which has its own config)
+   * TypeScript source in the v2 packages
    */
   {
-    files: ['plugins/goodvibes/**/*.ts', 'plugins/goodvibes/**/*.tsx'],
-    ignores: ['plugins/goodvibes/hooks/scripts/**'],
+    files: ['packages/**/*.ts', 'packages/**/*.tsx'],
     languageOptions: sharedLanguageOptions,
     plugins: sharedPlugins,
     rules: {
       ...tseslint.configs.recommended.rules,
       ...baseRules,
       // Disable no-undef - TypeScript handles this
-      'no-undef': 'off',
-    },
-  },
-
-  /**
-   * TypeScript files in tool-search-server
-   */
-  {
-    files: ['plugins/goodvibes/tools/implementations/tool-search-server/**/*.ts'],
-    languageOptions: sharedLanguageOptions,
-    plugins: sharedPlugins,
-    rules: {
-      ...tseslint.configs.recommended.rules,
-      ...baseRules,
       'no-undef': 'off',
     },
   },

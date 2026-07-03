@@ -1,11 +1,14 @@
 ---
-description: GoodVibes plugin management commands (update, status, config, prompt install)
-argument-hint: <subcommand> [options]
+description: goodvibes plugin management — first-run native dependency setup (explicit consent), health status, and optional prompt-chain install
+argument-hint: <setup|status|install-prompts|uninstall-prompts>
+allowed-tools:
+  - Bash
+  - Read
 ---
 
 # GoodVibes Plugin
 
-Manage the GoodVibes plugin installation and configuration.
+Manage the goodvibes plugin installation (intel / analytics / connect servers, hooks, and native dependencies).
 
 ## Usage
 
@@ -17,140 +20,123 @@ Manage the GoodVibes plugin installation and configuration.
 
 | Subcommand | Description |
 |------------|-------------|
-| `update` | Check for and install plugin updates |
-| `status` | Show plugin health, registries, hooks, and version |
-| `install-prompts` | Opt in: install the GoodVibes prompt chain (may write to `~/.claude/`) |
-| `uninstall-prompts` | Cleanly remove everything `install-prompts` wrote |
+| `setup` | Install native dependencies (`@ast-grep/napi`, `@vscode/ripgrep`) — explicit consent, first run only. |
+| `status` | Show plugin health: version, server bundle, hooks, native-dependency install state. |
+| `install-prompts` | Opt in: install a compact pointer file (may write to `~/.claude/`). |
+| `uninstall-prompts` | Cleanly remove everything `install-prompts` wrote. |
+
+There is no `update` subcommand — updates flow through the marketplace install path, not a
+plugin-managed script (v1's `update.sh`/`update.ps1` referenced a nonexistent `update.ps1` and
+did not survive the carve-out).
 
 ## Instructions
 
-Parse the subcommand from $ARGUMENTS:
+Parse the subcommand from $ARGUMENTS.
 
-### `update`
+### `setup` — Native Dependency Install
 
-1. Detect the operating system
-2. Execute the appropriate update script from the plugin root:
-   - **Windows**: Run `plugins/goodvibes/update/update.ps1` via PowerShell
-   - **Linux/macOS**: Run `plugins/goodvibes/update/update.sh` via bash
-3. Run the script verbosely so the user can see all output
-4. After completion, inform the user:
+The committed intel server bundle (`${CLAUDE_PLUGIN_ROOT}/server/intel/index.cjs`) externalizes
+three runtime-only dependencies listed in `${CLAUDE_PLUGIN_ROOT}/server/intel/package.json`:
+`@ast-grep/napi`, `@vscode/ripgrep`, `sql.js`. There is no `postinstall` chain — installing them
+requires this explicit command, which is the actual consent point (the Setup hook only points
+here; it never installs anything itself).
+
+1. Check whether they're already installed:
+   ```bash
+   test -d "${CLAUDE_PLUGIN_ROOT}/server/intel/node_modules/@ast-grep/napi" && test -d "${CLAUDE_PLUGIN_ROOT}/server/intel/node_modules/@vscode/ripgrep" && echo ALREADY_INSTALLED || echo NEEDS_INSTALL
    ```
-   Update complete. Please restart your Claude Code session for changes to take effect.
+   If `ALREADY_INSTALLED`, report that and stop.
+2. If `NEEDS_INSTALL`, tell the user exactly what will happen — `npm install` will run inside
+   `${CLAUDE_PLUGIN_ROOT}/server/intel/`, installing `@ast-grep/napi`, `@vscode/ripgrep`, and `sql.js`
+   (native binaries + one WASM loader; no other package on the system is touched) — and confirm
+   before proceeding.
+3. On confirmation, run:
+   ```bash
+   npm install --omit=dev --no-audit --no-fund --prefix "${CLAUDE_PLUGIN_ROOT}/server/intel"
+   ```
+   (The analytics and connect servers under `${CLAUDE_PLUGIN_ROOT}/server/analytics` and
+   `${CLAUDE_PLUGIN_ROOT}/server/connect` carry their own runtime-only `package.json`; install
+   those the same way with the matching `--prefix` if their tools report a missing dependency.)
+4. Report success or the exact error output. On success:
+   ```
+   Native dependencies installed. goodvibes' structure-aware search/analysis tools are ready.
    ```
 
-**Windows execution:**
-```bash
-powershell -ExecutionPolicy Bypass -File "plugins/goodvibes/update/update.ps1"
+### `status` — Plugin Health
+
+Gather status directly from the filesystem — there is no `plugin_status` MCP tool (v1 referenced
+one that never existed; it does not carry forward):
+
+1. Read `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` for the version.
+2. Check `${CLAUDE_PLUGIN_ROOT}/server/intel/index.cjs`, `.../server/analytics/index.cjs`, and
+   `.../server/connect/index.cjs` exist (the three server bundles present).
+3. Check `${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json` exists; list its registered event names.
+4. Check native-dependency install state the same way `setup` does.
+5. Check the current project's `.goodvibes/v2/.setup-marker.json` — has the Setup hook run here?
+6. Check the current project's `.goodvibes/v2/` for `memory/`, `state/`, `cache/` presence.
+
+Present as:
 ```
-
-**Linux/macOS execution:**
-```bash
-bash plugins/goodvibes/update/update.sh
-```
-
-### `status`
-
-Call the `plugin_status` MCP tool and format the response:
-
-```
-GoodVibes Plugin Status
+goodvibes Status
 =======================
 Version: {version}
-Status: {status} (healthy/degraded/error)
-
-Manifest: {exists ? "Found" : "Missing"} {valid ? "Valid" : "Invalid"}
-MCP Server: {running ? "Running" : "Stopped"}
-
-Registries:
-  Agents: {count} registered
-  Skills: {count} registered
-  Tools: {count} registered
-
-Hooks ({count} configured):
-  {event}: {script} [{exists ? "OK" : "MISSING"}]
-  ...
-
-Issues:
-  - {issue}
-  ... (or "None" if empty)
-```
-
-Additionally, report the prompt-chain installation state:
-
-```bash
-node "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/prompt-installer.js" status
+Server bundle: {present ? "Found" : "MISSING"}
+Hooks registered: {event list, or "MISSING hooks.json"}
+Native dependencies: {installed ? "Installed" : "Not installed — run /goodvibes:plugin setup"}
+Project setup: {marker present ? "Ran on <date>" : "Not yet run for this project (runs on next `claude init`)"}
+Project state: {.goodvibes/v2/ present ? "Present" : "None yet"}
 ```
 
 ### `install-prompts`
 
-Installing the prompt chain is an EXPLICIT OPT-IN: it writes files outside the
-current project when a global target directory is available. Session start
-never performs this installation — it only detects and reports the state.
+Installing the pointer file is an EXPLICIT OPT-IN and much smaller than v1's chain: one compact
+file (~1,500 tokens or less), not seven doctrine files. SessionStart never performs this
+installation — it only detects and reports whether it's installed.
 
-**Target directory** (first match wins):
-1. `~/.claude/` — if it exists, is writable, and the project is not inside it
-2. The highest ancestor directory of the project containing a `CLAUDE.md`
-3. The project root itself
+**Target directory** (first match wins, resolved by the script below): `~/.claude/` if it exists
+and is writable and the project isn't inside it; otherwise the highest ancestor directory of the
+project containing a `CLAUDE.md`; otherwise the project root itself.
 
-**Exactly what gets written to the target directory:**
-- `CLAUDE.md` — a `<!-- GOODVIBES IMPORTS -->` marker plus the import line
-  `@.goodvibes/GOODVIBES.md` is appended (the file is created if it does not
-  exist; existing content is never modified or removed)
-- `.goodvibes/GOODVIBES.md` — import hub referencing the prompt files below
-- `.goodvibes/prompt/UPGRADE-NOTIFICATIONS.md`
-- `.goodvibes/prompt/PRIMARY-GOALS.md`
-- `.goodvibes/prompt/CORE-PRINCIPLES.md`
-- `.goodvibes/prompt/SUBAGENT-PROTOCOL.md`
-- `.goodvibes/prompt/PRECISION-MASTERY.md`
-- `.goodvibes/prompt/GATHER-PLAN-APPLY.md`
-- `.goodvibes/prompt/SKILLS.md`
-
-Prompt file contents come from the plugin's `templates/prompt/` directory
-(minimal built-in fallbacks are used if the templates are unreadable).
+**Exactly what gets written:**
+- `CLAUDE.md` in the target directory — a `<!-- GOODVIBES IMPORTS -->` marker plus the import
+  line `@.goodvibes/GOODVIBES.md` is appended (file created if missing; existing content is
+  never modified or removed).
+- `.goodvibes/GOODVIBES.md` — the compact pointer hub (points at the on-demand skills and
+  agents; contains no doctrine itself).
 
 **Steps:**
-1. Show the user the target directory resolution and the exact file list above
-   and confirm they want to proceed
-2. Execute:
+1. Show the user the target-directory resolution rule and the exact file list above; confirm.
+2. Run:
    ```bash
-   node "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/prompt-installer.js" install
+   node "${CLAUDE_PLUGIN_ROOT}/commands/lib/prompt-installer.mjs" install "$(pwd)"
    ```
-3. Report the JSON result (`targetDir`, `installed`)
+3. Report the JSON result (`targetDir`, `installed`).
 
 ### `uninstall-prompts`
 
-Performs a clean removal of everything `install-prompts` (or a legacy
-session-start installation) wrote:
-
-- Drops the `<!-- GOODVIBES IMPORTS -->` block and its
-  `@.goodvibes/GOODVIBES.md` import line from `CLAUDE.md` in the install
-  directory; the `CLAUDE.md` file itself is deleted only when nothing else
-  remains in it
-- Deletes `.goodvibes/GOODVIBES.md`
-- Deletes the installed `.goodvibes/prompt/*.md` files listed under
-  `install-prompts`
-- Removes the `.goodvibes/prompt/` and `.goodvibes/` directories only if they
-  are left empty
-- Never touches files the installer did not write
+Removes exactly what `install-prompts` wrote and nothing else:
+- Drops the `<!-- GOODVIBES IMPORTS -->` block and its import line from the target `CLAUDE.md`;
+  the file itself is deleted only when nothing else remains in it.
+- Deletes `.goodvibes/GOODVIBES.md`; removes the now-empty `.goodvibes/` directory if it is left
+  empty (never removes it if other files are present — that directory is shared project state).
 
 **Steps:**
-1. Execute:
+1. Run:
    ```bash
-   node "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/dist/prompt-installer.js" uninstall
+   node "${CLAUDE_PLUGIN_ROOT}/commands/lib/prompt-installer.mjs" uninstall "$(pwd)"
    ```
-2. Report the JSON result (`removed`, `targetDir`, `importRemoved`, `removedFiles`)
+2. Report the JSON result (`removed`, `targetDir`, `importRemoved`, `removedFiles`).
 
 ### Unknown subcommand
 
-If the subcommand is not recognized, show available subcommands:
 ```
 Unknown subcommand: <subcommand>
 
 Available subcommands:
-  update             - Check for and install plugin updates
+  setup              - Install native dependencies (explicit consent)
   status             - Show plugin status
-  install-prompts    - Opt in: install the GoodVibes prompt chain
-  uninstall-prompts  - Cleanly remove the installed prompt chain
+  install-prompts    - Opt in: install the compact pointer file
+  uninstall-prompts  - Cleanly remove the installed pointer file
 ```
 
 ## Arguments

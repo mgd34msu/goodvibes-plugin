@@ -5,7 +5,7 @@
  * Ported from v1 `precision-engine/src/core/ripgrep.ts` verbatim aside from
  * one change: binary resolution. `@vscode/ripgrep` is not installed in this
  * workspace yet (it is declared as a runtime dep in
- * `plugins/goodvibes-intel/server/package.json`, installed on first plugin
+ * `plugins/goodvibes/server/intel/package.json`, installed on first plugin
  * run — see build.mjs externals). `resolveRgPath()` prefers the pinned
  * `@vscode/ripgrep` binary when present, and falls back to a `rg` on PATH
  * otherwise (covers this dev sandbox, which has a system ripgrep, and any

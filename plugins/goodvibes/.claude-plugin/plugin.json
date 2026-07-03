@@ -1,39 +1,25 @@
 {
   "name": "goodvibes",
-  "version": "1.10.4",
-  "description": "Comprehensive Claude Code plugin with agents, skills, tools, hooks, and MCP servers for full-stack development.",
+  "version": "2.0.0",
+  "description": "Structure-aware code intelligence, token/cost analytics with a tmux dashboard, and registered HTTP/database access under an explicit trust boundary — 25 tools across three MCP servers (intel 15, analytics 7, connect 3).",
   "author": {
     "name": "Mike Davis",
     "email": "mgd34msu@gmail.com"
   },
   "homepage": "https://goodvibes.sh",
-  "repository": "https://github.com/mgd34msu/goodvibes.sh",
+  "repository": "https://github.com/mgd34msu/goodvibes-plugin",
   "license": "MIT",
   "keywords": [
-    "fullstack",
-    "development",
+    "code-intelligence",
+    "static-analysis",
+    "analytics",
+    "cost",
+    "http",
+    "database",
     "mcp",
-    "agents",
-    "skills",
-    "orchestration",
-    "project",
-    "automation"
+    "typescript"
   ],
-  "commands": "./commands/",
-  "agents": [
-    "./agents/agent-factory.md",
-    "./agents/skill-factory.md",
-    "./agents/engineer.md",
-    "./agents/reviewer.md",
-    "./agents/tester.md",
-    "./agents/architect.md",
-    "./agents/deployer.md",
-    "./agents/integrator-ai.md",
-    "./agents/integrator-services.md",
-    "./agents/integrator-state.md",
-    "./agents/planner.md"
-  ],
-  "skills": "./skills/",
   "mcpServers": "./.mcp.json",
-  "lspServers": "./.lsp.json"
+  "commands": "./commands/",
+  "skills": "./skills/"
 }

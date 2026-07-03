@@ -109,44 +109,31 @@ describe('installProcessHygiene — parent-liveness (real process)', () => {
   }, 20000);
 });
 
-describe('installProcessHygiene — idle self-exit (fake clock)', () => {
+describe('installProcessHygiene — NO idle self-exit, ever (fake clock)', () => {
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it('exits after the idle threshold with no activity', async () => {
+  it('never exits from idleness — an installed server runs for the life of its session (Mike, 2026-07-02)', async () => {
     vi.useFakeTimers();
     let code = -1;
     const h = installProcessHygiene({
-      idleExitMinutes: 30,
       watchStdin: false,
       watchSignals: false,
       exit: (c) => {
         code = c;
       },
     });
-    await vi.advanceTimersByTimeAsync(31 * 60 * 1000);
-    expect(code).toBe(0);
-    h.stop();
-  });
-
-  it('resets the idle timer on activity', async () => {
-    vi.useFakeTimers();
-    let code = -1;
-    const h = installProcessHygiene({
-      idleExitMinutes: 30,
-      watchStdin: false,
-      watchSignals: false,
-      exit: (c) => {
-        code = c;
-      },
-    });
-    await vi.advanceTimersByTimeAsync(20 * 60 * 1000);
-    h.noteActivity();
-    await vi.advanceTimersByTimeAsync(20 * 60 * 1000);
-    expect(code).toBe(-1); // 20 min < 30 min since last activity
-    await vi.advanceTimersByTimeAsync(11 * 60 * 1000);
-    expect(code).toBe(0);
+    // A week of dead silence: an agent running autonomously while Mike is
+    // away must come back to a LIVE server no matter how long it went
+    // between tool calls. Only session death (stdin close / reparent /
+    // signal) may end the process. This test exists so idle-exit can never
+    // be reintroduced by a refactor.
+    await vi.advanceTimersByTimeAsync(7 * 24 * 60 * 60 * 1000);
+    expect(code).toBe(-1);
+    h.noteActivity(); // compatibility no-op for existing call sites
+    await vi.advanceTimersByTimeAsync(24 * 60 * 60 * 1000);
+    expect(code).toBe(-1);
     h.stop();
   });
 });
