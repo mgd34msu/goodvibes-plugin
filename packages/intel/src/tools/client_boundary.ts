@@ -57,7 +57,7 @@ interface ClientBoundaryArgs {
 const definition: Tool = {
   name: 'client_boundary',
   description:
-    'Analyze a Next.js App Router project\'s "use client"/"use server" boundaries. ' +
+    'Use to see where server/client code splits before moving logic across that boundary. Analyze a Next.js App Router project\'s "use client"/"use server" boundaries. ' +
     'Classifies each file as server, client, client-inherited, or ambiguous by ' +
     'directive + import graph, then flags misclassifications, unnecessary client ' +
     'directives, server-only imports in client code, and large client subtrees. ' +

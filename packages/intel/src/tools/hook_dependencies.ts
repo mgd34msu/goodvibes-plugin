@@ -77,7 +77,7 @@ interface HookDependenciesData {
 const definition: Tool = {
   name: 'hook_dependencies',
   description:
-    'Audit a React component file\'s hook dependency arrays (useEffect, useMemo, ' +
+    'Use to find missing or stale React hook dependencies without eyeballing every array. Audit a React component file\'s hook dependency arrays (useEffect, useMemo, ' +
     'useCallback, useLayoutEffect, useInsertionEffect) for stale closures, missing/' +
     'unnecessary dependencies, unstable references, effect-as-derived-state, and ' +
     'missing cleanup. Static TypeScript AST analysis; no code is executed.',

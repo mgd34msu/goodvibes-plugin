@@ -59,7 +59,7 @@ interface CodeSurfaceData {
 const definition: Tool = {
   name: 'code_surface',
   description:
-    'Analyze the public vs internal API surface of a module or package using the ' +
+    'Use before modifying or reviewing a module to know what is public API versus internal implementation. Analyze the public vs internal API surface of a module or package using the ' +
     'TypeScript compiler. Returns exported symbols with kind, type signature, JSDoc, ' +
     'file and 1-based line — split into public (reachable from entry points) and ' +
     'internal. Static compiler analysis; no code is executed.',

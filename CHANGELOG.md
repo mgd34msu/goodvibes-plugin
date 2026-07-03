@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.2] - 2026-07-03
+
+### Fixed
+- **The aggregator counts today's tools, files, and events correctly.** Three
+  v1-era leftovers made whole sections of `query`/`export` read zero or double
+  while the timeline beside them was full: the tool counter only counted
+  `precision_*`/`discover` names (now counts every tool call); the file
+  counter looked up `input.path` where native Read/Write/Edit send
+  `input.file_path` (now checks both, in metrics and hotspots); and every
+  record present at engine startup was ingested twice (initial full-file
+  parse plus the watcher's own offset-0 catch-up) — doubling early timeline
+  events and their token totals. Records now dedupe by UUID at the
+  accumulator, which also guards watcher re-attach paths.
+- `cost.saved` now rescales with the same statusline factor as
+  `cost.input`/`cost.output`, so the cost table stays internally coherent
+  (it remains an estimate: telemetry saved-token count at the model input rate).
+
+### Changed
+- **Every intel tool description now opens with a decision trigger** —
+  when to prefer it over the native equivalent, with measured numbers where
+  we have them (outline reads 40-73% fewer tokens than full reads; batched
+  grep 62.7% fewer tokens at identical matches). The descriptions previously
+  listed mechanics only, which gave a model scanning tool names no reason to
+  reach for them; zero real-world intel calls had been recorded since 2.0.0.
+
+
 ## [2.3.1] - 2026-07-03
 
 ### Fixed

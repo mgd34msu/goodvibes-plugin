@@ -86,7 +86,7 @@ interface ComponentTreeData {
 const definition: Tool = {
   name: 'component_tree',
   description:
-    'Build a React component hierarchy from a file or directory with four opt-in ' +
+    'Use to understand React component composition before changing it. Build a React component hierarchy from a file or directory with four opt-in ' +
     'annotation modes. annotate:[] returns the bare tree (name, props, children, ' +
     'lazy/HOC wrappers). "state" maps each state variable to the children it flows ' +
     'into; "boundaries" flags class/library error boundaries with has_fallback/' +

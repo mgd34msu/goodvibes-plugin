@@ -498,7 +498,7 @@ function paginateByTokenBudget(
 const definition: Tool = {
   name: 'code_read',
   description:
-    'Read file structure (outline) or line ranges without pulling whole files into context. Batch-capable, ' +
+    'Prefer this over reading a whole file when you need structure or a specific region: extract "outline" returns signatures/members at 40-73% fewer tokens than a full read (measured on this repo); extract "lines" fetches exact ranges, batched across files. Read file structure (outline) or line ranges without pulling whole files into context. Batch-capable, ' +
     'cache-aware (a cache hit still returns the requested content), and token-budget paginated.',
   inputSchema: {
     type: 'object',

@@ -253837,7 +253837,7 @@ __name(validate, "validate");
 var scaffoldTool = {
   definition: {
     name: "scaffold",
-    description: "Create a new project from a bundled template (minimal: vite-react, next-app; full: next-saas). Copies template files with {{variable}} substitution, then optionally runs an install and `git init`. Set dry_run: true to preview created files and commands without touching disk or a shell.",
+    description: "Use to start a new app from a vetted template instead of hand-assembling boilerplate. Create a new project from a bundled template (minimal: vite-react, next-app; full: next-saas). Copies template files with {{variable}} substitution, then optionally runs an install and `git init`. Set dry_run: true to preview created files and commands without touching disk or a shell.",
     inputSchema: {
       type: "object",
       properties: {
@@ -254617,7 +254617,7 @@ __name(isValidColumn, "isValidColumn");
 // packages/intel/src/tools/code_surface.ts
 var definition = {
   name: "code_surface",
-  description: "Analyze the public vs internal API surface of a module or package using the TypeScript compiler. Returns exported symbols with kind, type signature, JSDoc, file and 1-based line \u2014 split into public (reachable from entry points) and internal. Static compiler analysis; no code is executed.",
+  description: "Use before modifying or reviewing a module to know what is public API versus internal implementation. Analyze the public vs internal API surface of a module or package using the TypeScript compiler. Returns exported symbols with kind, type signature, JSDoc, file and 1-based line \u2014 split into public (reachable from entry points) and internal. Static compiler analysis; no code is executed.",
   inputSchema: {
     type: "object",
     properties: {
@@ -254801,7 +254801,7 @@ function identifierAt(text, offset) {
 __name(identifierAt, "identifierAt");
 var definition2 = {
   name: "code_safe_delete",
-  description: "Check whether the symbol at a file position can be safely deleted. Uses the TypeScript LanguageService reference engine (semantic, compiler-resolved \u2014 not a text search) to find every usage, then splits them into blocking external references and non-blocking self-references. `safe: true` means no other file uses the symbol. Static analysis; nothing is deleted or executed.",
+  description: "Use before deleting a symbol to see every reference that would break, instead of grepping and hoping. Check whether the symbol at a file position can be safely deleted. Uses the TypeScript LanguageService reference engine (semantic, compiler-resolved \u2014 not a text search) to find every usage, then splits them into blocking external references and non-blocking self-references. `safe: true` means no other file uses the symbol. Static analysis; nothing is deleted or executed.",
   inputSchema: {
     type: "object",
     properties: {
@@ -256503,7 +256503,7 @@ function paginateByTokenBudget(results, tokenBudget, requestedPage) {
 __name(paginateByTokenBudget, "paginateByTokenBudget");
 var definition3 = {
   name: "code_read",
-  description: "Read file structure (outline) or line ranges without pulling whole files into context. Batch-capable, cache-aware (a cache hit still returns the requested content), and token-budget paginated.",
+  description: 'Prefer this over reading a whole file when you need structure or a specific region: extract "outline" returns signatures/members at 40-73% fewer tokens than a full read (measured on this repo); extract "lines" fetches exact ranges, batched across files. Read file structure (outline) or line ranges without pulling whole files into context. Batch-capable, cache-aware (a cache hit still returns the requested content), and token-budget paginated.',
   inputSchema: {
     type: "object",
     properties: {
@@ -257634,7 +257634,7 @@ async function executeQuery(query, output, workDir) {
 __name(executeQuery, "executeQuery");
 var definition4 = {
   name: "code_grep",
-  description: "Batch pattern search with a clean cap layer (max_results caps the file list, max_per_item caps matches per file, max_total_matches caps matches overall \u2014 counts are always true, never capped). Output modes: count_only, files_only (default), locations, matches, context, stats. Supports negate (files WITHOUT a pattern), ranked relevance sort, and preview_replace dry runs.",
+  description: "Prefer this over plain grep for repo-wide searches you would otherwise page through: one batched call replaces several native searches and returned 62.7% fewer tokens for identical match sets (measured, 76/76 matches). Batch pattern search with a clean cap layer (max_results caps the file list, max_per_item caps matches per file, max_total_matches caps matches overall \u2014 counts are always true, never capped). Output modes: count_only, files_only (default), locations, matches, context, stats. Supports negate (files WITHOUT a pattern), ranked relevance sort, and preview_replace dry runs.",
   inputSchema: {
     type: "object",
     properties: {
@@ -257888,7 +257888,7 @@ async function listCandidateFiles(backend, workDir, patterns, excludePatterns, i
 __name(listCandidateFiles, "listCandidateFiles");
 var definition5 = {
   name: "code_glob",
-  description: "Find files by glob pattern(s) with size/date/content filters, sorting, and gitignore-aware excludes. Output modes: count_only, paths_only (default), with_stats, with_preview.",
+  description: "Prefer this over shell find/ls pipelines when locating files by pattern plus size, date, or content filters in one call. Find files by glob pattern(s) with size/date/content filters, sorting, and gitignore-aware excludes. Output modes: count_only, paths_only (default), with_stats, with_preview.",
   inputSchema: {
     type: "object",
     properties: {
@@ -258466,7 +258466,7 @@ __name(scanFrameworkRoutes, "scanFrameworkRoutes");
 var FRAMEWORK_ENUM = ["nextjs", "express", "fastify", "hono", "auto"];
 var definition6 = {
   name: "api_routes",
-  description: "Discover API route definitions in a project. Supports Next.js (App Router and Pages Router), Express, Fastify, and Hono. Auto-detects the framework from package.json when not specified. Returns each route's HTTP method, URL path pattern, handler file, resolved absolute path, and handler line. Static text/AST-adjacent scanning; no code is executed.",
+  description: "Use to map a project HTTP surface without opening route files one by one. Discover API route definitions in a project. Supports Next.js (App Router and Pages Router), Express, Fastify, and Hono. Auto-detects the framework from package.json when not specified. Returns each route's HTTP method, URL path pattern, handler file, resolved absolute path, and handler line. Static text/AST-adjacent scanning; no code is executed.",
   inputSchema: {
     type: "object",
     properties: {
@@ -258896,7 +258896,7 @@ __name(parseInterfaceToSchema, "parseInterfaceToSchema");
 // packages/intel/src/tools/api_spec.ts
 var definition7 = {
   name: "api_spec",
-  description: "Generate an OpenAPI 3.0.3 specification from detected API routes (pairs with api_routes). Read-only: the spec is returned in the response, never written to disk. Infers request/response schemas from Zod schemas, TypeScript *Request/*Response interfaces, and NextResponse.json() shapes where detectable; falls back to a generic schema and flags the gap in missing_types otherwise.",
+  description: "Use to produce a spec for consumers without writing one by hand. Generate an OpenAPI 3.0.3 specification from detected API routes (pairs with api_routes). Read-only: the spec is returned in the response, never written to disk. Infers request/response schemas from Zod schemas, TypeScript *Request/*Response interfaces, and NextResponse.json() shapes where detectable; falls back to a generic schema and flags the gap in missing_types otherwise.",
   inputSchema: {
     type: "object",
     properties: {
@@ -259217,7 +259217,7 @@ __name(validateRoutesAgainstSpec, "validateRoutesAgainstSpec");
 // packages/intel/src/tools/api_validate.ts
 var definition8 = {
   name: "api_validate",
-  description: "Validate an OpenAPI/Swagger spec against actual API routes found in source \u2014 statically, spec-vs-routes only (no live HTTP requests). Reports routes the spec declares but code does not implement (missing_route), routes code implements but the spec omits (undocumented_route), and path-parameter name mismatches (parameter_mismatch), each with a JSONPath into the spec document pinpointing the location.",
+  description: "Use to catch drift between a written spec and the actual routes before it ships. Validate an OpenAPI/Swagger spec against actual API routes found in source \u2014 statically, spec-vs-routes only (no live HTTP requests). Reports routes the spec declares but code does not implement (missing_route), routes code implements but the spec omits (undocumented_route), and path-parameter name mismatches (parameter_mismatch), each with a JSONPath into the spec document pinpointing the location.",
   inputSchema: {
     type: "object",
     properties: {
@@ -259857,7 +259857,7 @@ __name(scanPrismaUsage, "scanPrismaUsage");
 // packages/intel/src/tools/db_schema.ts
 var definition9 = {
   name: "db_schema",
-  description: "Extract a project database schema (Prisma, Drizzle, or raw SQL \u2014 auto-detected by default) into a unified models/fields/relations shape. Optional usage mode (usage: true) statically maps Prisma client call sites (model, operation, file, line) and flags calls inside loops as N+1 risk (in_loop), plus per-model call frequency. Static analysis; no database connection is made.",
+  description: "Use to read a project data model without hunting for schema files. Extract a project database schema (Prisma, Drizzle, or raw SQL \u2014 auto-detected by default) into a unified models/fields/relations shape. Optional usage mode (usage: true) statically maps Prisma client call sites (model, operation, file, line) and flags calls inside loops as N+1 risk (in_loop), plus per-model call frequency. Static analysis; no database connection is made.",
   inputSchema: {
     type: "object",
     properties: {
@@ -261072,7 +261072,7 @@ __name(annotateAttributes, "annotateAttributes");
 var ALL_MODES = ["state", "boundaries", "events", "attributes"];
 var definition10 = {
   name: "component_tree",
-  description: 'Build a React component hierarchy from a file or directory with four opt-in annotation modes. annotate:[] returns the bare tree (name, props, children, lazy/HOC wrappers). "state" maps each state variable to the children it flows into; "boundaries" flags class/library error boundaries with has_fallback/has_reset; "events" flags the two accurate handler risks (nested double-fire, handler-on-non-interactive); "attributes" is a static overlay of verified accessibility checks (role, missing-alt, click-without-role, ARIA required). Static TypeScript AST analysis; no code is executed.',
+  description: 'Use to understand React component composition before changing it. Build a React component hierarchy from a file or directory with four opt-in annotation modes. annotate:[] returns the bare tree (name, props, children, lazy/HOC wrappers). "state" maps each state variable to the children it flows into; "boundaries" flags class/library error boundaries with has_fallback/has_reset; "events" flags the two accurate handler risks (nested double-fire, handler-on-non-interactive); "attributes" is a static overlay of verified accessibility checks (role, missing-alt, click-without-role, ARIA required). Static TypeScript AST analysis; no code is executed.',
   inputSchema: {
     type: "object",
     properties: {
@@ -261814,7 +261814,7 @@ __name(detectAllIssues, "detectAllIssues");
 // packages/intel/src/tools/hook_dependencies.ts
 var definition11 = {
   name: "hook_dependencies",
-  description: "Audit a React component file's hook dependency arrays (useEffect, useMemo, useCallback, useLayoutEffect, useInsertionEffect) for stale closures, missing/unnecessary dependencies, unstable references, effect-as-derived-state, and missing cleanup. Static TypeScript AST analysis; no code is executed.",
+  description: "Use to find missing or stale React hook dependencies without eyeballing every array. Audit a React component file's hook dependency arrays (useEffect, useMemo, useCallback, useLayoutEffect, useInsertionEffect) for stale closures, missing/unnecessary dependencies, unstable references, effect-as-derived-state, and missing cleanup. Static TypeScript AST analysis; no code is executed.",
   inputSchema: {
     type: "object",
     properties: {
@@ -262507,7 +262507,7 @@ __name(detectIssues, "detectIssues");
 // packages/intel/src/tools/client_boundary.ts
 var definition12 = {
   name: "client_boundary",
-  description: `Analyze a Next.js App Router project's "use client"/"use server" boundaries. Classifies each file as server, client, client-inherited, or ambiguous by directive + import graph, then flags misclassifications, unnecessary client directives, server-only imports in client code, and large client subtrees. Static TypeScript AST analysis; no code is executed.`,
+  description: `Use to see where server/client code splits before moving logic across that boundary. Analyze a Next.js App Router project's "use client"/"use server" boundaries. Classifies each file as server, client, client-inherited, or ambiguous by directive + import graph, then flags misclassifications, unnecessary client directives, server-only imports in client code, and large client subtrees. Static TypeScript AST analysis; no code is executed.`,
   inputSchema: {
     type: "object",
     properties: {
@@ -264502,7 +264502,7 @@ __name(analyzeStackingElements, "analyzeStackingElements");
 var DEFAULT_SECTIONS = ["overflow", "stacking"];
 var definition13 = {
   name: "layout_analysis",
-  description: `Analyze a JSX/TSX component's CSS layout from its Tailwind classes. Returns a hierarchy backbone (element, classes, layout_role, children) plus opt-in sections: "overflow" (nested-flex min-height risks + fix options; the absolute-positioning heuristic is a guarded low-confidence flag), "sizing" (ancestor constraint chain \u2014 requires a selector), and "stacking" (z-index contexts with every context-creation trigger per element). Responsive analysis is not available in this alpha. Static analysis; no code is executed.`,
+  description: `Use to reason about rendered layout from Tailwind classes without launching a browser. Analyze a JSX/TSX component's CSS layout from its Tailwind classes. Returns a hierarchy backbone (element, classes, layout_role, children) plus opt-in sections: "overflow" (nested-flex min-height risks + fix options; the absolute-positioning heuristic is a guarded low-confidence flag), "sizing" (ancestor constraint chain \u2014 requires a selector), and "stacking" (z-index contexts with every context-creation trigger per element). Responsive analysis is not available in this alpha. Static analysis; no code is executed.`,
   inputSchema: {
     type: "object",
     properties: {
@@ -265500,7 +265500,7 @@ async function run(args) {
 __name(run, "run");
 var definition14 = {
   name: "structural_edit",
-  description: `The ONE write tool on this read-only server \u2014 a preview-gated, AST-aware editor. Two steps: action:"preview" returns a per-entry unified diff, a single-use preview_token, and each file's content hash WITHOUT writing; action:"apply" takes that token, re-checks every hash, and writes. A file changed since preview is refused (refused_stale), never silently re-matched. Atomic mode (default) rolls the whole batch back from pre-apply snapshots if any entry cannot apply, returning success:false. Modes: exact (byte-exact string), ast (TypeScript-compiler node matching), ast_pattern (ast-grep \u2014 unavailable unless @ast-grep/napi is installed). No fuzzy, no regex. Newlines/CRLF outside edit spans are preserved byte-for-byte.`,
+  description: `Use for multi-site or AST-anchored edits where a plain string replace is risky (rename all call sites, change every matching pattern). The ONE write tool on this read-only server \u2014 a preview-gated, AST-aware editor. Two steps: action:"preview" returns a per-entry unified diff, a single-use preview_token, and each file's content hash WITHOUT writing; action:"apply" takes that token, re-checks every hash, and writes. A file changed since preview is refused (refused_stale), never silently re-matched. Atomic mode (default) rolls the whole batch back from pre-apply snapshots if any entry cannot apply, returning success:false. Modes: exact (byte-exact string), ast (TypeScript-compiler node matching), ast_pattern (ast-grep \u2014 unavailable unless @ast-grep/napi is installed). No fuzzy, no regex. Newlines/CRLF outside edit spans are preserved byte-for-byte.`,
   inputSchema: {
     type: "object",
     properties: {

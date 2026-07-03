@@ -293,7 +293,7 @@ export const scaffoldTool: ToolDefinition = {
   definition: {
     name: 'scaffold',
     description:
-      'Create a new project from a bundled template (minimal: vite-react, next-app; full: next-saas). ' +
+      'Use to start a new app from a vetted template instead of hand-assembling boilerplate. Create a new project from a bundled template (minimal: vite-react, next-app; full: next-saas). ' +
       'Copies template files with {{variable}} substitution, then optionally runs an install and `git init`. ' +
       'Set dry_run: true to preview created files and commands without touching disk or a shell.',
     inputSchema: {

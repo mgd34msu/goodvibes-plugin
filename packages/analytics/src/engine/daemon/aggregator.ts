@@ -793,10 +793,31 @@ export class Aggregator {
    * @param records - New records to append.
    */
   private static readonly MAX_JSONL_RECORDS = 10000;
+  private static readonly MAX_SEEN_UUIDS = 50000;
+
+  /** UUIDs already accumulated — records arrive twice at startup (the initial
+   *  full-file parse plus the watcher's own offset-0 catch-up read), and any
+   *  watcher re-attach resets its offset; without this every early event (and
+   *  its tokens) counted double. */
+  private seenRecordUuids = new Set<string>();
 
   private accumulateJsonlRecords(records: JSONLRecord[]): void {
     if (records.length === 0) {return;}
-    this.jsonlRecords.push(...records);
+    const fresh = records.filter((r) => {
+      if (typeof r.uuid !== 'string' || r.uuid.length === 0) {return true;}
+      if (this.seenRecordUuids.has(r.uuid)) {return false;}
+      this.seenRecordUuids.add(r.uuid);
+      return true;
+    });
+    if (this.seenRecordUuids.size > Aggregator.MAX_SEEN_UUIDS) {
+      this.seenRecordUuids = new Set(
+        this.jsonlRecords
+          .map((r) => r.uuid)
+          .filter((u): u is string => typeof u === 'string' && u.length > 0),
+      );
+    }
+    if (fresh.length === 0) {return;}
+    this.jsonlRecords.push(...fresh);
     if (this.jsonlRecords.length > Aggregator.MAX_JSONL_RECORDS) {
       this.jsonlRecords = this.jsonlRecords.slice(-Aggregator.MAX_JSONL_RECORDS);
     }
@@ -968,6 +989,9 @@ export class Aggregator {
         const rescale = statuslineData.costUsd / prevTotal;
         cost.input *= rescale;
         cost.output *= rescale;
+        // saved is an estimate (telemetry saved-token count at the model input
+        // rate); rescale it with the same factor so the table stays coherent.
+        cost.saved *= rescale;
       }
     }
 
@@ -1041,7 +1065,13 @@ export class Aggregator {
     let createdFiles = 0;
     for (const tc of jsonlToolCalls) {
       const toolName = Aggregator.extractBaseToolName(tc.name ?? '');
-      const inputPath = typeof tc.input['path'] === 'string' ? tc.input['path'] : null;
+      // Native Read/Write/Edit carry the path as `file_path`; v1 tools used `path`.
+      const inputPath =
+        typeof tc.input['file_path'] === 'string'
+          ? tc.input['file_path']
+          : typeof tc.input['path'] === 'string'
+            ? tc.input['path']
+            : null;
       if (inputPath !== null) {
         if (toolName === 'read' || toolName === 'precision_read') {
           uniqueReadFiles.add(inputPath);
@@ -1084,15 +1114,14 @@ export class Aggregator {
 
     // ── Tool metrics: count ALL precision_engine tool calls from JSONL ──
     const tools: ToolMetrics = (() => {
-      // Count all precision_ tool calls and discover from JSONL tool calls.
+      // Count every JSONL tool call. (A v1-era filter counted only
+      // precision_*/discover names, which zeroed this section for sessions
+      // using current tool names while recent_activity listed them all.)
       let jsonlToolTotal = 0;
       let jsonlToolFailures = 0;
       for (const tc of jsonlToolCalls) {
-        const toolName = Aggregator.extractBaseToolName(tc.name ?? '');
-        if (toolName.startsWith('precision_') || toolName === 'discover') {
-          jsonlToolTotal++;
-          if (tc.isError) {jsonlToolFailures++;}
-        }
+        jsonlToolTotal++;
+        if (tc.isError) {jsonlToolFailures++;}
       }
 
       // High-water mark: cumulative counters never decrease when sliding window loses records.
@@ -1357,8 +1386,13 @@ export class Aggregator {
       // Collect all file paths referenced by this tool call.
       const filePaths: string[] = [];
 
-      // Single-path tools: path input field.
-      const singlePath = typeof tc.input['path'] === 'string' ? tc.input['path'] : null;
+      // Single-path tools: `file_path` (native Read/Write/Edit) or `path` (v1 tools).
+      const singlePath =
+        typeof tc.input['file_path'] === 'string'
+          ? tc.input['file_path']
+          : typeof tc.input['path'] === 'string'
+            ? tc.input['path']
+            : null;
       if (singlePath !== null) {
         filePaths.push(singlePath);
       }

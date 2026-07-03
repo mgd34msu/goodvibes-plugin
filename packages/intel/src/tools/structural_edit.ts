@@ -560,7 +560,7 @@ async function run(args: unknown): Promise<CallToolResult> {
 const definition: Tool = {
   name: 'structural_edit',
   description:
-    'The ONE write tool on this read-only server — a preview-gated, AST-aware editor. Two steps: action:"preview" ' +
+    'Use for multi-site or AST-anchored edits where a plain string replace is risky (rename all call sites, change every matching pattern). The ONE write tool on this read-only server — a preview-gated, AST-aware editor. Two steps: action:"preview" ' +
     'returns a per-entry unified diff, a single-use preview_token, and each file\'s content hash WITHOUT writing; ' +
     'action:"apply" takes that token, re-checks every hash, and writes. A file changed since preview is refused ' +
     '(refused_stale), never silently re-matched. Atomic mode (default) rolls the whole batch back from pre-apply ' +

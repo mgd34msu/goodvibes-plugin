@@ -197,7 +197,7 @@ async function listCandidateFiles(
 const definition: Tool = {
   name: 'code_glob',
   description:
-    'Find files by glob pattern(s) with size/date/content filters, sorting, and gitignore-aware excludes. ' +
+    'Prefer this over shell find/ls pipelines when locating files by pattern plus size, date, or content filters in one call. Find files by glob pattern(s) with size/date/content filters, sorting, and gitignore-aware excludes. ' +
     'Output modes: count_only, paths_only (default), with_stats, with_preview.',
   inputSchema: {
     type: 'object',

@@ -65,7 +65,7 @@ function identifierAt(text: string, offset: number): string | undefined {
 const definition: Tool = {
   name: 'code_safe_delete',
   description:
-    'Check whether the symbol at a file position can be safely deleted. Uses the ' +
+    'Use before deleting a symbol to see every reference that would break, instead of grepping and hoping. Check whether the symbol at a file position can be safely deleted. Uses the ' +
     'TypeScript LanguageService reference engine (semantic, compiler-resolved — not a ' +
     'text search) to find every usage, then splits them into blocking external ' +
     'references and non-blocking self-references. `safe: true` means no other file ' +

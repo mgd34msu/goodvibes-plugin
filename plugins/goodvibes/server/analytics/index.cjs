@@ -40336,11 +40336,35 @@ var Aggregator = class _Aggregator {
    * @param records - New records to append.
    */
   static MAX_JSONL_RECORDS = 1e4;
+  static MAX_SEEN_UUIDS = 5e4;
+  /** UUIDs already accumulated — records arrive twice at startup (the initial
+   *  full-file parse plus the watcher's own offset-0 catch-up read), and any
+   *  watcher re-attach resets its offset; without this every early event (and
+   *  its tokens) counted double. */
+  seenRecordUuids = /* @__PURE__ */ new Set();
   accumulateJsonlRecords(records) {
     if (records.length === 0) {
       return;
     }
-    this.jsonlRecords.push(...records);
+    const fresh = records.filter((r) => {
+      if (typeof r.uuid !== "string" || r.uuid.length === 0) {
+        return true;
+      }
+      if (this.seenRecordUuids.has(r.uuid)) {
+        return false;
+      }
+      this.seenRecordUuids.add(r.uuid);
+      return true;
+    });
+    if (this.seenRecordUuids.size > _Aggregator.MAX_SEEN_UUIDS) {
+      this.seenRecordUuids = new Set(
+        this.jsonlRecords.map((r) => r.uuid).filter((u) => typeof u === "string" && u.length > 0)
+      );
+    }
+    if (fresh.length === 0) {
+      return;
+    }
+    this.jsonlRecords.push(...fresh);
     if (this.jsonlRecords.length > _Aggregator.MAX_JSONL_RECORDS) {
       this.jsonlRecords = this.jsonlRecords.slice(-_Aggregator.MAX_JSONL_RECORDS);
     }
@@ -40451,6 +40475,7 @@ var Aggregator = class _Aggregator {
         const rescale = statuslineData.costUsd / prevTotal;
         cost.input *= rescale;
         cost.output *= rescale;
+        cost.saved *= rescale;
       }
     }
     const agentActivities = this.safeCall(
@@ -40506,7 +40531,7 @@ var Aggregator = class _Aggregator {
     let createdFiles = 0;
     for (const tc of jsonlToolCalls) {
       const toolName = _Aggregator.extractBaseToolName(tc.name ?? "");
-      const inputPath = typeof tc.input["path"] === "string" ? tc.input["path"] : null;
+      const inputPath = typeof tc.input["file_path"] === "string" ? tc.input["file_path"] : typeof tc.input["path"] === "string" ? tc.input["path"] : null;
       if (inputPath !== null) {
         if (toolName === "read" || toolName === "precision_read") {
           uniqueReadFiles.add(inputPath);
@@ -40549,12 +40574,9 @@ var Aggregator = class _Aggregator {
       let jsonlToolTotal = 0;
       let jsonlToolFailures = 0;
       for (const tc of jsonlToolCalls) {
-        const toolName = _Aggregator.extractBaseToolName(tc.name ?? "");
-        if (toolName.startsWith("precision_") || toolName === "discover") {
-          jsonlToolTotal++;
-          if (tc.isError) {
-            jsonlToolFailures++;
-          }
+        jsonlToolTotal++;
+        if (tc.isError) {
+          jsonlToolFailures++;
         }
       }
       if (jsonlToolTotal >= this.cumulativeToolTotal) {
@@ -40757,7 +40779,7 @@ var Aggregator = class _Aggregator {
       const toolName = _Aggregator.extractBaseToolName(tc.name ?? "");
       const timestamp = tc.timestamp ?? (/* @__PURE__ */ new Date()).toISOString();
       const filePaths = [];
-      const singlePath = typeof tc.input["path"] === "string" ? tc.input["path"] : null;
+      const singlePath = typeof tc.input["file_path"] === "string" ? tc.input["file_path"] : typeof tc.input["path"] === "string" ? tc.input["path"] : null;
       if (singlePath !== null) {
         filePaths.push(singlePath);
       }

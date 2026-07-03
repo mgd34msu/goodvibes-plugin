@@ -75,7 +75,7 @@ interface ApiSpecData {
 const definition: Tool = {
   name: 'api_spec',
   description:
-    'Generate an OpenAPI 3.0.3 specification from detected API routes (pairs with api_routes). ' +
+    'Use to produce a spec for consumers without writing one by hand. Generate an OpenAPI 3.0.3 specification from detected API routes (pairs with api_routes). ' +
     'Read-only: the spec is returned in the response, never written to disk. Infers request/' +
     'response schemas from Zod schemas, TypeScript *Request/*Response interfaces, and ' +
     'NextResponse.json() shapes where detectable; falls back to a generic schema and flags the ' +

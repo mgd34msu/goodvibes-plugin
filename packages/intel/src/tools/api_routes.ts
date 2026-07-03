@@ -54,7 +54,7 @@ const FRAMEWORK_ENUM = ['nextjs', 'express', 'fastify', 'hono', 'auto'] as const
 const definition: Tool = {
   name: 'api_routes',
   description:
-    'Discover API route definitions in a project. Supports Next.js (App Router and Pages ' +
+    'Use to map a project HTTP surface without opening route files one by one. Discover API route definitions in a project. Supports Next.js (App Router and Pages ' +
     'Router), Express, Fastify, and Hono. Auto-detects the framework from package.json when ' +
     'not specified. Returns each route\'s HTTP method, URL path pattern, handler file, ' +
     'resolved absolute path, and handler line. Static text/AST-adjacent scanning; no code is ' +

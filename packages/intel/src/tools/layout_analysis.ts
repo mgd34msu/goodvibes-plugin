@@ -102,7 +102,7 @@ interface LayoutArgs {
 const definition: Tool = {
   name: 'layout_analysis',
   description:
-    'Analyze a JSX/TSX component\'s CSS layout from its Tailwind classes. Returns a ' +
+    'Use to reason about rendered layout from Tailwind classes without launching a browser. Analyze a JSX/TSX component\'s CSS layout from its Tailwind classes. Returns a ' +
     'hierarchy backbone (element, classes, layout_role, children) plus opt-in ' +
     'sections: "overflow" (nested-flex min-height risks + fix options; the ' +
     'absolute-positioning heuristic is a guarded low-confidence flag), "sizing" ' +

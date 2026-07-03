@@ -42,7 +42,7 @@ interface ApiValidateArgs {
 const definition: Tool = {
   name: 'api_validate',
   description:
-    'Validate an OpenAPI/Swagger spec against actual API routes found in source — statically, ' +
+    'Use to catch drift between a written spec and the actual routes before it ships. Validate an OpenAPI/Swagger spec against actual API routes found in source — statically, ' +
     'spec-vs-routes only (no live HTTP requests). Reports routes the spec declares but code does ' +
     'not implement (missing_route), routes code implements but the spec omits ' +
     '(undocumented_route), and path-parameter name mismatches (parameter_mismatch), each with a ' +
