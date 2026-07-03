@@ -25,32 +25,45 @@ const MARKER_START = '<!-- GOODVIBES IMPORTS -->';
 const IMPORT_LINE = '@.goodvibes/GOODVIBES.md';
 const HUB_RELATIVE = path.join('.goodvibes', 'GOODVIBES.md');
 
-const HUB_CONTENT = `# GoodVibes
+const HUB_CONTENT = `# GoodVibes tools — when to reach for them
 
-Structure-aware code intelligence, session cost telemetry, and a connect workbench — opt-in,
-measured, and honest about when native tools are the right choice.
+The goodvibes plugin runs three MCP servers (intel / analytics / connect). Their schemas load
+on demand, so this card is the always-on map of when each tool beats the native alternative.
+For a small file or a one-off trivial search, native Read/Grep are fine — these earn their
+keep on repo-scale work and repetition.
 
-## On-demand skills
-Load by name via the Skill tool when the task calls for it — none of these are always-on:
-- \`intel-mastery\` — usage guide for the intel MCP tools (code_read/code_grep/code_glob/...).
-- \`project-onboarding\` — mapping an unfamiliar codebase with the intel analyzers.
-- \`goodvibes-memory\` — \`.goodvibes/memory/\` cross-session decisions/patterns/failures/preferences.
-- \`task-orchestration\` — decomposing work with native Task/Workflow + the Write-Review-Fix-Confirm pattern.
-- \`review-scoring\` — the WRFC refutation rubric (defect list + severity, not a scalar score).
+## intel — structure-aware reading, search, analysis (TypeScript/JS-centric)
+- \`code_read\` — you need a file's STRUCTURE or a slice, not the whole file: extract "outline"
+  returns signatures/members at 40-73% fewer tokens than a full read (measured); extract
+  "lines" fetches exact ranges, batched across many files in one call.
+- \`code_grep\` — repo-wide search you would otherwise page through: several patterns in one
+  batched call, clean output caps (counts stay true), matches expandable to line/block/function.
+  Measured 62.7% fewer tokens than native grep for identical match sets.
+- \`code_glob\` — find files by pattern plus size/date/content filters, gitignore-aware, one call.
+- \`code_surface\` — before changing a module: its public API vs internals, from the compiler.
+- \`code_safe_delete\` — before deleting a symbol: every reference that would break.
+- \`structural_edit\` — multi-site or AST-anchored edits (rename every call site, rewrite every
+  matching pattern): preview first, then apply; exact-string and TS-AST modes.
+- \`api_routes\` / \`api_spec\` / \`api_validate\` — map a project's HTTP surface / generate
+  OpenAPI from it / diff a written spec against the real routes.
+- \`db_schema\` — the project's data model (Prisma / Drizzle / SQL, auto-detected).
+- \`component_tree\` / \`hook_dependencies\` / \`client_boundary\` / \`layout_analysis\` — React
+  analyzers: composition, hook-dependency bugs, "use client" boundaries, Tailwind layout.
+- \`scaffold\` — a new app from a bundled template instead of hand-assembled boilerplate.
 
-## Agents
-\`engineer\`, \`refutation-reviewer\`, \`tester\`, \`architect\` — delegate via the Task tool.
+## analytics — session cost from transcript actuals, never self-estimates
+\`/goodvibes:analytics\` (summary | status | report | doctor | budget | export | tag | sync).
+\`report\` renders a self-contained HTML dashboard; \`doctor\` scans for orphaned plugin
+processes when the host feels slow.
 
-## Analytics
-\`/goodvibes:analytics\` for session cost/token telemetry from the analytics server.
-
-## Connect
-The connect server's \`service\`/\`api_request\`/\`db_query\` tools — registered external APIs and
-databases under an explicit trust boundary (restricted by default). Manage the registry with
-\`/goodvibes:services\`.
+## connect — authenticated HTTP + databases behind a trust boundary
+Register targets with \`/goodvibes:services\`, then \`api_request\` (credentials pinned to their
+registered origin, read-only unless opted in) and \`db_query\` (registered connections only).
+Restricted by default; the trust mode cannot be flipped by a tool.
 
 ---
-*Installed by \`/goodvibes:plugin install-prompts\`. Remove with \`uninstall-prompts\`.*
+*Installed by \`/goodvibes:plugin install-prompts\`; removed by \`uninstall-prompts\`. Content
+updates with plugin releases.*
 `;
 
 function resolveTargetDir(projectDir) {

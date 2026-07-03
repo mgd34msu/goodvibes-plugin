@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.3] - 2026-07-03
+
+### Changed
+- **The install-prompts card now introduces the tools, not the skills.** The
+  opt-in `.goodvibes/GOODVIBES.md` file (imported by one marker line in
+  CLAUDE.md) was a pointer hub at the on-demand skills; it is now a compact
+  (~500 token) when-to-reach-for-it card — one decision line per intel tool
+  with the measured numbers, plus the analytics and connect entry points, and
+  an honest note that native Read/Grep are fine for small one-off work. This
+  is the always-in-context introduction that deferred tool schemas cannot
+  provide by themselves; the import-line mechanism is unchanged, so the card
+  updates with plugin releases without touching CLAUDE.md again.
+
+
 ## [2.3.2] - 2026-07-03
 
 ### Fixed

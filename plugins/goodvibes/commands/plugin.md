@@ -104,8 +104,9 @@ project containing a `CLAUDE.md`; otherwise the project root itself.
 - `CLAUDE.md` in the target directory — a `<!-- GOODVIBES IMPORTS -->` marker plus the import
   line `@.goodvibes/GOODVIBES.md` is appended (file created if missing; existing content is
   never modified or removed).
-- `.goodvibes/GOODVIBES.md` — the compact pointer hub (points at the on-demand skills and
-  agents; contains no doctrine itself).
+- `.goodvibes/GOODVIBES.md` — the compact tool-introduction card (~500 tokens): one
+  when-to-reach-for-it line per tool, with the measured numbers. Content updates with
+  plugin releases; the CLAUDE.md import line never changes.
 
 **Steps:**
 1. Show the user the target-directory resolution rule and the exact file list above; confirm.
