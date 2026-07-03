@@ -53,7 +53,7 @@ function writeLoadavg(l1: number, l5: number, l15: number): void {
   fs.writeFileSync(path.join(procRoot, 'loadavg'), `${l1} ${l5} ${l15} 3/900 9999\n`);
 }
 
-const PLUGIN_CMD = '/usr/bin/node /home/u/.claude/plugins/goodvibes-analytics/server/index.cjs';
+const PLUGIN_CMD = '/usr/bin/node /home/u/.claude/plugins/goodvibes/server/analytics/index.cjs';
 
 describe('HostHealthSampler against a fake /proc', () => {
   it('parses loadavg, counts session children, and detects sustained-CPU orphans', () => {

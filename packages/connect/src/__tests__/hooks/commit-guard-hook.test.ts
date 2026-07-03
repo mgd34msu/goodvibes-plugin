@@ -1,6 +1,6 @@
 /**
  * Tests for the shipped warn-first commit guard
- * (plugins/goodvibes-connect/hooks/commit-guard.mjs). Real detection + the
+ * (plugins/goodvibes/hooks/commit-guard.mjs). Real detection + the
  * warn→block escalation are exercised with injected I/O so no repo is needed.
  */
 
@@ -10,7 +10,7 @@ import * as path from 'path';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const hookUrl = pathToFileURL(
-  path.resolve(here, '../../../../../plugins/goodvibes-connect/hooks/commit-guard.mjs'),
+  path.resolve(here, '../../../../../plugins/goodvibes/hooks/commit-guard.mjs'),
 ).href;
 
 interface CommitGuardHook {

@@ -5,7 +5,7 @@
  * core/telemetry, so sql-wasm.wasm ships in server/wasm/. connect's DB drivers
  * resolve from the *target project* per the kept v1 `drivers.ts` pattern, so they
  * are not deps of this package at all. Output is committed under
- * plugins/goodvibes-connect/server/.
+ * plugins/goodvibes/server/connect/.
  */
 
 import * as esbuild from 'esbuild';
@@ -16,7 +16,7 @@ import { createRequire } from 'module';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
-const serverDir = join(__dirname, '../../plugins/goodvibes-connect/server');
+const serverDir = join(__dirname, '../../plugins/goodvibes/server/connect');
 const wasmDir = join(serverDir, 'wasm');
 
 async function tryCopy(resolveSpec, destName) {
@@ -45,7 +45,7 @@ async function build() {
     keepNames: true,
     external: ['sql.js'],
   });
-  console.log('Build completed: plugins/goodvibes-connect/server/index.cjs');
+  console.log('Build completed: plugins/goodvibes/server/connect/index.cjs');
 
   await tryCopy('sql.js/dist/sql-wasm.wasm', 'sql-wasm.wasm');
 }

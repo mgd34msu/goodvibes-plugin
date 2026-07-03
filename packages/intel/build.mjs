@@ -3,7 +3,7 @@
  *
  * Matches v1's proven esbuild pattern (bundle, platform:node, format:cjs,
  * keepNames, sourcemap), updated for v2: target node20, output committed under
- * plugins/goodvibes-intel/server/. Externals per §5.1: @ast-grep/napi and
+ * plugins/goodvibes/server/intel/. Externals per §5.1: @ast-grep/napi and
  * @vscode/ripgrep (native) and sql.js (loads its WASM at runtime); `typescript`
  * IS bundled (pure JS, one copy, one version — the single compiler host lives in
  * intel). The WASM copy step targets server/wasm/ and copies BOTH the
@@ -20,7 +20,7 @@ import { createRequire } from 'module';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
-const serverDir = join(__dirname, '../../plugins/goodvibes-intel/server');
+const serverDir = join(__dirname, '../../plugins/goodvibes/server/intel');
 const wasmDir = join(serverDir, 'wasm');
 // Tree-sitter grammar .wasm assets are committed source under packages/intel/wasm/
 // (lane 1: copied from v1 precision-engine's built dist — see lane report for the
@@ -70,11 +70,11 @@ async function build() {
     // format zeroes `import.meta`, which broke that internal resolution when
     // bundled ("filename ... Received undefined"). Kept unbundled so it runs
     // as its own ESM/CJS module with working self-resolution — added to
-    // plugins/goodvibes-intel/server/package.json's runtime deps accordingly.
+    // plugins/goodvibes/server/intel/package.json's runtime deps accordingly.
     // 'fast-glob' bundles per spec §5.1 now that it is installed.
     external: ['@ast-grep/napi', '@vscode/ripgrep', 'sql.js', 'web-tree-sitter'],
   });
-  console.log('Build completed: plugins/goodvibes-intel/server/index.cjs');
+  console.log('Build completed: plugins/goodvibes/server/intel/index.cjs');
 
   // WASM assets → server/wasm/: tree-sitter grammars + core + sql-wasm.
   // Grammars are committed source under packages/intel/wasm/ (lane 1: copied

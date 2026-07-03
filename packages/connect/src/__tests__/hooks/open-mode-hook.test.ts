@@ -1,6 +1,6 @@
 /**
  * Tests for the shipped SessionStart open-mode hook
- * (plugins/goodvibes-connect/hooks/session-start-open-mode.mjs).
+ * (plugins/goodvibes/hooks/session-start-open-mode.mjs).
  *
  * The real `.mjs` is imported by a runtime-computed file URL so tsc does not try
  * to pull a plain-JS file outside this package into the program — the tests
@@ -15,7 +15,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const hookUrl = pathToFileURL(
-  path.resolve(here, '../../../../../plugins/goodvibes-connect/hooks/session-start-open-mode.mjs'),
+  path.resolve(here, '../../../../../plugins/goodvibes/hooks/session-start-open-mode.mjs'),
 ).href;
 
 interface OpenModeHook {

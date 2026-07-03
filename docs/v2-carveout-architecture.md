@@ -10,29 +10,33 @@ Status: design ruling for the alpha carve-out. Open rulings in §7 are vetoable;
 
 ### 1.1 Alpha tree (v1 and v2 coexist; v1 stays runnable, untouched)
 
-v2 source lives in **new top-level `packages/`**, NOT inside `plugins/goodvibes/`. The v1 tree
-(`plugins/goodvibes/**`) is frozen except for v1.11 maintenance; nothing in the carve-out edits it.
-v2 ships as **three new plugin directories** whose runtime artifacts are built *from* `packages/`.
+> **Updated 2026-07-02 (R1 vetoed by Mike):** the shape below is now a SINGLE plugin named
+> `goodvibes` at `plugins/goodvibes/` carrying three server processes, and v1 was swept
+> pre-release (permanent `v1` branch is the archive). The tree sketch reflects that; the original
+> three-plugin decision is preserved in §7 R1/R6/R12/R14.
+
+v2 source lives in **new top-level `packages/`**. v2 ships as **one plugin directory**
+(`plugins/goodvibes/`) whose three server bundles are built *from* `packages/`.
 
 ```
 goodvibes-plugin/
 ├── packages/                          # v2 engineering base (npm workspaces)
 │   ├── core/                          # @goodvibes/core — shared infra (§3)
-│   ├── intel/                         # @goodvibes/intel — 14-tool server source
+│   ├── intel/                         # @goodvibes/intel — 15-tool server source
 │   ├── analytics/                     # @goodvibes/analytics — 7-tool server source
 │   └── connect/                       # @goodvibes/connect — 3-tool server source
 ├── plugins/
-│   ├── goodvibes/                     # v1, frozen, still installable during alpha
-│   ├── goodvibes-intel/               # v2 plugin: manifest + committed bundle + content
-│   │   ├── .claude-plugin/plugin.json
-│   │   ├── .mcp.json
-│   │   ├── server/                    # committed esbuild output: index.cjs, wasm/, package.json (runtime deps only)
-│   │   ├── hooks/                     # plain .mjs, no build step (§2.4)
-│   │   ├── skills/  agents/  commands/  templates/
-│   ├── goodvibes-analytics/           # same shape, no templates
-│   └── goodvibes-connect/             # same shape, no templates/agents
-├── .claude-plugin/marketplace.json    # gains three v2 entries; v1 entry kept until v2.0
-└── .github/workflows/ci.yml           # gains v2 jobs (§5.4); v1 jobs untouched
+│   └── goodvibes/                     # ONE plugin (name "goodvibes", version 2.0.0)
+│       ├── .claude-plugin/plugin.json
+│       ├── .mcp.json                  # three server entries: intel / analytics / connect
+│       ├── server/
+│       │   ├── intel/                 # committed esbuild output: index.cjs, wasm/, package.json (runtime deps only)
+│       │   ├── analytics/             # index.cjs + mini.cjs + wasm/ + package.json
+│       │   └── connect/               # index.cjs + wasm/ + package.json
+│       ├── hooks/                     # plain .mjs union (intel + analytics + connect), no build step (§2.4)
+│       └── skills/  agents/  commands/  templates/
+├── .claude-plugin/marketplace.json    # ONE entry: goodvibes @ 2.0.0
+└── .github/workflows/ci.yml           # v2 jobs only (§5.4)
 ```
 
 Root `package.json` `workspaces` gains `"packages/*"`. The v1 workspaces stay listed until the
@@ -397,19 +401,24 @@ Parallelism: lanes 1, 3-parsers, 5, 6, 7 start together the moment 0 lands; 2 st
 ## 7. Open rulings (vetoable — one line of reasoning each)
 
 - **R1 — Three plugins, not one.** The plugin is the native opt-in/trust/install-weight unit, and it is the only native way to honor "connect on demand" (§2.1).
+  - **VETOED by Mike 2026-07-02** — ship ONE plugin named `goodvibes` at `plugins/goodvibes/`, with all three server processes (`intel`/`analytics`/`connect`) kept as separate stdio servers under one `.mcp.json`. Opt-in-per-product is not exercised; consolidation wins on packaging simplicity.
 - **R2 — v2 source in top-level `packages/`, plugin dirs carry committed bundles only.** Keeps v1 untouched-and-runnable, keeps installables lean, keeps the proven tracked-dist strategy with a CI byte-match.
 - **R3 — One shared package (`@goodvibes/core`) bundled per server, not runtime-linked.** No version drift possible; a core fix is three rebuilds, which CI already forces.
 - **R4 — TS compiler host lives in `packages/intel`, not core.** Only intel needs a compiler; putting it in core would bloat analytics/connect bundles for nothing.
 - **R5 — `typescript` pinned once at ~5.9.x; `vitest` at ^4 workspace-wide.** Ends the audit's double-bundle and the v2/v4 skew in one move.
 - **R6 — Command namespaces become `/goodvibes-intel:*` etc.** Forced by R1 (plugin name owns the namespace); UX change accepted and documented.
+  - **Reverted 2026-07-02** (follows the R1 veto) — the single plugin owns one namespace, so commands are `/goodvibes:*` (`/goodvibes:plugin`, `/goodvibes:codebase-review`, `/goodvibes:analytics`, `/goodvibes:services`).
 - **R7 — `.lsp.json` does not carry into v2.** The plan's whole symbols posture is "native LSP owns this"; shipping our own LSP wiring contradicts it.
 - **R8 — v2 hooks are plain `.mjs` with no build step.** They shrink to trivial size in v2; deleting the hook build removes the src/dist-match burden for them entirely.
 - **R9 — Connect ships its own tiny SessionStart hook for the open-mode announcement.** Hook ownership follows the feature; intel's context hook must not depend on connect's presence.
 - **R10 — Concrete hygiene numbers** (30 min idle exit, 5 s ppid poll, 20 s analyzer / 30–120 s HTTP budgets): the plan mandates the mechanisms, not values — all config-overridable.
+  - **Amended 2026-07-02 (Mike)** — the idle self-exit mechanism is REMOVED entirely (no 30-min idle timer). Servers run for the life of their session and rely on parent-liveness only; the ppid poll stays, the idle-exit clock is gone.
 - **R11 — `api_validate` stays static (spec-vs-routes) in intel.** Live probing would need credentials, which is connect's trust model; the tribunal evidence was for the static check.
 - **R12 — Intel hosts the shared content set (agents, WRFC template, memory/orchestration skills).** It is the flagship most users install; a fourth content-only plugin is marketplace clutter.
+  - **Moot 2026-07-02** (follows the R1 veto) — with one plugin, there is no cross-plugin content-hosting question; all agents, skills, commands, and templates live in the single `goodvibes` plugin.
 - **R13 — analytics tool names drop the `analytics_` prefix.** The server key already namespaces them; matches intel/connect naming.
 - **R14 — v1 `goodvibes` marketplace entry stays through alpha, marked deprecated, removed at v2.0.** Same-repo users keep a working install until the sweep.
+  - **Superseded 2026-07-02** — v1 was swept pre-release; there is no coexistence alpha window. The permanent `v1` git branch is the archive, and the `goodvibes` name/dir is reused by the consolidated v2 plugin. (The R15/R16 v1-yield guards are kept as dormant, fail-open safety.)
 - **R15 — v2 runtime state namespaced under `.goodvibes/v2/` during coexistence** *(verification finding)*: v1 and v2 otherwise fight over the same memory/telemetry files; the retire sweep migrates it up.
 - **R16 — v2 hooks yield to v1 when both plugins are installed** *(verification finding)*: prevents double-fired SessionStart/failure/commit-guard handlers during the R14 window; one explanatory line in SessionStart context instead.
 

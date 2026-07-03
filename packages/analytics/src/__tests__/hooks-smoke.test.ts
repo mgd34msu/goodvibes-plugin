@@ -13,9 +13,13 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const HOOKS_DIR = path.resolve(__dirname, '../../../../plugins/goodvibes-analytics/hooks');
+const HOOKS_DIR = path.resolve(__dirname, '../../../../plugins/goodvibes/hooks');
 const FAKE_PLUGIN_ROOT = path.join(os.tmpdir(), 'gv-fake-plugin-root-analytics');
-const REAL_PLUGIN_ROOT = path.resolve(__dirname, '../../../../plugins/goodvibes-analytics');
+// R16 "v1 present" fixture: a plugin root whose sibling `goodvibes/.cache`
+// exists (shouldYieldToV1 checks `<pluginRoot>/../goodvibes/.cache`). Built in
+// beforeAll under a unique temp base — self-contained, independent of the repo.
+const V1_PRESENT_BASE = path.join(os.tmpdir(), 'gv-v1-present-analytics');
+const V1_PRESENT_ROOT = path.join(V1_PRESENT_BASE, 'plugin');
 
 const tmpDirs: string[] = [];
 function makeTmpCwd(): string {
@@ -33,6 +37,7 @@ afterEach(() => {
 
 beforeAll(() => {
   fs.mkdirSync(FAKE_PLUGIN_ROOT, { recursive: true });
+  fs.mkdirSync(path.join(V1_PRESENT_BASE, 'goodvibes', '.cache'), { recursive: true });
 });
 
 interface SpawnOpts {
@@ -79,7 +84,7 @@ describe('goodvibes-analytics hooks: valid JSON + R16 yield guard', () => {
 
     it(`${hook} yields to v1 when v1's cache directory is present (R16)`, () => {
       const cwd = makeTmpCwd();
-      const { code, stdout } = runHook(hook, { session_id: 'test-session', cwd, hook_event_name: hook.replace('.mjs', '') }, { pluginRoot: REAL_PLUGIN_ROOT });
+      const { code, stdout } = runHook(hook, { session_id: 'test-session', cwd, hook_event_name: hook.replace('.mjs', '') }, { pluginRoot: V1_PRESENT_ROOT });
       expect(code).toBe(0);
       const parsed = JSON.parse(stdout);
       expect(parsed.continue).toBe(true);

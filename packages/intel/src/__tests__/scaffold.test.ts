@@ -3,7 +3,7 @@
  * consistency + scaffold dry-run").
  *
  * 1. Manifest/tree consistency: for every template under
- *    plugins/goodvibes-intel/templates/{minimal,full}/*, the template.yaml
+ *    plugins/goodvibes/templates/{minimal,full}/*, the template.yaml
  *    `files:` list must exactly match what's physically under `files/` — this
  *    is the regression guard for the "3 phantom manifest files" class of bug
  *    (plan §9.5).
@@ -22,7 +22,7 @@ import { scaffoldTool } from '../tools/scaffold.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '../../../../');
-const PLUGIN_ROOT = path.join(REPO_ROOT, 'plugins/goodvibes-intel');
+const PLUGIN_ROOT = path.join(REPO_ROOT, 'plugins/goodvibes');
 const TEMPLATES_ROOT = path.join(PLUGIN_ROOT, 'templates');
 
 let originalPluginRoot: string | undefined;
