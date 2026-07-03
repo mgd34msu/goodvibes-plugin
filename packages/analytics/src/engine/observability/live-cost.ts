@@ -20,6 +20,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join, dirname, basename } from 'node:path';
 import { JSONLReader } from '../data/jsonl-reader.js';
 import type { ModelPricingMap } from '../config.js';
+import { pricingProvenance } from '../config.js';
 import { formatNumber, formatDollars } from '../tui/mini/format.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -274,6 +275,15 @@ export function renderLiveCostReport(report: LiveCostReport): string {
 
   lines.push('');
   lines.push(`Grand total: ${formatDollars(report.grand_total_usd)}`);
+
+  // Provenance: say where the rates came from, always.
+  const prov = pricingProvenance();
+  if (prov.source === 'first-party') {
+    const age = prov.ageHours !== undefined ? `, fetched ${prov.ageHours}h ago` : '';
+    lines.push(`Rates: platform.claude.com pricing page${age} (fallback table fills unlisted models)`);
+  } else {
+    lines.push('Rates: built-in fallback table (first-party fetch pending or unavailable)');
+  }
 
   return lines.join('\n');
 }

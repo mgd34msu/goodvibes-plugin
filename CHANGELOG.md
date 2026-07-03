@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.4] - 2026-07-02
+
+### Added
+- **First-party pricing fetch restored, in its proper home.** v1 fetched the
+  official platform.claude.com pricing page from the SessionStart hook (a
+  timeout hazard); the fetcher died with that hook machinery, leaving v2 on
+  its static fallback table. The fetcher now lives in the analytics engine:
+  lazy, non-blocking (cost paths kick a background refresh on a 24h TTL; the
+  current call never waits on the network), 10s abort timeout, atomic cache
+  writes to `~/.claude/model-pricing.json`, and fetched rates merge OVER the
+  fallback per model. Parser upgrades over v1: recognizes every model family
+  (v1 silently skipped Claude 5), keeps all versions rather than latest-only,
+  and resolves date-qualified rows to the rate effective today — which
+  matters right now: the live page lists Sonnet 5 introductory pricing
+  ($2/$10 through Aug 31, 2026) that the static table had as $3/$15.
+- Cost output now states its pricing provenance: first-party page + fetch
+  age, or fallback table, always.
+
 ## [2.0.3] - 2026-07-02
 
 ### Changed

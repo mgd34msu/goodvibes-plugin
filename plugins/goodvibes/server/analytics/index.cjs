@@ -13604,6 +13604,133 @@ var init_runtime = __esm({
   }
 });
 
+// packages/analytics/src/engine/data/pricing-fetcher.ts
+function parsePrice(cell) {
+  const match = cell.match(/\$(\d+(?:\.\d+)?)\s*\/\s*MTok/i);
+  if (!match) throw new Error(`unparseable price cell: ${cell}`);
+  return parseFloat(match[1]);
+}
+function cleanName(raw) {
+  return raw.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/\s*\([^)]*\)/g, "").trim();
+}
+function rowEffectiveNow(cleanedName, now) {
+  const through = cleanedName.match(/through\s+([A-Za-z]+\s+\d{1,2},?\s+\d{4})/i);
+  if (through) {
+    const until = new Date(through[1]);
+    return !isNaN(until.getTime()) ? now <= until : true;
+  }
+  const starting = cleanedName.match(/starting\s+([A-Za-z]+\s+\d{1,2},?\s+\d{4})/i);
+  if (starting) {
+    const from = new Date(starting[1]);
+    return !isNaN(from.getTime()) ? now >= from : false;
+  }
+  return true;
+}
+function modelKey(cleanedName) {
+  const match = cleanedName.match(/Claude\s+([A-Za-z]+)\s+([\d.]+)/i);
+  if (!match) return null;
+  const family = match[1].toLowerCase();
+  const version2 = match[2].replace(/\./g, "-");
+  return { key: `claude-${family}-${version2}`, display: `Claude ${match[1]} ${match[2]}` };
+}
+function parsePricingMarkdown(markdown, now = /* @__PURE__ */ new Date()) {
+  const section = markdown.match(/##\s*Model pricing[\s\S]*?(?=\n##\s|$)/i);
+  if (!section) throw new Error('no "Model pricing" section found');
+  const models = {};
+  for (const line of section[0].split("\n")) {
+    if (!line.trim().startsWith("|") || /^\|\s*-+/.test(line.trim()) || /\|\s*Model\s*\|/i.test(line)) continue;
+    const cells = line.split("|").map((c) => c.trim()).filter((c) => c.length > 0);
+    if (cells.length < 6) continue;
+    const cleaned = cleanName(cells[0]);
+    const keyed = modelKey(cleaned);
+    if (!keyed) continue;
+    if (!rowEffectiveNow(cleaned, now)) continue;
+    if (models[keyed.key]) continue;
+    try {
+      models[keyed.key] = {
+        name: keyed.display,
+        inputPrice: parsePrice(cells[1]),
+        cacheWrite5Min: parsePrice(cells[2]),
+        cacheWrite1Hour: parsePrice(cells[3]),
+        cacheHits: parsePrice(cells[4]),
+        outputPrice: parsePrice(cells[5])
+      };
+    } catch {
+    }
+  }
+  if (Object.keys(models).length === 0) {
+    throw new Error("pricing table parsed to zero models \u2014 page layout may have changed");
+  }
+  return models;
+}
+function cacheAgeHours(cachePath = PRICING_CACHE_PATH) {
+  try {
+    if (!(0, import_node_fs2.existsSync)(cachePath)) return Infinity;
+    const cache = JSON.parse((0, import_node_fs2.readFileSync)(cachePath, "utf-8"));
+    const fetched = new Date(cache.fetchedAt).getTime();
+    if (isNaN(fetched)) return Infinity;
+    return (Date.now() - fetched) / 36e5;
+  } catch {
+    return Infinity;
+  }
+}
+async function refreshPricingIfStale(options = {}) {
+  if (process.env.GOODVIBES_NO_PRICING_FETCH === "1") return false;
+  if (process.env.VITEST && !options.force) return false;
+  const cachePath = options.cachePath ?? PRICING_CACHE_PATH;
+  if (cacheAgeHours(cachePath) < (options.ttlHours ?? TTL_HOURS)) return false;
+  if (inFlight) return inFlight;
+  inFlight = (async () => {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+      timer.unref?.();
+      const response = await fetch(options.url ?? PRICING_URL, {
+        signal: controller.signal,
+        redirect: "follow"
+      });
+      clearTimeout(timer);
+      if (!response.ok) return false;
+      const markdown = await response.text();
+      const models = parsePricingMarkdown(markdown);
+      const file2 = {
+        fetchedAt: (/* @__PURE__ */ new Date()).toISOString(),
+        source: options.url ?? PRICING_URL,
+        models
+      };
+      atomicWriteJson(cachePath, file2);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      inFlight = null;
+    }
+  })();
+  return inFlight;
+}
+var import_node_fs2, import_node_os, import_node_path, PRICING_URL, PRICING_CACHE_PATH, TTL_HOURS, FETCH_TIMEOUT_MS, inFlight;
+var init_pricing_fetcher = __esm({
+  "packages/analytics/src/engine/data/pricing-fetcher.ts"() {
+    "use strict";
+    import_node_fs2 = require("node:fs");
+    import_node_os = require("node:os");
+    import_node_path = require("node:path");
+    init_runtime();
+    PRICING_URL = "https://platform.claude.com/docs/en/about-claude/pricing.md";
+    PRICING_CACHE_PATH = (0, import_node_path.join)((0, import_node_os.homedir)(), ".claude", "model-pricing.json");
+    TTL_HOURS = 24;
+    FETCH_TIMEOUT_MS = 1e4;
+    __name(parsePrice, "parsePrice");
+    __name(cleanName, "cleanName");
+    __name(rowEffectiveNow, "rowEffectiveNow");
+    __name(modelKey, "modelKey");
+    __name(parsePricingMarkdown, "parsePricingMarkdown");
+    __name(cacheAgeHours, "cacheAgeHours");
+    inFlight = null;
+    __name(refreshPricingIfStale, "refreshPricingIfStale");
+  }
+});
+
 // packages/analytics/src/engine/config.ts
 function priced(name, inputPrice, outputPrice) {
   return {
@@ -13616,17 +13743,36 @@ function priced(name, inputPrice, outputPrice) {
   };
 }
 function loadModelPricing() {
+  void refreshPricingIfStale();
   try {
-    if ((0, import_node_fs2.existsSync)(MODEL_PRICING_CACHE_PATH)) {
-      const content = (0, import_node_fs2.readFileSync)(MODEL_PRICING_CACHE_PATH, "utf-8");
+    if ((0, import_node_fs3.existsSync)(MODEL_PRICING_CACHE_PATH)) {
+      const content = (0, import_node_fs3.readFileSync)(MODEL_PRICING_CACHE_PATH, "utf-8");
       const cache = JSON.parse(content);
       if (cache.models && typeof cache.models === "object") {
-        return cache.models;
+        return { ...FALLBACK_MODEL_PRICING, ...cache.models };
       }
     }
   } catch {
   }
   return { ...FALLBACK_MODEL_PRICING };
+}
+function pricingProvenance() {
+  try {
+    if ((0, import_node_fs3.existsSync)(MODEL_PRICING_CACHE_PATH)) {
+      const cache = JSON.parse((0, import_node_fs3.readFileSync)(MODEL_PRICING_CACHE_PATH, "utf-8"));
+      if (cache.models && cache.fetchedAt) {
+        const age = (Date.now() - new Date(cache.fetchedAt).getTime()) / 36e5;
+        return {
+          source: "first-party",
+          url: cache.source ?? "https://platform.claude.com/docs/en/about-claude/pricing.md",
+          fetchedAt: cache.fetchedAt,
+          ageHours: isNaN(age) ? void 0 : Math.round(age * 10) / 10
+        };
+      }
+    }
+  } catch {
+  }
+  return { source: "fallback-table" };
 }
 function getModelRates(modelId, pricingMap) {
   if (pricingMap[modelId]) return pricingMap[modelId];
@@ -13653,9 +13799,9 @@ function getModelRates(modelId, pricingMap) {
   };
 }
 function tryLoadFile(filePath) {
-  if (!(0, import_node_fs2.existsSync)(filePath)) return null;
+  if (!(0, import_node_fs3.existsSync)(filePath)) return null;
   try {
-    const raw = (0, import_node_fs2.readFileSync)(filePath, "utf-8");
+    const raw = (0, import_node_fs3.readFileSync)(filePath, "utf-8");
     const parsed = JSON.parse(raw);
     if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
       return { ...DEFAULT_CONFIG2, ...parsed };
@@ -13672,20 +13818,21 @@ function tryLoadFile(filePath) {
 function loadConfig2(goodvibesDir) {
   const globalConfig2 = tryLoadFile(GLOBAL_CONFIG_PATH);
   if (globalConfig2) return globalConfig2;
-  const projectConfig = tryLoadFile((0, import_node_path.join)(goodvibesDir, "analytics.json"));
+  const projectConfig = tryLoadFile((0, import_node_path2.join)(goodvibesDir, "analytics.json"));
   if (projectConfig) return projectConfig;
   return { ...DEFAULT_CONFIG2 };
 }
-var import_node_fs2, import_node_path, import_node_os, MODEL_PRICING_CACHE_PATH, CACHE_WRITE_5MIN_MULT, CACHE_WRITE_1HOUR_MULT, CACHE_HIT_MULT, FALLBACK_MODEL_PRICING, GLOBAL_CONFIG_PATH;
+var import_node_fs3, import_node_path2, import_node_os2, MODEL_PRICING_CACHE_PATH, CACHE_WRITE_5MIN_MULT, CACHE_WRITE_1HOUR_MULT, CACHE_HIT_MULT, FALLBACK_MODEL_PRICING, GLOBAL_CONFIG_PATH;
 var init_config2 = __esm({
   "packages/analytics/src/engine/config.ts"() {
     "use strict";
-    import_node_fs2 = require("node:fs");
-    import_node_path = require("node:path");
-    import_node_os = require("node:os");
+    import_node_fs3 = require("node:fs");
+    import_node_path2 = require("node:path");
+    import_node_os2 = require("node:os");
     init_types();
     init_runtime();
-    MODEL_PRICING_CACHE_PATH = (0, import_node_path.join)((0, import_node_os.homedir)(), ".claude", "model-pricing.json");
+    init_pricing_fetcher();
+    MODEL_PRICING_CACHE_PATH = (0, import_node_path2.join)((0, import_node_os2.homedir)(), ".claude", "model-pricing.json");
     CACHE_WRITE_5MIN_MULT = 1.25;
     CACHE_WRITE_1HOUR_MULT = 2;
     CACHE_HIT_MULT = 0.1;
@@ -13703,9 +13850,10 @@ var init_config2 = __esm({
       "claude-haiku-4-5": priced("Claude Haiku 4.5", 1, 5)
     };
     __name(loadModelPricing, "loadModelPricing");
+    __name(pricingProvenance, "pricingProvenance");
     __name(getModelRates, "getModelRates");
-    GLOBAL_CONFIG_PATH = (0, import_node_path.join)(
-      (0, import_node_os.homedir)(),
+    GLOBAL_CONFIG_PATH = (0, import_node_path2.join)(
+      (0, import_node_os2.homedir)(),
       ".claude",
       ".goodvibes",
       "analytics",
@@ -13737,9 +13885,9 @@ async function findActiveJsonlFile(projectDir) {
   let latestPath = null;
   let latestMtime = 0;
   for (const file2 of jsonlFiles) {
-    const fullPath = (0, import_node_path2.join)(projectDir, file2);
+    const fullPath = (0, import_node_path3.join)(projectDir, file2);
     try {
-      const s = (0, import_node_fs5.statSync)(fullPath);
+      const s = (0, import_node_fs6.statSync)(fullPath);
       if (s.mtimeMs > latestMtime) {
         latestMtime = s.mtimeMs;
         latestPath = fullPath;
@@ -13750,22 +13898,22 @@ async function findActiveJsonlFile(projectDir) {
   return latestPath;
 }
 function sessionIdFromPath(jsonlPath) {
-  return (0, import_node_path2.basename)(jsonlPath, ".jsonl");
+  return (0, import_node_path3.basename)(jsonlPath, ".jsonl");
 }
 function resolveProjectsBaseDir() {
   const envDir = process.env["CLAUDE_PROJECTS_DIR"];
   if (envDir !== void 0 && envDir !== "") return envDir;
-  return (0, import_node_path2.join)((0, import_node_os2.homedir)(), ".claude", "projects");
+  return (0, import_node_path3.join)((0, import_node_os3.homedir)(), ".claude", "projects");
 }
-var import_node_fs5, import_promises, import_node_readline, import_node_os2, import_node_path2, TIER_BOUNDARY, JSONLReader;
+var import_node_fs6, import_promises, import_node_readline, import_node_os3, import_node_path3, TIER_BOUNDARY, JSONLReader;
 var init_jsonl_reader = __esm({
   "packages/analytics/src/engine/data/jsonl-reader.ts"() {
     "use strict";
-    import_node_fs5 = require("node:fs");
+    import_node_fs6 = require("node:fs");
     import_promises = require("node:fs/promises");
     import_node_readline = require("node:readline");
-    import_node_os2 = require("node:os");
-    import_node_path2 = require("node:path");
+    import_node_os3 = require("node:os");
+    import_node_path3 = require("node:path");
     TIER_BOUNDARY = 2e5;
     __name(calculateTieredInputCost, "calculateTieredInputCost");
     JSONLReader = class {
@@ -13839,7 +13987,7 @@ var init_jsonl_reader = __esm({
         if (fromOffset >= fileSize) {
           return { records, newOffset: fromOffset, linesParsed: 0, linesSkipped: 0, errors };
         }
-        const stream = (0, import_node_fs5.createReadStream)(filePath, { start: fromOffset, encoding: "utf8" });
+        const stream = (0, import_node_fs6.createReadStream)(filePath, { start: fromOffset, encoding: "utf8" });
         const rl = (0, import_node_readline.createInterface)({ input: stream, crlfDelay: Infinity });
         let bytesConsumed = 0;
         let lastValidOffset = fromOffset;
@@ -14434,12 +14582,12 @@ function rowToAgent(row) {
     exit_code: row["exit_code"] != null ? Number(row["exit_code"]) : void 0
   };
 }
-var import_node_fs10, import_node_path7, SAVE_DEBOUNCE_MS, GlobalDB;
+var import_node_fs11, import_node_path8, SAVE_DEBOUNCE_MS, GlobalDB;
 var init_global_db = __esm({
   "packages/analytics/src/engine/data/global-db.ts"() {
     "use strict";
-    import_node_fs10 = require("node:fs");
-    import_node_path7 = require("node:path");
+    import_node_fs11 = require("node:fs");
+    import_node_path8 = require("node:path");
     init_runtime();
     init_db_schema();
     SAVE_DEBOUNCE_MS = 500;
@@ -14477,8 +14625,8 @@ var init_global_db = __esm({
         const initSqlJs2 = await this.loadSqlJs();
         const wasmPath = this.resolveWasmPath();
         this.SQL = await initSqlJs2({ locateFile: /* @__PURE__ */ __name(() => wasmPath, "locateFile") });
-        if ((0, import_node_fs10.existsSync)(this.dbPath)) {
-          const buffer = (0, import_node_fs10.readFileSync)(this.dbPath);
+        if ((0, import_node_fs11.existsSync)(this.dbPath)) {
+          const buffer = (0, import_node_fs11.readFileSync)(this.dbPath);
           this.db = new this.SQL.Database(buffer);
         } else {
           this.db = new this.SQL.Database();
@@ -15205,13 +15353,13 @@ var init_global_db = __esm({
         } catch {
           baseDir = process.cwd();
         }
-        const subdirWasm = (0, import_node_path7.resolve)((0, import_node_path7.join)(baseDir, "wasm", "sql-wasm.wasm"));
-        if ((0, import_node_fs10.existsSync)(subdirWasm)) return subdirWasm;
-        const distWasm = (0, import_node_path7.resolve)((0, import_node_path7.join)(baseDir, "sql-wasm.wasm"));
-        if ((0, import_node_fs10.existsSync)(distWasm)) return distWasm;
-        const nodeWasm = (0, import_node_path7.resolve)((0, import_node_path7.join)(baseDir, "..", "..", "..", "node_modules", "sql.js", "dist", "sql-wasm.wasm"));
-        if ((0, import_node_fs10.existsSync)(nodeWasm)) return nodeWasm;
-        return (0, import_node_path7.resolve)((0, import_node_path7.join)(baseDir, "sql-wasm.wasm"));
+        const subdirWasm = (0, import_node_path8.resolve)((0, import_node_path8.join)(baseDir, "wasm", "sql-wasm.wasm"));
+        if ((0, import_node_fs11.existsSync)(subdirWasm)) return subdirWasm;
+        const distWasm = (0, import_node_path8.resolve)((0, import_node_path8.join)(baseDir, "sql-wasm.wasm"));
+        if ((0, import_node_fs11.existsSync)(distWasm)) return distWasm;
+        const nodeWasm = (0, import_node_path8.resolve)((0, import_node_path8.join)(baseDir, "..", "..", "..", "node_modules", "sql.js", "dist", "sql-wasm.wasm"));
+        if ((0, import_node_fs11.existsSync)(nodeWasm)) return nodeWasm;
+        return (0, import_node_path8.resolve)((0, import_node_path8.join)(baseDir, "sql-wasm.wasm"));
       }
     };
   }
@@ -15219,13 +15367,13 @@ var init_global_db = __esm({
 
 // packages/analytics/src/engine/data/db-init.ts
 function ensureGlobalAnalyticsDir() {
-  if (!(0, import_node_fs11.existsSync)(ANALYTICS_DIR)) {
-    (0, import_node_fs11.mkdirSync)(ANALYTICS_DIR, { recursive: true });
+  if (!(0, import_node_fs12.existsSync)(ANALYTICS_DIR)) {
+    (0, import_node_fs12.mkdirSync)(ANALYTICS_DIR, { recursive: true });
   }
   return ANALYTICS_DIR;
 }
 function getGlobalDbPath() {
-  return (0, import_node_path8.resolve)((0, import_node_path8.join)(ANALYTICS_DIR, DB_FILENAME));
+  return (0, import_node_path9.resolve)((0, import_node_path9.join)(ANALYTICS_DIR, DB_FILENAME));
 }
 async function initializeGlobalDb(dbPath) {
   if (dbPath) {
@@ -15247,16 +15395,16 @@ async function initializeGlobalDb(dbPath) {
   })();
   return _singletonPromise;
 }
-var import_node_fs11, import_node_path8, import_node_os4, GOODVIBES_BASE, ANALYTICS_DIR, DB_FILENAME, _singleton, _singletonPromise;
+var import_node_fs12, import_node_path9, import_node_os5, GOODVIBES_BASE, ANALYTICS_DIR, DB_FILENAME, _singleton, _singletonPromise;
 var init_db_init = __esm({
   "packages/analytics/src/engine/data/db-init.ts"() {
     "use strict";
-    import_node_fs11 = require("node:fs");
-    import_node_path8 = require("node:path");
-    import_node_os4 = require("node:os");
+    import_node_fs12 = require("node:fs");
+    import_node_path9 = require("node:path");
+    import_node_os5 = require("node:os");
     init_global_db();
-    GOODVIBES_BASE = (0, import_node_path8.join)((0, import_node_os4.homedir)(), ".claude", ".goodvibes");
-    ANALYTICS_DIR = (0, import_node_path8.join)(GOODVIBES_BASE, "analytics", "v2");
+    GOODVIBES_BASE = (0, import_node_path9.join)((0, import_node_os5.homedir)(), ".claude", ".goodvibes");
+    ANALYTICS_DIR = (0, import_node_path9.join)(GOODVIBES_BASE, "analytics", "v2");
     DB_FILENAME = "analytics.db";
     _singleton = null;
     _singletonPromise = null;
@@ -15699,24 +15847,24 @@ async function costTranscript(reader, filePath, label) {
 }
 function collectSubagentTranscripts(sessionDir) {
   const files = [];
-  const subagentsDir = (0, import_node_path9.join)(sessionDir, "subagents");
+  const subagentsDir = (0, import_node_path10.join)(sessionDir, "subagents");
   try {
-    for (const e of (0, import_node_fs12.readdirSync)(subagentsDir)) {
-      if (e.startsWith("agent-") && e.endsWith(".jsonl")) files.push((0, import_node_path9.join)(subagentsDir, e));
+    for (const e of (0, import_node_fs13.readdirSync)(subagentsDir)) {
+      if (e.startsWith("agent-") && e.endsWith(".jsonl")) files.push((0, import_node_path10.join)(subagentsDir, e));
     }
   } catch {
   }
-  const tasksDir = (0, import_node_path9.join)(sessionDir, "tasks");
+  const tasksDir = (0, import_node_path10.join)(sessionDir, "tasks");
   const walk = /* @__PURE__ */ __name((dir, depth) => {
     if (depth > 2) return;
     let entries;
     try {
-      entries = (0, import_node_fs12.readdirSync)(dir, { withFileTypes: true });
+      entries = (0, import_node_fs13.readdirSync)(dir, { withFileTypes: true });
     } catch {
       return;
     }
     for (const ent of entries) {
-      const full = (0, import_node_path9.join)(dir, ent.name);
+      const full = (0, import_node_path10.join)(dir, ent.name);
       if (ent.isDirectory()) walk(full, depth + 1);
       else if (ent.isFile() && ent.name.endsWith(".jsonl")) files.push(full);
     }
@@ -15725,12 +15873,12 @@ function collectSubagentTranscripts(sessionDir) {
   return files;
 }
 function labelForSubagent(file2) {
-  const name = (0, import_node_path9.basename)(file2);
+  const name = (0, import_node_path10.basename)(file2);
   const idMatch = /^agent-(.+)\.jsonl$/.exec(name);
-  const id = idMatch ? idMatch[1] : (0, import_node_path9.basename)(name, ".jsonl");
+  const id = idMatch ? idMatch[1] : (0, import_node_path10.basename)(name, ".jsonl");
   const metaPath = file2.replace(/\.jsonl$/, ".meta.json");
   try {
-    const parsed = JSON.parse((0, import_node_fs12.readFileSync)(metaPath, "utf8"));
+    const parsed = JSON.parse((0, import_node_fs13.readFileSync)(metaPath, "utf8"));
     const type = typeof parsed["agentType"] === "string" ? parsed["agentType"] : null;
     return type ? `${id} (${type})` : id;
   } catch {
@@ -15760,8 +15908,8 @@ async function computeLiveSessionCost(options) {
       degraded: `could not read transcript: ${err instanceof Error ? err.message : String(err)}`
     };
   }
-  const sessionId = (0, import_node_path9.basename)(options.transcriptPath, ".jsonl");
-  const sessionDir = (0, import_node_path9.join)((0, import_node_path9.dirname)(options.transcriptPath), sessionId);
+  const sessionId = (0, import_node_path10.basename)(options.transcriptPath, ".jsonl");
+  const sessionDir = (0, import_node_path10.join)((0, import_node_path10.dirname)(options.transcriptPath), sessionId);
   const subagentFiles = collectSubagentTranscripts(sessionDir);
   const subagents = [];
   for (const file2 of subagentFiles) {
@@ -15819,15 +15967,23 @@ function renderLiveCostReport(report) {
   }
   lines.push("");
   lines.push(`Grand total: ${formatDollars(report.grand_total_usd)}`);
+  const prov = pricingProvenance();
+  if (prov.source === "first-party") {
+    const age = prov.ageHours !== void 0 ? `, fetched ${prov.ageHours}h ago` : "";
+    lines.push(`Rates: platform.claude.com pricing page${age} (fallback table fills unlisted models)`);
+  } else {
+    lines.push("Rates: built-in fallback table (first-party fetch pending or unavailable)");
+  }
   return lines.join("\n");
 }
-var import_node_fs12, import_node_path9;
+var import_node_fs13, import_node_path10;
 var init_live_cost = __esm({
   "packages/analytics/src/engine/observability/live-cost.ts"() {
     "use strict";
-    import_node_fs12 = require("node:fs");
-    import_node_path9 = require("node:path");
+    import_node_fs13 = require("node:fs");
+    import_node_path10 = require("node:path");
     init_jsonl_reader();
+    init_config2();
     init_format();
     __name(costTranscript, "costTranscript");
     __name(collectSubagentTranscripts, "collectSubagentTranscripts");
@@ -15855,7 +16011,7 @@ function parseStat(content) {
 }
 function readCmdline(procRoot, pid) {
   try {
-    const raw = (0, import_node_fs13.readFileSync)((0, import_node_path10.join)(procRoot, String(pid), "cmdline"), "utf8");
+    const raw = (0, import_node_fs14.readFileSync)((0, import_node_path11.join)(procRoot, String(pid), "cmdline"), "utf8");
     return raw.replace(/\0+/g, " ").trim();
   } catch {
     return "";
@@ -15863,7 +16019,7 @@ function readCmdline(procRoot, pid) {
 }
 function readLoadavg(procRoot) {
   try {
-    const raw = (0, import_node_fs13.readFileSync)((0, import_node_path10.join)(procRoot, "loadavg"), "utf8").trim();
+    const raw = (0, import_node_fs14.readFileSync)((0, import_node_path11.join)(procRoot, "loadavg"), "utf8").trim();
     const parts = raw.split(/\s+/);
     const l1 = Number(parts[0]);
     const l5 = Number(parts[1]);
@@ -15907,13 +16063,13 @@ function renderDoctorReport(state, opts = {}) {
   }
   return lines.join("\n");
 }
-var import_node_fs13, import_node_path10, import_node_os5, SAMPLE_INTERVAL_MS, DEFAULT_CLK_TCK, CPU_THRESHOLD_PCT, DEFAULT_SUSTAINED_SAMPLES, LOAD_PER_CORE_NUDGE, HEALTH_STATE_SEGMENTS, DEFAULT_PLUGIN_PATH_RE, HostHealthSampler;
+var import_node_fs14, import_node_path11, import_node_os6, SAMPLE_INTERVAL_MS, DEFAULT_CLK_TCK, CPU_THRESHOLD_PCT, DEFAULT_SUSTAINED_SAMPLES, LOAD_PER_CORE_NUDGE, HEALTH_STATE_SEGMENTS, DEFAULT_PLUGIN_PATH_RE, HostHealthSampler;
 var init_host_health = __esm({
   "packages/analytics/src/engine/observability/host-health.ts"() {
     "use strict";
-    import_node_fs13 = require("node:fs");
-    import_node_path10 = require("node:path");
-    import_node_os5 = require("node:os");
+    import_node_fs14 = require("node:fs");
+    import_node_path11 = require("node:path");
+    import_node_os6 = require("node:os");
     init_runtime();
     SAMPLE_INTERVAL_MS = 6e4;
     DEFAULT_CLK_TCK = 100;
@@ -15953,7 +16109,7 @@ var init_host_health = __esm({
       }
       /** Absolute path to the state file this sampler owns. */
       stateFilePath() {
-        return (0, import_node_path10.join)(this.goodvibesDir, ...HEALTH_STATE_SEGMENTS);
+        return (0, import_node_path11.join)(this.goodvibesDir, ...HEALTH_STATE_SEGMENTS);
       }
       /**
        * Start the slow sampler. The interval is `unref()`ed so it never keeps the
@@ -15991,12 +16147,12 @@ var init_host_health = __esm({
        */
       sampleOnce() {
         const sampledAt = this.now();
-        const cpuCount = Math.max(1, (0, import_node_os5.cpus)().length || 1);
+        const cpuCount = Math.max(1, (0, import_node_os6.cpus)().length || 1);
         const loadavg = readLoadavg(this.procRoot);
         const loadPerCore = loadavg ? loadavg[0] / cpuCount : null;
         let entries;
         try {
-          entries = (0, import_node_fs13.readdirSync)(this.procRoot);
+          entries = (0, import_node_fs14.readdirSync)(this.procRoot);
         } catch {
           const degraded = {
             schema: 1,
@@ -16019,7 +16175,7 @@ var init_host_health = __esm({
         for (const pid of pids) {
           let statRaw;
           try {
-            statRaw = (0, import_node_fs13.readFileSync)((0, import_node_path10.join)(this.procRoot, String(pid), "stat"), "utf8");
+            statRaw = (0, import_node_fs14.readFileSync)((0, import_node_path11.join)(this.procRoot, String(pid), "stat"), "utf8");
           } catch {
             continue;
           }
@@ -16089,7 +16245,7 @@ var init_host_health = __esm({
       /** Persist a snapshot atomically. Best-effort; never throws. */
       writeState(state) {
         try {
-          (0, import_node_fs13.mkdirSync)((0, import_node_path10.dirname)(this.stateFilePath()), { recursive: true });
+          (0, import_node_fs14.mkdirSync)((0, import_node_path11.dirname)(this.stateFilePath()), { recursive: true });
           atomicWriteJson(this.stateFilePath(), state);
         } catch {
         }
@@ -16148,24 +16304,24 @@ function analyseTail(records) {
 }
 function collectAgentFiles(sessionDir) {
   const files = [];
-  const subagentsDir = (0, import_node_path11.join)(sessionDir, "subagents");
+  const subagentsDir = (0, import_node_path12.join)(sessionDir, "subagents");
   try {
-    for (const e of (0, import_node_fs14.readdirSync)(subagentsDir)) {
-      if (e.startsWith("agent-") && e.endsWith(".jsonl")) files.push((0, import_node_path11.join)(subagentsDir, e));
+    for (const e of (0, import_node_fs15.readdirSync)(subagentsDir)) {
+      if (e.startsWith("agent-") && e.endsWith(".jsonl")) files.push((0, import_node_path12.join)(subagentsDir, e));
     }
   } catch {
   }
-  const tasksDir = (0, import_node_path11.join)(sessionDir, "tasks");
+  const tasksDir = (0, import_node_path12.join)(sessionDir, "tasks");
   const walk = /* @__PURE__ */ __name((dir, depth) => {
     if (depth > 2) return;
     let entries;
     try {
-      entries = (0, import_node_fs14.readdirSync)(dir, { withFileTypes: true });
+      entries = (0, import_node_fs15.readdirSync)(dir, { withFileTypes: true });
     } catch {
       return;
     }
     for (const ent of entries) {
-      const full = (0, import_node_path11.join)(dir, ent.name);
+      const full = (0, import_node_path12.join)(dir, ent.name);
       if (ent.isDirectory()) walk(full, depth + 1);
       else if (ent.isFile() && ent.name.endsWith(".jsonl")) files.push(full);
     }
@@ -16176,7 +16332,7 @@ function collectAgentFiles(sessionDir) {
 function readMeta(agentFile) {
   const metaPath = agentFile.replace(/\.jsonl$/, ".meta.json");
   try {
-    const parsed = JSON.parse((0, import_node_fs14.readFileSync)(metaPath, "utf8"));
+    const parsed = JSON.parse((0, import_node_fs15.readFileSync)(metaPath, "utf8"));
     return {
       agent_type: typeof parsed["agentType"] === "string" ? parsed["agentType"] : null,
       description: typeof parsed["description"] === "string" ? parsed["description"] : null
@@ -16186,9 +16342,9 @@ function readMeta(agentFile) {
   }
 }
 function agentIdFromFile(file2) {
-  const name = (0, import_node_path11.basename)(file2);
+  const name = (0, import_node_path12.basename)(file2);
   const m = /^agent-(.+)\.jsonl$/.exec(name);
-  return m ? m[1] : (0, import_node_path11.basename)(name, ".jsonl");
+  return m ? m[1] : (0, import_node_path12.basename)(name, ".jsonl");
 }
 function scanAgentLiveness(options) {
   const now = options.now ?? (() => Date.now());
@@ -16212,10 +16368,10 @@ function scanAgentLiveness(options) {
     let content = "";
     let readable = true;
     try {
-      const st = (0, import_node_fs14.statSync)(file2);
+      const st = (0, import_node_fs15.statSync)(file2);
       sizeBytes = st.size;
       mtimeMs = st.mtimeMs;
-      content = (0, import_node_fs14.readFileSync)(file2, "utf8");
+      content = (0, import_node_fs15.readFileSync)(file2, "utf8");
     } catch {
       readable = false;
     }
@@ -16231,7 +16387,7 @@ function scanAgentLiveness(options) {
     }
     if (!readable) {
       agents.push({
-        file: (0, import_node_path11.basename)(file2),
+        file: (0, import_node_path12.basename)(file2),
         agent_id: agentId,
         agent_type: meta3.agent_type,
         description: meta3.description,
@@ -16275,7 +16431,7 @@ function scanAgentLiveness(options) {
       detail = `quiet for ${Math.round(ageMs / 6e4)}m, nothing outstanding`;
     }
     agents.push({
-      file: (0, import_node_path11.basename)(file2),
+      file: (0, import_node_path12.basename)(file2),
       agent_id: agentId,
       agent_type: meta3.agent_type,
       description: meta3.description,
@@ -16308,12 +16464,12 @@ function renderAgentLiveness(report) {
   }
   return lines.join("\n");
 }
-var import_node_fs14, import_node_path11, DEFAULT_WEDGED_MINUTES;
+var import_node_fs15, import_node_path12, DEFAULT_WEDGED_MINUTES;
 var init_agent_liveness = __esm({
   "packages/analytics/src/engine/observability/agent-liveness.ts"() {
     "use strict";
-    import_node_fs14 = require("node:fs");
-    import_node_path11 = require("node:path");
+    import_node_fs15 = require("node:fs");
+    import_node_path12 = require("node:path");
     init_jsonl_reader();
     DEFAULT_WEDGED_MINUTES = 3;
     __name(analyseTail, "analyseTail");
@@ -16349,9 +16505,9 @@ async function runLiveCost(aggregator) {
   return renderLiveCostReport(report);
 }
 function runDoctor(goodvibesDir) {
-  const stateFile = (0, import_node_path12.join)(goodvibesDir, ...HEALTH_STATE_SEGMENTS);
+  const stateFile = (0, import_node_path13.join)(goodvibesDir, ...HEALTH_STATE_SEGMENTS);
   try {
-    const state2 = JSON.parse((0, import_node_fs15.readFileSync)(stateFile, "utf8"));
+    const state2 = JSON.parse((0, import_node_fs16.readFileSync)(stateFile, "utf8"));
     if (state2 && typeof state2.sampled_at === "number") {
       const staleMs = Date.now() - state2.sampled_at;
       return renderDoctorReport(state2, { stale_ms: staleMs });
@@ -16365,19 +16521,19 @@ function runDoctor(goodvibesDir) {
 }
 function runAgents(aggregator) {
   const transcript = aggregator.getActiveJsonlPath();
-  const sessionDir = transcript ? (0, import_node_path12.join)((0, import_node_path13.dirname)(transcript), (0, import_node_path13.basename)(transcript, ".jsonl")) : null;
+  const sessionDir = transcript ? (0, import_node_path13.join)((0, import_node_path14.dirname)(transcript), (0, import_node_path14.basename)(transcript, ".jsonl")) : null;
   const report = scanAgentLiveness({ sessionDir });
   return renderAgentLiveness(report);
 }
-var import_node_fs15, import_node_path12, import_node_path13;
+var import_node_fs16, import_node_path13, import_node_path14;
 var init_observability2 = __esm({
   "packages/analytics/src/engine/handlers/observability.ts"() {
     "use strict";
-    import_node_fs15 = require("node:fs");
-    import_node_path12 = require("node:path");
+    import_node_fs16 = require("node:fs");
+    import_node_path13 = require("node:path");
     init_config2();
     init_observability();
-    import_node_path13 = require("node:path");
+    import_node_path14 = require("node:path");
     __name(runLiveCost, "runLiveCost");
     __name(runDoctor, "runDoctor");
     __name(runAgents, "runAgents");
@@ -16387,8 +16543,8 @@ var init_observability2 = __esm({
 // packages/analytics/src/engine/handlers/dashboard.ts
 function persistPaneState(sessionId) {
   try {
-    const goodvibesDir = (0, import_node_path14.resolve)(process.env["GOODVIBES_DIR"] ?? ".goodvibes");
-    const stateFile = (0, import_node_path14.join)(goodvibesDir, "active-panes.json");
+    const goodvibesDir = (0, import_node_path15.resolve)(process.env["GOODVIBES_DIR"] ?? ".goodvibes");
+    const stateFile = (0, import_node_path15.join)(goodvibesDir, "active-panes.json");
     let allState = {};
     try {
       const raw = fs2.readFileSync(stateFile, "utf-8");
@@ -16423,15 +16579,15 @@ function buildCommand(target) {
     distDir = __dirname;
   } else {
     const pluginRoot = process.env.PLUGIN_ROOT || process.env.CLAUDE_PLUGIN_ROOT || "";
-    distDir = (0, import_node_path14.join)(pluginRoot, "tools", "implementations", "analytics-engine", "dist");
+    distDir = (0, import_node_path15.join)(pluginRoot, "tools", "implementations", "analytics-engine", "dist");
   }
   const ext = target === "full" ? "mjs" : "cjs";
-  const absGoodvibesDir = (0, import_node_path14.resolve)(process.env["GOODVIBES_DIR"] ?? ".goodvibes");
+  const absGoodvibesDir = (0, import_node_path15.resolve)(process.env["GOODVIBES_DIR"] ?? ".goodvibes");
   if (/[\x00-\x1f\x7f]/.test(absGoodvibesDir)) {
     throw new Error("GOODVIBES_DIR contains invalid control characters");
   }
   const safeDir = absGoodvibesDir.replace(/["\`$]/g, "$&");
-  return `GOODVIBES_DIR="${safeDir}" node "${(0, import_node_path14.join)(distDir, `${target}.${ext}`)}"`;
+  return `GOODVIBES_DIR="${safeDir}" node "${(0, import_node_path15.join)(distDir, `${target}.${ext}`)}"`;
 }
 function handleStart(input, sessionId) {
   const detection = detectTmux();
@@ -16495,7 +16651,7 @@ function handleStop(input, sessionId) {
   return text(lines.join("\n"));
 }
 function handleDoctor(aggregator, goodvibesDir) {
-  const dir = goodvibesDir ?? (0, import_node_path14.resolve)(process.env["GOODVIBES_DIR"] ?? ".goodvibes");
+  const dir = goodvibesDir ?? (0, import_node_path15.resolve)(process.env["GOODVIBES_DIR"] ?? ".goodvibes");
   const health = runDoctor(dir);
   const agents = runAgents(aggregator);
   return text(`${health}
@@ -16546,12 +16702,12 @@ function resolveTargets(target) {
     }
   }
 }
-var fs2, import_node_path14, _manager, handleDashboard;
+var fs2, import_node_path15, _manager, handleDashboard;
 var init_dashboard = __esm({
   "packages/analytics/src/engine/handlers/dashboard.ts"() {
     "use strict";
     fs2 = __toESM(require("node:fs"), 1);
-    import_node_path14 = require("node:path");
+    import_node_path15 = require("node:path");
     init_runtime();
     init_manager();
     init_detect();
@@ -17144,20 +17300,20 @@ var init_budget = __esm({
 });
 
 // packages/analytics/src/engine/data/tag-store.ts
-function resolveJsonlPath(sessionId, jsonlBase = (0, import_node_path15.join)((0, import_node_os6.homedir)(), ".claude", "projects")) {
+function resolveJsonlPath(sessionId, jsonlBase = (0, import_node_path16.join)((0, import_node_os7.homedir)(), ".claude", "projects")) {
   const targetFile = `${sessionId}.jsonl`;
-  if (!(0, import_node_fs16.existsSync)(jsonlBase)) return null;
+  if (!(0, import_node_fs17.existsSync)(jsonlBase)) return null;
   try {
-    const projectDirs = (0, import_node_fs16.readdirSync)(jsonlBase).filter((entry) => {
+    const projectDirs = (0, import_node_fs17.readdirSync)(jsonlBase).filter((entry) => {
       try {
-        return (0, import_node_fs16.statSync)((0, import_node_path15.join)(jsonlBase, entry)).isDirectory();
+        return (0, import_node_fs17.statSync)((0, import_node_path16.join)(jsonlBase, entry)).isDirectory();
       } catch {
         return false;
       }
     });
     for (const projectDir of projectDirs) {
-      const candidate = (0, import_node_path15.resolve)((0, import_node_path15.join)(jsonlBase, projectDir, targetFile));
-      if ((0, import_node_fs16.existsSync)(candidate)) {
+      const candidate = (0, import_node_path16.resolve)((0, import_node_path16.join)(jsonlBase, projectDir, targetFile));
+      if ((0, import_node_fs17.existsSync)(candidate)) {
         return candidate;
       }
     }
@@ -17165,13 +17321,13 @@ function resolveJsonlPath(sessionId, jsonlBase = (0, import_node_path15.join)((0
   }
   return null;
 }
-var import_node_fs16, import_node_path15, import_node_os6, SCAN_HEAD_LINES, SCAN_TAIL_LINES, DOMAIN_PATTERNS, FRAMEWORK_PATTERNS, ACTIVITY_PATTERNS, TagStore;
+var import_node_fs17, import_node_path16, import_node_os7, SCAN_HEAD_LINES, SCAN_TAIL_LINES, DOMAIN_PATTERNS, FRAMEWORK_PATTERNS, ACTIVITY_PATTERNS, TagStore;
 var init_tag_store = __esm({
   "packages/analytics/src/engine/data/tag-store.ts"() {
     "use strict";
-    import_node_fs16 = require("node:fs");
-    import_node_path15 = require("node:path");
-    import_node_os6 = require("node:os");
+    import_node_fs17 = require("node:fs");
+    import_node_path16 = require("node:path");
+    import_node_os7 = require("node:os");
     SCAN_HEAD_LINES = 200;
     SCAN_TAIL_LINES = 100;
     DOMAIN_PATTERNS = [
@@ -17407,10 +17563,10 @@ ${tailText}`;
        * @param jsonlPath - Absolute path to the JSONL file.
        */
       _readJsonlCorpus(jsonlPath) {
-        if (!(0, import_node_fs16.existsSync)(jsonlPath)) return null;
+        if (!(0, import_node_fs17.existsSync)(jsonlPath)) return null;
         let rawContent;
         try {
-          rawContent = (0, import_node_fs16.readFileSync)(jsonlPath, "utf-8");
+          rawContent = (0, import_node_fs17.readFileSync)(jsonlPath, "utf-8");
         } catch {
           return null;
         }
@@ -17656,11 +17812,11 @@ function _flattenMetrics(m) {
     "files.conflicts": m.files.conflicts
   };
 }
-var import_node_fs17, path6, DEFAULT_MAX_SESSIONS, HistoricalStore;
+var import_node_fs18, path6, DEFAULT_MAX_SESSIONS, HistoricalStore;
 var init_historical_store = __esm({
   "packages/analytics/src/engine/data/historical-store.ts"() {
     "use strict";
-    import_node_fs17 = require("node:fs");
+    import_node_fs18 = require("node:fs");
     path6 = __toESM(require("node:path"), 1);
     DEFAULT_MAX_SESSIONS = 10;
     HistoricalStore = class {
@@ -17675,8 +17831,8 @@ var init_historical_store = __esm({
       }
       /** Ensure the sessions directory exists, creating it if necessary. */
       ensureDir() {
-        if (!(0, import_node_fs17.existsSync)(this.sessionsDir)) {
-          (0, import_node_fs17.mkdirSync)(this.sessionsDir, { recursive: true });
+        if (!(0, import_node_fs18.existsSync)(this.sessionsDir)) {
+          (0, import_node_fs18.mkdirSync)(this.sessionsDir, { recursive: true });
         }
       }
       /**
@@ -17689,8 +17845,8 @@ var init_historical_store = __esm({
         const filePath = path6.join(this.sessionsDir, `${archive.session_id}.json`);
         const content = JSON.stringify(archive, null, 2);
         const tmpPath = path6.join(this.sessionsDir, `.tmp-${archive.session_id}-${Date.now()}.json`);
-        (0, import_node_fs17.writeFileSync)(tmpPath, content, "utf-8");
-        (0, import_node_fs17.renameSync)(tmpPath, filePath);
+        (0, import_node_fs18.writeFileSync)(tmpPath, content, "utf-8");
+        (0, import_node_fs18.renameSync)(tmpPath, filePath);
         this.prune();
       }
       /**
@@ -17705,12 +17861,12 @@ var init_historical_store = __esm({
        * List all stored session archives, sorted newest first.
        */
       list() {
-        if (!(0, import_node_fs17.existsSync)(this.sessionsDir)) {
+        if (!(0, import_node_fs18.existsSync)(this.sessionsDir)) {
           return [];
         }
         let files;
         try {
-          files = (0, import_node_fs17.readdirSync)(this.sessionsDir).filter((f) => f.endsWith(".json") && !f.startsWith(".tmp-"));
+          files = (0, import_node_fs18.readdirSync)(this.sessionsDir).filter((f) => f.endsWith(".json") && !f.startsWith(".tmp-"));
         } catch {
           return [];
         }
@@ -17738,7 +17894,7 @@ var init_historical_store = __esm({
        * Call this explicitly when needed (e.g. on session-start startup).
        */
       prune() {
-        if (!(0, import_node_fs17.existsSync)(this.sessionsDir)) {
+        if (!(0, import_node_fs18.existsSync)(this.sessionsDir)) {
           return 0;
         }
         const archives = this.list();
@@ -17750,7 +17906,7 @@ var init_historical_store = __esm({
         for (const archive of toRemove) {
           const filePath = path6.join(this.sessionsDir, `${archive.session_id}.json`);
           try {
-            (0, import_node_fs17.unlinkSync)(filePath);
+            (0, import_node_fs18.unlinkSync)(filePath);
             pruned++;
           } catch {
           }
@@ -17902,12 +18058,12 @@ var init_historical_store = __esm({
         this.ensureDir();
         const filePath = path6.join(this.sessionsDir, `${sessionId}.json`);
         const tmpPath = path6.join(this.sessionsDir, `.tmp-${sessionId}-${Date.now()}.json`);
-        (0, import_node_fs17.writeFileSync)(tmpPath, JSON.stringify(archive, null, 2), "utf-8");
-        (0, import_node_fs17.renameSync)(tmpPath, filePath);
+        (0, import_node_fs18.writeFileSync)(tmpPath, JSON.stringify(archive, null, 2), "utf-8");
+        (0, import_node_fs18.renameSync)(tmpPath, filePath);
       }
       _readFile(filePath) {
         try {
-          const raw = (0, import_node_fs17.readFileSync)(filePath, "utf-8");
+          const raw = (0, import_node_fs18.readFileSync)(filePath, "utf-8");
           const parsed = JSON.parse(raw);
           if (!parsed || typeof parsed.session_id !== "string" || typeof parsed.started_at !== "string") {
             return null;
@@ -18229,13 +18385,13 @@ var init_config3 = __esm({
 });
 
 // packages/analytics/src/engine/data/jsonl-scanner.ts
-var fs5, path9, import_node_os7, JSONLScanner;
+var fs5, path9, import_node_os8, JSONLScanner;
 var init_jsonl_scanner = __esm({
   "packages/analytics/src/engine/data/jsonl-scanner.ts"() {
     "use strict";
     fs5 = __toESM(require("node:fs"), 1);
     path9 = __toESM(require("node:path"), 1);
-    import_node_os7 = require("node:os");
+    import_node_os8 = require("node:os");
     init_jsonl_reader();
     JSONLScanner = class {
       static {
@@ -18389,7 +18545,7 @@ var init_jsonl_scanner = __esm({
        */
       expandTilde(inputPath) {
         if (inputPath.startsWith("~/") || inputPath === "~") {
-          return path9.join((0, import_node_os7.homedir)(), inputPath.slice(2));
+          return path9.join((0, import_node_os8.homedir)(), inputPath.slice(2));
         }
         return inputPath;
       }
@@ -37200,13 +37356,13 @@ init_types();
 init_config2();
 
 // packages/analytics/src/engine/daemon/aggregator.ts
-var import_node_path6 = require("node:path");
-var import_node_os3 = require("node:os");
-var import_node_fs9 = require("node:fs");
+var import_node_path7 = require("node:path");
+var import_node_os4 = require("node:os");
+var import_node_fs10 = require("node:fs");
 
 // packages/analytics/src/engine/data/telemetry-reader.ts
 var import_sql = __toESM(require("sql.js"), 1);
-var import_node_fs3 = require("node:fs");
+var import_node_fs4 = require("node:fs");
 var path3 = __toESM(require("node:path"), 1);
 var import_meta = {};
 var COL = {
@@ -37251,7 +37407,7 @@ var TelemetryReader = class _TelemetryReader {
     if (this.db !== null) {
       return;
     }
-    if (!(0, import_node_fs3.existsSync)(this.dbPath)) {
+    if (!(0, import_node_fs4.existsSync)(this.dbPath)) {
       this._available = false;
       return;
     }
@@ -37264,9 +37420,9 @@ var TelemetryReader = class _TelemetryReader {
       }
       const wasmSubdir = path3.join(bundleDir, "wasm", "sql-wasm.wasm");
       const wasmBesideBundle = path3.join(bundleDir, "sql-wasm.wasm");
-      const sqlConfig = (0, import_node_fs3.existsSync)(wasmSubdir) ? { locateFile: /* @__PURE__ */ __name((file2) => path3.join(bundleDir, "wasm", file2), "locateFile") } : (0, import_node_fs3.existsSync)(wasmBesideBundle) ? { locateFile: /* @__PURE__ */ __name((file2) => path3.join(bundleDir, file2), "locateFile") } : {};
+      const sqlConfig = (0, import_node_fs4.existsSync)(wasmSubdir) ? { locateFile: /* @__PURE__ */ __name((file2) => path3.join(bundleDir, "wasm", file2), "locateFile") } : (0, import_node_fs4.existsSync)(wasmBesideBundle) ? { locateFile: /* @__PURE__ */ __name((file2) => path3.join(bundleDir, file2), "locateFile") } : {};
       this._SQL = await (0, import_sql.default)(sqlConfig);
-      const buffer = (0, import_node_fs3.readFileSync)(this.dbPath);
+      const buffer = (0, import_node_fs4.readFileSync)(this.dbPath);
       this.db = new this._SQL.Database(buffer);
       this._available = true;
     } catch (err) {
@@ -37531,10 +37687,10 @@ var TelemetryReader = class _TelemetryReader {
       this.db = null;
       this._available = false;
     }
-    if (!(0, import_node_fs3.existsSync)(this.dbPath)) return;
+    if (!(0, import_node_fs4.existsSync)(this.dbPath)) return;
     if (!this._SQL) return;
     try {
-      const buffer = (0, import_node_fs3.readFileSync)(this.dbPath);
+      const buffer = (0, import_node_fs4.readFileSync)(this.dbPath);
       this.db = new this._SQL.Database(buffer);
       this._available = true;
     } catch (err) {
@@ -37610,7 +37766,7 @@ var TelemetryReader = class _TelemetryReader {
 };
 
 // packages/analytics/src/engine/data/session-reader.ts
-var import_node_fs4 = require("node:fs");
+var import_node_fs5 = require("node:fs");
 var path4 = __toESM(require("node:path"), 1);
 var SessionReader = class {
   static {
@@ -37630,7 +37786,7 @@ var SessionReader = class {
     const sorted = files.map((f) => {
       try {
         const fullPath = path4.join(this.stateDir, f);
-        const mtime = (0, import_node_fs4.statSync)(fullPath).mtimeMs;
+        const mtime = (0, import_node_fs5.statSync)(fullPath).mtimeMs;
         return { file: f, mtime };
       } catch {
         return null;
@@ -37703,7 +37859,7 @@ var SessionReader = class {
    */
   listSessionFiles() {
     try {
-      return (0, import_node_fs4.readdirSync)(this.stateDir).filter(
+      return (0, import_node_fs5.readdirSync)(this.stateDir).filter(
         (f) => /^session_[0-9a-f]{8}\.json$/.test(f)
       );
     } catch {
@@ -37717,7 +37873,7 @@ var SessionReader = class {
    */
   parseSessionFile(filePath) {
     try {
-      const raw = (0, import_node_fs4.readFileSync)(filePath, "utf-8");
+      const raw = (0, import_node_fs5.readFileSync)(filePath, "utf-8");
       const parsed = JSON.parse(raw);
       const id = typeof parsed["id"] === "string" ? parsed["id"] : "";
       const started_at = typeof parsed["started_at"] === "string" ? parsed["started_at"] : "";
@@ -38403,8 +38559,8 @@ var BudgetTracker = class {
 };
 
 // packages/analytics/src/engine/daemon/memory-updater.ts
-var import_node_fs6 = require("node:fs");
-var import_node_path3 = require("node:path");
+var import_node_fs7 = require("node:fs");
+var import_node_path4 = require("node:path");
 var HIGH_READ_COUNT = 5;
 var SLOW_COMMAND_MS = 2e4;
 var GOOD_CACHE_RATE = 0.7;
@@ -38505,7 +38661,7 @@ var MemoryUpdater = class {
    */
   apply(updates) {
     try {
-      (0, import_node_fs6.mkdirSync)(this.memoryDir, { recursive: true });
+      (0, import_node_fs7.mkdirSync)(this.memoryDir, { recursive: true });
     } catch (err) {
       if (err instanceof Error && "code" in err && err.code !== "EEXIST") {
         throw err;
@@ -38513,14 +38669,14 @@ var MemoryUpdater = class {
     }
     if (updates.patterns.length > 0) {
       this.mergeAndWrite(
-        (0, import_node_path3.join)(this.memoryDir, "patterns.json"),
+        (0, import_node_path4.join)(this.memoryDir, "patterns.json"),
         updates.patterns,
         "id"
       );
     }
     if (updates.preferences.length > 0) {
       this.mergeAndWrite(
-        (0, import_node_path3.join)(this.memoryDir, "preferences.json"),
+        (0, import_node_path4.join)(this.memoryDir, "preferences.json"),
         updates.preferences,
         "key"
       );
@@ -38567,7 +38723,7 @@ var MemoryUpdater = class {
    */
   readJsonArray(filePath) {
     try {
-      const raw = (0, import_node_fs6.readFileSync)(filePath, "utf-8");
+      const raw = (0, import_node_fs7.readFileSync)(filePath, "utf-8");
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
         return parsed;
@@ -38589,11 +38745,11 @@ var MemoryUpdater = class {
     const tmpPath = `${filePath}.${process.pid}.tmp`;
     const content = JSON.stringify(data, null, 2) + "\n";
     try {
-      (0, import_node_fs6.writeFileSync)(tmpPath, content, { encoding: "utf-8" });
-      (0, import_node_fs6.renameSync)(tmpPath, filePath);
+      (0, import_node_fs7.writeFileSync)(tmpPath, content, { encoding: "utf-8" });
+      (0, import_node_fs7.renameSync)(tmpPath, filePath);
     } catch (err) {
       try {
-        (0, import_node_fs6.unlinkSync)(tmpPath);
+        (0, import_node_fs7.unlinkSync)(tmpPath);
       } catch {
       }
       throw err;
@@ -38603,13 +38759,13 @@ var MemoryUpdater = class {
 
 // packages/analytics/src/engine/daemon/watcher.ts
 var import_node_events2 = require("node:events");
-var import_node_fs8 = require("node:fs");
-var import_node_path5 = require("node:path");
+var import_node_fs9 = require("node:fs");
+var import_node_path6 = require("node:path");
 
 // packages/analytics/src/engine/data/jsonl-watcher.ts
 var import_node_events = require("node:events");
-var import_node_fs7 = require("node:fs");
-var import_node_path4 = require("node:path");
+var import_node_fs8 = require("node:fs");
+var import_node_path5 = require("node:path");
 var import_promises2 = require("node:fs/promises");
 init_jsonl_reader();
 var JSONLWatcher = class extends import_node_events.EventEmitter {
@@ -38799,7 +38955,7 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
       });
     }, "onFileChange");
     try {
-      const fsWatcher = (0, import_node_fs7.watch)(filePath, { persistent: false }, onFileChange);
+      const fsWatcher = (0, import_node_fs8.watch)(filePath, { persistent: false }, onFileChange);
       fsWatcher.on("error", (_err) => {
         try {
           fsWatcher.close();
@@ -38829,7 +38985,7 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
   createPollingHandle(filePath, onChange) {
     let lastMtime = 0;
     try {
-      lastMtime = (0, import_node_fs7.statSync)(filePath).mtimeMs;
+      lastMtime = (0, import_node_fs8.statSync)(filePath).mtimeMs;
     } catch {
     }
     const interval = setInterval(() => {
@@ -38838,7 +38994,7 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
         return;
       }
       try {
-        const s = (0, import_node_fs7.statSync)(filePath);
+        const s = (0, import_node_fs8.statSync)(filePath);
         if (s.mtimeMs !== lastMtime) {
           lastMtime = s.mtimeMs;
           onChange();
@@ -38854,12 +39010,12 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
    */
   watchDirectoryForNewSession() {
     const dirPath = this.projectDir;
-    if (!(0, import_node_fs7.existsSync)(dirPath)) return;
+    if (!(0, import_node_fs8.existsSync)(dirPath)) return;
     let handle;
     const onDirChange = /* @__PURE__ */ __name((_eventType, filename) => {
       if (filename === null || !filename.endsWith(".jsonl")) return;
-      const fullPath = (0, import_node_path4.join)(dirPath, filename);
-      if (!(0, import_node_fs7.existsSync)(fullPath)) return;
+      const fullPath = (0, import_node_path5.join)(dirPath, filename);
+      if (!(0, import_node_fs8.existsSync)(fullPath)) return;
       this.switchToSession(fullPath).catch((err) => {
         this.emitError(err instanceof Error ? err : new Error(String(err)));
       });
@@ -38869,7 +39025,7 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
       }
     }, "onDirChange");
     try {
-      handle = (0, import_node_fs7.watch)(dirPath, { persistent: false }, onDirChange);
+      handle = (0, import_node_fs8.watch)(dirPath, { persistent: false }, onDirChange);
     } catch {
       handle = { close() {
       } };
@@ -38886,8 +39042,8 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
    * @param sessionId - The parent session ID.
    */
   async watchSubagentFiles(sessionId) {
-    const subagentDir = (0, import_node_path4.join)(this.projectDir, sessionId, "subagents");
-    if (!(0, import_node_fs7.existsSync)(subagentDir)) return;
+    const subagentDir = (0, import_node_path5.join)(this.projectDir, sessionId, "subagents");
+    if (!(0, import_node_fs8.existsSync)(subagentDir)) return;
     let entries;
     try {
       entries = await (0, import_promises2.readdir)(subagentDir);
@@ -38896,7 +39052,7 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
     }
     for (const entry of entries) {
       if (!entry.startsWith("agent-") || !entry.endsWith(".jsonl")) continue;
-      const fullPath = (0, import_node_path4.join)(subagentDir, entry);
+      const fullPath = (0, import_node_path5.join)(subagentDir, entry);
       if (!this.watchedFiles.has(fullPath)) {
         this.attachFileWatcher(fullPath, true);
       }
@@ -38915,15 +39071,15 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
       if (this.activeSessionId !== sessionId) return;
       if (filename === null) return;
       if (!filename.startsWith("agent-") || !filename.endsWith(".jsonl")) return;
-      const fullPath = (0, import_node_path4.join)(subagentDir, filename);
-      if (!(0, import_node_fs7.existsSync)(fullPath)) return;
+      const fullPath = (0, import_node_path5.join)(subagentDir, filename);
+      if (!(0, import_node_fs8.existsSync)(fullPath)) return;
       if (!this.watchedFiles.has(fullPath)) {
         this.attachFileWatcher(fullPath, true);
       }
     }, "onDirChange");
     let handle;
     try {
-      handle = (0, import_node_fs7.watch)(subagentDir, { persistent: false }, onDirChange);
+      handle = (0, import_node_fs8.watch)(subagentDir, { persistent: false }, onDirChange);
     } catch {
       handle = { close() {
       } };
@@ -39111,19 +39267,19 @@ var DataWatcher = class extends import_node_events2.EventEmitter {
   attachWatchers() {
     const entries = [
       {
-        targetPath: (0, import_node_path5.join)(this.goodvibesDir, "telemetry", "telemetry.db"),
+        targetPath: (0, import_node_path6.join)(this.goodvibesDir, "telemetry", "telemetry.db"),
         event: "telemetry-change"
       },
       {
-        targetPath: (0, import_node_path5.join)(this.goodvibesDir, "state"),
+        targetPath: (0, import_node_path6.join)(this.goodvibesDir, "state"),
         event: "session-change"
       },
       {
-        targetPath: (0, import_node_path5.join)(this.goodvibesDir, "project-index.json"),
+        targetPath: (0, import_node_path6.join)(this.goodvibesDir, "project-index.json"),
         event: "index-change"
       },
       {
-        targetPath: (0, import_node_path5.join)(this.goodvibesDir, "goodvibes.json"),
+        targetPath: (0, import_node_path6.join)(this.goodvibesDir, "goodvibes.json"),
         event: "config-change"
       }
     ];
@@ -39145,17 +39301,17 @@ var DataWatcher = class extends import_node_events2.EventEmitter {
    * @param event      - Watcher event name to emit on change.
    */
   watchPath(targetPath, event) {
-    const targetBasename = (0, import_node_path5.basename)(targetPath);
+    const targetBasename = (0, import_node_path6.basename)(targetPath);
     const isDir = this.pathIsDirectory(targetPath);
-    const watchTarget = (0, import_node_fs8.existsSync)(targetPath) ? targetPath : (0, import_node_path5.dirname)(targetPath);
+    const watchTarget = (0, import_node_fs9.existsSync)(targetPath) ? targetPath : (0, import_node_path6.dirname)(targetPath);
     const handler = /* @__PURE__ */ __name((_eventType, filename) => {
-      if ((0, import_node_fs8.existsSync)(targetPath)) {
+      if ((0, import_node_fs9.existsSync)(targetPath)) {
         if (!isDir && filename !== null && filename !== targetBasename) {
           return;
         }
       } else {
         if (filename !== targetBasename) return;
-        if ((0, import_node_fs8.existsSync)(targetPath)) {
+        if ((0, import_node_fs9.existsSync)(targetPath)) {
           this.rewatchPath(targetPath, event);
           return;
         }
@@ -39163,7 +39319,7 @@ var DataWatcher = class extends import_node_events2.EventEmitter {
       this.debounceEmit(event);
     }, "handler");
     try {
-      const watcher = (0, import_node_fs8.watch)(watchTarget, {
+      const watcher = (0, import_node_fs9.watch)(watchTarget, {
         persistent: false
         /* watcher won't keep the Node.js process alive */
       }, handler);
@@ -39210,7 +39366,7 @@ var DataWatcher = class extends import_node_events2.EventEmitter {
     if (this.watchers.has(targetPath)) return;
     let lastMtime = 0;
     try {
-      lastMtime = (0, import_node_fs8.statSync)(targetPath).mtimeMs;
+      lastMtime = (0, import_node_fs9.statSync)(targetPath).mtimeMs;
     } catch {
     }
     const interval = setInterval(() => {
@@ -39219,7 +39375,7 @@ var DataWatcher = class extends import_node_events2.EventEmitter {
         return;
       }
       try {
-        const stat2 = (0, import_node_fs8.statSync)(targetPath);
+        const stat2 = (0, import_node_fs9.statSync)(targetPath);
         if (stat2.mtimeMs !== lastMtime) {
           lastMtime = stat2.mtimeMs;
           this.debounceEmit(event);
@@ -39240,7 +39396,7 @@ var DataWatcher = class extends import_node_events2.EventEmitter {
    */
   pathIsDirectory(targetPath) {
     try {
-      return (0, import_node_fs8.statSync)(targetPath).isDirectory();
+      return (0, import_node_fs9.statSync)(targetPath).isDirectory();
     } catch {
       return false;
     }
@@ -39290,11 +39446,11 @@ __name(emptySessionMetrics, "emptySessionMetrics");
 function readMaxAgentChains(goodvibesDir) {
   const DEFAULT = 6;
   for (const configPath of [
-    (0, import_node_path6.join)(goodvibesDir, "goodvibes.json"),
-    (0, import_node_path6.join)((0, import_node_os3.homedir)(), ".goodvibes", "goodvibes.json")
+    (0, import_node_path7.join)(goodvibesDir, "goodvibes.json"),
+    (0, import_node_path7.join)((0, import_node_os4.homedir)(), ".goodvibes", "goodvibes.json")
   ]) {
     try {
-      const raw = (0, import_node_fs9.readFileSync)(configPath, "utf8");
+      const raw = (0, import_node_fs10.readFileSync)(configPath, "utf8");
       const parsed = JSON.parse(raw);
       const val = parsed["max_parallel_agent_chains"];
       if (typeof val === "number" && val > 0) return val;
@@ -39352,30 +39508,30 @@ function toolToActivityType(tool) {
 }
 __name(toolToActivityType, "toolToActivityType");
 function resolveJsonlProjectDir(goodvibesDir, jsonlBasePath) {
-  const expandedBase = jsonlBasePath.startsWith("~") ? (0, import_node_path6.join)((0, import_node_os3.homedir)(), jsonlBasePath.slice(1)) : jsonlBasePath;
-  if (!(0, import_node_fs9.existsSync)(expandedBase)) return null;
+  const expandedBase = jsonlBasePath.startsWith("~") ? (0, import_node_path7.join)((0, import_node_os4.homedir)(), jsonlBasePath.slice(1)) : jsonlBasePath;
+  if (!(0, import_node_fs10.existsSync)(expandedBase)) return null;
   let entries;
   try {
-    entries = (0, import_node_fs9.readdirSync)(expandedBase);
+    entries = (0, import_node_fs10.readdirSync)(expandedBase);
   } catch {
     return null;
   }
-  const projectRoot = (0, import_node_path6.dirname)((0, import_node_path6.resolve)(goodvibesDir));
+  const projectRoot = (0, import_node_path7.dirname)((0, import_node_path7.resolve)(goodvibesDir));
   const dashedPath = projectRoot.replace(/\//g, "-");
   for (const entry of entries) {
     if (entry === dashedPath) {
-      const candidate = (0, import_node_path6.join)(expandedBase, entry);
-      if ((0, import_node_fs9.existsSync)(candidate)) return candidate;
+      const candidate = (0, import_node_path7.join)(expandedBase, entry);
+      if ((0, import_node_fs10.existsSync)(candidate)) return candidate;
     }
   }
   let latestMtime = 0;
   let latestDir = null;
   for (const entry of entries) {
-    const dirPath = (0, import_node_path6.join)(expandedBase, entry);
+    const dirPath = (0, import_node_path7.join)(expandedBase, entry);
     try {
-      const s = (0, import_node_fs9.statSync)(dirPath);
+      const s = (0, import_node_fs10.statSync)(dirPath);
       if (s.isDirectory() && s.mtimeMs > latestMtime) {
-        const subEntries = (0, import_node_fs9.readdirSync)(dirPath);
+        const subEntries = (0, import_node_fs10.readdirSync)(dirPath);
         if (subEntries.some((f) => f.endsWith(".jsonl"))) {
           latestMtime = s.mtimeMs;
           latestDir = dirPath;
@@ -39560,7 +39716,7 @@ var Aggregator = class _Aggregator {
     }
     this.anomalyDetector = new AnomalyDetector(this.telemetry, this.config, this.logger);
     this.budgetTracker = new BudgetTracker(this.config);
-    this.memoryUpdater = new MemoryUpdater((0, import_node_path6.join)(this.goodvibesDir, "memory"));
+    this.memoryUpdater = new MemoryUpdater((0, import_node_path7.join)(this.goodvibesDir, "memory"));
     this.watcher = new DataWatcher(this.goodvibesDir, {
       jsonlProjectDir: jsonlProjectDir ?? void 0,
       jsonlCostConfig: {
@@ -40028,7 +40184,7 @@ var Aggregator = class _Aggregator {
     const maxAgentChains = readMaxAgentChains(this.goodvibesDir);
     const partialState = {
       session_id: sessionId,
-      project_hash: (0, import_node_path6.basename)((0, import_node_path6.dirname)(this.goodvibesDir)),
+      project_hash: (0, import_node_path7.basename)((0, import_node_path7.dirname)(this.goodvibesDir)),
       max_agent_chains: maxAgentChains,
       started_at: this.startedAt,
       uptime_ms: uptimeMs,
@@ -40058,7 +40214,7 @@ var Aggregator = class _Aggregator {
     const healthStatus = computeHealthStatus(allAnomalies, metrics);
     return {
       session_id: sessionId,
-      project_hash: (0, import_node_path6.basename)((0, import_node_path6.dirname)(this.goodvibesDir)),
+      project_hash: (0, import_node_path7.basename)((0, import_node_path7.dirname)(this.goodvibesDir)),
       max_agent_chains: maxAgentChains,
       started_at: this.startedAt,
       uptime_ms: uptimeMs,
@@ -40178,7 +40334,7 @@ var Aggregator = class _Aggregator {
         }
       }
       for (const rawPath of filePaths) {
-        const filePath = (0, import_node_path6.resolve)(rawPath);
+        const filePath = (0, import_node_path7.resolve)(rawPath);
         if (!fileStats.has(filePath)) {
           fileStats.set(filePath, { reads: 0, writes: 0, conflicts: 0, lastAccessed: timestamp });
         }
@@ -40264,7 +40420,7 @@ var Aggregator = class _Aggregator {
    */
   findSessionDir() {
     if (this.activeJsonlPath === null) return null;
-    return (0, import_node_path6.dirname)(this.activeJsonlPath);
+    return (0, import_node_path7.dirname)(this.activeJsonlPath);
   }
   /**
    * Parse a subagent JSONL file and return aggregated token/tool counts.
@@ -40273,15 +40429,15 @@ var Aggregator = class _Aggregator {
    * @param agentId    - Agent ID from the Task tool_use block (may be a prefix).
    */
   parseSubagentFile(sessionDir, agentId) {
-    const subagentsDir = (0, import_node_path6.join)(sessionDir, "subagents");
-    if (!(0, import_node_fs9.existsSync)(subagentsDir)) return null;
+    const subagentsDir = (0, import_node_path7.join)(sessionDir, "subagents");
+    if (!(0, import_node_fs10.existsSync)(subagentsDir)) return null;
     let entries;
     try {
-      const dirStat = (0, import_node_fs9.statSync)(subagentsDir);
+      const dirStat = (0, import_node_fs10.statSync)(subagentsDir);
       if (this.subagentDirCache !== null && this.subagentDirCache.mtime === dirStat.mtimeMs) {
         entries = this.subagentDirCache.files;
       } else {
-        entries = (0, import_node_fs9.readdirSync)(subagentsDir);
+        entries = (0, import_node_fs10.readdirSync)(subagentsDir);
         this.subagentDirCache = { mtime: dirStat.mtimeMs, files: entries };
       }
     } catch {
@@ -40292,18 +40448,18 @@ var Aggregator = class _Aggregator {
       if (!entry.startsWith("agent-") || !entry.endsWith(".jsonl")) continue;
       const fileId = entry.slice("agent-".length, -".jsonl".length);
       if (fileId === agentId || fileId.startsWith(agentId)) {
-        subagentFile = (0, import_node_path6.join)(subagentsDir, entry);
+        subagentFile = (0, import_node_path7.join)(subagentsDir, entry);
         break;
       }
     }
     if (subagentFile === null) return null;
     try {
-      const fileStat = (0, import_node_fs9.statSync)(subagentFile);
+      const fileStat = (0, import_node_fs10.statSync)(subagentFile);
       const cached3 = this.subagentCache.get(subagentFile);
       if (cached3 !== void 0 && cached3.mtime === fileStat.mtimeMs) {
         return cached3.data;
       }
-      const content = (0, import_node_fs9.readFileSync)(subagentFile, "utf8");
+      const content = (0, import_node_fs10.readFileSync)(subagentFile, "utf8");
       const lines = content.split("\n").filter((l) => l.trim() !== "");
       let tokens_in = 0;
       let tokens_out = 0;
@@ -40370,7 +40526,7 @@ var Aggregator = class _Aggregator {
     try {
       const metrics = this.state.metrics;
       const jsonl = this.jsonlTotals;
-      const projectHash = (0, import_node_path6.basename)((0, import_node_path6.dirname)(this.goodvibesDir));
+      const projectHash = (0, import_node_path7.basename)((0, import_node_path7.dirname)(this.goodvibesDir));
       const jsonlToolCalls = this.jsonlReader !== null ? this.jsonlReader.extractToolCalls(this.jsonlRecords) : [];
       const precisionCalls = jsonlToolCalls.filter(
         (tc) => (tc.name ?? "").startsWith("mcp__plugin_goodvibes_precision")
@@ -40472,14 +40628,14 @@ var Aggregator = class _Aggregator {
    *          is stale (>60s old), or cannot be parsed.
    */
   readStatuslineData() {
-    const filePath = (0, import_node_path6.join)((0, import_node_os3.homedir)(), ".claude", "debug-statusline-input.json");
+    const filePath = (0, import_node_path7.join)((0, import_node_os4.homedir)(), ".claude", "debug-statusline-input.json");
     try {
-      const stat2 = (0, import_node_fs9.statSync)(filePath);
+      const stat2 = (0, import_node_fs10.statSync)(filePath);
       const ageMs = Date.now() - stat2.mtimeMs;
       if (ageMs > STATUSLINE_STALENESS_MS) {
         return null;
       }
-      const raw = (0, import_node_fs9.readFileSync)(filePath, "utf-8");
+      const raw = (0, import_node_fs10.readFileSync)(filePath, "utf-8");
       const json2 = JSON.parse(raw);
       if (typeof json2?.context_window?.used_percentage !== "number") {
         return null;
@@ -40899,7 +41055,7 @@ var configTool = {
 
 // packages/analytics/src/index.ts
 var SERVER_NAME = "analytics";
-var SERVER_VERSION = true ? "2.0.3" : "0.0.0-dev";
+var SERVER_VERSION = true ? "2.0.4" : "0.0.0-dev";
 var TOOL_MODULES = [
   queryTool,
   dashboardTool,

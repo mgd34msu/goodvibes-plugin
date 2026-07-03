@@ -21,6 +21,7 @@ import { homedir } from 'node:os';
 import type { AnalyticsConfig } from './types.js';
 import { DEFAULT_CONFIG } from './types.js';
 import { atomicWriteFileSync } from './runtime.js';
+import { refreshPricingIfStale } from './data/pricing-fetcher.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Model pricing types and loader
@@ -88,26 +89,67 @@ export const FALLBACK_MODEL_PRICING: ModelPricingMap = {
 };
 
 /**
- * Load model pricing from `~/.claude/model-pricing.json`.
+ * Load model pricing: the first-party overlay merged over the fallback table.
  *
- * This file is written by the session-start hook's pricing fetcher.
- * Falls back to FALLBACK_MODEL_PRICING if the file is absent or cannot be parsed.
+ * The overlay at `~/.claude/model-pricing.json` is maintained by the engine's
+ * own lazy fetcher (`data/pricing-fetcher.ts`), which pulls the official
+ * platform docs pricing page on a 24h TTL. Fetched rates win per model; the
+ * fallback fills anything the page doesn't list. Calling this also kicks a
+ * non-blocking staleness refresh so the NEXT cost query sees fresh data —
+ * this call never waits on the network.
  *
  * @returns Map of model ID to ModelPricingInfo (prices in $/MTok).
  */
 export function loadModelPricing(): ModelPricingMap {
+  // Fire-and-forget: never blocks, never throws; no-op when fresh or when
+  // GOODVIBES_NO_PRICING_FETCH=1.
+  void refreshPricingIfStale();
+
   try {
     if (existsSync(MODEL_PRICING_CACHE_PATH)) {
       const content = readFileSync(MODEL_PRICING_CACHE_PATH, 'utf-8');
       const cache = JSON.parse(content) as { models?: ModelPricingMap };
       if (cache.models && typeof cache.models === 'object') {
-        return cache.models;
+        return { ...FALLBACK_MODEL_PRICING, ...cache.models };
       }
     }
   } catch {
     // Fall through to fallback.
   }
   return { ...FALLBACK_MODEL_PRICING };
+}
+
+/** Where the current pricing numbers come from — surfaced in cost output. */
+export interface PricingProvenance {
+  source: 'first-party' | 'fallback-table';
+  url?: string;
+  fetchedAt?: string;
+  ageHours?: number;
+}
+
+/** Report provenance of the pricing data `loadModelPricing()` returns. */
+export function pricingProvenance(): PricingProvenance {
+  try {
+    if (existsSync(MODEL_PRICING_CACHE_PATH)) {
+      const cache = JSON.parse(readFileSync(MODEL_PRICING_CACHE_PATH, 'utf-8')) as {
+        fetchedAt?: string;
+        source?: string;
+        models?: unknown;
+      };
+      if (cache.models && cache.fetchedAt) {
+        const age = (Date.now() - new Date(cache.fetchedAt).getTime()) / 3_600_000;
+        return {
+          source: 'first-party',
+          url: cache.source ?? 'https://platform.claude.com/docs/en/about-claude/pricing.md',
+          fetchedAt: cache.fetchedAt,
+          ageHours: isNaN(age) ? undefined : Math.round(age * 10) / 10,
+        };
+      }
+    }
+  } catch {
+    // Fall through.
+  }
+  return { source: 'fallback-table' };
 }
 
 /**
