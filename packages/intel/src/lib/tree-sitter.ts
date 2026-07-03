@@ -24,9 +24,69 @@
  * inherited value.
  */
 
-import { Parser, Language, type Node, type Tree, type Point } from 'web-tree-sitter';
+// `web-tree-sitter` is an externalized WASM dependency (intel build.mjs) that
+// the one-time plugin setup installs into server/intel/node_modules. It is
+// loaded LAZILY on first parse — never at module load — so a fresh install (or
+// a post-update install that has not run setup yet) boots and answers
+// `initialize`/`tools/list` instead of crashing on a missing
+// `require('web-tree-sitter')`. Only the runtime VALUE import (the `Parser` and
+// `Language` classes) is deferred; the type imports are erased by the compiler
+// and cost nothing at runtime.
+import type { Parser as ParserClass, Language as LanguageClass, Node, Tree, Point } from 'web-tree-sitter';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+
+/** The `web-tree-sitter` classes this module needs at runtime, loaded lazily. */
+interface TreeSitterRuntime {
+  Parser: {
+    init(moduleOptions?: Record<string, unknown>): Promise<void>;
+    new (): ParserClass;
+  };
+  Language: {
+    load(input: string | Uint8Array): Promise<LanguageClass>;
+  };
+}
+
+let treeSitterRuntime: TreeSitterRuntime | null = null;
+let treeSitterLoadFailed = false;
+
+/**
+ * Lazily load the `web-tree-sitter` runtime with a cached failure state.
+ * Mirrors the `loadAstGrep()` pattern in `edit/engine.ts`: a computed specifier
+ * keeps esbuild from resolving the external at build time, and a load failure
+ * returns null (cached) so the honest-unavailable path fires instead of a
+ * crash. Returns null when the dep is not installed yet.
+ */
+async function loadTreeSitterRuntime(): Promise<TreeSitterRuntime | null> {
+  if (treeSitterRuntime) return treeSitterRuntime;
+  if (treeSitterLoadFailed) return null;
+  try {
+    const spec = ['web-tree', 'sitter'].join('-');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mod = (await import(spec as string)) as any;
+    if (!mod || typeof mod.Parser?.init !== 'function' || typeof mod.Language?.load !== 'function') {
+      treeSitterLoadFailed = true;
+      return null;
+    }
+    treeSitterRuntime = { Parser: mod.Parser, Language: mod.Language };
+    return treeSitterRuntime;
+  } catch {
+    treeSitterLoadFailed = true;
+    return null;
+  }
+}
+
+/**
+ * Thrown by {@link TreeSitterCore} when `web-tree-sitter` (a native/WASM dep) is
+ * not installed yet. Callers (code_read outline) translate it into the standard
+ * `nativeDepMessage` error envelope instead of a raw failure string.
+ */
+export class TreeSitterUnavailableError extends Error {
+  constructor() {
+    super('web-tree-sitter native dependency is not installed');
+    this.name = 'TreeSitterUnavailableError';
+  }
+}
 
 // `__dirname` — NOT `import.meta.url` — for the same reason as
 // lib/ripgrep.ts's `resolveRgPath`: esbuild bundles this ESM source to CJS
@@ -235,34 +295,52 @@ async function findWasmBasePath(): Promise<string> {
 
 /** Core tree-sitter wrapper: parse + outline + enclosing-function/class lookup. */
 export class TreeSitterCore {
-  private parser: Parser | null = null;
-  private languages: Map<string, Language> = new Map();
+  private parser: ParserClass | null = null;
+  private languages: Map<string, LanguageClass> = new Map();
+  private runtime: TreeSitterRuntime | null = null;
   private currentLanguage: string | null = null;
   private lastParsedLanguage: string | null = null;
   private initialized = false;
   private initPromise: Promise<void> | null = null;
 
+  /**
+   * Initialize the parser, loading `web-tree-sitter` lazily on first use.
+   * @throws {TreeSitterUnavailableError} when the native/WASM dep is not
+   *   installed yet — callers surface the standard setup-pointer envelope.
+   */
   async init(): Promise<void> {
     if (this.initialized) return;
     if (this.initPromise) return this.initPromise;
     this.initPromise = (async () => {
-      await Parser.init();
-      this.parser = new Parser();
+      const runtime = await loadTreeSitterRuntime();
+      if (!runtime) throw new TreeSitterUnavailableError();
+      this.runtime = runtime;
+      await runtime.Parser.init();
+      this.parser = new runtime.Parser();
       this.initialized = true;
     })();
-    return this.initPromise;
+    try {
+      await this.initPromise;
+    } catch (err) {
+      // Do not cache a rejected promise: reset so a later call can retry (the
+      // loader itself caches the missing-dep failure cheaply).
+      this.initPromise = null;
+      throw err;
+    }
   }
 
   /** The most recent grammar-load failure reason, for diagnostics (e.g. a wasm ABI/dylink-format mismatch). */
   lastLoadError: string | null = null;
 
-  private async loadLanguage(langName: string): Promise<Language | null> {
+  private async loadLanguage(langName: string): Promise<LanguageClass | null> {
     const cached = this.languages.get(langName);
     if (cached) return cached;
+    // `parse()` calls `init()` first, which sets `this.runtime`; guard anyway.
+    if (!this.runtime) return null;
     try {
       const basePath = await findWasmBasePath();
       const wasmPath = path.join(basePath, `tree-sitter-${langName}.wasm`);
-      const lang = await Language.load(wasmPath);
+      const lang = await this.runtime.Language.load(wasmPath);
       this.languages.set(langName, lang);
       return lang;
     } catch (error) {

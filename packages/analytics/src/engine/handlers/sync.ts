@@ -9,10 +9,12 @@
 import type { Aggregator } from '../daemon/aggregator.js';
 import type { AnalyticsSyncInput } from '../schemas/tools.js';
 import { initializeGlobalDb } from '../data/db-init.js';
+import { SqlJsUnavailableError } from '../data/global-db.js';
 import { SyncEngine } from '../data/sync-engine.js';
 import { JSONLScanner } from '../data/jsonl-scanner.js';
 import type { SyncProgress } from '../data/sync-engine.js';
 import { type HandlerResponse, text } from './types.js';
+import { nativeDepMessage } from '@goodvibes/core/envelope';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -84,6 +86,11 @@ export const handleSync: SyncHandler = async (
 
     return text(buildSyncReport(input.scope, progress));
   } catch (err) {
+    // Sync writes into the SQLite store; when sql.js is not installed yet,
+    // return the honest setup pointer instead of a raw "module not found".
+    if (err instanceof SqlJsUnavailableError) {
+      return text(nativeDepMessage('analytics sync (cross-project history store)'));
+    }
     const message = err instanceof Error ? err.message : String(err);
     return text(`analytics_sync error: ${message}`);
   }

@@ -105,10 +105,19 @@ var import_node_os3 = require("node:os");
 var import_node_fs10 = require("node:fs");
 
 // packages/analytics/src/engine/data/telemetry-reader.ts
-var import_sql = __toESM(require("sql.js"), 1);
 var import_node_fs = require("node:fs");
 var path = __toESM(require("node:path"), 1);
 var import_meta = {};
+async function loadSqlJsInit() {
+  try {
+    const spec = ["sql", "js"].join(".");
+    const mod = await import(spec);
+    return mod.default ?? mod;
+  } catch {
+    return null;
+  }
+}
+__name(loadSqlJsInit, "loadSqlJsInit");
 var COL = {
   id: 0,
   session_id: 1,
@@ -165,7 +174,13 @@ var TelemetryReader = class _TelemetryReader {
       const wasmSubdir = path.join(bundleDir, "wasm", "sql-wasm.wasm");
       const wasmBesideBundle = path.join(bundleDir, "sql-wasm.wasm");
       const sqlConfig = (0, import_node_fs.existsSync)(wasmSubdir) ? { locateFile: /* @__PURE__ */ __name((file) => path.join(bundleDir, "wasm", file), "locateFile") } : (0, import_node_fs.existsSync)(wasmBesideBundle) ? { locateFile: /* @__PURE__ */ __name((file) => path.join(bundleDir, file), "locateFile") } : {};
-      this._SQL = await (0, import_sql.default)(sqlConfig);
+      const initSqlJs = await loadSqlJsInit();
+      if (!initSqlJs) {
+        this.db = null;
+        this._available = false;
+        return;
+      }
+      this._SQL = await initSqlJs(sqlConfig);
       const buffer = (0, import_node_fs.readFileSync)(this.dbPath);
       this.db = new this._SQL.Database(buffer);
       this._available = true;
@@ -4858,6 +4873,15 @@ __name(applyMigrations, "applyMigrations");
 
 // packages/analytics/src/engine/data/global-db.ts
 var SAVE_DEBOUNCE_MS = 500;
+var SqlJsUnavailableError = class extends Error {
+  static {
+    __name(this, "SqlJsUnavailableError");
+  }
+  constructor() {
+    super("sql.js native dependency is not installed");
+    this.name = "SqlJsUnavailableError";
+  }
+};
 function rowsToObjects(result) {
   if (!result.length) return [];
   const { columns, values } = result[0];
@@ -4962,9 +4986,9 @@ var GlobalDB = class {
    * @throws {Error} If sql.js WASM cannot be loaded or schema application fails.
    */
   async initialize() {
-    const initSqlJs2 = await this.loadSqlJs();
+    const initSqlJs = await this.loadSqlJs();
     const wasmPath = this.resolveWasmPath();
-    this.SQL = await initSqlJs2({ locateFile: /* @__PURE__ */ __name(() => wasmPath, "locateFile") });
+    this.SQL = await initSqlJs({ locateFile: /* @__PURE__ */ __name(() => wasmPath, "locateFile") });
     if ((0, import_node_fs11.existsSync)(this.dbPath)) {
       const buffer = (0, import_node_fs11.readFileSync)(this.dbPath);
       this.db = new this.SQL.Database(buffer);
@@ -5672,9 +5696,12 @@ var GlobalDB = class {
       const mod = await import("sql.js");
       return mod.default;
     } catch {
-      const mod = require("sql.js");
-      const initFn = mod.default ?? mod;
-      return initFn;
+      try {
+        const mod = require("sql.js");
+        return mod.default ?? mod;
+      } catch {
+        throw new SqlJsUnavailableError();
+      }
     }
   }
   /**

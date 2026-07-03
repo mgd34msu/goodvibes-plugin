@@ -27,6 +27,7 @@
 
 import * as ts from 'typescript';
 import * as path from 'path';
+import { nativeDepMessage } from '@goodvibes/core/envelope';
 
 /** The three permitted match modes (no fuzzy / no regex, per plan §14.B). */
 export type EditMatchMode = 'exact' | 'ast' | 'ast_pattern';
@@ -287,8 +288,8 @@ async function astPatternSpans(
       spans: [],
       available: false,
       reason:
-        'ast_pattern mode is unavailable: the @ast-grep/napi native module is not installed in this build. ' +
-        'Use mode "ast" (TypeScript-compiler node matching) or "exact", or install @ast-grep/napi.',
+        nativeDepMessage('structural_edit ast_pattern mode') +
+        ' Meanwhile, use mode "ast" (TypeScript-compiler node matching) or "exact" — neither needs a native dependency.',
     };
   }
   const langName = languageOverride

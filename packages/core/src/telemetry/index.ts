@@ -14,13 +14,48 @@
  * own pre-serialization self-estimate.
  */
 
-import initSqlJs from 'sql.js';
+// `sql.js` is an externalized WASM dependency (see intel/analytics/connect
+// build.mjs) that the one-time plugin setup installs into each server's
+// node_modules. It is loaded LAZILY on first telemetry init — never at module
+// load — so a fresh install (or a post-update install that has not run setup
+// yet) boots and answers `initialize`/`tools/list` instead of crashing on a
+// missing `require('sql.js')`. Only the runtime VALUE import is deferred; the
+// type import is erased by the compiler and costs nothing at runtime.
+import type initSqlJs from 'sql.js';
 import type { Database as SqlJsDatabase, SqlJsStatic } from 'sql.js';
 import { randomBytes } from 'crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'fs';
 import { readFile, writeFile, mkdir, rename, readdir, unlink, stat } from 'fs/promises';
 import * as path from 'path';
 import { statePath } from '../config/index.js';
+import { nativeDepMessage } from '../envelope/errors.js';
+
+/** Shape of the lazily-loaded `sql.js` default export (the init function). */
+type SqlJsInit = (config?: Parameters<typeof initSqlJs>[0]) => Promise<SqlJsStatic>;
+
+let cachedSqlJsInit: SqlJsInit | null = null;
+let sqlJsLoadFailed = false;
+
+/**
+ * Lazily load `sql.js`'s init function with a cached failure state. Mirrors the
+ * `loadAstGrep()` pattern in intel's edit engine: a computed specifier keeps
+ * esbuild from resolving the external at build time, and a load failure returns
+ * null (cached) so a missing dep degrades to marked-unavailable instead of
+ * retrying a missing module on every call.
+ */
+async function loadSqlJsInit(): Promise<SqlJsInit | null> {
+  if (cachedSqlJsInit) return cachedSqlJsInit;
+  if (sqlJsLoadFailed) return null;
+  try {
+    const spec = ['sql', 'js'].join('.');
+    const mod = (await import(spec as string)) as { default?: unknown };
+    cachedSqlJsInit = (mod.default ?? mod) as SqlJsInit;
+    return cachedSqlJsInit;
+  } catch {
+    sqlJsLoadFailed = true;
+    return null;
+  }
+}
 
 // ── Telemetry record schema (analytics reads this shape) ─────────────────────
 
@@ -113,6 +148,11 @@ function atomicWriteFileSync(filePath: string, data: Buffer): void {
 export class Telemetry {
   private static instance: Telemetry | null = null;
   private static initializedDbPath: string | null = null;
+  /**
+   * Set when `initialize()` could not load `sql.js` (dep not installed yet).
+   * Telemetry then stays a no-op — it never blocks or crashes a tool call.
+   */
+  private static unavailableReason: string | null = null;
 
   private readonly db: SqlJsDatabase;
   private readonly sessionId: string;
@@ -167,13 +207,33 @@ export class Telemetry {
     return {};
   }
 
-  /** Initialize the singleton. Loads the WASM module (the only async step). */
+  /**
+   * Initialize the singleton. Loads the WASM module lazily (the only async
+   * step). If `sql.js` is not installed yet, telemetry degrades to
+   * marked-unavailable — `initialize()` returns without throwing so a fresh
+   * install never has a missing dep block a tool call.
+   */
   public static async initialize(dbPath?: string): Promise<void> {
     if (Telemetry.instance) return;
+    const init = await loadSqlJsInit();
+    if (!init) {
+      Telemetry.unavailableReason = nativeDepMessage('Telemetry (session token accounting)');
+      return;
+    }
     const resolvedPath = dbPath ?? Telemetry.defaultDbPath();
     Telemetry.initializedDbPath = resolvedPath;
-    const SQL = await initSqlJs(Telemetry.sqlConfig());
+    const SQL = await init(Telemetry.sqlConfig());
     Telemetry.instance = new Telemetry(SQL, resolvedPath);
+  }
+
+  /** Whether telemetry is available (sql.js loaded and the DB is open). */
+  public static isAvailable(): boolean {
+    return Telemetry.instance !== null;
+  }
+
+  /** The reason telemetry is unavailable, if a load failure marked it so. */
+  public static getUnavailableReason(): string | null {
+    return Telemetry.unavailableReason;
   }
 
   /** Get the singleton (throws if `initialize()` has not run). */
@@ -195,6 +255,7 @@ export class Telemetry {
       Telemetry.instance = null;
       Telemetry.initializedDbPath = null;
     }
+    Telemetry.unavailableReason = null;
   }
 
   /** Generate a call id: "{shortTool}_{sessionShort}_{uniqueHex}". */

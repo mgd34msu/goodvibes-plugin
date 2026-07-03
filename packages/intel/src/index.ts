@@ -1,9 +1,11 @@
 /**
- * goodvibes-intel MCP server — alpha scaffold.
+ * goodvibes-intel MCP server — the structure-aware code-intelligence server of
+ * the single `goodvibes` plugin (three servers: intel, analytics, connect).
  *
  * Wires `core/proc` (process hygiene) and `core/envelope` (response shape) and
- * serves an EMPTY tools list — enough that the bundle boots and answers an
- * `initialize` request over stdio. The 14 intel tools land in lanes 1–4.
+ * serves the 15 intel tools over stdio. Native/WASM-backed capabilities load
+ * their deps lazily and degrade to an honest setup-pointer envelope when the
+ * one-time plugin setup has not installed them yet (2.0.5).
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';

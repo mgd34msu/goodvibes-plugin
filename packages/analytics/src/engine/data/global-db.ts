@@ -37,6 +37,20 @@ import {
 /** Debounce delay for disk saves (ms). Prevents excessive I/O on bulk writes. */
 const SAVE_DEBOUNCE_MS = 500;
 
+/**
+ * Thrown by {@link GlobalDB.initialize} when `sql.js` (an externalized WASM dep)
+ * is not installed yet. The analytics engine and DB-backed handlers translate
+ * it into the standard `nativeDepMessage` setup-pointer instead of a crash or a
+ * raw "module not found" — the live JSONL modes need no native dep and keep
+ * working.
+ */
+export class SqlJsUnavailableError extends Error {
+  constructor() {
+    super('sql.js native dependency is not installed');
+    this.name = 'SqlJsUnavailableError';
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Row mapper helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -915,11 +929,16 @@ export class GlobalDB {
       const mod = await import('sql.js') as { default: typeof import('sql.js') };
       return mod.default as unknown as (config: { locateFile: () => string }) => Promise<SqlJsStatic>;
     } catch {
-      // CJS fallback — safe because esbuild bundles to CJS format
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const mod = require('sql.js') as { default?: unknown };
-      const initFn = (mod.default ?? mod) as (config: { locateFile: () => string }) => Promise<SqlJsStatic>;
-      return initFn;
+      try {
+        // CJS fallback — safe because esbuild bundles to CJS format
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const mod = require('sql.js') as { default?: unknown };
+        return (mod.default ?? mod) as (config: { locateFile: () => string }) => Promise<SqlJsStatic>;
+      } catch {
+        // Neither loader resolved sql.js — it is not installed yet. Surface a
+        // typed error so callers show the setup pointer instead of crashing.
+        throw new SqlJsUnavailableError();
+      }
     }
   }
 

@@ -13,8 +13,28 @@
  *   - Thread safety: single-process Node.js — no concurrent access within this module.
  */
 
-import initSqlJs from 'sql.js';
+// `sql.js` is an externalized WASM dependency (analytics build.mjs) installed by
+// the one-time plugin setup. Loaded LAZILY inside `initialize()` — never at
+// module load — so the analytics server boots on a fresh install and the live
+// JSONL-based modes (live_cost/doctor/agents) work even before setup runs. If
+// the dep is missing, `initialize()`'s existing try/catch marks the reader
+// unavailable (empty results); telemetry never blocks a tool.
+import type initSqlJs from 'sql.js';
 import type { Database, SqlJsStatic } from 'sql.js';
+
+/** Shape of the lazily-loaded `sql.js` default export (the init function). */
+type SqlJsInit = (config?: Parameters<typeof initSqlJs>[0]) => Promise<SqlJsStatic>;
+
+/** Lazily load `sql.js`'s init function; returns null when the dep is missing. */
+async function loadSqlJsInit(): Promise<SqlJsInit | null> {
+  try {
+    const spec = ['sql', 'js'].join('.');
+    const mod = (await import(spec as string)) as { default?: unknown };
+    return (mod.default ?? mod) as SqlJsInit;
+  } catch {
+    return null;
+  }
+}
 import { existsSync, readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import type { TelemetryRecord, ToolBreakdown, TokenMetrics } from '../types.js';
@@ -100,6 +120,14 @@ export class TelemetryReader {
           ? { locateFile: (file: string) => path.join(bundleDir, file) }
           : {};
 
+      const initSqlJs = await loadSqlJsInit();
+      if (!initSqlJs) {
+        // sql.js not installed yet — degrade to marked-unavailable (empty
+        // results), exactly like a missing DB file, instead of throwing.
+        this.db = null;
+        this._available = false;
+        return;
+      }
       this._SQL = await initSqlJs(sqlConfig);
       const buffer = readFileSync(this.dbPath);
       this.db = new this._SQL.Database(buffer);

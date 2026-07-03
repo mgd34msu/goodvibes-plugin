@@ -13528,6 +13528,64 @@ var init_logging = __esm({
   }
 });
 
+// packages/core/src/shared/utf8.ts
+var init_utf8 = __esm({
+  "packages/core/src/shared/utf8.ts"() {
+    "use strict";
+  }
+});
+
+// packages/core/src/envelope/errors.ts
+function nativeDepMessage(capability) {
+  return `${capability} needs native dependencies that are not installed yet - run /goodvibes:plugin setup (one-time). This also happens after a plugin update, which replaces the installed dependencies.`;
+}
+var init_errors = __esm({
+  "packages/core/src/envelope/errors.ts"() {
+    "use strict";
+    __name(nativeDepMessage, "nativeDepMessage");
+  }
+});
+
+// packages/core/src/envelope/overflow.ts
+var init_overflow = __esm({
+  "packages/core/src/envelope/overflow.ts"() {
+    "use strict";
+    init_config();
+  }
+});
+
+// packages/core/src/envelope/index.ts
+function errorEnvelope(error51, meta3 = {}) {
+  return { success: false, error: error51, meta: { token_estimate: 0, ...meta3 } };
+}
+function renderEnvelope(env) {
+  if (!env.meta) return JSON.stringify(env);
+  const provisional = JSON.stringify(env);
+  const honest = {
+    ...env,
+    meta: { ...env.meta, token_estimate: estimatePayloadTokens(provisional) }
+  };
+  return JSON.stringify(honest);
+}
+function toCallToolResult(env) {
+  const block = { type: "text", text: renderEnvelope(env) };
+  return { content: [block], isError: !env.success };
+}
+var init_envelope = __esm({
+  "packages/core/src/envelope/index.ts"() {
+    "use strict";
+    init_tokens();
+    init_utf8();
+    init_tokens();
+    init_utf8();
+    init_errors();
+    init_overflow();
+    __name(errorEnvelope, "errorEnvelope");
+    __name(renderEnvelope, "renderEnvelope");
+    __name(toCallToolResult, "toCallToolResult");
+  }
+});
+
 // packages/analytics/src/engine/types.ts
 function toolResponse(text2, isError = false) {
   const response = { content: [{ type: "text", text: text2 }] };
@@ -14582,7 +14640,7 @@ function rowToAgent(row) {
     exit_code: row["exit_code"] != null ? Number(row["exit_code"]) : void 0
   };
 }
-var import_node_fs11, import_node_path8, SAVE_DEBOUNCE_MS, GlobalDB;
+var import_node_fs11, import_node_path8, SAVE_DEBOUNCE_MS, SqlJsUnavailableError, GlobalDB;
 var init_global_db = __esm({
   "packages/analytics/src/engine/data/global-db.ts"() {
     "use strict";
@@ -14591,6 +14649,15 @@ var init_global_db = __esm({
     init_runtime();
     init_db_schema();
     SAVE_DEBOUNCE_MS = 500;
+    SqlJsUnavailableError = class extends Error {
+      static {
+        __name(this, "SqlJsUnavailableError");
+      }
+      constructor() {
+        super("sql.js native dependency is not installed");
+        this.name = "SqlJsUnavailableError";
+      }
+    };
     __name(rowsToObjects, "rowsToObjects");
     __name(rowToSession, "rowToSession");
     __name(rowToApiCall, "rowToApiCall");
@@ -14622,9 +14689,9 @@ var init_global_db = __esm({
        * @throws {Error} If sql.js WASM cannot be loaded or schema application fails.
        */
       async initialize() {
-        const initSqlJs2 = await this.loadSqlJs();
+        const initSqlJs = await this.loadSqlJs();
         const wasmPath = this.resolveWasmPath();
-        this.SQL = await initSqlJs2({ locateFile: /* @__PURE__ */ __name(() => wasmPath, "locateFile") });
+        this.SQL = await initSqlJs({ locateFile: /* @__PURE__ */ __name(() => wasmPath, "locateFile") });
         if ((0, import_node_fs11.existsSync)(this.dbPath)) {
           const buffer = (0, import_node_fs11.readFileSync)(this.dbPath);
           this.db = new this.SQL.Database(buffer);
@@ -15332,9 +15399,12 @@ var init_global_db = __esm({
           const mod = await import("sql.js");
           return mod.default;
         } catch {
-          const mod = require("sql.js");
-          const initFn = mod.default ?? mod;
-          return initFn;
+          try {
+            const mod = require("sql.js");
+            return mod.default ?? mod;
+          } catch {
+            throw new SqlJsUnavailableError();
+          }
         }
       }
       /**
@@ -17655,6 +17725,9 @@ async function handleTag(aggregator, input, _goodvibesDir) {
       }
     }
   } catch (err) {
+    if (err instanceof SqlJsUnavailableError) {
+      return text(nativeDepMessage("analytics tag (session tagging store)"));
+    }
     const message = err instanceof Error ? err.message : String(err);
     return text(`analytics_tag error: ${message}`);
   }
@@ -17746,6 +17819,8 @@ var init_tag = __esm({
     init_types2();
     init_tag_store();
     init_db_init();
+    init_global_db();
+    init_envelope();
     _globalDb = null;
     _tagStore = null;
     _initPromise = null;
@@ -18774,9 +18849,11 @@ var init_sync = __esm({
   "packages/analytics/src/engine/handlers/sync.ts"() {
     "use strict";
     init_db_init();
+    init_global_db();
     init_sync_engine();
     init_jsonl_scanner();
     init_types2();
+    init_envelope();
     handleSync = /* @__PURE__ */ __name(async (aggregator, input, _goodvibesDir) => {
       try {
         const db = await initializeGlobalDb();
@@ -18808,6 +18885,9 @@ Use scope="all" to scan all projects.`
         }
         return text(buildSyncReport(input.scope, progress));
       } catch (err) {
+        if (err instanceof SqlJsUnavailableError) {
+          return text(nativeDepMessage("analytics sync (cross-project history store)"));
+        }
         const message = err instanceof Error ? err.message : String(err);
         return text(`analytics_sync error: ${message}`);
       }
@@ -37319,41 +37399,13 @@ __name(installProcessHygiene, "installProcessHygiene");
 
 // packages/analytics/src/index.ts
 init_logging();
-
-// packages/core/src/envelope/index.ts
-init_tokens();
-init_tokens();
-
-// packages/core/src/envelope/overflow.ts
-init_config();
-
-// packages/core/src/envelope/index.ts
-function errorEnvelope(error51, meta3 = {}) {
-  return { success: false, error: error51, meta: { token_estimate: 0, ...meta3 } };
-}
-__name(errorEnvelope, "errorEnvelope");
-function renderEnvelope(env) {
-  if (!env.meta) return JSON.stringify(env);
-  const provisional = JSON.stringify(env);
-  const honest = {
-    ...env,
-    meta: { ...env.meta, token_estimate: estimatePayloadTokens(provisional) }
-  };
-  return JSON.stringify(honest);
-}
-__name(renderEnvelope, "renderEnvelope");
-function toCallToolResult(env) {
-  const block = { type: "text", text: renderEnvelope(env) };
-  return { content: [block], isError: !env.success };
-}
-__name(toCallToolResult, "toCallToolResult");
-
-// packages/analytics/src/index.ts
+init_envelope();
 init_config();
 
 // packages/analytics/src/engine/index.ts
 init_types();
 init_config2();
+init_runtime();
 
 // packages/analytics/src/engine/daemon/aggregator.ts
 var import_node_path7 = require("node:path");
@@ -37361,10 +37413,19 @@ var import_node_os4 = require("node:os");
 var import_node_fs10 = require("node:fs");
 
 // packages/analytics/src/engine/data/telemetry-reader.ts
-var import_sql = __toESM(require("sql.js"), 1);
 var import_node_fs4 = require("node:fs");
 var path3 = __toESM(require("node:path"), 1);
 var import_meta = {};
+async function loadSqlJsInit() {
+  try {
+    const spec = ["sql", "js"].join(".");
+    const mod = await import(spec);
+    return mod.default ?? mod;
+  } catch {
+    return null;
+  }
+}
+__name(loadSqlJsInit, "loadSqlJsInit");
 var COL = {
   id: 0,
   session_id: 1,
@@ -37421,7 +37482,13 @@ var TelemetryReader = class _TelemetryReader {
       const wasmSubdir = path3.join(bundleDir, "wasm", "sql-wasm.wasm");
       const wasmBesideBundle = path3.join(bundleDir, "sql-wasm.wasm");
       const sqlConfig = (0, import_node_fs4.existsSync)(wasmSubdir) ? { locateFile: /* @__PURE__ */ __name((file2) => path3.join(bundleDir, "wasm", file2), "locateFile") } : (0, import_node_fs4.existsSync)(wasmBesideBundle) ? { locateFile: /* @__PURE__ */ __name((file2) => path3.join(bundleDir, file2), "locateFile") } : {};
-      this._SQL = await (0, import_sql.default)(sqlConfig);
+      const initSqlJs = await loadSqlJsInit();
+      if (!initSqlJs) {
+        this.db = null;
+        this._available = false;
+        return;
+      }
+      this._SQL = await initSqlJs(sqlConfig);
       const buffer = (0, import_node_fs4.readFileSync)(this.dbPath);
       this.db = new this._SQL.Database(buffer);
       this._available = true;
@@ -40676,7 +40743,9 @@ var Aggregator = class _Aggregator {
 };
 
 // packages/analytics/src/engine/index.ts
+init_global_db();
 init_db_init();
+init_envelope();
 
 // packages/analytics/src/engine/schemas/tools.ts
 var AnalyticsDashboardInput = external_exports.object({
@@ -40792,6 +40861,13 @@ var AnalyticsEngine = class {
   initialized = false;
   globalDb = null;
   /**
+   * Set when the global analytics DB could not be opened because `sql.js` is
+   * not installed yet (fresh install / post-update). The engine still
+   * initializes so the live JSONL-based modes (live_cost/doctor/agents) work;
+   * cross-project / historical modes surface this reason instead of crashing.
+   */
+  globalDbUnavailableReason = null;
+  /**
    * @param goodvibesDir - Path to the .goodvibes directory (absolute or
    *   relative to process.cwd()). Analytics config is read from here.
    */
@@ -40807,10 +40883,26 @@ var AnalyticsEngine = class {
    * @throws If the aggregator fails to initialize.
    */
   async initialize() {
-    this.globalDb = await initializeGlobalDb();
+    try {
+      this.globalDb = await initializeGlobalDb();
+    } catch (err) {
+      this.globalDb = null;
+      this.globalDbUnavailableReason = err instanceof SqlJsUnavailableError ? nativeDepMessage("Cross-project analytics history") : `Cross-project analytics history unavailable: ${err instanceof Error ? err.message : String(err)}`;
+      engineLogger().warn("GlobalDB unavailable \u2014 live modes only", {
+        error: err instanceof Error ? err.message : String(err)
+      });
+    }
     this.aggregator.setGlobalDb(this.globalDb);
     await this.aggregator.initialize();
     this.initialized = true;
+  }
+  /**
+   * The reason the global analytics DB is unavailable (native dep not installed
+   * yet), or null when it opened normally. Handlers that require the DB use
+   * this to return an honest setup-pointer message.
+   */
+  getGlobalDbUnavailableReason() {
+    return this.globalDbUnavailableReason;
   }
   /**
    * Dispatch an MCP tool call by name.
@@ -40845,6 +40937,9 @@ var AnalyticsEngine = class {
       }
       return await handler(this.aggregator, parseResult.data, this.goodvibesDir);
     } catch (err) {
+      if (err instanceof SqlJsUnavailableError) {
+        return toolResponse(nativeDepMessage(`analytics ${name} (historical / cross-project data)`), true);
+      }
       const message = err instanceof Error ? err.message : String(err);
       return toolResponse(`Handler error: ${message}`, true);
     }
@@ -41055,7 +41150,7 @@ var configTool = {
 
 // packages/analytics/src/index.ts
 var SERVER_NAME = "analytics";
-var SERVER_VERSION = true ? "2.0.4" : "0.0.0-dev";
+var SERVER_VERSION = true ? "2.0.5" : "0.0.0-dev";
 var TOOL_MODULES = [
   queryTool,
   dashboardTool,

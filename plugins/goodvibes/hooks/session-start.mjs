@@ -1,28 +1,23 @@
 #!/usr/bin/env node
 /**
- * SessionStart hook — silence by default.
+ * SessionStart hook — one line of real value every session (Mike, 2026-07-02).
  *
- * Contract (Mike, 2026-07-02): every emitted line must be actionable. Stack
- * detection, git branch, TODO counts, and "ready" banners are all things the
- * user can already see or doesn't need — they were removed after the 2.0.2
- * dogfood session showed the TODO counter was mostly measuring TODO comments
- * inside our own committed server bundles (67 of the reported 73).
+ * 2.0.3 made this hook silent by default. 2.0.5 replaces that silence with a
+ * single always-present value line built from the cost recap SessionEnd wrote
+ * to `.goodvibes/v2/cache/last-session-summary.json`:
  *
- * What remains, emitted ONLY when present:
- *  - quick project-health notes (dependencies not installed; .env.example
- *    present without .env) — cheap synchronous checks, no walking;
- *  - the host-health nudge, loosely coupled to the analytics sampler's state
- *    file (orphaned busy-loop plugin processes, high per-core load) and fully
- *    graceful when analytics isn't installed or hasn't sampled yet.
+ *   [goodvibes] Last session: $X.XX over N calls (families) | project total: $Y.YY
  *
- * A healthy, ordinary session start produces NO context and NO system message.
+ * The first time a project is seen (no summary yet) that line points at the
+ * live-cost view instead. Nothing else is emitted unless it is real: existing
+ * project-health notes, the host-health nudge, and a native-deps-missing note
+ * (setup ran once here, but the installed plugin copy lost its deps to an
+ * update). `systemMessage` mirrors the same information compactly.
  *
- * Retired from v1: the CLAUDE.md/prompt-chain writing half (moved to the
- * explicit `/goodvibes:plugin install-prompts` command — plan §8), crash
- * recovery, project file indexing, version/pricing fetch, and the
- * runtime-engine (automation) integration. Retired in 2.0.3: framework/stack
- * detection, git status, the bounded TODO walker, and the background-refresh
- * cache machinery that existed to feed them.
+ * Still retired (never coming back): stack/framework detection, git status, the
+ * TODO walker, "ready" banners, CLAUDE.md/prompt-chain writing, crash recovery,
+ * project file indexing, and the background-refresh cache machinery — the
+ * 2.0.2/2.0.3 noise the value-line contract exists to keep out.
  */
 
 import { existsSync } from 'node:fs';
@@ -36,6 +31,46 @@ import {
 } from './lib/common.mjs';
 
 const HOOK_EVENT = 'SessionStart';
+
+/** The always-present first line: last session's cost recap, or the first-session pointer. */
+function valueLine(cwd) {
+  const summary = readJsonSafe(v2StatePath(cwd, 'cache', 'last-session-summary.json'), null);
+  if (!summary || typeof summary.cost_usd !== 'number') {
+    return {
+      context:
+        '[goodvibes] First session here - 25 tools on intel/analytics/connect; ' +
+        '/goodvibes:analytics shows live session cost.',
+      system: 'goodvibes: first session — 25 tools on intel/analytics/connect',
+    };
+  }
+  const cost = summary.cost_usd;
+  const calls = typeof summary.calls === 'number' ? summary.calls : 0;
+  const families =
+    Array.isArray(summary.model_families) && summary.model_families.length
+      ? summary.model_families.join('/')
+      : 'no priced activity';
+  const total = typeof summary.project_total_usd === 'number' ? summary.project_total_usd : cost;
+  return {
+    context: `[goodvibes] Last session: $${cost.toFixed(2)} over ${calls} calls (${families}) | project total: $${total.toFixed(2)}`,
+    system: `goodvibes: last session $${cost.toFixed(2)} over ${calls} calls | project total $${total.toFixed(2)}`,
+  };
+}
+
+/**
+ * One-line note when this project has been through setup once but the INSTALLED
+ * plugin copy is missing a representative native dep — the tell-tale of a plugin
+ * update that replaced `server/<name>/node_modules`. Resolves the installed copy
+ * via CLAUDE_PLUGIN_ROOT; returns null (silent) when that env is absent, when
+ * setup never ran here, or when the dep is present.
+ */
+function nativeDepsNudge(cwd) {
+  if (!existsSync(v2StatePath(cwd, '.setup-marker.json'))) return null;
+  const root = process.env.CLAUDE_PLUGIN_ROOT;
+  if (!root) return null;
+  const representative = path.join(root, 'server', 'intel', 'node_modules', '@vscode', 'ripgrep');
+  if (existsSync(representative)) return null;
+  return 'native deps missing (plugin updated?) - run /goodvibes:plugin setup';
+}
 
 /** Cheap, synchronous project-health checks. Returns short problem notes. */
 function quickHealth(cwd) {
@@ -83,25 +118,27 @@ function healthNudge(cwd) {
 async function handleSessionStart(input) {
   const cwd = input.cwd || process.cwd();
 
+  // The one always-present value line, then anything that is genuinely real.
+  const value = valueLine(cwd);
   const problems = quickHealth(cwd);
   const nudge = healthNudge(cwd);
+  const deps = nativeDepsNudge(cwd);
 
-  // Nothing needs attention: say nothing. Silence is the feature.
-  if (problems.length === 0 && !nudge) {
-    return createHookResponse({ hookEventName: HOOK_EVENT });
-  }
-
-  const lines = ['[goodvibes] Needs attention'];
+  const lines = [value.context];
   for (const note of problems) lines.push(`- ${note}`);
   if (nudge) lines.push(`- ${nudge}`);
+  if (deps) lines.push(`- ${deps}`);
 
-  const summaryBits = [];
-  if (problems.length) summaryBits.push(`${problems.length} project note(s)`);
-  if (nudge) summaryBits.push('host health alert');
+  const alerts = [];
+  if (problems.length) alerts.push(`${problems.length} project note(s)`);
+  if (nudge) alerts.push('host health alert');
+  if (deps) alerts.push('native deps missing');
+
+  const systemMessage = alerts.length ? `${value.system} — ${alerts.join(', ')}` : value.system;
 
   return createHookResponse({
     hookEventName: HOOK_EVENT,
-    systemMessage: `goodvibes: ${summaryBits.join(', ')}`,
+    systemMessage,
     additionalContext: lines.join('\n'),
   });
 }
@@ -110,4 +147,4 @@ if (!isTestEnvironment()) {
   await runHook(HOOK_EVENT, handleSessionStart);
 }
 
-export { quickHealth, healthNudge, handleSessionStart };
+export { quickHealth, healthNudge, valueLine, nativeDepsNudge, handleSessionStart };

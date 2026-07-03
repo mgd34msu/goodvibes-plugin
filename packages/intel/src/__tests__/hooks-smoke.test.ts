@@ -87,17 +87,45 @@ describe('goodvibes intel hooks: valid JSON (fail-open)', () => {
 });
 
 describe('goodvibes intel hooks: schema and content', () => {
-  it('session-start.mjs is COMPLETELY silent for a healthy, ordinary project (the 2.0.3 contract)', () => {
+  it('session-start.mjs emits EXACTLY the first-session value line for a fresh, healthy project (2.0.5 contract)', () => {
     const cwd = makeTmpCwd();
     const { stdout } = runHook('session-start.mjs', { session_id: 'abc12345', cwd, hook_event_name: 'SessionStart' });
     const parsed = JSON.parse(stdout);
     expect(parsed.continue).toBe(true);
-    expect(parsed.systemMessage).toBeUndefined();
-    expect(parsed.hookSpecificOutput).toBeUndefined();
-    expect(parsed.additionalContext).toBeUndefined();
+    // No recap yet -> the first-session pointer, and NOTHING else appended.
+    expect(parsed.hookSpecificOutput?.hookEventName).toBe('SessionStart');
+    expect(parsed.hookSpecificOutput.additionalContext).toBe(
+      '[goodvibes] First session here - 25 tools on intel/analytics/connect; /goodvibes:analytics shows live session cost.',
+    );
+    expect(parsed.systemMessage).toMatch(/first session/);
+    // The retired filler must never come back.
+    expect(parsed.hookSpecificOutput.additionalContext).not.toMatch(/Stack:|Git: on|TODO/);
   });
 
-  it('session-start.mjs emits problems via hookSpecificOutput.additionalContext when something needs attention', () => {
+  it('session-start.mjs surfaces the recap value line with correct dollars from a planted summary', () => {
+    const cwd = makeTmpCwd();
+    const cacheDir = path.join(cwd, '.goodvibes', 'v2', 'cache');
+    fs.mkdirSync(cacheDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(cacheDir, 'last-session-summary.json'),
+      JSON.stringify({
+        session_id: 'prev',
+        cost_usd: 12.5,
+        calls: 42,
+        model_families: ['opus', 'sonnet'],
+        project_total_usd: 99.99,
+      }),
+    );
+    const { stdout } = runHook('session-start.mjs', { session_id: 'abc12345', cwd, hook_event_name: 'SessionStart' });
+    const parsed = JSON.parse(stdout);
+    expect(parsed.hookSpecificOutput.additionalContext).toBe(
+      '[goodvibes] Last session: $12.50 over 42 calls (opus/sonnet) | project total: $99.99',
+    );
+    expect(parsed.systemMessage).toBe('goodvibes: last session $12.50 over 42 calls | project total $99.99');
+    expect(parsed.hookSpecificOutput.additionalContext).not.toMatch(/Stack:|Git: on|TODO/);
+  });
+
+  it('session-start.mjs appends real problem notes AFTER the value line (value line always leads)', () => {
     const cwd = makeTmpCwd();
     // package.json without node_modules is a real, actionable problem note.
     fs.writeFileSync(path.join(cwd, 'package.json'), '{"name":"x","version":"0.0.0"}\n');
@@ -105,11 +133,54 @@ describe('goodvibes intel hooks: schema and content', () => {
     const parsed = JSON.parse(stdout);
     expect(parsed.additionalContext).toBeUndefined();
     expect(parsed.hookSpecificOutput?.hookEventName).toBe('SessionStart');
-    expect(parsed.hookSpecificOutput.additionalContext).toContain('[goodvibes] Needs attention');
-    expect(parsed.hookSpecificOutput.additionalContext).toContain('dependencies not installed');
+    const ctx = parsed.hookSpecificOutput.additionalContext as string;
+    // First line is the (first-session) value line; the note appends below it.
+    expect(ctx.split('\n')[0]).toContain('[goodvibes] First session here');
+    expect(ctx).toContain('dependencies not installed');
     expect(parsed.systemMessage).toMatch(/project note/);
     // The retired filler must never come back.
-    expect(parsed.hookSpecificOutput.additionalContext).not.toMatch(/Stack:|Git: on|TODO/);
+    expect(ctx).not.toMatch(/Stack:|Git: on|TODO/);
+  });
+
+  it('session-end.mjs writes a cost recap JSON with the expected cost from a synthetic transcript', () => {
+    const cwd = makeTmpCwd();
+    const transcript = path.join(cwd, 'transcript.jsonl');
+    // Unknown model -> the module's DEFAULT rate ($3 in / $15 out per MTok),
+    // deterministic regardless of any machine's ~/.claude/model-pricing.json.
+    // Two priced records at 100k in + 100k out each: (0.3 + 1.5) * 2 = 3.60.
+    // A truncated final line proves tail tolerance (it must be skipped).
+    const rec = JSON.stringify({
+      type: 'assistant',
+      message: { model: 'claude-costtest-1', usage: { input_tokens: 100_000, output_tokens: 100_000 } },
+    });
+    fs.writeFileSync(transcript, `${rec}\n${rec}\n{"type":"assistant","message":{"usa`);
+
+    const { stdout } = runHook('session-end.mjs', {
+      session_id: 'sess-xyz',
+      cwd,
+      hook_event_name: 'SessionEnd',
+      transcript_path: transcript,
+    });
+    expect(JSON.parse(stdout).continue).toBe(true);
+
+    const summaryPath = path.join(cwd, '.goodvibes', 'v2', 'cache', 'last-session-summary.json');
+    const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf-8'));
+    expect(summary.session_id).toBe('sess-xyz');
+    expect(summary.calls).toBe(2);
+    expect(summary.cost_usd).toBe(3.6);
+    expect(summary.model_families).toEqual(['costtest']);
+    expect(summary.project_total_usd).toBe(3.6);
+
+    // A second run adds onto the running project total (previous + this session).
+    runHook('session-end.mjs', {
+      session_id: 'sess-2',
+      cwd,
+      hook_event_name: 'SessionEnd',
+      transcript_path: transcript,
+    });
+    const summary2 = JSON.parse(fs.readFileSync(summaryPath, 'utf-8'));
+    expect(summary2.cost_usd).toBe(3.6);
+    expect(summary2.project_total_usd).toBe(7.2);
   });
 
   it('setup.mjs writes a marker once and stays silent on the second run', () => {

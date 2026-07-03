@@ -11,9 +11,11 @@
 import type { AnalyticsConfig, ToolResponse } from './types.js';
 import { toolResponse } from './types.js';
 import { loadConfig } from './config.js';
+import { engineLogger } from './runtime.js';
 import { Aggregator } from './daemon/aggregator.js';
-import { GlobalDB } from './data/global-db.js';
+import { GlobalDB, SqlJsUnavailableError } from './data/global-db.js';
 import { initializeGlobalDb } from './data/db-init.js';
+import { nativeDepMessage } from '@goodvibes/core/envelope';
 import {
   TOOL_DEFINITIONS,
   AnalyticsDashboardInput,
@@ -95,6 +97,13 @@ export class AnalyticsEngine {
   private readonly goodvibesDir: string;
   private initialized = false;
   private globalDb: GlobalDB | null = null;
+  /**
+   * Set when the global analytics DB could not be opened because `sql.js` is
+   * not installed yet (fresh install / post-update). The engine still
+   * initializes so the live JSONL-based modes (live_cost/doctor/agents) work;
+   * cross-project / historical modes surface this reason instead of crashing.
+   */
+  private globalDbUnavailableReason: string | null = null;
 
   /**
    * @param goodvibesDir - Path to the .goodvibes directory (absolute or
@@ -113,12 +122,36 @@ export class AnalyticsEngine {
    * @throws If the aggregator fails to initialize.
    */
   async initialize(): Promise<void> {
-    // Initialize global analytics database
-    this.globalDb = await initializeGlobalDb();
+    // Initialize the global analytics database. On a fresh install (or a
+    // post-update install that has not run setup yet) sql.js is missing and
+    // this throws; that must NOT sink the whole engine — the live modes read
+    // JSONL/proc and need no native dep. Degrade to a null global DB and record
+    // the reason; DB-backed modes surface the setup pointer, live modes work.
+    try {
+      this.globalDb = await initializeGlobalDb();
+    } catch (err) {
+      this.globalDb = null;
+      this.globalDbUnavailableReason =
+        err instanceof SqlJsUnavailableError
+          ? nativeDepMessage('Cross-project analytics history')
+          : `Cross-project analytics history unavailable: ${err instanceof Error ? err.message : String(err)}`;
+      engineLogger().warn('GlobalDB unavailable — live modes only', {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
 
     this.aggregator.setGlobalDb(this.globalDb);
     await this.aggregator.initialize();
     this.initialized = true;
+  }
+
+  /**
+   * The reason the global analytics DB is unavailable (native dep not installed
+   * yet), or null when it opened normally. Handlers that require the DB use
+   * this to return an honest setup-pointer message.
+   */
+  getGlobalDbUnavailableReason(): string | null {
+    return this.globalDbUnavailableReason;
   }
 
   /**
@@ -162,6 +195,12 @@ export class AnalyticsEngine {
       }
       return await handler(this.aggregator, parseResult.data, this.goodvibesDir) as ToolResponse;
     } catch (err: unknown) {
+      // A handler that needs the SQLite-backed store (sync, tag, cross-project
+      // query) fails with a typed error when sql.js is not installed yet —
+      // return the honest setup pointer instead of a raw "module not found".
+      if (err instanceof SqlJsUnavailableError) {
+        return toolResponse(nativeDepMessage(`analytics ${name} (historical / cross-project data)`), true);
+      }
       const message = err instanceof Error ? err.message : String(err);
       return toolResponse(`Handler error: ${message}`, true);
     }

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Setup hook (goodvibes-intel) — plan §8 Setup row, REBUILD (tribunal 2026-07-02).
+ * Setup hook — plan §8 Setup row, REBUILD (tribunal 2026-07-02).
  *
  * v1's setup hook (`plugins/goodvibes/hooks/scripts/src/setup.ts`, read-only)
  * wrote CLAUDE.md import-chain files to the global home directory silently and

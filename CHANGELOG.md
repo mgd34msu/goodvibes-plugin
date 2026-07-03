@@ -7,6 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.5] - 2026-07-02
+
+The "installed from GitHub, setup not run yet" release: a fresh clone whose
+servers have no `node_modules` (setup hasn't run, or a plugin update just
+replaced the installed deps) must boot, explain itself, and never crash.
+
+### Fixed
+- **Fresh install no longer crashes the servers.** Every top-level import of an
+  externalized native/WASM dependency now loads lazily on first use with a
+  cached failure state, so a missing dependency can never take down a server at
+  module load. Previously intel died at boot on `require('web-tree-sitter')` and
+  analytics on `require('sql.js')`. Lazified: `web-tree-sitter` (intel
+  `lib/tree-sitter.ts`), `sql.js` (core `telemetry`, analytics `telemetry-reader`
+  and — already lazy — `global-db`); `@vscode/ripgrep` and `@ast-grep/napi` were
+  already loaded lazily. All three servers now boot from a bare directory and
+  answer `initialize` + `tools/list` with zero dependencies installed.
+
+### Added
+- **Honest degradation for native-backed capabilities.** A tool call that needs
+  a missing dependency returns a normal error envelope — "<capability> needs
+  native dependencies that are not installed yet - run /goodvibes:plugin setup
+  (one-time). This also happens after a plugin update, which replaces the
+  installed dependencies." — never a crash or a hang. Everything that needs
+  nothing native keeps working on a fresh install: `code_read` lines, all
+  TypeScript-compiler analyzers, `api_*`/`db_schema`/`component_tree`/
+  `hook_dependencies`/`client_boundary`/`layout_analysis`, `structural_edit`
+  exact + ast modes, analytics `live_cost`/`doctor`/`agents`, and all of connect.
+  Telemetry (core + analytics) degrades to marked-unavailable and never blocks a
+  tool.
+- **A session cost recap every session start.** SessionStart replaces its silence
+  with one value line built from the recap SessionEnd now writes to
+  `.goodvibes/v2/cache/last-session-summary.json`: `Last session: $X.XX over N
+  calls (families) | project total: $Y.YY` (or, first time in a project, a
+  pointer to the live-cost view). SessionEnd prices the just-ended session's
+  transcript with a dependency-free port of the analytics token-summing + pricing
+  math (per-model `message.usage`, priced via `~/.claude/model-pricing.json` or a
+  small embedded fallback table), maintains a running project total, caps the
+  read at the last 20MB, tolerates a truncated final line, and is fully
+  fail-open. A native-deps-missing note appears only when this project has run
+  setup once but the installed plugin copy has since lost a representative dep to
+  an update.
+- **Fresh-install gate test.** A new bundle-level test copies each committed
+  server to a bare directory with no `node_modules`, boots all three, and asserts
+  the handshake succeeds, a native call returns the setup pointer, and a dep-free
+  call succeeds.
+
+### Changed
+- Swept stale per-product comment headers left over from the one-plugin merge:
+  the `(goodvibes-intel)` / `(goodvibes-analytics)` origin labels on the shared
+  hooks, and the "alpha scaffold / empty tools list" prose on the intel and
+  connect server headers. Added the re-run-after-update guidance to the
+  `/goodvibes:plugin setup` docs and both README install sections.
+- Builds are now byte-identical regardless of the directory they are invoked
+  from: all three `build.mjs` scripts pin esbuild's `absWorkingDir` to the repo
+  root. Previously the module-key comments in the bundles were rendered
+  relative to `process.cwd()`, so the byte-determinism release gate silently
+  depended on where the build command ran.
+
 ## [2.0.4] - 2026-07-02
 
 ### Added
