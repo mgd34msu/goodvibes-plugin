@@ -18,7 +18,8 @@ import type { AnalyticsTagInput } from '../schemas/tools.js';
 import { type HandlerResponse, text } from './types.js';
 import { TagStore, resolveJsonlPath } from '../data/tag-store.js';
 import { initializeGlobalDb } from '../data/db-init.js';
-import type { GlobalDB } from '../data/global-db.js';
+import { SqlJsUnavailableError, type GlobalDB } from '../data/global-db.js';
+import { nativeDepMessage } from '@goodvibes/core/envelope';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Module-level DB singleton (lazy-initialized, shared across calls)
@@ -95,6 +96,11 @@ export async function handleTag(
       }
     }
   } catch (err: unknown) {
+    // Tags persist in the SQLite store; when sql.js is not installed yet,
+    // return the honest setup pointer instead of a raw "module not found".
+    if (err instanceof SqlJsUnavailableError) {
+      return text(nativeDepMessage('analytics tag (session tagging store)'));
+    }
     const message = err instanceof Error ? err.message : String(err);
     return text(`analytics_tag error: ${message}`);
   }

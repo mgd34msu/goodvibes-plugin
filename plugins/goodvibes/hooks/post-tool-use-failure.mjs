@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * PostToolUseFailure hook (goodvibes-intel) — plan §8 row, KEEP ("ported as-is").
+ * PostToolUseFailure hook — plan §8 row, KEEP ("ported as-is").
  *
  * Ported from `plugins/goodvibes/hooks/scripts/src/post-tool-use-failure/**`
  * (v1, read-only quarry): a 3-phase progressive fix loop keyed by a stable

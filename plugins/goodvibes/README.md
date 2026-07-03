@@ -158,9 +158,13 @@ claude plugin install goodvibes@goodvibes-market
 ```
 
 intel's native dependencies (ripgrep, ast-grep) are **not** installed automatically — run
-`/goodvibes:plugin setup` to install them with explicit consent. Database drivers for `db_query`
-are resolved from your target project (per the v1 pattern), so they are not bundled; `db_query`
-prints an honest install hint when a driver is missing.
+`/goodvibes:plugin setup` to install them with explicit consent. Re-run it after any plugin
+update: an update replaces each server's installed `node_modules`, so the native dependencies
+must be reinstalled. Until they are, the servers still boot and every non-native capability
+works; native-backed capabilities return an honest "run /goodvibes:plugin setup" message rather
+than crashing. Database drivers for `db_query` are resolved from your target project (per the v1
+pattern), so they are not bundled; `db_query` prints an honest install hint when a driver is
+missing.
 
 ## Tests
 

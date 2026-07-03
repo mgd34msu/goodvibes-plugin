@@ -51036,7 +51036,7 @@ ${lanes.join("\n")}
           jsDocParsingMode
         } = typeof languageVersionOrOptions === "object" ? languageVersionOrOptions : { languageVersion: languageVersionOrOptions };
         if (languageVersion === 100) {
-          result = Parser2.parseSourceFile(
+          result = Parser.parseSourceFile(
             fileName,
             sourceText,
             languageVersion,
@@ -51052,7 +51052,7 @@ ${lanes.join("\n")}
             file.impliedNodeFormat = format;
             return (overrideSetExternalModuleIndicator || setExternalModuleIndicator)(file);
           };
-          result = Parser2.parseSourceFile(
+          result = Parser.parseSourceFile(
             fileName,
             sourceText,
             languageVersion,
@@ -51071,11 +51071,11 @@ ${lanes.join("\n")}
       }
       __name(createSourceFile2, "createSourceFile");
       function parseIsolatedEntityName(text, languageVersion) {
-        return Parser2.parseIsolatedEntityName(text, languageVersion);
+        return Parser.parseIsolatedEntityName(text, languageVersion);
       }
       __name(parseIsolatedEntityName, "parseIsolatedEntityName");
       function parseJsonText(fileName, sourceText) {
-        return Parser2.parseJsonText(fileName, sourceText);
+        return Parser.parseJsonText(fileName, sourceText);
       }
       __name(parseJsonText, "parseJsonText");
       function isExternalModule(file) {
@@ -51089,19 +51089,19 @@ ${lanes.join("\n")}
       }
       __name(updateSourceFile, "updateSourceFile");
       function parseIsolatedJSDocComment(content, start, length2) {
-        const result = Parser2.JSDocParser.parseIsolatedJSDocComment(content, start, length2);
+        const result = Parser.JSDocParser.parseIsolatedJSDocComment(content, start, length2);
         if (result && result.jsDoc) {
-          Parser2.fixupParentReferences(result.jsDoc);
+          Parser.fixupParentReferences(result.jsDoc);
         }
         return result;
       }
       __name(parseIsolatedJSDocComment, "parseIsolatedJSDocComment");
       function parseJSDocTypeExpressionForTests(content, start, length2) {
-        return Parser2.JSDocParser.parseJSDocTypeExpressionForTests(content, start, length2);
+        return Parser.JSDocParser.parseJSDocTypeExpressionForTests(content, start, length2);
       }
       __name(parseJSDocTypeExpressionForTests, "parseJSDocTypeExpressionForTests");
-      var Parser2;
-      ((Parser22) => {
+      var Parser;
+      ((Parser2) => {
         var scanner2 = createScanner(
           99,
           /*skipTrivia*/
@@ -51230,7 +51230,7 @@ ${lanes.join("\n")}
           return result;
         }
         __name(parseSourceFile, "parseSourceFile");
-        Parser22.parseSourceFile = parseSourceFile;
+        Parser2.parseSourceFile = parseSourceFile;
         function parseIsolatedEntityName2(content, languageVersion2) {
           initializeState(
             "",
@@ -51252,7 +51252,7 @@ ${lanes.join("\n")}
           return isValid ? entityName : void 0;
         }
         __name(parseIsolatedEntityName2, "parseIsolatedEntityName2");
-        Parser22.parseIsolatedEntityName = parseIsolatedEntityName2;
+        Parser2.parseIsolatedEntityName = parseIsolatedEntityName2;
         function parseJsonText2(fileName2, sourceText2, languageVersion2 = 2, syntaxCursor2, setParentNodes = false) {
           initializeState(
             fileName2,
@@ -51350,7 +51350,7 @@ ${lanes.join("\n")}
           return result;
         }
         __name(parseJsonText2, "parseJsonText2");
-        Parser22.parseJsonText = parseJsonText2;
+        Parser2.parseJsonText = parseJsonText2;
         function initializeState(_fileName, _sourceText, _languageVersion, _syntaxCursor, _scriptKind, _jsDocParsingMode) {
           NodeConstructor2 = objectAllocator.getNodeConstructor();
           TokenConstructor2 = objectAllocator.getTokenConstructor();
@@ -51567,7 +51567,7 @@ ${lanes.join("\n")}
           );
         }
         __name(fixupParentReferences, "fixupParentReferences");
-        Parser22.fixupParentReferences = fixupParentReferences;
+        Parser2.fixupParentReferences = fixupParentReferences;
         function createSourceFile22(fileName2, languageVersion2, scriptKind2, isDeclarationFile, statements, endOfFileToken, flags, setExternalModuleIndicator2) {
           let sourceFile = factory2.createSourceFile(statements, endOfFileToken, flags);
           setTextRangePosWidth(sourceFile, 0, sourceText.length);
@@ -59474,8 +59474,8 @@ ${lanes.join("\n")}
             __name(parseJSDocIdentifierName, "parseJSDocIdentifierName");
           }
           __name(parseJSDocCommentWorker, "parseJSDocCommentWorker");
-        })(JSDocParser = Parser22.JSDocParser || (Parser22.JSDocParser = {}));
-      })(Parser2 || (Parser2 = {}));
+        })(JSDocParser = Parser2.JSDocParser || (Parser2.JSDocParser = {}));
+      })(Parser || (Parser = {}));
       var incrementallyParsedFiles = /* @__PURE__ */ new WeakSet();
       function markAsIncrementallyParsed(sourceFile) {
         if (incrementallyParsedFiles.has(sourceFile)) {
@@ -59505,7 +59505,7 @@ ${lanes.join("\n")}
             return sourceFile;
           }
           if (sourceFile.statements.length === 0) {
-            return Parser2.parseSourceFile(
+            return Parser.parseSourceFile(
               sourceFile.fileName,
               newText,
               sourceFile.languageVersion,
@@ -59519,7 +59519,7 @@ ${lanes.join("\n")}
             );
           }
           markAsIncrementallyParsed(sourceFile);
-          Parser2.fixupParentReferences(sourceFile);
+          Parser.fixupParentReferences(sourceFile);
           const oldText = sourceFile.text;
           const syntaxCursor = createSyntaxCursor(sourceFile);
           const changeRange = extendToAffectedRange(sourceFile, textChangeRange);
@@ -59529,7 +59529,7 @@ ${lanes.join("\n")}
           Debug.assert(textSpanEnd(textChangeRangeNewSpan(changeRange)) === textSpanEnd(textChangeRangeNewSpan(textChangeRange)));
           const delta = textChangeRangeNewSpan(changeRange).length - changeRange.span.length;
           updateTokenPositionsAndMarkElements(sourceFile, changeRange.span.start, textSpanEnd(changeRange.span), textSpanEnd(textChangeRangeNewSpan(changeRange)), delta, oldText, newText, aggressiveChecks);
-          const result = Parser2.parseSourceFile(
+          const result = Parser.parseSourceFile(
             sourceFile.fileName,
             newText,
             sourceFile.languageVersion,
@@ -250163,6 +250163,12 @@ function estimatePayloadTokens(payload) {
 }
 __name(estimatePayloadTokens, "estimatePayloadTokens");
 
+// packages/core/src/envelope/errors.ts
+function nativeDepMessage(capability) {
+  return `${capability} needs native dependencies that are not installed yet - run /goodvibes:plugin setup (one-time). This also happens after a plugin update, which replaces the installed dependencies.`;
+}
+__name(nativeDepMessage, "nativeDepMessage");
+
 // packages/core/src/config/index.ts
 var fs = __toESM(require("fs"), 1);
 var os = __toESM(require("os"), 1);
@@ -255592,9 +255598,37 @@ async function resolveWorkDir(basePath) {
 __name(resolveWorkDir, "resolveWorkDir");
 
 // packages/intel/src/lib/tree-sitter.ts
-var import_web_tree_sitter = require("web-tree-sitter");
 var fs8 = __toESM(require("fs/promises"), 1);
 var path10 = __toESM(require("path"), 1);
+var treeSitterRuntime = null;
+var treeSitterLoadFailed = false;
+async function loadTreeSitterRuntime() {
+  if (treeSitterRuntime) return treeSitterRuntime;
+  if (treeSitterLoadFailed) return null;
+  try {
+    const spec = ["web-tree", "sitter"].join("-");
+    const mod = await import(spec);
+    if (!mod || typeof mod.Parser?.init !== "function" || typeof mod.Language?.load !== "function") {
+      treeSitterLoadFailed = true;
+      return null;
+    }
+    treeSitterRuntime = { Parser: mod.Parser, Language: mod.Language };
+    return treeSitterRuntime;
+  } catch {
+    treeSitterLoadFailed = true;
+    return null;
+  }
+}
+__name(loadTreeSitterRuntime, "loadTreeSitterRuntime");
+var TreeSitterUnavailableError = class extends Error {
+  static {
+    __name(this, "TreeSitterUnavailableError");
+  }
+  constructor() {
+    super("web-tree-sitter native dependency is not installed");
+    this.name = "TreeSitterUnavailableError";
+  }
+};
 var LANGUAGE_EXTENSIONS = {
   javascript: [".js", ".jsx", ".mjs", ".cjs"],
   typescript: [".ts", ".tsx", ".mts", ".cts"],
@@ -255761,29 +255795,44 @@ var TreeSitterCore = class {
   }
   parser = null;
   languages = /* @__PURE__ */ new Map();
+  runtime = null;
   currentLanguage = null;
   lastParsedLanguage = null;
   initialized = false;
   initPromise = null;
+  /**
+   * Initialize the parser, loading `web-tree-sitter` lazily on first use.
+   * @throws {TreeSitterUnavailableError} when the native/WASM dep is not
+   *   installed yet — callers surface the standard setup-pointer envelope.
+   */
   async init() {
     if (this.initialized) return;
     if (this.initPromise) return this.initPromise;
     this.initPromise = (async () => {
-      await import_web_tree_sitter.Parser.init();
-      this.parser = new import_web_tree_sitter.Parser();
+      const runtime = await loadTreeSitterRuntime();
+      if (!runtime) throw new TreeSitterUnavailableError();
+      this.runtime = runtime;
+      await runtime.Parser.init();
+      this.parser = new runtime.Parser();
       this.initialized = true;
     })();
-    return this.initPromise;
+    try {
+      await this.initPromise;
+    } catch (err) {
+      this.initPromise = null;
+      throw err;
+    }
   }
   /** The most recent grammar-load failure reason, for diagnostics (e.g. a wasm ABI/dylink-format mismatch). */
   lastLoadError = null;
   async loadLanguage(langName) {
     const cached3 = this.languages.get(langName);
     if (cached3) return cached3;
+    if (!this.runtime) return null;
     try {
       const basePath = await findWasmBasePath();
       const wasmPath = path10.join(basePath, `tree-sitter-${langName}.wasm`);
-      const lang = await import_web_tree_sitter.Language.load(wasmPath);
+      const lang = await this.runtime.Language.load(wasmPath);
       this.languages.set(langName, lang);
       return lang;
     } catch (error2) {
@@ -256126,7 +256175,7 @@ async function readSingleFile(spec, globalExtract, output, defaultRange, workDir
         const tree = await treeSitter.parse(content, resolved_path);
         result.outline = mapOutline(treeSitter.getOutline(tree, resolved_path));
       } catch (error2) {
-        result.error = `Outline extraction failed: ${error2.message}`;
+        result.error = error2 instanceof TreeSitterUnavailableError ? nativeDepMessage("code_read outline mode") : `Outline extraction failed: ${error2.message}`;
       }
     }
   }
@@ -263795,7 +263844,7 @@ async function astPatternSpans(filePath, original, pattern, replaceTemplate, lan
     return {
       spans: [],
       available: false,
-      reason: 'ast_pattern mode is unavailable: the @ast-grep/napi native module is not installed in this build. Use mode "ast" (TypeScript-compiler node matching) or "exact", or install @ast-grep/napi.'
+      reason: nativeDepMessage("structural_edit ast_pattern mode") + ' Meanwhile, use mode "ast" (TypeScript-compiler node matching) or "exact" \u2014 neither needs a native dependency.'
     };
   }
   const langName = languageOverride ? AST_GREP_LANG[languageOverride.toLowerCase()] ?? languageOverride : astGrepLangFor(filePath);
@@ -264437,7 +264486,7 @@ var structuralEditTool = { definition: definition14, handler: handler14 };
 
 // packages/intel/src/index.ts
 var SERVER_NAME = "intel";
-var SERVER_VERSION = true ? "2.0.4" : "0.0.0-dev";
+var SERVER_VERSION = true ? "2.0.5" : "0.0.0-dev";
 var TOOLS = [
   scaffoldTool,
   codeSurfaceTool,

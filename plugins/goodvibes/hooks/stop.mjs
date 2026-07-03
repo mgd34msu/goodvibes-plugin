@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Stop hook (goodvibes-analytics) — plan §8 Stop row, KEEP (tribunal 2026-07-02).
+ * Stop hook — plan §8 Stop row, KEEP (tribunal 2026-07-02).
  * "Session-close telemetry writer touching only its own cache namespace; no
  * changes needed."
  *

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * PreCompact hook (goodvibes-analytics) — plan §8 PreCompact row, REBUILD
+ * PreCompact hook — plan §8 PreCompact row, REBUILD
  * (tribunal 2026-07-02): "Session summary + analytics backup survive as
  * observe-only behavior; the automatic git checkpoint commit is removed —
  * hooks inform, never mutate."

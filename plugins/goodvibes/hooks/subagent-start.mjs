@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * SubagentStart hook (goodvibes-intel) — plan §8 SubagentStart row, KEEP+FIX.
+ * SubagentStart hook — plan §8 SubagentStart row, KEEP+FIX.
  *
  * v1 (`plugins/goodvibes/hooks/scripts/src/subagent-start/**`, read-only)
  * injected ~1.8KB of doctrine per subagent spawn (protocol-skill descriptions,

@@ -1,19 +1,26 @@
 #!/usr/bin/env node
 /**
- * SessionEnd hook (goodvibes-analytics) — plan §8 SessionEnd row, KEEP (slim).
+ * SessionEnd hook — plan §8 SessionEnd row, KEEP (slim).
  *
  * v1 (`plugins/goodvibes/hooks/scripts/src/session-end/index.ts`, read-only)
  * mixed session-summary writing with tmux dashboard-pane teardown and a
  * runtime-engine (automation) IPC call. Automation is cut for v2.0-alpha
  * (plan §11) and the dashboard TUI's own state lives with lane 6's engine
- * port, not this hook. What's left, and what plan §8 asks this hook to keep,
- * is genuinely slim: flush a session-close marker and prune old ones. Nothing
- * else — no context injection, no cleanup outside `.goodvibes/v2/`.
+ * port, not this hook. What's left is slim: flush a session-close marker,
+ * prune old ones, and write the session cost recap.
+ *
+ * 2.0.5: after the flush duties, compute a compact recap of the session that
+ * just ended (priced from its transcript JSONL, dependency-free) and write it
+ * to `.goodvibes/v2/cache/last-session-summary.json`, maintaining a running
+ * project total. SessionStart reads that file to surface one value line every
+ * session. The recap is fully fail-open — any error skips it, never blocking
+ * the marker write or the hook response.
  */
 
 import { readdirSync, statSync, unlinkSync } from 'node:fs';
 import * as path from 'node:path';
-import { runHook, createHookResponse, v2StatePath, writeJsonSafe, isTestEnvironment } from './lib/common.mjs';
+import { runHook, createHookResponse, v2StatePath, writeJsonSafe, writeJsonAtomic, readJsonSafe, isTestEnvironment } from './lib/common.mjs';
+import { computeSessionRecap, round2 } from './lib/session-cost.mjs';
 
 const HOOK_EVENT = 'SessionEnd';
 const CACHE_PRUNE_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -38,6 +45,31 @@ function pruneOldSessionFiles(cacheDir) {
   }
 }
 
+/**
+ * Compute the just-ended session's cost recap and write it (atomically) to
+ * `last-session-summary.json`, adding this session's cost onto the running
+ * project total already in that file. Fail-open: any error skips the summary.
+ */
+function writeSessionRecap(cacheDir, input, cwd, sessionId) {
+  try {
+    const summaryPath = path.join(cacheDir, 'last-session-summary.json');
+    const prev = readJsonSafe(summaryPath, null);
+    const prevTotal = prev && typeof prev.project_total_usd === 'number' ? prev.project_total_usd : 0;
+
+    const recap = computeSessionRecap({
+      transcriptPath: input.transcript_path || null,
+      sessionId,
+      cwd,
+    });
+    recap.ended_at = new Date().toISOString();
+    recap.project_total_usd = round2(prevTotal + recap.cost_usd);
+
+    writeJsonAtomic(summaryPath, recap);
+  } catch {
+    /* fail-open — a missing recap must never break the hook */
+  }
+}
+
 async function handleSessionEnd(input) {
   const cwd = input.cwd || process.cwd();
   const sessionId = input.session_id || 'unknown';
@@ -48,6 +80,8 @@ async function handleSessionEnd(input) {
     ended_at: new Date().toISOString(),
   });
   pruneOldSessionFiles(cacheDir);
+
+  writeSessionRecap(cacheDir, input, cwd, sessionId);
 
   return createHookResponse({ hookEventName: HOOK_EVENT });
 }

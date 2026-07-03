@@ -1,12 +1,11 @@
 /**
- * goodvibes-connect MCP server — alpha scaffold.
+ * goodvibes-connect MCP server — the registered HTTP/database server of the
+ * single `goodvibes` plugin (three servers: intel, analytics, connect).
  *
- * Wires `core/proc` and `core/envelope` and serves an EMPTY tools list — enough
- * that the bundle boots and answers an `initialize` request over stdio. The
- * trust boundary and 3 tools (api_request, service, db_query) land in lane 5.
- *
- * The envelope carries connect's `mode: restricted|open` stamp from
- * `core/config`; the alpha skeleton always reports `restricted`.
+ * Wires `core/proc` and `core/envelope` and serves the 3 tools (api_request,
+ * service, db_query) over stdio under an explicit trust boundary. The envelope
+ * carries connect's `mode: restricted|open` stamp from `core/config`; the
+ * default is `restricted`.
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';

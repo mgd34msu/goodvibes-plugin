@@ -48,6 +48,11 @@ binaries and WASM loaders that do not bundle cleanly), listed in that server's o
 There is no `postinstall` chain — installing them requires this explicit command, which is the
 actual consent point (the Setup hook only points here; it never installs anything itself).
 
+Run this again after a plugin update: an update replaces each server's installed
+`node_modules`, so the native dependencies must be reinstalled. Until they are, native-backed
+capabilities return an honest "run /goodvibes:plugin setup" message and everything else keeps
+working — nothing crashes.
+
 1. Check which servers still need their dependencies (a representative dependency probes each):
    ```bash
    for s in intel analytics connect; do

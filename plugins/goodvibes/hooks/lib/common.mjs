@@ -8,7 +8,7 @@
  * core/config's getStatePath convention.
  */
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'node:fs';
 import * as path from 'node:path';
 
 /** Read and JSON-parse stdin. Never throws — malformed/empty input becomes `{}`. */
@@ -69,6 +69,32 @@ export function writeJsonSafe(file, data) {
   try {
     ensureDir(path.dirname(file));
     writeFileSync(file, JSON.stringify(data, null, 2));
+  } catch {
+    /* best-effort — a hook must never throw over a state write */
+  }
+}
+
+/**
+ * Atomic JSON write: temp file in the same directory, then rename over the
+ * target (rename is atomic on one filesystem). A crash mid-write leaves the
+ * previous file intact instead of a half-written one — used for the session
+ * cost recap that SessionStart reads. Best-effort: never throws.
+ */
+export function writeJsonAtomic(file, data) {
+  try {
+    ensureDir(path.dirname(file));
+    const tmp = `${file}.${process.pid}.tmp`;
+    writeFileSync(tmp, JSON.stringify(data, null, 2));
+    try {
+      renameSync(tmp, file);
+    } catch (err) {
+      try {
+        unlinkSync(tmp);
+      } catch {
+        /* ignore */
+      }
+      throw err;
+    }
   } catch {
     /* best-effort — a hook must never throw over a state write */
   }

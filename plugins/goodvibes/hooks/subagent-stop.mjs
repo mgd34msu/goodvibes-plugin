@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * SubagentStop hook (goodvibes-analytics) — plan §8 SubagentStop row, REBUILD
+ * SubagentStop hook — plan §8 SubagentStop row, REBUILD
  * (tribunal 2026-07-02): "the telemetry/validation/test-verification pipeline
  * is legitimate and feeds analytics — keep it; delete the ~1.5KB orchestrator
  * injection entirely. Telemetry-only, silent."

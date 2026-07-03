@@ -46,6 +46,7 @@ import {
   errorEnvelope,
   toCallToolResult,
   estimatePayloadTokens,
+  nativeDepMessage,
   type Envelope,
 } from '@goodvibes/core/envelope';
 import { resolveInputPath } from '@goodvibes/core/fsx';
@@ -54,7 +55,7 @@ import { loadConfig } from '@goodvibes/core/config';
 import { FileStateCache } from '@goodvibes/core/cache';
 import { ensureArray, parseJsonField } from '../lib/args.js';
 import { resolveWorkDir } from '../lib/workdir.js';
-import { TreeSitterCore, type OutlineNode as TSOutlineNode } from '../lib/tree-sitter.js';
+import { TreeSitterCore, TreeSitterUnavailableError, type OutlineNode as TSOutlineNode } from '../lib/tree-sitter.js';
 import { isLanguageSupported } from '../lib/languages.js';
 import { MAX_FILE_BYTES, MAX_TOKEN_ESTIMATE, PAGE_SIZE_LINES } from '../lib/defaults.js';
 
@@ -366,7 +367,13 @@ async function readSingleFile(
         const tree = await treeSitter.parse(content, resolved_path);
         result.outline = mapOutline(treeSitter.getOutline(tree, resolved_path));
       } catch (error) {
-        result.error = `Outline extraction failed: ${(error as Error).message}`;
+        // A missing native dep (web-tree-sitter not installed yet) degrades to
+        // the standard setup-pointer message; any other parse failure keeps its
+        // concrete reason. `lines` mode needs nothing native and is unaffected.
+        result.error =
+          error instanceof TreeSitterUnavailableError
+            ? nativeDepMessage('code_read outline mode')
+            : `Outline extraction failed: ${(error as Error).message}`;
       }
     }
   }

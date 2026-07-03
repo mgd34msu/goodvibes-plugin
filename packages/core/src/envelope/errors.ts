@@ -49,6 +49,24 @@ export function formatMutualExclusivityError(fieldName: string, providedSources:
   );
 }
 
+/**
+ * Standard "native dependency missing" message for a capability whose backing
+ * package is one of the externalized native/WASM deps installed by the one-time
+ * plugin setup (tree-sitter, sql.js, ast-grep, ripgrep). A tool that reaches a
+ * missing dep returns this as a NORMAL error envelope — never a crash, never a
+ * hang. The wording also covers the post-update case, where a plugin update
+ * replaces the installed `server/<name>/node_modules` and setup must run again.
+ *
+ * @param capability - the user-facing capability name (e.g. "code_read outline mode").
+ */
+export function nativeDepMessage(capability: string): string {
+  return (
+    `${capability} needs native dependencies that are not installed yet - ` +
+    `run /goodvibes:plugin setup (one-time). This also happens after a plugin ` +
+    `update, which replaces the installed dependencies.`
+  );
+}
+
 /** Enhance a JSON parse error with a pointer to the offending position. */
 export function enhanceJsonParseError(error: SyntaxError, jsonString: string): string {
   const message = error.message;
