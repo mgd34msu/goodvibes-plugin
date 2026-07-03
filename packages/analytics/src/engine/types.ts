@@ -1,6 +1,9 @@
 // === Configuration ===
 export interface AnalyticsConfig {
   enabled: boolean;
+  /** Last-resort flat rates for models the pricing table does not list —
+   *  per-model rates (~/.claude/model-pricing.json over the built-in table)
+   *  take precedence everywhere a reader prices records. */
   cost_per_1k_input_tokens: number;
   cost_per_1k_output_tokens: number;
   budget: { amount: number; unit: 'dollars' | 'tokens' } | null;
@@ -11,16 +14,11 @@ export interface AnalyticsConfig {
    */
   context_window_tokens?: number;
   anomaly_detection: boolean;
-  auto_report_on_shutdown: boolean;
-  webhook_url: string | null;
-  webhook_events: WebhookEvent[];
   /** Absolute path to the global analytics SQLite database. */
   global_db_path: string;
   /** Base path for Claude JSONL session files (default: ~/.claude/projects). */
   jsonl_base_path: string;
 }
-
-export type WebhookEvent = 'session_end' | 'budget_warning' | 'anomaly_detected';
 
 export const DEFAULT_CONFIG: Readonly<AnalyticsConfig> = {
   enabled: true,
@@ -29,9 +27,6 @@ export const DEFAULT_CONFIG: Readonly<AnalyticsConfig> = {
   budget: null,
   budget_warn_thresholds: [0.5, 0.8, 1.0],
   anomaly_detection: true,
-  auto_report_on_shutdown: true,
-  webhook_url: null,
-  webhook_events: ['session_end'],
   global_db_path: '~/.claude/.goodvibes/analytics/analytics.db',
   jsonl_base_path: '~/.claude/projects',
 } as const;
@@ -267,38 +262,6 @@ export interface ProjectIndex {
     partial: boolean;
   };
   tree: Record<string, Record<string, number>>; // dir -> {filename: tokenCount}
-}
-
-// === Webhook Payloads ===
-export interface WebhookPayload {
-  event: WebhookEvent;
-  session_id: string;
-  timestamp: string;
-  data: SessionEndPayload | BudgetWarningPayload | AnomalyPayload;
-}
-
-export interface SessionEndPayload {
-  tag?: string;
-  duration_minutes: number;
-  tokens_used: number;
-  tokens_saved: number;
-  cost: number;
-  cache_hit_rate: number;
-  success_rate: number;
-  commands_run: number;
-  agents_spawned: number;
-  files_modified: number;
-}
-
-export interface BudgetWarningPayload {
-  budget: number;
-  used: number;
-  remaining: number;
-  threshold: number;
-}
-
-export interface AnomalyPayload {
-  anomaly: Anomaly;
 }
 
 // === Recommendations ===

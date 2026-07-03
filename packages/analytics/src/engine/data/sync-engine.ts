@@ -15,6 +15,7 @@
  */
 
 import * as path from 'node:path';
+import { loadModelPricing } from '../config.js';
 import { JSONLReader, sessionIdFromPath } from './jsonl-reader.js';
 import type { GlobalDB } from './global-db.js';
 import { JSONLScanner } from './jsonl-scanner.js';
@@ -98,10 +99,16 @@ export class SyncEngine {
    */
   constructor(db: GlobalDB, config: SyncEngineConfig, scanner?: JSONLScanner) {
     this.db = db;
-    this.reader = new JSONLReader({
-      cost_per_1k_input_tokens: config.costPer1kInputTokens,
-      cost_per_1k_output_tokens: config.costPer1kOutputTokens,
-    });
+    // Per-model rates take precedence inside the reader; the flat config
+    // rates only price models the pricing table does not list. Without this
+    // the synced ledger priced every model at the flat rate.
+    this.reader = new JSONLReader(
+      {
+        cost_per_1k_input_tokens: config.costPer1kInputTokens,
+        cost_per_1k_output_tokens: config.costPer1kOutputTokens,
+      },
+      loadModelPricing(),
+    );
     this.scanner = scanner ?? new JSONLScanner();
   }
 

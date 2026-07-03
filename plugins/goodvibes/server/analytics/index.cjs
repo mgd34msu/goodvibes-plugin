@@ -13655,9 +13655,6 @@ var init_types = __esm({
       budget: null,
       budget_warn_thresholds: [0.5, 0.8, 1],
       anomaly_detection: true,
-      auto_report_on_shutdown: true,
-      webhook_url: null,
-      webhook_events: ["session_end"],
       global_db_path: "~/.claude/.goodvibes/analytics/analytics.db",
       jsonl_base_path: "~/.claude/projects"
     };
@@ -18827,6 +18824,7 @@ var init_sync_engine = __esm({
   "packages/analytics/src/engine/data/sync-engine.ts"() {
     "use strict";
     path10 = __toESM(require("node:path"), 1);
+    init_config2();
     init_jsonl_reader();
     init_jsonl_scanner();
     TWO_HOURS_MS = 2 * 60 * 60 * 1e3;
@@ -18844,10 +18842,13 @@ var init_sync_engine = __esm({
        */
       constructor(db, config2, scanner) {
         this.db = db;
-        this.reader = new JSONLReader({
-          cost_per_1k_input_tokens: config2.costPer1kInputTokens,
-          cost_per_1k_output_tokens: config2.costPer1kOutputTokens
-        });
+        this.reader = new JSONLReader(
+          {
+            cost_per_1k_input_tokens: config2.costPer1kInputTokens,
+            cost_per_1k_output_tokens: config2.costPer1kOutputTokens
+          },
+          loadModelPricing()
+        );
         this.scanner = scanner ?? new JSONLScanner();
       }
       // ───────────────────────────────────────────────────────────────────────────
@@ -39125,6 +39126,7 @@ var import_node_events = require("node:events");
 var import_node_fs8 = require("node:fs");
 var import_node_path5 = require("node:path");
 var import_promises2 = require("node:fs/promises");
+init_config2();
 init_jsonl_reader();
 var JSONLWatcher = class extends import_node_events.EventEmitter {
   static {
@@ -39161,7 +39163,8 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
     this.batchIntervalMs = options?.batchIntervalMs ?? 1e3;
     this.pollIntervalMs = options?.pollIntervalMs ?? 2e3;
     this.reader = new JSONLReader(
-      options?.costConfig ?? { cost_per_1k_input_tokens: 3e-3, cost_per_1k_output_tokens: 0.015 }
+      options?.costConfig ?? { cost_per_1k_input_tokens: 3e-3, cost_per_1k_output_tokens: 0.015 },
+      loadModelPricing()
     );
   }
   // -------------------------------------------------------------------------

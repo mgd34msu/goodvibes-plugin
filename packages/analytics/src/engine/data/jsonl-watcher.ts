@@ -24,6 +24,7 @@ import type { FSWatcher } from 'node:fs';
 import { join } from 'node:path';
 import { readdir } from 'node:fs/promises';
 
+import { loadModelPricing } from '../config.js';
 import { JSONLReader, findActiveJsonlFile, sessionIdFromPath } from './jsonl-reader.js';
 import type { JSONLRecord } from './jsonl-types.js';
 
@@ -143,6 +144,7 @@ export class JSONLWatcher extends EventEmitter {
     this.pollIntervalMs = options?.pollIntervalMs ?? 2000;
     this.reader = new JSONLReader(
       options?.costConfig ?? { cost_per_1k_input_tokens: 0.003, cost_per_1k_output_tokens: 0.015 },
+      loadModelPricing(),
     );
   }
 

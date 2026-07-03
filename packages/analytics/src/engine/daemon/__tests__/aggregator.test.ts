@@ -100,9 +100,6 @@ const MINIMAL_CONFIG: AnalyticsConfig = {
   budget: null,
   budget_warn_thresholds: [0.8, 0.9],
   anomaly_detection: false,
-  auto_report_on_shutdown: false,
-  webhook_url: null,
-  webhook_events: [],
   global_db_path: '/mock/global.db',
   jsonl_base_path: '~/.claude/projects',
 };

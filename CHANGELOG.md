@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.1] - 2026-07-03
+
+### Fixed
+- **The synced cross-project ledger now prices per model.** `SyncEngine` (and
+  the live `JSONLWatcher`) constructed their JSONL readers with only the flat
+  fallback rates, so every synced record was priced at $3/$15 per MTok
+  regardless of model — under-pricing Fable/Opus sessions in the global
+  database while the live views priced correctly. Both now pass the per-model
+  pricing table (first-party fetch over the built-in fallback), the same way
+  the aggregator and live-cost already did. Re-run `/goodvibes:analytics sync`
+  to reprice previously synced sessions.
+- **Dead config keys removed.** `auto_report_on_shutdown`, `webhook_url`, and
+  `webhook_events` (plus the unused webhook payload types) had no consumer
+  anywhere — the config surface advertised behavior that did not exist. The
+  flat `cost_per_1k_*` keys stay, now documented as what they are: last-resort
+  rates for models the pricing table does not list.
+
 ## [2.3.0] - 2026-07-02
 
 The analytics view becomes a file you can open anywhere, and dependency
