@@ -41559,7 +41559,7 @@ var configTool = {
 
 // packages/analytics/src/index.ts
 var SERVER_NAME = "analytics";
-var SERVER_VERSION = true ? "2.3.2" : "0.0.0-dev";
+var SERVER_VERSION = true ? "2.3.3" : "0.0.0-dev";
 var TOOL_MODULES = [
   queryTool,
   dashboardTool,
