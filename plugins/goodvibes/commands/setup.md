@@ -1,5 +1,5 @@
 ---
-description: Install the goodvibes native dependencies (explicit consent) — run once after install, and again after every plugin update
+description: Install the goodvibes native dependencies (explicit consent, once) — installs land in a durable home and survive plugin updates
 allowed-tools:
   - Bash
 ---
@@ -17,10 +17,13 @@ loaders that do not bundle cleanly, listed per server in
 | `connect` | `sql.js` (database drivers resolve from the target project, not installed here) |
 
 This command is the consent point: nothing is ever installed automatically — not by hooks, not
-by a postinstall chain. Run it once after installing the plugin, and **again after every plugin
-update** — an update replaces each server's installed `node_modules`. Until it runs,
-native-backed capabilities return an honest "run /goodvibes:setup" message and everything else
-keeps working; nothing crashes.
+by a postinstall chain. It runs **once**: dependencies install into the durable home
+`~/.claude/.goodvibes/deps/<server>/` and the plugin's server directories get symlinks to it.
+A plugin update replaces the plugin copy (dropping the symlinks) but not the durable home —
+the SessionStart hook silently relinks at the next session, so setup never needs re-running
+unless an update actually changes a server's dependency list (the nudge will say so). Until
+setup runs, native-backed capabilities return an honest "run /goodvibes:setup" message and
+everything else keeps working; nothing crashes.
 
 ## Instructions
 
@@ -37,14 +40,21 @@ keeps working; nothing crashes.
    ```
    If every server reports `INSTALLED`, report that and stop.
 2. If any server reports `NEEDS_INSTALL`, tell the user exactly what will happen — `npm install`
-   runs inside each `${CLAUDE_PLUGIN_ROOT}/server/<name>/` directory (intel, analytics, connect),
+   runs inside `~/.claude/.goodvibes/deps/<server>/` for each server (intel, analytics, connect),
    installing only the dependencies in that server's `package.json` (native binaries + WASM
-   loaders; no other package on the system is touched) — and confirm before proceeding.
-3. On confirmation, install every server's dependencies (`npm install` is idempotent — an
-   already-installed server is a fast no-op):
+   loaders; no other package on the system is touched), and each
+   `${CLAUDE_PLUGIN_ROOT}/server/<name>/node_modules` becomes a symlink to that durable
+   install — and confirm before proceeding.
+3. On confirmation, install into the durable home and symlink each server's `node_modules`
+   to it (`npm install` is idempotent — an already-installed server is a fast no-op):
    ```bash
    for s in intel analytics connect; do
-     npm install --omit=dev --no-audit --no-fund --prefix "${CLAUDE_PLUGIN_ROOT}/server/$s"
+     dep_home="$HOME/.claude/.goodvibes/deps/$s"
+     mkdir -p "$dep_home"
+     cp "${CLAUDE_PLUGIN_ROOT}/server/$s/package.json" "$dep_home/package.json"
+     npm install --omit=dev --no-audit --no-fund --prefix "$dep_home"
+     rm -rf "${CLAUDE_PLUGIN_ROOT}/server/$s/node_modules"
+     ln -sfn "$dep_home/node_modules" "${CLAUDE_PLUGIN_ROOT}/server/$s/node_modules"
    done
    ```
 4. Report success or the exact error output per server. On success:

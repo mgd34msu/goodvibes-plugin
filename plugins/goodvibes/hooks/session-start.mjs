@@ -11,8 +11,8 @@
  * The first time a project is seen (no summary yet) that line points at the
  * live-cost view instead. Nothing else is emitted unless it is real: existing
  * project-health notes, the host-health nudge, and a native-deps-missing note
- * (setup ran once here, but the installed plugin copy lost its deps to an
- * update). `systemMessage` mirrors the same information compactly.
+ * (only when the durable install can't be silently relinked — see
+ * `selfHealDeps`). `systemMessage` mirrors the same information compactly.
  *
  * Still retired (never coming back): stack/framework detection, git status, the
  * TODO walker, "ready" banners, CLAUDE.md/prompt-chain writing, crash recovery,
@@ -20,7 +20,8 @@
  * 2.0.2/2.0.3 noise the value-line contract exists to keep out.
  */
 
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync, symlinkSync } from 'node:fs';
+import { homedir } from 'node:os';
 import * as path from 'node:path';
 import {
   runHook,
@@ -56,20 +57,78 @@ function valueLine(cwd) {
   };
 }
 
+/** One representative dependency per server proves that server's install. */
+const SERVER_PROBES = {
+  intel: '@vscode/ripgrep',
+  analytics: 'ink',
+  connect: 'sql.js',
+};
+
+/** Durable per-server dependency home — survives plugin-cache replacement on update. */
+function durableDepsDir(server) {
+  return path.join(homedir(), '.claude', '.goodvibes', 'deps', server);
+}
+
+function depsSatisfied(root, server) {
+  return existsSync(
+    path.join(root, 'server', server, 'node_modules', ...SERVER_PROBES[server].split('/')),
+  );
+}
+
+/** True when two package.json files declare the same `dependencies` map. */
+function sameDeps(fileA, fileB) {
+  try {
+    const a = JSON.parse(readFileSync(fileA, 'utf-8')).dependencies ?? {};
+    const b = JSON.parse(readFileSync(fileB, 'utf-8')).dependencies ?? {};
+    return JSON.stringify(a) === JSON.stringify(b);
+  } catch {
+    return false;
+  }
+}
+
 /**
- * One-line note when the INSTALLED plugin copy is missing a representative
- * native dep — true on a fresh install (setup not run yet) and after a plugin
- * update (updates replace `server/<name>/node_modules`). This is a global
- * condition of the installed copy, not project state, so it is keyed on
- * nothing but the probe itself. Resolves via CLAUDE_PLUGIN_ROOT; silent when
- * that env is absent or the dep is present.
+ * Self-heal after a plugin update: `/goodvibes:setup` installs into the durable
+ * home and leaves a symlink in the plugin copy; an update replaces the plugin
+ * copy (dropping the symlink) but not the durable home. When the durable
+ * install exists and its package.json still matches the new plugin version's,
+ * silently relink — the user never re-runs setup. A dependency-list change in
+ * the update makes this return false, so the nudge points at setup honestly.
+ */
+function selfHealDeps(root, server) {
+  try {
+    const durable = durableDepsDir(server);
+    const durableModules = path.join(durable, 'node_modules');
+    if (!existsSync(path.join(durableModules, ...SERVER_PROBES[server].split('/')))) return false;
+    const serverDir = path.join(root, 'server', server);
+    if (!sameDeps(path.join(serverDir, 'package.json'), path.join(durable, 'package.json'))) {
+      return false;
+    }
+    const target = path.join(serverDir, 'node_modules');
+    if (!existsSync(target)) symlinkSync(durableModules, target, 'dir');
+    return depsSatisfied(root, server);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * One-line note when the INSTALLED plugin copy is missing native deps that
+ * cannot be silently relinked from the durable home — i.e. setup genuinely
+ * needs to run (never ran, or an update changed a server's dependency list).
+ * This is a global condition of the installed copy, not project state, so it
+ * is keyed on nothing but the probes. Silent when CLAUDE_PLUGIN_ROOT is absent.
  */
 function nativeDepsNudge() {
   const root = process.env.CLAUDE_PLUGIN_ROOT;
   if (!root) return null;
-  const representative = path.join(root, 'server', 'intel', 'node_modules', '@vscode', 'ripgrep');
-  if (existsSync(representative)) return null;
-  return 'native deps not installed - run /goodvibes:setup (first run, or a plugin update replaced them)';
+  const missing = [];
+  for (const server of Object.keys(SERVER_PROBES)) {
+    if (depsSatisfied(root, server)) continue;
+    if (selfHealDeps(root, server)) continue;
+    missing.push(server);
+  }
+  if (missing.length === 0) return null;
+  return `native deps not installed (${missing.join(', ')}) - run /goodvibes:setup (once; installs survive plugin updates)`;
 }
 
 /** Cheap, synchronous project-health checks. Returns short problem notes. */

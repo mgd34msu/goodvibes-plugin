@@ -62,8 +62,7 @@ export function formatMutualExclusivityError(fieldName: string, providedSources:
 export function nativeDepMessage(capability: string): string {
   return (
     `${capability} needs native dependencies that are not installed yet - ` +
-    `run /goodvibes:setup (one-time). This also happens after a plugin ` +
-    `update, which replaces the installed dependencies.`
+    `run /goodvibes:setup (once; the install survives plugin updates).`
   );
 }
 

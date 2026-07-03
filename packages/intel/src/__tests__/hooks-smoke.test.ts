@@ -62,12 +62,18 @@ function runHook(hookFile: string, input: unknown, opts: SpawnOpts = {}): { code
 }
 
 beforeAll(() => {
-  // The representative native-dep probe exists in the fake root, so the
-  // deps nudge stays silent in every test that doesn't remove it.
-  fs.mkdirSync(
-    path.join(FAKE_PLUGIN_ROOT, 'server', 'intel', 'node_modules', '@vscode', 'ripgrep'),
-    { recursive: true },
-  );
+  // Every server's representative native-dep probe exists in the fake root,
+  // so the deps nudge stays silent in every test that doesn't remove them.
+  for (const [server, probe] of [
+    ['intel', '@vscode/ripgrep'],
+    ['analytics', 'ink'],
+    ['connect', 'sql.js'],
+  ]) {
+    fs.mkdirSync(
+      path.join(FAKE_PLUGIN_ROOT, 'server', server, 'node_modules', ...probe.split('/')),
+      { recursive: true },
+    );
+  }
 });
 
 describe('goodvibes intel hooks: valid JSON (fail-open)', () => {
@@ -245,17 +251,83 @@ describe('goodvibes intel hooks: schema and content', () => {
 
   it('session-start.mjs appends the deps nudge when the installed plugin copy has no native deps', () => {
     const cwd = makeTmpCwd();
-    const bareRoot = makeTmpCwd(); // no server/intel/node_modules probe inside
+    const bareRoot = makeTmpCwd(); // no server/<name>/node_modules probes inside
+    const bareHome = makeTmpCwd(); // no durable deps either -> nothing to relink
     const { stdout } = runHook(
       'session-start.mjs',
       { session_id: 'abc12345', cwd, hook_event_name: 'SessionStart' },
-      { pluginRoot: bareRoot },
+      { pluginRoot: bareRoot, extraEnv: { HOME: bareHome } },
     );
     const parsed = JSON.parse(stdout);
     const ctx = parsed.hookSpecificOutput.additionalContext as string;
     expect(ctx.split('\n')[0]).toContain('[goodvibes] First session here');
     expect(ctx).toContain('run /goodvibes:setup');
     expect(parsed.systemMessage).toMatch(/native deps/);
+  });
+
+  it('session-start.mjs silently relinks durable deps after a plugin update (no nudge)', () => {
+    const cwd = makeTmpCwd();
+    const home = makeTmpCwd();
+    const freshRoot = makeTmpCwd(); // simulates the update-replaced plugin copy
+
+    const pkg = JSON.stringify({ dependencies: { probe: '1.0.0' } });
+    for (const [server, probe] of [
+      ['intel', '@vscode/ripgrep'],
+      ['analytics', 'ink'],
+      ['connect', 'sql.js'],
+    ] as const) {
+      // Durable home: installed modules + the package.json setup recorded.
+      const durable = path.join(home, '.claude', '.goodvibes', 'deps', server);
+      fs.mkdirSync(path.join(durable, 'node_modules', ...probe.split('/')), { recursive: true });
+      fs.writeFileSync(path.join(durable, 'package.json'), pkg);
+      // Fresh plugin copy: same package.json, NO node_modules (the update wiped it).
+      const serverDir = path.join(freshRoot, 'server', server);
+      fs.mkdirSync(serverDir, { recursive: true });
+      fs.writeFileSync(path.join(serverDir, 'package.json'), pkg);
+    }
+
+    const { stdout } = runHook(
+      'session-start.mjs',
+      { session_id: 'abc12345', cwd, hook_event_name: 'SessionStart' },
+      { pluginRoot: freshRoot, extraEnv: { HOME: home } },
+    );
+    const parsed = JSON.parse(stdout);
+    // Healed silently: value line only, no nudge, and the symlinks exist.
+    expect(parsed.hookSpecificOutput.additionalContext).not.toContain('/goodvibes:setup');
+    expect(parsed.systemMessage).not.toMatch(/native deps/);
+    for (const server of ['intel', 'analytics', 'connect']) {
+      const link = path.join(freshRoot, 'server', server, 'node_modules');
+      expect(fs.lstatSync(link).isSymbolicLink()).toBe(true);
+    }
+  });
+
+  it('session-start.mjs nudges instead of relinking when an update changed a dependency list', () => {
+    const cwd = makeTmpCwd();
+    const home = makeTmpCwd();
+    const freshRoot = makeTmpCwd();
+
+    for (const [server, probe] of [
+      ['intel', '@vscode/ripgrep'],
+      ['analytics', 'ink'],
+      ['connect', 'sql.js'],
+    ] as const) {
+      const durable = path.join(home, '.claude', '.goodvibes', 'deps', server);
+      fs.mkdirSync(path.join(durable, 'node_modules', ...probe.split('/')), { recursive: true });
+      fs.writeFileSync(path.join(durable, 'package.json'), JSON.stringify({ dependencies: { probe: '1.0.0' } }));
+      const serverDir = path.join(freshRoot, 'server', server);
+      fs.mkdirSync(serverDir, { recursive: true });
+      // The update ships a DIFFERENT dependency list -> stale install must not relink.
+      fs.writeFileSync(path.join(serverDir, 'package.json'), JSON.stringify({ dependencies: { probe: '2.0.0' } }));
+    }
+
+    const { stdout } = runHook(
+      'session-start.mjs',
+      { session_id: 'abc12345', cwd, hook_event_name: 'SessionStart' },
+      { pluginRoot: freshRoot, extraEnv: { HOME: home } },
+    );
+    const parsed = JSON.parse(stdout);
+    expect(parsed.hookSpecificOutput.additionalContext).toContain('run /goodvibes:setup');
+    expect(fs.existsSync(path.join(freshRoot, 'server', 'intel', 'node_modules'))).toBe(false);
   });
 });
 

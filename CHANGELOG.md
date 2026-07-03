@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-07-02
+
+Setup runs once, ever.
+
+### Added
+- **Native dependencies survive plugin updates.** `/goodvibes:setup` now
+  installs into a durable home — `~/.claude/.goodvibes/deps/<server>/` — and
+  leaves each `server/<name>/node_modules` in the plugin copy as a symlink to
+  it. A plugin update replaces the plugin copy (dropping the symlinks) but not
+  the durable home; the SessionStart hook detects the missing link, verifies
+  the durable install still matches the new version's dependency list, and
+  silently relinks. No output, no nudge, no re-running setup. The nudge only
+  returns when setup genuinely needs to run: never ran, or an update actually
+  changed a server's dependency list (it names the affected servers).
+  Covered by hook tests for the relink, the changed-dependency refusal, and
+  the nothing-to-relink case.
+
+### Changed
+- The native-dependency error envelope and all setup prose now say what is
+  true: `run /goodvibes:setup (once; the install survives plugin updates)` —
+  the "re-run after every update" instruction is retired everywhere.
+
 ## [2.1.0] - 2026-07-02
 
 Nothing clutters the conversation, and the obvious command works.

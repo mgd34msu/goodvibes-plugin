@@ -157,12 +157,12 @@ claude plugin marketplace add mgd34msu/goodvibes-plugin
 claude plugin install goodvibes@goodvibes-market
 ```
 
-intel's native dependencies (ripgrep, ast-grep) are **not** installed automatically — run
-`/goodvibes:setup` to install them with explicit consent. Re-run it after any plugin
-update: an update replaces each server's installed `node_modules`, so the native dependencies
-must be reinstalled. Until they are, the servers still boot and every non-native capability
-works; native-backed capabilities return an honest "run /goodvibes:setup" message rather
-than crashing. Database drivers for `db_query` are resolved from your target project (per the v1
+Native dependencies are **not** installed automatically — run `/goodvibes:setup` to install
+them with explicit consent, once. Installs land in `~/.claude/.goodvibes/deps/` and survive
+plugin updates: the SessionStart hook relinks them automatically, so setup only comes back if
+an update changes a server's dependency list. Until setup runs, the servers still boot and
+every non-native capability works; native-backed capabilities return an honest
+"run /goodvibes:setup" message rather than crashing. Database drivers for `db_query` are resolved from your target project (per the v1
 pattern), so they are not bundled; `db_query` prints an honest install hint when a driver is
 missing.
 

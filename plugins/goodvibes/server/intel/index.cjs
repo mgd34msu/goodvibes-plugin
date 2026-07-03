@@ -250165,7 +250165,7 @@ __name(estimatePayloadTokens, "estimatePayloadTokens");
 
 // packages/core/src/envelope/errors.ts
 function nativeDepMessage(capability) {
-  return `${capability} needs native dependencies that are not installed yet - run /goodvibes:setup (one-time). This also happens after a plugin update, which replaces the installed dependencies.`;
+  return `${capability} needs native dependencies that are not installed yet - run /goodvibes:setup (once; the install survives plugin updates).`;
 }
 __name(nativeDepMessage, "nativeDepMessage");
 

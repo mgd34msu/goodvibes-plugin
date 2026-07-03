@@ -51,11 +51,13 @@ Restart Claude Code to activate the servers. Tool schemas load on demand when
 your client has Tool Search active (the default in current Claude Code); the
 fixed context cost is the tool names only.
 
-Run `/goodvibes:setup` once to install each server's native dependencies
-(with explicit consent). Until then — and again after any plugin update, which
-replaces the installed dependencies — the servers still boot and every
-non-native capability works; anything that needs a native dependency returns an
-honest "run /goodvibes:setup" message instead of failing.
+Run `/goodvibes:setup` once to install each server's native dependencies with
+explicit consent. Installs live in `~/.claude/.goodvibes/deps/` and survive
+plugin updates — the SessionStart hook relinks them automatically, so setup only
+comes back if an update changes a server's dependency list. Until setup runs,
+the servers still boot and every non-native capability works; anything that
+needs a native dependency returns an honest "run /goodvibes:setup" message
+instead of failing.
 
 ## Commands
 
