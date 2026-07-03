@@ -37,7 +37,10 @@ import { syncTool } from './tools/sync.js';
 import { configTool } from './tools/config.js';
 
 export const SERVER_NAME = 'analytics';
-export const SERVER_VERSION = '2.0.2';
+// Injected by build.mjs from plugin.json (the single version source);
+// falls back in unbundled dev/test runs where no injection happens.
+declare const __GV_VERSION__: string | undefined;
+export const SERVER_VERSION = typeof __GV_VERSION__ !== 'undefined' ? __GV_VERSION__ : '0.0.0-dev';
 
 /** The seven analytics tools, in surface order. */
 export const TOOL_MODULES: ToolModule[] = [

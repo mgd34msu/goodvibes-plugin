@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.3] - 2026-07-02
+
+### Changed
+- **SessionStart is silent by default.** The hook previously announced the
+  package manager, git branch, a "ready" banner, and a code-TODO count — all
+  either visible elsewhere or, in the TODO counter's case, wrong: 67 of the
+  reported 73 were TODO comments inside our own committed server bundles
+  (including the bundled TypeScript compiler's). The stack/branch/banner
+  lines, the TODO walker, and its background-refresh cache machinery are all
+  removed. The hook now emits ONLY things needing attention: quick project
+  health notes (missing node_modules; .env.example without .env) and the
+  host-health nudge. A healthy session start produces zero output — enforced
+  by a new contract test.
+- `SERVER_VERSION` is now injected at build time from plugin.json (the single
+  version source), ending constant drift permanently.
+
 ## [2.0.2] - 2026-07-02
 
 First dogfooding session found and fixed two defects within minutes of
