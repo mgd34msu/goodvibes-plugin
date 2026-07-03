@@ -38,7 +38,7 @@ If a claim stops being true, it comes out of the README. That's the policy.
 - **Servers live for the life of your session.** No idle self-exit, ever (regression-tested). Orphan defense is a parent-liveness watchdog that fires only when the session itself dies.
 - **Every tool runs under a per-request time budget** and returns an honest partial rather than hanging a client forever.
 - **connect is restricted by default**: credentials are pinned to their registered origins (never toggleable), destinations are allowlisted, writes are per-service opt-in, and "open" mode is a human-only, ephemeral toggle that announces itself every session it persists.
-- **State is namespaced** under `.goodvibes/v2/` in your project; nothing writes outside your project without explicit consent (`/goodvibes:plugin install-prompts` is opt-in and has a real uninstall).
+- **State is namespaced** under `.goodvibes/` in your project; nothing writes outside your project without explicit consent (`/goodvibes:plugin install-prompts` is opt-in and has a real uninstall).
 
 ## Install
 
@@ -51,11 +51,11 @@ Restart Claude Code to activate the servers. Tool schemas load on demand when
 your client has Tool Search active (the default in current Claude Code); the
 fixed context cost is the tool names only.
 
-Run `/goodvibes:plugin setup` once to install each server's native dependencies
+Run `/goodvibes:setup` once to install each server's native dependencies
 (with explicit consent). Until then — and again after any plugin update, which
 replaces the installed dependencies — the servers still boot and every
 non-native capability works; anything that needs a native dependency returns an
-honest "run /goodvibes:plugin setup" message instead of failing.
+honest "run /goodvibes:setup" message instead of failing.
 
 ## Commands
 

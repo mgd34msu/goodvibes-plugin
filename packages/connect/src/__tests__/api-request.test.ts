@@ -16,7 +16,7 @@ import { setServiceSecret } from '../fetch/secrets-store.js';
 import { globalRateLimiter } from '../fetch/rate-limiter.js';
 import { resetConfigCache } from '@goodvibes/core/config';
 
-const V2 = ['.goodvibes', 'v2'];
+const STATE = ['.goodvibes'];
 
 interface ParsedEnvelope {
   success: boolean;
@@ -53,7 +53,7 @@ describe('api_request', () => {
 
   async function setMode(mode: 'restricted' | 'open'): Promise<void> {
     await fs.promises.writeFile(
-      path.join(tmpDir, ...V2, 'config.json'),
+      path.join(tmpDir, ...STATE, 'config.json'),
       JSON.stringify({ mode }),
       'utf-8',
     );
@@ -62,7 +62,7 @@ describe('api_request', () => {
 
   beforeEach(async () => {
     tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'api-request-test-'));
-    await fs.promises.mkdir(path.join(tmpDir, ...V2), { recursive: true });
+    await fs.promises.mkdir(path.join(tmpDir, ...STATE), { recursive: true });
     vi.spyOn(process, 'cwd').mockReturnValue(tmpDir);
     await setMode('restricted');
     globalRateLimiter.reset();

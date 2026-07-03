@@ -1,7 +1,7 @@
 /**
  * Ported from v1 precision-engine `__tests__/utils/secrets-store.test.ts`
  * (assertions intact). The only change is the file location: v2 stores
- * credentials under the namespaced `.goodvibes/v2/` state dir, so the seed/read
+ * credentials under the namespaced `.goodvibes/` state dir, so the seed/read
  * paths point there.
  */
 
@@ -11,14 +11,14 @@ import * as path from 'path';
 import * as os from 'os';
 import * as store from '../fetch/secrets-store.js';
 
-const V2 = ['.goodvibes', 'v2'];
+const STATE = ['.goodvibes'];
 
 describe('secrets-store', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
     tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'secrets-store-test-'));
-    await fs.promises.mkdir(path.join(tmpDir, ...V2), { recursive: true });
+    await fs.promises.mkdir(path.join(tmpDir, ...STATE), { recursive: true });
     vi.spyOn(process, 'cwd').mockReturnValue(tmpDir);
   });
 
@@ -36,7 +36,7 @@ describe('secrets-store', () => {
     it('should load existing secrets file', async () => {
       const data = { services: { github: { type: 'bearer', token: 'abc123' } }, global: {} };
       await fs.promises.writeFile(
-        path.join(tmpDir, ...V2, 'goodvibes.secrets.json'),
+        path.join(tmpDir, ...STATE, 'goodvibes.secrets.json'),
         JSON.stringify(data),
         'utf-8',
       );
@@ -46,7 +46,7 @@ describe('secrets-store', () => {
 
     it('should throw on malformed JSON', async () => {
       await fs.promises.writeFile(
-        path.join(tmpDir, ...V2, 'goodvibes.secrets.json'),
+        path.join(tmpDir, ...STATE, 'goodvibes.secrets.json'),
         '{invalid json content',
         'utf-8',
       );
@@ -57,7 +57,7 @@ describe('secrets-store', () => {
   describe('saveSecrets', () => {
     it('should write secrets with 0o600 permissions', async () => {
       await store.saveSecrets({ services: { test: { type: 'bearer', token: 'tok' } }, global: {} });
-      const secretsPath = path.join(tmpDir, ...V2, 'goodvibes.secrets.json');
+      const secretsPath = path.join(tmpDir, ...STATE, 'goodvibes.secrets.json');
       const stat = await fs.promises.stat(secretsPath);
       expect(stat.mode & 0o777).toBe(0o600);
       const content = JSON.parse(await fs.promises.readFile(secretsPath, 'utf-8'));

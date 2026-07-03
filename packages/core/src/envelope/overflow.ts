@@ -1,11 +1,11 @@
 /**
  * Overflow spill directory — kept per plan §7.5 (it saved the review's data more
  * than once), with age-based cleanup. When a payload is too large to return
- * inline, the full text is written to a spill file under `.goodvibes/v2/overflow/`
- * (R15-namespaced) and the caller receives a head/tail preview plus the path.
+ * inline, the full text is written to a spill file under `.goodvibes/overflow/`
+ * (namespaced) and the caller receives a head/tail preview plus the path.
  *
  * Ported from v1 precision-engine `utils/overflow-handler.ts`; the spill dir now
- * resolves through `core/config` so it lands under the namespaced v2 state root.
+ * resolves through `core/config` so it lands under the `.goodvibes/` state root.
  */
 
 import * as fs from 'fs/promises';
@@ -29,7 +29,7 @@ export interface OverflowResult {
   hint: string;
 }
 
-/** Default spill directory (namespaced under `.goodvibes/v2/`). */
+/** Default spill directory (namespaced under `.goodvibes/`). */
 export function overflowDir(): string {
   return statePath('overflow');
 }

@@ -55,7 +55,7 @@ function readJson(file) {
 /** Project + user config file paths for connect (project wins on merge). */
 export function configPaths(cwd) {
   return {
-    project: join(cwd, '.goodvibes', 'v2', 'config.json'),
+    project: join(cwd, '.goodvibes', 'config.json'),
     user: join(homedir(), '.claude', '.goodvibes', 'config.json'),
   };
 }

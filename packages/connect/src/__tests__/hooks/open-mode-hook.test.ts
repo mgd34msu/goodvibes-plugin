@@ -31,7 +31,7 @@ interface OpenModeHook {
 
 let hook: OpenModeHook;
 
-const V2 = ['.goodvibes', 'v2'];
+const STATE = ['.goodvibes'];
 
 describe('session-start open-mode hook', () => {
   let tmpDir: string;
@@ -43,7 +43,7 @@ describe('session-start open-mode hook', () => {
 
   beforeEach(async () => {
     tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'open-mode-hook-'));
-    await fs.promises.mkdir(path.join(tmpDir, ...V2), { recursive: true });
+    await fs.promises.mkdir(path.join(tmpDir, ...STATE), { recursive: true });
     // Isolate the user config path (homedir) so a real ~/.claude config can't leak in.
     originalHome = process.env.HOME;
     process.env.HOME = tmpDir;
@@ -79,7 +79,7 @@ describe('session-start open-mode hook', () => {
   describe('applyOpenMode', () => {
     async function writeProjectConfig(obj: Record<string, unknown>): Promise<void> {
       await fs.promises.writeFile(
-        path.join(tmpDir, ...V2, 'config.json'),
+        path.join(tmpDir, ...STATE, 'config.json'),
         JSON.stringify(obj),
         'utf-8',
       );
@@ -95,7 +95,7 @@ describe('session-start open-mode hook', () => {
       const r = hook.applyOpenMode({ cwd: tmpDir });
       expect(r.reverted).toBe(false);
       expect(r.announce).toContain('PERSISTED');
-      const cfg = JSON.parse(await fs.promises.readFile(path.join(tmpDir, ...V2, 'config.json'), 'utf-8'));
+      const cfg = JSON.parse(await fs.promises.readFile(path.join(tmpDir, ...STATE, 'config.json'), 'utf-8'));
       expect(cfg.mode).toBe('open');
     });
 
@@ -104,7 +104,7 @@ describe('session-start open-mode hook', () => {
       const r = hook.applyOpenMode({ cwd: tmpDir });
       expect(r.reverted).toBe(true);
       expect(r.announce).toContain('ephemeral');
-      const cfg = JSON.parse(await fs.promises.readFile(path.join(tmpDir, ...V2, 'config.json'), 'utf-8'));
+      const cfg = JSON.parse(await fs.promises.readFile(path.join(tmpDir, ...STATE, 'config.json'), 'utf-8'));
       expect(cfg.mode).toBe('restricted');
     });
   });

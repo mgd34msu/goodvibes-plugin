@@ -16,6 +16,9 @@ Manage the goodvibes plugin installation (intel / analytics / connect servers, h
 /goodvibes:plugin <subcommand>
 ```
 
+(`/goodvibes:setup` is the direct shortcut for `/goodvibes:plugin setup` — same steps, same
+consent point.)
+
 ## Subcommands
 
 | Subcommand | Description |
@@ -50,7 +53,7 @@ actual consent point (the Setup hook only points here; it never installs anythin
 
 Run this again after a plugin update: an update replaces each server's installed
 `node_modules`, so the native dependencies must be reinstalled. Until they are, native-backed
-capabilities return an honest "run /goodvibes:plugin setup" message and everything else keeps
+capabilities return an honest "run /goodvibes:setup" message and everything else keeps
 working — nothing crashes.
 
 1. Check which servers still need their dependencies (a representative dependency probes each):
@@ -93,8 +96,8 @@ one that never existed; it does not carry forward):
 3. Check `${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json` exists; list its registered event names.
 4. Check native-dependency install state per server the same way `setup` does (intel, analytics,
    connect each probed independently).
-5. Check the current project's `.goodvibes/v2/.setup-marker.json` — has the Setup hook run here?
-6. Check the current project's `.goodvibes/v2/` for `memory/`, `state/`, `cache/` presence.
+5. Check the current project's `.goodvibes/.setup-marker.json` — has the Setup hook run here?
+6. Check the current project's `.goodvibes/` for `memory/`, `state/`, `cache/` presence.
 
 Present as:
 ```
@@ -107,9 +110,9 @@ Native dependencies:
   intel:     {Installed | Not installed}
   analytics: {Installed | Not installed}
   connect:   {Installed | Not installed}
-  {if any are "Not installed": "Run /goodvibes:plugin setup to install the missing ones."}
-Project setup: {marker present ? "Ran on <date>" : "Not yet run for this project (runs on next `claude init`)"}
-Project state: {.goodvibes/v2/ present ? "Present" : "None yet"}
+  {if any are "Not installed": "Run /goodvibes:setup to install the missing ones."}
+Project setup: {marker present ? "Ran on <date>" : "Not yet run for this project"}
+Project state: {.goodvibes/ present ? "Present" : "None yet"}
 ```
 
 ### `install-prompts`

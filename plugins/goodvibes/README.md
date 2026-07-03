@@ -147,7 +147,7 @@ Be honest with yourself about the operation:
   PostToolUseFailure, a warn-first commit guard, and the analytics SessionEnd / Stop / SubagentStop /
   PreCompact telemetry hooks — all observe/inform only. Each yields silently if the v1 `goodvibes`
   plugin is installed alongside, so nothing double-fires during the coexistence window. State is
-  written under the namespaced `.goodvibes/v2/` directory so v1 and v2 never fight over the same
+  written under the namespaced `.goodvibes/` directory so v1 and v2 never fight over the same
   files.
 
 ## Install
@@ -158,10 +158,10 @@ claude plugin install goodvibes@goodvibes-market
 ```
 
 intel's native dependencies (ripgrep, ast-grep) are **not** installed automatically — run
-`/goodvibes:plugin setup` to install them with explicit consent. Re-run it after any plugin
+`/goodvibes:setup` to install them with explicit consent. Re-run it after any plugin
 update: an update replaces each server's installed `node_modules`, so the native dependencies
 must be reinstalled. Until they are, the servers still boot and every non-native capability
-works; native-backed capabilities return an honest "run /goodvibes:plugin setup" message rather
+works; native-backed capabilities return an honest "run /goodvibes:setup" message rather
 than crashing. Database drivers for `db_query` are resolved from your target project (per the v1
 pattern), so they are not bundled; `db_query` prints an honest install hint when a driver is
 missing.

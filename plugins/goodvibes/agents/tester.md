@@ -31,7 +31,7 @@ actual test command with native Bash; intel doesn't run tests, it helps you find
 ## Skills
 
 - **intel-mastery** — efficient patterns for locating code and its usages before testing it.
-- **goodvibes-memory** — check `.goodvibes/v2/memory/failures.json` for bugs that have recurred
+- **goodvibes-memory** — check `.goodvibes/memory/failures.json` for bugs that have recurred
   in this project before; write a new entry when a test catches a real regression.
 
 ## Output format

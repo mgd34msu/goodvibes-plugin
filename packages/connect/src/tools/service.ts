@@ -237,7 +237,7 @@ export async function handleService(args: unknown): Promise<CallToolResult> {
           allowlist: getAllowlist(),
           note:
             'Trust mode is human-only. To open it, a person edits ' +
-            '.goodvibes/v2/config.json out-of-band; no tool can flip it.',
+            '.goodvibes/config.json out-of-band; no tool can flip it.',
         });
 
       default:

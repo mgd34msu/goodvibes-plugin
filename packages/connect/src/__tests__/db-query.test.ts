@@ -16,7 +16,7 @@ import { shutdownConnectionPool } from '../db/sqlite-pool.js';
 import { detectDriver, dynamicImport, setMockDriver, clearMockDrivers, loadPostgresDriver } from '../db/drivers.js';
 import { resetConfigCache } from '@goodvibes/core/config';
 
-const V2 = ['.goodvibes', 'v2'];
+const STATE = ['.goodvibes'];
 
 interface ParsedEnvelope {
   success: boolean;
@@ -42,13 +42,13 @@ describe('db_query', () => {
   let fixture: string;
 
   async function setMode(mode: 'restricted' | 'open'): Promise<void> {
-    await fs.promises.writeFile(path.join(tmpDir, ...V2, 'config.json'), JSON.stringify({ mode }), 'utf-8');
+    await fs.promises.writeFile(path.join(tmpDir, ...STATE, 'config.json'), JSON.stringify({ mode }), 'utf-8');
     resetConfigCache();
   }
 
   beforeEach(async () => {
     tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'db-query-test-'));
-    await fs.promises.mkdir(path.join(tmpDir, ...V2), { recursive: true });
+    await fs.promises.mkdir(path.join(tmpDir, ...STATE), { recursive: true });
     vi.spyOn(process, 'cwd').mockReturnValue(tmpDir);
     await setMode('restricted');
 

@@ -1,6 +1,6 @@
 /**
  * Ported from v1 precision-engine `__tests__/utils/cookie-jar.test.ts`
- * (assertions intact). v2 stores the jar under `.goodvibes/v2/`, so the manual
+ * (assertions intact). v2 stores the jar under `.goodvibes/`, so the manual
  * seed/read paths point there.
  */
 
@@ -10,7 +10,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { CookieJar } from '../fetch/cookie-jar.js';
 
-const V2 = ['.goodvibes', 'v2'];
+const STATE = ['.goodvibes'];
 
 describe('CookieJar', () => {
   let tmpDir: string;
@@ -18,7 +18,7 @@ describe('CookieJar', () => {
 
   beforeEach(async () => {
     tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'cookie-jar-test-'));
-    await fs.promises.mkdir(path.join(tmpDir, ...V2), { recursive: true });
+    await fs.promises.mkdir(path.join(tmpDir, ...STATE), { recursive: true });
     vi.spyOn(process, 'cwd').mockReturnValue(tmpDir);
     jar = new CookieJar();
   });
@@ -85,7 +85,7 @@ describe('CookieJar', () => {
 
     it('should write with 0o600 permissions', async () => {
       await jar.setCookies('https://example.com/', ['test=val']);
-      const cookiePath = path.join(tmpDir, ...V2, 'goodvibes.cookies.json');
+      const cookiePath = path.join(tmpDir, ...STATE, 'goodvibes.cookies.json');
       const stat = await fs.promises.stat(cookiePath);
       expect(stat.mode & 0o777).toBe(0o600);
     });
@@ -93,7 +93,7 @@ describe('CookieJar', () => {
 
   describe('expiration', () => {
     it('should prune expired cookies on load', async () => {
-      const cookiePath = path.join(tmpDir, ...V2, 'goodvibes.cookies.json');
+      const cookiePath = path.join(tmpDir, ...STATE, 'goodvibes.cookies.json');
       const data = {
         cookies: [
           { name: 'expired', value: 'old', domain: 'example.com', path: '/', expires: Date.now() - 10000 },
@@ -165,7 +165,7 @@ describe('CookieJar', () => {
       for (let i = 0; i < 600; i++) headers.push(`largecookie${i}=${largeValue}; Path=/; Max-Age=3600`);
       await jar.setCookies('https://example.com/', headers);
 
-      const cookiePath = path.join(tmpDir, ...V2, 'goodvibes.cookies.json');
+      const cookiePath = path.join(tmpDir, ...STATE, 'goodvibes.cookies.json');
       const stat = await fs.promises.stat(cookiePath);
       expect(stat.size).toBeLessThanOrEqual(512 * 1024);
       expect((await jar.getAllCookies()).length).toBeLessThan(600);
@@ -225,7 +225,7 @@ describe('CookieJar', () => {
 
       await jar.setCookies('https://example.com/', headers);
 
-      const cookiePath = path.join(tmpDir, ...V2, 'goodvibes.cookies.json');
+      const cookiePath = path.join(tmpDir, ...STATE, 'goodvibes.cookies.json');
       const stat = await fs.promises.stat(cookiePath);
       expect(stat.size).toBeLessThanOrEqual(512 * 1024);
 

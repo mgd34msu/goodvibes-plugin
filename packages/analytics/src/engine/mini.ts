@@ -5,7 +5,7 @@
  *   tmux split-window -v -l 4 "GOODVIBES_DIR=… node …/server/mini.cjs"
  *
  * Reads GOODVIBES_DIR from env (the `dashboard` handler pins it to the
- * `.goodvibes/v2/` root), initialises the Aggregator, and starts the
+ * `.goodvibes/` root), initialises the Aggregator, and starts the
  * MiniRenderer loop at the configured refresh rate.
  *
  * Field issue 9: the pane installs `@goodvibes/core/proc` so it exits with the

@@ -4,7 +4,7 @@
  * Ported from v1 precision-engine `utils/fetch/secrets-store.ts` — the
  * best-engineered v1 feature (0600 perms, `{$env}` indirection, purge-on-remove)
  * is kept intact. The only v2 change is location: the file moves under the
- * namespaced v2 state directory (`.goodvibes/v2/goodvibes.secrets.json`) via
+ * namespaced v2 state directory (`.goodvibes/goodvibes.secrets.json`) via
  * `core/config` `statePath`, so v1 and v2 credentials never collide (R15). The
  * basename is preserved so the triple gitignore guard still recognises it.
  *
@@ -60,7 +60,7 @@ export interface SecretsFile {
   global: Record<string, string | EnvRef>;
 }
 
-/** The credential file path (namespaced under `.goodvibes/v2/`, R15). */
+/** The credential file path (namespaced under `.goodvibes/`, R15). */
 function getSecretsPath(): string {
   return statePath('goodvibes.secrets.json');
 }

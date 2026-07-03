@@ -11,7 +11,7 @@
  *
  * 2.0.5: after the flush duties, compute a compact recap of the session that
  * just ended (priced from its transcript JSONL, dependency-free) and write it
- * to `.goodvibes/v2/cache/last-session-summary.json`, maintaining a running
+ * to `.goodvibes/cache/last-session-summary.json`, maintaining a running
  * project total. SessionStart reads that file to surface one value line every
  * session. The recap is fully fail-open — any error skips it, never blocking
  * the marker write or the hook response.
@@ -19,7 +19,7 @@
 
 import { readdirSync, statSync, unlinkSync } from 'node:fs';
 import * as path from 'node:path';
-import { runHook, createHookResponse, v2StatePath, writeJsonSafe, writeJsonAtomic, readJsonSafe, isTestEnvironment } from './lib/common.mjs';
+import { runHook, createHookResponse, statePath, writeJsonSafe, writeJsonAtomic, readJsonSafe, isTestEnvironment } from './lib/common.mjs';
 import { computeSessionRecap, round2 } from './lib/session-cost.mjs';
 
 const HOOK_EVENT = 'SessionEnd';
@@ -73,7 +73,7 @@ function writeSessionRecap(cacheDir, input, cwd, sessionId) {
 async function handleSessionEnd(input) {
   const cwd = input.cwd || process.cwd();
   const sessionId = input.session_id || 'unknown';
-  const cacheDir = v2StatePath(cwd, 'cache');
+  const cacheDir = statePath(cwd, 'cache');
 
   writeJsonSafe(path.join(cacheDir, `session-${sessionId}.json`), {
     session_id: sessionId,

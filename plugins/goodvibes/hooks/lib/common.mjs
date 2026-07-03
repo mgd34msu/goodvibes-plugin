@@ -3,12 +3,24 @@
  *
  * The single goodvibes plugin ships all lifecycle hooks side by side under
  * hooks/, so they share this one dependency-free helper module (no build step,
- * no import from @goodvibes/core). R15 (state namespacing): hooks that touch
- * project state use `v2StatePath()` (`.goodvibes/v2/...`), mirroring
- * core/config's getStatePath convention.
+ * no import from @goodvibes/core). Hooks that touch project state use
+ * `statePath()` (`.goodvibes/...`), mirroring core/config's getStatePath
+ * convention — including its one-time migration of the pre-2.1.0
+ * `.goodvibes/v2/` layout.
  */
 
-import { mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'node:fs';
+import {
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+  renameSync,
+  unlinkSync,
+  existsSync,
+  readdirSync,
+  statSync,
+  rmSync,
+  rmdirSync,
+} from 'node:fs';
 import * as path from 'node:path';
 
 /** Read and JSON-parse stdin. Never throws — malformed/empty input becomes `{}`. */
@@ -44,9 +56,54 @@ export function createHookResponse({ hookEventName, systemMessage, additionalCon
   return out;
 }
 
-/** `.goodvibes/v2/<segments>` — mirrors core/config's getStatePath (R15). */
-export function v2StatePath(cwd, ...segments) {
-  return path.join(cwd, '.goodvibes', 'v2', ...segments);
+/** Roots already checked for a legacy `v2/` subdirectory this process. */
+const migratedRoots = new Set();
+
+/** Merge-move `src` into `dst`; on conflict the legacy-`v2` copy wins (live state). */
+function mergeMoveDir(src, dst) {
+  mkdirSync(dst, { recursive: true });
+  for (const entry of readdirSync(src)) {
+    const s = path.join(src, entry);
+    const d = path.join(dst, entry);
+    try {
+      if (!existsSync(d)) {
+        renameSync(s, d);
+      } else if (statSync(s).isDirectory() && statSync(d).isDirectory()) {
+        mergeMoveDir(s, d);
+      } else {
+        rmSync(d, { recursive: true, force: true });
+        renameSync(s, d);
+      }
+    } catch {
+      /* skip the entry — migration is best-effort */
+    }
+  }
+  try {
+    rmdirSync(src);
+  } catch {
+    /* not empty — harmless, retried next process */
+  }
+}
+
+/** One-time migration of the pre-2.1.0 `.goodvibes/v2/` layout up into `.goodvibes/`. */
+function migrateLegacyStateDir(root) {
+  if (migratedRoots.has(root)) return;
+  migratedRoots.add(root);
+  try {
+    const legacy = path.join(root, 'v2');
+    if (existsSync(legacy) && statSync(legacy).isDirectory()) {
+      mergeMoveDir(legacy, root);
+    }
+  } catch {
+    /* fail-open */
+  }
+}
+
+/** `.goodvibes/<segments>` — mirrors core/config's getStatePath. */
+export function statePath(cwd, ...segments) {
+  const root = path.join(cwd, '.goodvibes');
+  migrateLegacyStateDir(root);
+  return path.join(root, ...segments);
 }
 
 export function ensureDir(dir) {

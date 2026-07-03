@@ -62,7 +62,12 @@ function runHook(hookFile: string, input: unknown, opts: SpawnOpts = {}): { code
 }
 
 beforeAll(() => {
-  fs.mkdirSync(FAKE_PLUGIN_ROOT, { recursive: true });
+  // The representative native-dep probe exists in the fake root, so the
+  // deps nudge stays silent in every test that doesn't remove it.
+  fs.mkdirSync(
+    path.join(FAKE_PLUGIN_ROOT, 'server', 'intel', 'node_modules', '@vscode', 'ripgrep'),
+    { recursive: true },
+  );
 });
 
 describe('goodvibes intel hooks: valid JSON (fail-open)', () => {
@@ -104,7 +109,7 @@ describe('goodvibes intel hooks: schema and content', () => {
 
   it('session-start.mjs surfaces the recap value line with correct dollars from a planted summary', () => {
     const cwd = makeTmpCwd();
-    const cacheDir = path.join(cwd, '.goodvibes', 'v2', 'cache');
+    const cacheDir = path.join(cwd, '.goodvibes', 'cache');
     fs.mkdirSync(cacheDir, { recursive: true });
     fs.writeFileSync(
       path.join(cacheDir, 'last-session-summary.json'),
@@ -163,7 +168,7 @@ describe('goodvibes intel hooks: schema and content', () => {
     });
     expect(JSON.parse(stdout).continue).toBe(true);
 
-    const summaryPath = path.join(cwd, '.goodvibes', 'v2', 'cache', 'last-session-summary.json');
+    const summaryPath = path.join(cwd, '.goodvibes', 'cache', 'last-session-summary.json');
     const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf-8'));
     expect(summary.session_id).toBe('sess-xyz');
     expect(summary.calls).toBe(2);
@@ -188,7 +193,7 @@ describe('goodvibes intel hooks: schema and content', () => {
     const first = runHook('setup.mjs', { session_id: 's1', cwd, hook_event_name: 'Setup' });
     const firstParsed = JSON.parse(first.stdout);
     expect(firstParsed.systemMessage).toMatch(/first-time setup/);
-    expect(fs.existsSync(path.join(cwd, '.goodvibes', 'v2', '.setup-marker.json'))).toBe(true);
+    expect(fs.existsSync(path.join(cwd, '.goodvibes', '.setup-marker.json'))).toBe(true);
 
     const second = runHook('setup.mjs', { session_id: 's2', cwd, hook_event_name: 'Setup' });
     const secondParsed = JSON.parse(second.stdout);
@@ -209,11 +214,11 @@ describe('goodvibes intel hooks: schema and content', () => {
     expect(ctx.length).toBeLessThanOrEqual(500 * 3.5 + 1);
     expect(ctx).toContain('engineer');
 
-    const tracking = JSON.parse(fs.readFileSync(path.join(cwd, '.goodvibes', 'v2', 'state', 'agent-tracking.json'), 'utf-8'));
+    const tracking = JSON.parse(fs.readFileSync(path.join(cwd, '.goodvibes', 'state', 'agent-tracking.json'), 'utf-8'));
     expect(tracking['agent-1'].agent_type).toBe('engineer');
   });
 
-  it('post-tool-use-failure.mjs runs the 3-phase fix loop and escalates on repeated failures', () => {
+  it('post-tool-use-failure.mjs emits NOTHING to the conversation and documents a recurring failure once (2.1.0 contract)', () => {
     const cwd = makeTmpCwd();
     const input = {
       session_id: 's1',
@@ -222,25 +227,41 @@ describe('goodvibes intel hooks: schema and content', () => {
       tool_name: 'Bash',
       error: "TS2322: Type 'string' is not assignable to type 'number'",
     };
-    const first = JSON.parse(runHook('post-tool-use-failure.mjs', input).stdout);
-    expect(first.systemMessage).toContain('Phase 1/3');
-    expect(first.systemMessage).toContain('Suggested fix');
+    // Silent by contract: no systemMessage, no additionalContext, on ANY attempt.
+    for (let i = 0; i < 7; i++) {
+      const parsed = JSON.parse(runHook('post-tool-use-failure.mjs', input).stdout);
+      expect(parsed.continue).toBe(true);
+      expect(parsed.systemMessage).toBeUndefined();
+      expect(parsed.hookSpecificOutput).toBeUndefined();
+    }
+    // ...but the recurring failure was documented to project memory exactly once.
+    const failures = JSON.parse(
+      fs.readFileSync(path.join(cwd, '.goodvibes', 'memory', 'failures.json'), 'utf-8'),
+    );
+    expect(failures).toHaveLength(1);
+    expect(failures[0].tool).toBe('Bash');
+    expect(failures[0].reason).toMatch(/recurred/);
+  });
 
-    // typescript_error has a phase-1 retry limit of 3: escalation is checked at
-    // the START of each call using the PREVIOUS call's attempt count, so the
-    // 4th call is the first one to see attemptsThisPhase (3) >= limit (3) and
-    // escalate. Calls 2 and 3 stay in phase 1.
-    runHook('post-tool-use-failure.mjs', input);
-    runHook('post-tool-use-failure.mjs', input);
-    const escalated = JSON.parse(runHook('post-tool-use-failure.mjs', input).stdout);
-    expect(escalated.systemMessage).toContain('Phase 2/3');
-    expect(escalated.systemMessage).toMatch(/official documentation/i);
+  it('session-start.mjs appends the deps nudge when the installed plugin copy has no native deps', () => {
+    const cwd = makeTmpCwd();
+    const bareRoot = makeTmpCwd(); // no server/intel/node_modules probe inside
+    const { stdout } = runHook(
+      'session-start.mjs',
+      { session_id: 'abc12345', cwd, hook_event_name: 'SessionStart' },
+      { pluginRoot: bareRoot },
+    );
+    const parsed = JSON.parse(stdout);
+    const ctx = parsed.hookSpecificOutput.additionalContext as string;
+    expect(ctx.split('\n')[0]).toContain('[goodvibes] First session here');
+    expect(ctx).toContain('run /goodvibes:setup');
+    expect(parsed.systemMessage).toMatch(/native deps/);
   });
 });
 
 describe('goodvibes intel hooks: host-health nudge (lane 9 loose coupling)', () => {
   function writeHealthState(cwd: string, state: object): void {
-    const dir = path.join(cwd, '.goodvibes', 'v2', 'health');
+    const dir = path.join(cwd, '.goodvibes', 'health');
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'health-state.json'), JSON.stringify(state));
   }

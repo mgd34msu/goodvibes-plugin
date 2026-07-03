@@ -93,7 +93,7 @@ export function decideCommitGuard(input) {
 }
 
 function markerPath(cwd) {
-  return join(cwd, '.goodvibes', 'v2', '.commit-guard-warned');
+  return join(cwd, '.goodvibes', '.commit-guard-warned');
 }
 
 /**

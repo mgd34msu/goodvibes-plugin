@@ -13336,8 +13336,43 @@ var require_dist = __commonJS({
 });
 
 // packages/core/src/config/index.ts
+function mergeMoveDir(src, dst) {
+  fs.mkdirSync(dst, { recursive: true });
+  for (const entry of fs.readdirSync(src)) {
+    const s = path.join(src, entry);
+    const d = path.join(dst, entry);
+    try {
+      if (!fs.existsSync(d)) {
+        fs.renameSync(s, d);
+      } else if (fs.statSync(s).isDirectory() && fs.statSync(d).isDirectory()) {
+        mergeMoveDir(s, d);
+      } else {
+        fs.rmSync(d, { recursive: true, force: true });
+        fs.renameSync(s, d);
+      }
+    } catch {
+    }
+  }
+  try {
+    fs.rmdirSync(src);
+  } catch {
+  }
+}
+function migrateLegacyStateDir(root) {
+  if (migratedRoots.has(root)) return;
+  migratedRoots.add(root);
+  try {
+    const legacy = path.join(root, "v2");
+    if (fs.existsSync(legacy) && fs.statSync(legacy).isDirectory()) {
+      mergeMoveDir(legacy, root);
+    }
+  } catch {
+  }
+}
 function getStatePath(cwd, ...segments) {
-  return path.join(cwd, ...V2_STATE_SEGMENTS, ...segments);
+  const root = path.join(cwd, ...STATE_SEGMENTS);
+  migrateLegacyStateDir(root);
+  return path.join(root, ...segments);
 }
 function statePath(...segments) {
   return getStatePath(process.cwd(), ...segments);
@@ -13390,7 +13425,7 @@ function loadConfig(cwd = process.cwd()) {
   cached2 = { key: cacheKey, value };
   return value;
 }
-var fs, os, path, DEFAULT_CONFIG, V2_STATE_SEGMENTS, cached2;
+var fs, os, path, DEFAULT_CONFIG, STATE_SEGMENTS, migratedRoots, cached2;
 var init_config = __esm({
   "packages/core/src/config/index.ts"() {
     "use strict";
@@ -13413,7 +13448,10 @@ var init_config = __esm({
         analytics_ms: 2e4
       })
     });
-    V2_STATE_SEGMENTS = [".goodvibes", "v2"];
+    STATE_SEGMENTS = [".goodvibes"];
+    migratedRoots = /* @__PURE__ */ new Set();
+    __name(mergeMoveDir, "mergeMoveDir");
+    __name(migrateLegacyStateDir, "migrateLegacyStateDir");
     __name(getStatePath, "getStatePath");
     __name(statePath, "statePath");
     __name(projectConfigPath, "projectConfigPath");
@@ -13537,7 +13575,7 @@ var init_utf8 = __esm({
 
 // packages/core/src/envelope/errors.ts
 function nativeDepMessage(capability) {
-  return `${capability} needs native dependencies that are not installed yet - run /goodvibes:plugin setup (one-time). This also happens after a plugin update, which replaces the installed dependencies.`;
+  return `${capability} needs native dependencies that are not installed yet - run /goodvibes:setup (one-time). This also happens after a plugin update, which replaces the installed dependencies.`;
 }
 var init_errors = __esm({
   "packages/core/src/envelope/errors.ts"() {

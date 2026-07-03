@@ -4,7 +4,7 @@
  * Ported from v1 precision-engine `utils/fetch/service-registry.ts`. Behaviour
  * (add/remove/collision/url-patterns/summaries, purge-secrets-on-remove) is
  * intact; the only change is persistence: it reads/writes `registry-store`
- * (`.goodvibes/v2/services.json`) instead of the retired mutable runtime-config.
+ * (`.goodvibes/services.json`) instead of the retired mutable runtime-config.
  * The registry additionally carries the BUILD-NEW trust surface (per-service
  * `write_methods`, global `allowlist`).
  */

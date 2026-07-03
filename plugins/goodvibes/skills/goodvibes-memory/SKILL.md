@@ -1,32 +1,32 @@
 ---
 name: goodvibes-memory
-description: Documents the .goodvibes/v2/memory/ cross-session memory files (decisions, patterns, failures, preferences) — what's written automatically, what you should read and write, and the exact JSON shape of each file. Load at the start of a task to check prior context, and before finishing to record what you learned.
+description: Documents the .goodvibes/memory/ cross-session memory files (decisions, patterns, failures, preferences) — what's written automatically, what you should read and write, and the exact JSON shape of each file. Load at the start of a task to check prior context, and before finishing to record what you learned.
 ---
 
 # goodvibes-memory
 
-Project memory that survives across sessions, namespaced under `.goodvibes/v2/memory/` (R15 —
+Project memory that survives across sessions, namespaced under `.goodvibes/memory/` (R15 —
 kept separate from any v1 `.goodvibes/` state so the two generations never collide while both are
 installed). Four files, each a plain JSON array — no bespoke markdown parser to keep in sync,
 unlike v1's `.md`-with-custom-parser design.
 
 ## Files and shapes
 
-`.goodvibes/v2/memory/decisions.json` — architectural choices and why:
+`.goodvibes/memory/decisions.json` — architectural choices and why:
 ```json
 [{ "title": "Use tRPC for the API layer", "date": "2026-07-02",
    "rationale": "End-to-end type safety with the existing Next.js app",
    "alternatives": ["REST + OpenAPI", "GraphQL"], "agent": "architect" }]
 ```
 
-`.goodvibes/v2/memory/patterns.json` — established, reusable approaches:
+`.goodvibes/memory/patterns.json` — established, reusable approaches:
 ```json
 [{ "name": "Repository pattern for data access", "date": "2026-07-02",
    "description": "All DB access goes through src/repositories/*, never direct Prisma calls in routes",
    "files": ["src/repositories/user-repository.ts"] }]
 ```
 
-`.goodvibes/v2/memory/failures.json` — approaches that were tried and didn't work:
+`.goodvibes/memory/failures.json` — approaches that were tried and didn't work:
 ```json
 [{ "date": "2026-07-02", "approach": "Bash failed: npm ERR! ERESOLVE ...",
    "reason": "Exhausted 6 attempts across 3 phases", "suggestion": "Manual intervention required" }]
@@ -36,7 +36,7 @@ when its 3-phase fix loop exhausts all attempts on a given error (see `post-tool
 That's the only automatic write in this system — everything else is something an agent does
 deliberately.
 
-`.goodvibes/v2/memory/preferences.json` — project conventions worth remembering:
+`.goodvibes/memory/preferences.json` — project conventions worth remembering:
 ```json
 [{ "key": "test-framework", "value": "vitest", "date": "2026-07-02",
    "notes": "Project already had vitest configured; don't introduce jest" }]

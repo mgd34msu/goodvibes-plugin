@@ -11,14 +11,14 @@
  * unattended, matching the "zero block/rewrite/steer" invariant plan §11
  * holds every v2 hook to. What's left is genuinely observe-only: write a
  * markdown summary of files touched this session (read from the shared
- * `.goodvibes/v2/state/agent-tracking.json`-adjacent transcript, best-effort)
- * to `.goodvibes/v2/state/last-session-summary.md` so context surviving
+ * `.goodvibes/state/agent-tracking.json`-adjacent transcript, best-effort)
+ * to `.goodvibes/state/last-session-summary.md` so context surviving
  * compaction is easy to find, and back up nothing beyond that.
  */
 
 import { existsSync, statSync, openSync, readSync, closeSync } from 'node:fs';
 import { promises as fsp } from 'node:fs';
-import { runHook, createHookResponse, v2StatePath, ensureDir, writeJsonSafe, isTestEnvironment } from './lib/common.mjs';
+import { runHook, createHookResponse, statePath, ensureDir, writeJsonSafe, isTestEnvironment } from './lib/common.mjs';
 
 const HOOK_EVENT = 'PreCompact';
 const MAX_TRANSCRIPT_BYTES = 2_000_000; // bounded read — transcripts can be large
@@ -56,7 +56,7 @@ function lastAssistantSummary(transcriptPath) {
 
 async function handlePreCompact(input) {
   const cwd = input.cwd || process.cwd();
-  const stateDir = v2StatePath(cwd, 'state');
+  const stateDir = statePath(cwd, 'state');
   ensureDir(stateDir);
 
   const summary = lastAssistantSummary(input.transcript_path);
@@ -76,12 +76,12 @@ async function handlePreCompact(input) {
   ].join('\n');
 
   try {
-    await fsp.writeFile(v2StatePath(cwd, 'state', 'last-session-summary.md'), content, 'utf-8');
+    await fsp.writeFile(statePath(cwd, 'state', 'last-session-summary.md'), content, 'utf-8');
   } catch {
     /* best-effort */
   }
 
-  writeJsonSafe(v2StatePath(cwd, 'cache', 'pre-compact-backup.json'), {
+  writeJsonSafe(statePath(cwd, 'cache', 'pre-compact-backup.json'), {
     session_id: input.session_id || 'unknown',
     compacted_at: timestamp,
   });

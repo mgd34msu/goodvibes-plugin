@@ -69,7 +69,7 @@ describe('commit-guard hook', () => {
     it('finds protected files in porcelain output (incl. nested paths and renames)', () => {
       const porcelain = [
         ' M src/index.ts',
-        '?? .goodvibes/v2/goodvibes.secrets.json',
+        '?? .goodvibes/goodvibes.secrets.json',
         'A  notes.txt',
         'R  old.json -> goodvibes.cookies.json',
       ].join('\n');

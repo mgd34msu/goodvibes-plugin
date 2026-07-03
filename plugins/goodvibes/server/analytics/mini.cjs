@@ -1339,6 +1339,7 @@ var import_fs2 = require("fs");
 var path5 = __toESM(require("path"), 1);
 
 // packages/core/src/config/index.ts
+var fs = __toESM(require("fs"), 1);
 var path4 = __toESM(require("path"), 1);
 var DEFAULT_CONFIG2 = Object.freeze({
   mode: "restricted",
@@ -1356,9 +1357,47 @@ var DEFAULT_CONFIG2 = Object.freeze({
     analytics_ms: 2e4
   })
 });
-var V2_STATE_SEGMENTS = [".goodvibes", "v2"];
+var STATE_SEGMENTS = [".goodvibes"];
+var migratedRoots = /* @__PURE__ */ new Set();
+function mergeMoveDir(src, dst) {
+  fs.mkdirSync(dst, { recursive: true });
+  for (const entry of fs.readdirSync(src)) {
+    const s = path4.join(src, entry);
+    const d = path4.join(dst, entry);
+    try {
+      if (!fs.existsSync(d)) {
+        fs.renameSync(s, d);
+      } else if (fs.statSync(s).isDirectory() && fs.statSync(d).isDirectory()) {
+        mergeMoveDir(s, d);
+      } else {
+        fs.rmSync(d, { recursive: true, force: true });
+        fs.renameSync(s, d);
+      }
+    } catch {
+    }
+  }
+  try {
+    fs.rmdirSync(src);
+  } catch {
+  }
+}
+__name(mergeMoveDir, "mergeMoveDir");
+function migrateLegacyStateDir(root) {
+  if (migratedRoots.has(root)) return;
+  migratedRoots.add(root);
+  try {
+    const legacy = path4.join(root, "v2");
+    if (fs.existsSync(legacy) && fs.statSync(legacy).isDirectory()) {
+      mergeMoveDir(legacy, root);
+    }
+  } catch {
+  }
+}
+__name(migrateLegacyStateDir, "migrateLegacyStateDir");
 function getStatePath(cwd, ...segments) {
-  return path4.join(cwd, ...V2_STATE_SEGMENTS, ...segments);
+  const root = path4.join(cwd, ...STATE_SEGMENTS);
+  migrateLegacyStateDir(root);
+  return path4.join(root, ...segments);
 }
 __name(getStatePath, "getStatePath");
 function statePath(...segments) {

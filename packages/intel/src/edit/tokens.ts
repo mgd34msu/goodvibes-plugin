@@ -10,7 +10,7 @@
  *     cannot be replayed and two concurrent applies cannot both win.
  *   - EXPIRING — a 10-minute TTL; `apply` rejects an expired token and the store
  *     sweeps stale files opportunistically.
- *   - NAMESPACED — stored under `core/config` `getStatePath` (`.goodvibes/v2/
+ *   - NAMESPACED — stored under `core/config` `getStatePath` (`.goodvibes/
  *     edit-tokens/`), honoring R15. The state ROOT defaults to the server cwd
  *     (the project root in production); `GOODVIBES_STATE_ROOT` overrides it,
  *     which the tests use to keep token files inside an isolated temp dir.

@@ -26,7 +26,7 @@ let goodvibesDir: string;
 beforeEach(() => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gv-health-'));
   procRoot = path.join(tmp, 'proc');
-  goodvibesDir = path.join(tmp, '.goodvibes', 'v2');
+  goodvibesDir = path.join(tmp, '.goodvibes');
   fs.mkdirSync(procRoot, { recursive: true });
   fs.mkdirSync(goodvibesDir, { recursive: true });
 });
@@ -117,7 +117,7 @@ describe('HostHealthSampler against a fake /proc', () => {
     expect(report).toContain('never kills processes for you');
   });
 
-  it('writes the state file under .goodvibes/v2/health/', () => {
+  it('writes the state file under .goodvibes/health/', () => {
     writeLoadavg(0.5, 0.4, 0.3);
     const sampler = new HostHealthSampler({ goodvibesDir, procRoot, sessionRootPid: 1 });
     sampler.writeState(sampler.sampleOnce());

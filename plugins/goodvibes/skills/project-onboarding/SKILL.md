@@ -40,7 +40,7 @@ first — it checks real compiler references, not a text search for the name.
 
 ## 5. Record what you found
 
-Write what you learned to `.goodvibes/v2/memory/` (see the `goodvibes-memory` skill) as a
+Write what you learned to `.goodvibes/memory/` (see the `goodvibes-memory` skill) as a
 `pattern` or `decision` entry — the next session, or the next agent working in this codebase,
 shouldn't have to re-derive the same map from scratch.
 

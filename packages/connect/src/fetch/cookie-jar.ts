@@ -3,7 +3,7 @@
  *
  * Ported from v1 precision-engine `utils/fetch/cookie-jar.ts` (domain/path
  * matching, expiration, eviction policy all intact). v2 changes: the file moves
- * under the namespaced state dir (`.goodvibes/v2/goodvibes.cookies.json`) via
+ * under the namespaced state dir (`.goodvibes/goodvibes.cookies.json`) via
  * `core/config` `statePath`, and the gitignore guard is anchored at the real
  * project root (`process.cwd()`) rather than two directories up — the extra
  * `v2` path segment made the old `dirname(dirname(...))` land inside

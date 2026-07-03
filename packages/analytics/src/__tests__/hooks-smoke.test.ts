@@ -79,10 +79,10 @@ describe('goodvibes analytics hooks: valid JSON (fail-open)', () => {
 });
 
 describe('goodvibes analytics hooks: content and silence', () => {
-  it('session-end.mjs writes a session-close marker under .goodvibes/v2/cache/', () => {
+  it('session-end.mjs writes a session-close marker under .goodvibes/cache/', () => {
     const cwd = makeTmpCwd();
     runHook('session-end.mjs', { session_id: 'sess-42', cwd, hook_event_name: 'SessionEnd' });
-    const markerPath = path.join(cwd, '.goodvibes', 'v2', 'cache', 'session-sess-42.json');
+    const markerPath = path.join(cwd, '.goodvibes', 'cache', 'session-sess-42.json');
     expect(fs.existsSync(markerPath)).toBe(true);
     const marker = JSON.parse(fs.readFileSync(markerPath, 'utf-8'));
     expect(marker.session_id).toBe('sess-42');
@@ -95,7 +95,7 @@ describe('goodvibes analytics hooks: content and silence', () => {
     expect(parsed.systemMessage).toBeUndefined();
     expect(parsed.hookSpecificOutput).toBeUndefined();
 
-    const telemetryDir = path.join(cwd, '.goodvibes', 'v2', 'telemetry');
+    const telemetryDir = path.join(cwd, '.goodvibes', 'telemetry');
     const files = fs.readdirSync(telemetryDir);
     expect(files.some((f) => f.endsWith('-stops.jsonl'))).toBe(true);
   });
@@ -103,7 +103,7 @@ describe('goodvibes analytics hooks: content and silence', () => {
   it('subagent-stop.mjs is telemetry-only (no injection) and consumes the SubagentStart tracking entry', () => {
     const cwd = makeTmpCwd();
     // Simulate the intel SubagentStart having already written a tracking entry.
-    const trackingPath = path.join(cwd, '.goodvibes', 'v2', 'state', 'agent-tracking.json');
+    const trackingPath = path.join(cwd, '.goodvibes', 'state', 'agent-tracking.json');
     fs.mkdirSync(path.dirname(trackingPath), { recursive: true });
     fs.writeFileSync(
       trackingPath,
@@ -125,7 +125,7 @@ describe('goodvibes analytics hooks: content and silence', () => {
     expect(remaining['agent-1']).toBeUndefined();
 
     const now = new Date();
-    const telemetryPath = path.join(cwd, '.goodvibes', 'v2', 'telemetry', `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}.jsonl`);
+    const telemetryPath = path.join(cwd, '.goodvibes', 'telemetry', `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}.jsonl`);
     const lines = fs.readFileSync(telemetryPath, 'utf-8').trim().split('\n');
     const entry = JSON.parse(lines[lines.length - 1]);
     expect(entry.event).toBe('subagent_complete');
@@ -136,7 +136,7 @@ describe('goodvibes analytics hooks: content and silence', () => {
   it('pre-compact.mjs writes a session summary and never runs git commit', () => {
     const cwd = makeTmpCwd();
     runHook('pre-compact.mjs', { session_id: 's1', cwd, hook_event_name: 'PreCompact' });
-    const summaryPath = path.join(cwd, '.goodvibes', 'v2', 'state', 'last-session-summary.md');
+    const summaryPath = path.join(cwd, '.goodvibes', 'state', 'last-session-summary.md');
     expect(fs.existsSync(summaryPath)).toBe(true);
     const content = fs.readFileSync(summaryPath, 'utf-8');
     expect(content).toMatch(/observe-only/i);

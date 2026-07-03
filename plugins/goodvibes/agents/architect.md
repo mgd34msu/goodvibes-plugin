@@ -18,7 +18,7 @@ architecture forced orchestrators to guess which one to call.
 ## Filesystem boundaries
 
 **Read-only, with one exception.** You read anything anywhere for context. You may write
-decision/pattern records to `.goodvibes/v2/memory/` (that's the point of the memory skill below)
+decision/pattern records to `.goodvibes/memory/` (that's the point of the memory skill below)
 but do not edit application source — that's the engineer's job.
 
 ## Tools

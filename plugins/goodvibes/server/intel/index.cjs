@@ -22348,7 +22348,7 @@ ${lanes.join("\n")}
               return process.memoryUsage().heapUsed;
             },
             getFileSize(path30) {
-              const stat16 = statSync3(path30);
+              const stat16 = statSync4(path30);
               if (stat16 == null ? void 0 : stat16.isFile()) {
                 return stat16.size;
               }
@@ -22392,14 +22392,14 @@ ${lanes.join("\n")}
             }, "require")
           };
           return nodeSystem;
-          function statSync3(path30) {
+          function statSync4(path30) {
             try {
               return _fs.statSync(path30, statSyncOptions);
             } catch {
               return void 0;
             }
           }
-          __name(statSync3, "statSync");
+          __name(statSync4, "statSync");
           function enableCPUProfiler(path30, cb) {
             if (activeSession) {
               cb();
@@ -22454,7 +22454,7 @@ ${lanes.join("\n")}
               activeSession.post("Profiler.stop", (err, { profile }) => {
                 var _a3;
                 if (!err) {
-                  if ((_a3 = statSync3(profilePath)) == null ? void 0 : _a3.isDirectory()) {
+                  if ((_a3 = statSync4(profilePath)) == null ? void 0 : _a3.isDirectory()) {
                     profilePath = _path.join(profilePath, `${(/* @__PURE__ */ new Date()).toISOString().replace(/:/g, "-")}+P${process.pid}.cpuprofile`);
                   }
                   try {
@@ -22582,7 +22582,7 @@ ${lanes.join("\n")}
                 let stat16;
                 if (typeof dirent === "string" || dirent.isSymbolicLink()) {
                   const name = combinePaths(path30, entry);
-                  stat16 = statSync3(name);
+                  stat16 = statSync4(name);
                   if (!stat16) {
                     continue;
                   }
@@ -22608,7 +22608,7 @@ ${lanes.join("\n")}
           }
           __name(readDirectory, "readDirectory");
           function fileSystemEntryExists(path30, entryKind) {
-            const stat16 = statSync3(path30);
+            const stat16 = statSync4(path30);
             if (!stat16) {
               return false;
             }
@@ -22656,7 +22656,7 @@ ${lanes.join("\n")}
           __name(realpath2, "realpath");
           function getModifiedTime3(path30) {
             var _a3;
-            return (_a3 = statSync3(path30)) == null ? void 0 : _a3.mtime;
+            return (_a3 = statSync4(path30)) == null ? void 0 : _a3.mtime;
           }
           __name(getModifiedTime3, "getModifiedTime3");
           function setModifiedTime(path30, time3) {
@@ -239222,12 +239222,12 @@ var require_out = __commonJS({
     }
     __name(stat16, "stat");
     exports2.stat = stat16;
-    function statSync3(path30, optionsOrSettings) {
+    function statSync4(path30, optionsOrSettings) {
       const settings = getSettings(optionsOrSettings);
       return sync.read(path30, settings);
     }
-    __name(statSync3, "statSync");
-    exports2.statSync = statSync3;
+    __name(statSync4, "statSync");
+    exports2.statSync = statSync4;
     function getSettings(settingsOrOptions = {}) {
       if (settingsOrOptions instanceof settings_1.default) {
         return settingsOrOptions;
@@ -250165,7 +250165,7 @@ __name(estimatePayloadTokens, "estimatePayloadTokens");
 
 // packages/core/src/envelope/errors.ts
 function nativeDepMessage(capability) {
-  return `${capability} needs native dependencies that are not installed yet - run /goodvibes:plugin setup (one-time). This also happens after a plugin update, which replaces the installed dependencies.`;
+  return `${capability} needs native dependencies that are not installed yet - run /goodvibes:setup (one-time). This also happens after a plugin update, which replaces the installed dependencies.`;
 }
 __name(nativeDepMessage, "nativeDepMessage");
 
@@ -250189,9 +250189,47 @@ var DEFAULT_CONFIG = Object.freeze({
     analytics_ms: 2e4
   })
 });
-var V2_STATE_SEGMENTS = [".goodvibes", "v2"];
+var STATE_SEGMENTS = [".goodvibes"];
+var migratedRoots = /* @__PURE__ */ new Set();
+function mergeMoveDir(src, dst) {
+  fs.mkdirSync(dst, { recursive: true });
+  for (const entry of fs.readdirSync(src)) {
+    const s = path.join(src, entry);
+    const d = path.join(dst, entry);
+    try {
+      if (!fs.existsSync(d)) {
+        fs.renameSync(s, d);
+      } else if (fs.statSync(s).isDirectory() && fs.statSync(d).isDirectory()) {
+        mergeMoveDir(s, d);
+      } else {
+        fs.rmSync(d, { recursive: true, force: true });
+        fs.renameSync(s, d);
+      }
+    } catch {
+    }
+  }
+  try {
+    fs.rmdirSync(src);
+  } catch {
+  }
+}
+__name(mergeMoveDir, "mergeMoveDir");
+function migrateLegacyStateDir(root) {
+  if (migratedRoots.has(root)) return;
+  migratedRoots.add(root);
+  try {
+    const legacy = path.join(root, "v2");
+    if (fs.existsSync(legacy) && fs.statSync(legacy).isDirectory()) {
+      mergeMoveDir(legacy, root);
+    }
+  } catch {
+  }
+}
+__name(migrateLegacyStateDir, "migrateLegacyStateDir");
 function getStatePath(cwd, ...segments) {
-  return path.join(cwd, ...V2_STATE_SEGMENTS, ...segments);
+  const root = path.join(cwd, ...STATE_SEGMENTS);
+  migrateLegacyStateDir(root);
+  return path.join(root, ...segments);
 }
 __name(getStatePath, "getStatePath");
 function statePath(...segments) {

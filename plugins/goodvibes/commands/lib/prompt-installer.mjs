@@ -34,7 +34,7 @@ measured, and honest about when native tools are the right choice.
 Load by name via the Skill tool when the task calls for it — none of these are always-on:
 - \`intel-mastery\` — usage guide for the intel MCP tools (code_read/code_grep/code_glob/...).
 - \`project-onboarding\` — mapping an unfamiliar codebase with the intel analyzers.
-- \`goodvibes-memory\` — \`.goodvibes/v2/memory/\` cross-session decisions/patterns/failures/preferences.
+- \`goodvibes-memory\` — \`.goodvibes/memory/\` cross-session decisions/patterns/failures/preferences.
 - \`task-orchestration\` — decomposing work with native Task/Workflow + the Write-Review-Fix-Confirm pattern.
 - \`review-scoring\` — the WRFC refutation rubric (defect list + severity, not a scalar score).
 

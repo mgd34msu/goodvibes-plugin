@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-07-02
+
+Nothing clutters the conversation, and the obvious command works.
+
+### Added
+- **`/goodvibes:setup`.** The native-dependency install now has a top-level
+  command — the word "setup" gets you setup. It is the same consent-gated flow
+  as `/goodvibes:plugin setup` (which still works); every pointer in the
+  product (the SessionStart nudge, error envelopes, docs) now names
+  `/goodvibes:setup`.
+
+### Changed
+- **The PostToolUseFailure "Fix Loop" banner is gone.** The hook now emits
+  nothing to the conversation, ever. Its remaining job is silent bookkeeping:
+  it counts repeated failures per (tool, error) signature and, when the same
+  failure recurs six times within 24h, documents it once to
+  `.goodvibes/memory/failures.json` for the goodvibes-memory skill. The
+  v1-ported suggestion/research-hint machinery was deleted with the banner.
+  (The retired banner also had a display defect — every attempt listed its own
+  current suggestion under "Previously attempted (failed)" — which is moot now.)
+- **Project state moved from `.goodvibes/v2/` to `.goodvibes/`.** The `v2`
+  namespace existed so v1 and v2 installs could coexist; v1 is uninstallable,
+  so the subdirectory is pure naming residue. Both path resolvers (core config
+  `getStatePath` and the hooks' `statePath`) migrate a legacy `v2/`
+  subdirectory up automatically — once per process, merge-preserving, fail-open
+  — so existing recaps, retries, memory, and registries carry over untouched.
+- **The deps-missing nudge no longer depends on `claude init`.** It previously
+  keyed on the Setup hook's run-once marker (written during `claude init`);
+  it now probes the one thing that matters — whether the installed plugin copy
+  has its native dependencies — and points at `/goodvibes:setup`. Nothing in
+  the product references `claude init` anymore.
+- **The development surface dropped its v2 naming** (repo-side): work happens
+  on `main` (the `v2` branch is deleted; `v1` remains the permanent archive),
+  `npm run build` / `npm run test` replace the `:v2`-suffixed scripts, CI jobs
+  are renamed, the architecture docs lost their v2 filename prefixes, and
+  `release.sh` — which still built v1 servers that no longer exist — was
+  rewritten around the real release pipeline.
+
 ## [2.0.5] - 2026-07-02
 
 The "installed from GitHub, setup not run yet" release: a fresh clone whose

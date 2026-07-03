@@ -144,7 +144,7 @@ describe('fresh-install gate — committed bundles with zero node_modules', () =
         const outlineReply = (await d.waitFor(3, 20_000)) as { result?: { content?: Array<{ text?: string }> } };
         const outlineText = outlineReply.result?.content?.[0]?.text ?? '';
         expect(outlineText).toContain('needs native dependencies that are not installed yet');
-        expect(outlineText).toContain('/goodvibes:plugin setup');
+        expect(outlineText).toContain('/goodvibes:setup');
         // The honest envelope — never the raw module-resolution failure.
         expect(outlineText).not.toContain('Cannot find module');
 

@@ -5,7 +5,7 @@
  * never interleaves into human logs again — debug routes to its own file, while
  * info/warn/error go to the human activity log. Both files rotate with a size
  * cap so `activity.md` can never grow to 1.2 MB / 54k lines again. Files live
- * under the R15-namespaced `.goodvibes/v2/logs/`.
+ * under the namespaced `.goodvibes/logs/`.
  *
  * stdout stays clean for the MCP protocol; human-facing lines also mirror to
  * stderr so `--mcp-debug` shows them. Ported from v1 precision-engine
@@ -20,7 +20,7 @@ import { estimatePayloadTokens } from '../shared/tokens.js';
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'tool';
 
 export interface LoggerOptions {
-  /** Directory for log files (default `.goodvibes/v2/logs`). */
+  /** Directory for log files (default `.goodvibes/logs`). */
   dir?: string;
   /** Rotate a file once it exceeds this many bytes (default 1 MiB). */
   maxBytes?: number;
@@ -120,7 +120,7 @@ export function createLogger(options: LoggerOptions = {}): Logger {
   };
 }
 
-/** A lazily-created default logger writing under `.goodvibes/v2/logs/`. */
+/** A lazily-created default logger writing under `.goodvibes/logs/`. */
 let defaultLogger: Logger | null = null;
 
 /** The shared default logger (level-routed, rotating). */

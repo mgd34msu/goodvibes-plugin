@@ -39,7 +39,7 @@ const DEFAULT_SUSTAINED_SAMPLES = 2;
 /** Per-core load above this trips the intel SessionStart nudge. */
 export const LOAD_PER_CORE_NUDGE = 1.5;
 
-/** State-file location under the R15-namespaced `.goodvibes/v2/` root. */
+/** State-file location under the namespaced `.goodvibes/` root. */
 export const HEALTH_STATE_SEGMENTS = ['health', 'health-state.json'] as const;
 
 /**
@@ -71,7 +71,7 @@ export interface OrphanProcess {
   kill_command: string;
 }
 
-/** The compact health snapshot written to `.goodvibes/v2/health/health-state.json`. */
+/** The compact health snapshot written to `.goodvibes/health/health-state.json`. */
 export interface HealthState {
   /** State-file schema version. */
   schema: number;
@@ -97,7 +97,7 @@ export interface HealthState {
 
 /** Options for {@link HostHealthSampler}. */
 export interface HostHealthOptions {
-  /** Project state root (`.goodvibes/v2`). The state file lands under it. */
+  /** Project state root (`.goodvibes`). The state file lands under it. */
   goodvibesDir: string;
   /** Root of the proc filesystem (default `/proc`). Point at a fixture in tests. */
   procRoot?: string;

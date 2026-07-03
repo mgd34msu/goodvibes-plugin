@@ -55,14 +55,14 @@ describe('Telemetry', () => {
 describe('KVState', () => {
   it('round-trips values through an atomic session file', async () => {
     const priorCwd = process.cwd();
-    process.chdir(tmpDir); // KVState writes under cwd/.goodvibes/v2/state
+    process.chdir(tmpDir); // KVState writes under cwd/.goodvibes/state
     try {
       const kv = KVState.initWithSessionId('deadbeef');
       await kv.set({ 'session.task': 'scaffold-core' });
       const got = await kv.get(['session.task']);
       expect(got['session.task']).toBe('scaffold-core');
       expect(kv.getSessionId()).toBe('deadbeef');
-      expect(fs.existsSync(path.join(tmpDir, '.goodvibes', 'v2', 'state', 'session_deadbeef.json'))).toBe(true);
+      expect(fs.existsSync(path.join(tmpDir, '.goodvibes', 'state', 'session_deadbeef.json'))).toBe(true);
     } finally {
       process.chdir(priorCwd);
     }

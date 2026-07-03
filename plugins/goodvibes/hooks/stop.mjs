@@ -18,7 +18,7 @@
 
 import * as path from 'node:path';
 import { readdirSync, statSync, unlinkSync } from 'node:fs';
-import { runHook, createHookResponse, v2StatePath, appendJsonlSafe, isTestEnvironment } from './lib/common.mjs';
+import { runHook, createHookResponse, statePath, appendJsonlSafe, isTestEnvironment } from './lib/common.mjs';
 
 const HOOK_EVENT = 'Stop';
 const TELEMETRY_PRUNE_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -26,7 +26,7 @@ const TELEMETRY_PRUNE_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 function telemetryFile(cwd) {
   const now = new Date();
   const fileName = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-stops.jsonl`;
-  return v2StatePath(cwd, 'telemetry', fileName);
+  return statePath(cwd, 'telemetry', fileName);
 }
 
 /** Best-effort removal of stop-telemetry files older than TELEMETRY_PRUNE_AGE_MS. */
@@ -56,7 +56,7 @@ async function handleStop(input) {
     session_id: input.session_id || 'unknown',
     at: new Date().toISOString(),
   });
-  pruneOldTelemetryFiles(v2StatePath(cwd, 'telemetry'));
+  pruneOldTelemetryFiles(statePath(cwd, 'telemetry'));
   return createHookResponse({ hookEventName: HOOK_EVENT });
 }
 

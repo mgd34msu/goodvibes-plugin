@@ -34,7 +34,7 @@ doesn't cover the case.
 
 - **review-scoring** — the refutation-based rubric this agent is built around: a defect list
   with severity, not a single approve/reject verdict.
-- **goodvibes-memory** — check `.goodvibes/v2/memory/failures.json` for defect classes that have
+- **goodvibes-memory** — check `.goodvibes/memory/failures.json` for defect classes that have
   recurred before in this project.
 
 ## Output format

@@ -22278,9 +22278,47 @@ var DEFAULT_CONFIG = Object.freeze({
     analytics_ms: 2e4
   })
 });
-var V2_STATE_SEGMENTS = [".goodvibes", "v2"];
+var STATE_SEGMENTS = [".goodvibes"];
+var migratedRoots = /* @__PURE__ */ new Set();
+function mergeMoveDir(src, dst) {
+  fs.mkdirSync(dst, { recursive: true });
+  for (const entry of fs.readdirSync(src)) {
+    const s = path.join(src, entry);
+    const d = path.join(dst, entry);
+    try {
+      if (!fs.existsSync(d)) {
+        fs.renameSync(s, d);
+      } else if (fs.statSync(s).isDirectory() && fs.statSync(d).isDirectory()) {
+        mergeMoveDir(s, d);
+      } else {
+        fs.rmSync(d, { recursive: true, force: true });
+        fs.renameSync(s, d);
+      }
+    } catch {
+    }
+  }
+  try {
+    fs.rmdirSync(src);
+  } catch {
+  }
+}
+__name(mergeMoveDir, "mergeMoveDir");
+function migrateLegacyStateDir(root) {
+  if (migratedRoots.has(root)) return;
+  migratedRoots.add(root);
+  try {
+    const legacy = path.join(root, "v2");
+    if (fs.existsSync(legacy) && fs.statSync(legacy).isDirectory()) {
+      mergeMoveDir(legacy, root);
+    }
+  } catch {
+  }
+}
+__name(migrateLegacyStateDir, "migrateLegacyStateDir");
 function getStatePath(cwd, ...segments) {
-  return path.join(cwd, ...V2_STATE_SEGMENTS, ...segments);
+  const root = path.join(cwd, ...STATE_SEGMENTS);
+  migrateLegacyStateDir(root);
+  return path.join(root, ...segments);
 }
 __name(getStatePath, "getStatePath");
 function statePath(...segments) {
@@ -24109,7 +24147,7 @@ async function handleService(args) {
           services: listServiceNames(),
           connections: listConnectionNames(),
           allowlist: getAllowlist(),
-          note: "Trust mode is human-only. To open it, a person edits .goodvibes/v2/config.json out-of-band; no tool can flip it."
+          note: "Trust mode is human-only. To open it, a person edits .goodvibes/config.json out-of-band; no tool can flip it."
         });
       default:
         return fail(

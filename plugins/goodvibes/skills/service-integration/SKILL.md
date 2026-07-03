@@ -32,7 +32,7 @@ registry operations.
   service's `write_methods` opt-in; `db_query` writes require `write: true` AND a target that permits
   writes (a connection `allow_writes` opt-in, or open mode for a bare `database_url`).
 - **Open (unrestricted) mode is human-only and out-of-band** — a person edits
-  `.goodvibes/v2/config.json`, it is announced at session start, and it reverts to restricted the
+  `.goodvibes/config.json`, it is announced at session start, and it reverts to restricted the
   next session unless the separate, loud `dangerously_persist_across_sessions` flag is set. Agents
   cannot enable it.
 - Every response carries a `mode: restricted | open` stamp.

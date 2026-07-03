@@ -10,14 +10,14 @@
  * one-line purpose, not the skill content itself — the agent loads a skill by
  * name via the Skill tool when the task actually calls for it.
  *
- * Also writes a minimal entry to the project's `.goodvibes/v2/state/
+ * Also writes a minimal entry to the project's `.goodvibes/state/
  * agent-tracking.json` (shared project state, R15) so the analytics
  * SubagentStop hook — reading the same project-scoped namespace — can correlate
  * a completion back to its start time and compute duration even though the two
  * hooks run as separate short-lived processes.
  */
 
-import { runHook, createHookResponse, isTestEnvironment, v2StatePath, readJsonSafe, writeJsonSafe } from './lib/common.mjs';
+import { runHook, createHookResponse, isTestEnvironment, statePath, readJsonSafe, writeJsonSafe } from './lib/common.mjs';
 
 const HOOK_EVENT = 'SubagentStart';
 const MAX_CONTEXT_CHARS = 500 * 3.5; // ~500 tokens at ~3.5 chars/token (core/shared/tokens convention)
@@ -26,7 +26,7 @@ const MAX_CONTEXT_CHARS = 500 * 3.5; // ~500 tokens at ~3.5 chars/token (core/sh
 const SKILL_CATALOG = {
   'intel-mastery': 'Token-efficient code_read/code_grep/code_glob usage, extract modes, batching.',
   'project-onboarding': 'Codebase mapping using intel analyzers (code_surface, api_routes, db_schema).',
-  'goodvibes-memory': 'Cross-session memory: decisions, patterns, failures in .goodvibes/v2/memory.',
+  'goodvibes-memory': 'Cross-session memory: decisions, patterns, failures in .goodvibes/memory.',
   'task-orchestration': 'Parallel agent decomposition using native Workflow + the WRFC template.',
   'review-scoring': 'Refutation-based review rubric: defect list + severity, tries to disprove the work.',
   'service-integration': 'Registered-service API calls via the goodvibes connect server.',
@@ -56,7 +56,7 @@ function buildPointers(agentType) {
 function recordTracking(input, agentType) {
   const cwd = input.cwd || process.cwd();
   const agentId = input.agent_id ?? input.subagent_id ?? `agent_${Date.now()}`;
-  const trackingPath = v2StatePath(cwd, 'state', 'agent-tracking.json');
+  const trackingPath = statePath(cwd, 'state', 'agent-tracking.json');
   const trackings = readJsonSafe(trackingPath, {});
   trackings[agentId] = {
     agent_id: agentId,

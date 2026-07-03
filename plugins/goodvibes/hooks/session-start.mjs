@@ -4,7 +4,7 @@
  *
  * 2.0.3 made this hook silent by default. 2.0.5 replaces that silence with a
  * single always-present value line built from the cost recap SessionEnd wrote
- * to `.goodvibes/v2/cache/last-session-summary.json`:
+ * to `.goodvibes/cache/last-session-summary.json`:
  *
  *   [goodvibes] Last session: $X.XX over N calls (families) | project total: $Y.YY
  *
@@ -25,7 +25,7 @@ import * as path from 'node:path';
 import {
   runHook,
   createHookResponse,
-  v2StatePath,
+  statePath,
   readJsonSafe,
   isTestEnvironment,
 } from './lib/common.mjs';
@@ -34,7 +34,7 @@ const HOOK_EVENT = 'SessionStart';
 
 /** The always-present first line: last session's cost recap, or the first-session pointer. */
 function valueLine(cwd) {
-  const summary = readJsonSafe(v2StatePath(cwd, 'cache', 'last-session-summary.json'), null);
+  const summary = readJsonSafe(statePath(cwd, 'cache', 'last-session-summary.json'), null);
   if (!summary || typeof summary.cost_usd !== 'number') {
     return {
       context:
@@ -57,19 +57,19 @@ function valueLine(cwd) {
 }
 
 /**
- * One-line note when this project has been through setup once but the INSTALLED
- * plugin copy is missing a representative native dep — the tell-tale of a plugin
- * update that replaced `server/<name>/node_modules`. Resolves the installed copy
- * via CLAUDE_PLUGIN_ROOT; returns null (silent) when that env is absent, when
- * setup never ran here, or when the dep is present.
+ * One-line note when the INSTALLED plugin copy is missing a representative
+ * native dep — true on a fresh install (setup not run yet) and after a plugin
+ * update (updates replace `server/<name>/node_modules`). This is a global
+ * condition of the installed copy, not project state, so it is keyed on
+ * nothing but the probe itself. Resolves via CLAUDE_PLUGIN_ROOT; silent when
+ * that env is absent or the dep is present.
  */
-function nativeDepsNudge(cwd) {
-  if (!existsSync(v2StatePath(cwd, '.setup-marker.json'))) return null;
+function nativeDepsNudge() {
   const root = process.env.CLAUDE_PLUGIN_ROOT;
   if (!root) return null;
   const representative = path.join(root, 'server', 'intel', 'node_modules', '@vscode', 'ripgrep');
   if (existsSync(representative)) return null;
-  return 'native deps missing (plugin updated?) - run /goodvibes:plugin setup';
+  return 'native deps not installed - run /goodvibes:setup (first run, or a plugin update replaced them)';
 }
 
 /** Cheap, synchronous project-health checks. Returns short problem notes. */
@@ -95,7 +95,7 @@ const HEALTH_LOAD_PER_CORE = 1.5;
  * Returns a one-line string or null.
  */
 function healthNudge(cwd) {
-  const state = readJsonSafe(v2StatePath(cwd, 'health', 'health-state.json'), null);
+  const state = readJsonSafe(statePath(cwd, 'health', 'health-state.json'), null);
   if (!state) return null;
   try {
     const orphans = Array.isArray(state.orphans) ? state.orphans.length : 0;
@@ -122,7 +122,7 @@ async function handleSessionStart(input) {
   const value = valueLine(cwd);
   const problems = quickHealth(cwd);
   const nudge = healthNudge(cwd);
-  const deps = nativeDepsNudge(cwd);
+  const deps = nativeDepsNudge();
 
   const lines = [value.context];
   for (const note of problems) lines.push(`- ${note}`);

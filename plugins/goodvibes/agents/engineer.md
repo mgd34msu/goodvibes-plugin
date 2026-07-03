@@ -37,7 +37,7 @@ connect server's `api_request`/`service` tools, not the intel server's job.
 Load by name via the Skill tool when the task calls for it:
 
 - **intel-mastery** — token-efficient patterns for the tools above (batching, extract modes).
-- **goodvibes-memory** — check `.goodvibes/v2/memory/` for past decisions/patterns/failures
+- **goodvibes-memory** — check `.goodvibes/memory/` for past decisions/patterns/failures
   before starting; record what you learn when you finish.
 - **service-integration** (connect) — when wiring up a registered external service.
 

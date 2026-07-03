@@ -15,7 +15,7 @@ describe('secrets-guard', () => {
     it('should identify goodvibes.secrets.json', () => {
       expect(isSecretFile('goodvibes.secrets.json')).toBe(true);
       expect(isSecretFile('/some/path/goodvibes.secrets.json')).toBe(true);
-      expect(isSecretFile('.goodvibes/v2/goodvibes.secrets.json')).toBe(true);
+      expect(isSecretFile('.goodvibes/goodvibes.secrets.json')).toBe(true);
     });
 
     it('should identify goodvibes.cookies.json', () => {

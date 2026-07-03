@@ -1,15 +1,16 @@
 /**
- * `@goodvibes/core/config` — configuration file loader for the v2 servers.
+ * `@goodvibes/core/config` — configuration file loader for the servers.
  *
  * Rebuilt minimal per plan §1.12: a config FILE plus command-surface, never an
  * MCP config tool. The v1 dotted-key get/set asymmetry and the agent-reachable
  * sandbox/open-mode toggles do NOT carry forward. The open mode is human-only,
  * set out-of-band by editing the file; nothing here lets a tool flip it.
  *
- * R15 (coexistence): every v2 project-state path is namespaced under
- * `.goodvibes/v2/` so v1 and v2 never fight over the same files. `getStatePath`
+ * Project state lives under `.goodvibes/` in the target project. `getStatePath`
  * is the single helper the telemetry, cache, logging, and overflow modules use
- * to locate their files.
+ * to locate their files. (R15's `.goodvibes/v2/` coexistence namespace was
+ * retired in 2.1.0 — v1 is uninstallable — and a legacy `v2/` subdirectory is
+ * migrated up automatically, once, on first path resolution.)
  *
  * Config keys are documented from ONE source of truth (`CONFIG_KEYS`), so the
  * defaults, the docs, and the loaded shape can never drift.
@@ -135,28 +136,81 @@ export const DEFAULT_CONFIG: GoodvibesConfig = Object.freeze({
   }) as Budgets,
 });
 
-/** R15: v2 project state is namespaced under `.goodvibes/v2/`. */
-export const V2_STATE_SEGMENTS = ['.goodvibes', 'v2'] as const;
+/** Project state directory name. */
+export const STATE_SEGMENTS = ['.goodvibes'] as const;
+
+/** Roots already checked for a legacy `v2/` subdirectory this process. */
+const migratedRoots = new Set<string>();
 
 /**
- * Resolve a path inside the namespaced v2 state directory for a given project.
- * @param cwd - project root
- * @param segments - path segments under `.goodvibes/v2/`
+ * Merge-move every entry of `src` into `dst`, recursing into directories that
+ * exist on both sides. On a file conflict the `src` (legacy-`v2`) copy wins —
+ * it is the live state; anything at the destination is a v1 leftover.
  */
-export function getStatePath(cwd: string, ...segments: string[]): string {
-  return path.join(cwd, ...V2_STATE_SEGMENTS, ...segments);
+function mergeMoveDir(src: string, dst: string): void {
+  fs.mkdirSync(dst, { recursive: true });
+  for (const entry of fs.readdirSync(src)) {
+    const s = path.join(src, entry);
+    const d = path.join(dst, entry);
+    try {
+      if (!fs.existsSync(d)) {
+        fs.renameSync(s, d);
+      } else if (fs.statSync(s).isDirectory() && fs.statSync(d).isDirectory()) {
+        mergeMoveDir(s, d);
+      } else {
+        fs.rmSync(d, { recursive: true, force: true });
+        fs.renameSync(s, d);
+      }
+    } catch {
+      /* skip the entry — migration is best-effort */
+    }
+  }
+  try {
+    fs.rmdirSync(src);
+  } catch {
+    /* not empty (skipped entries) — harmless, retried next process */
+  }
 }
 
 /**
- * Resolve a v2 state path relative to the current working directory.
+ * One-time migration of the pre-2.1.0 layout: state used to live under
+ * `.goodvibes/v2/`; it now lives directly under `.goodvibes/`. Fail-open and
+ * checked once per root per process.
+ */
+function migrateLegacyStateDir(root: string): void {
+  if (migratedRoots.has(root)) return;
+  migratedRoots.add(root);
+  try {
+    const legacy = path.join(root, 'v2');
+    if (fs.existsSync(legacy) && fs.statSync(legacy).isDirectory()) {
+      mergeMoveDir(legacy, root);
+    }
+  } catch {
+    /* fail-open — a migration problem must never block a path lookup */
+  }
+}
+
+/**
+ * Resolve a path inside the project state directory (`.goodvibes/`).
+ * @param cwd - project root
+ * @param segments - path segments under `.goodvibes/`
+ */
+export function getStatePath(cwd: string, ...segments: string[]): string {
+  const root = path.join(cwd, ...STATE_SEGMENTS);
+  migrateLegacyStateDir(root);
+  return path.join(root, ...segments);
+}
+
+/**
+ * Resolve a state path relative to the current working directory.
  * Evaluated lazily at call time so it honours the server's runtime cwd.
- * @param segments - path segments under `.goodvibes/v2/`
+ * @param segments - path segments under `.goodvibes/`
  */
 export function statePath(...segments: string[]): string {
   return getStatePath(process.cwd(), ...segments);
 }
 
-/** Project-level config file path (namespaced under `.goodvibes/v2/`). */
+/** Project-level config file path (under `.goodvibes/`). */
 export function projectConfigPath(cwd: string = process.cwd()): string {
   return getStatePath(cwd, 'config.json');
 }
@@ -250,7 +304,7 @@ export function configForEnvelope(cfg: GoodvibesConfig = loadConfig()): {
 
 /** Human-readable, generated-from-code documentation of every config key. */
 export function describeConfigKeys(): string {
-  const lines = ['# GoodVibes v2 config keys', ''];
+  const lines = ['# GoodVibes config keys', ''];
   for (const [key, doc] of Object.entries(CONFIG_KEYS)) {
     lines.push(`- \`${key}\` (default: ${JSON.stringify(doc.default)}) — ${doc.description}`);
   }

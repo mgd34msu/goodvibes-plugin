@@ -9,7 +9,7 @@
  * read-only) with the injection half removed and the pipeline simplified to
  * what a fail-open, must-stay-fast hook can safely do:
  *  - KEPT: correlate with the tracking entry goodvibes-intel's SubagentStart
- *    wrote to the shared `.goodvibes/v2/state/agent-tracking.json` (R15),
+ *    wrote to the shared `.goodvibes/state/agent-tracking.json` (R15),
  *    compute duration, extract files the agent modified from its transcript,
  *    run a bounded `tsc --noEmit` when TypeScript files were touched, and
  *    write one JSONL telemetry record per completion.
@@ -30,7 +30,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import {
   runHook,
   createHookResponse,
-  v2StatePath,
+  statePath,
   readJsonSafe,
   writeJsonSafe,
   appendJsonlSafe,
@@ -99,12 +99,12 @@ function typeCheck(cwd, filesModified) {
 }
 
 function trackingPath(cwd) {
-  return v2StatePath(cwd, 'state', 'agent-tracking.json');
+  return statePath(cwd, 'state', 'agent-tracking.json');
 }
 
 function telemetryFile(cwd) {
   const now = new Date();
-  return v2StatePath(cwd, 'telemetry', `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}.jsonl`);
+  return statePath(cwd, 'telemetry', `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}.jsonl`);
 }
 
 async function handleSubagentStop(input) {

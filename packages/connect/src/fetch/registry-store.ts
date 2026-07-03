@@ -5,7 +5,7 @@
  * `runtime-config` (`.goodvibes/goodvibes.json` under a `fetch` key). v2's
  * `core/config` is deliberately read-only (mode is human-only, no setters), so
  * the mutable registry gets its own file under the namespaced v2 state dir:
- * `.goodvibes/v2/services.json`. This is the ONLY mutable connect state written
+ * `.goodvibes/services.json`. This is the ONLY mutable connect state written
  * by the `service` tool; secrets and cookies live in their own 0600 files.
  *
  * The file is read fresh on every access (small, infrequent) so a write by one
@@ -88,7 +88,7 @@ export interface FetchConfig {
   connections?: Record<string, DbConnection>;
 }
 
-/** The registry file path (namespaced under `.goodvibes/v2/`, R15). */
+/** The registry file path (namespaced under `.goodvibes/`, R15). */
 export function registryPath(): string {
   return statePath('services.json');
 }

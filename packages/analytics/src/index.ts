@@ -10,8 +10,8 @@
  * plain SIGTERM death — no idle self-exit, ever (servers run for the life of
  * their session); every tool call runs under `withBudget`
  * so a slow handler returns with honest `budget_exceeded` accounting instead of
- * hanging the client. All project state lives under the R15-namespaced
- * `.goodvibes/v2/` root via `getStatePath`/`statePath`.
+ * hanging the client. All project state lives under the namespaced
+ * `.goodvibes/` root via `getStatePath`/`statePath`.
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
@@ -57,7 +57,7 @@ export const TOOL_MODULES: ToolModule[] = [
 export interface CreateServerOptions {
   /** Called on every incoming request to reset the idle-exit timer. */
   onActivity?: () => void;
-  /** Project state root; defaults to the R15-namespaced `.goodvibes/v2/`. */
+  /** Project state root; defaults to the namespaced `.goodvibes/`. */
   goodvibesDir?: string;
   /** Invoked when the engine is first constructed, so the caller can shut it down. */
   onEngine?: (engine: AnalyticsEngine) => void;
@@ -76,7 +76,7 @@ export function createServer(options: CreateServerOptions = {}): Server {
 
   const goodvibesDir = options.goodvibesDir ?? statePath();
   // Downstream engine readers and the tmux dashboard subprocess resolve state
-  // from GOODVIBES_DIR; pin it to the v2-namespaced root.
+  // from GOODVIBES_DIR; pin it to the project state root.
   if (!process.env.GOODVIBES_DIR) process.env.GOODVIBES_DIR = goodvibesDir;
 
   const budgetMs = loadConfig().budgets.analytics_ms;
@@ -159,7 +159,7 @@ export async function main(): Promise<void> {
   let engineRef: AnalyticsEngine | null = null;
 
   // Host-health sampler (lane 9): slow, unref'd, zero-dep /proc reader that
-  // maintains `.goodvibes/v2/health/health-state.json` for the doctor view and
+  // maintains `.goodvibes/health/health-state.json` for the doctor view and
   // intel's SessionStart nudge. Its interval is unref'd, so it can never be the
   // thing that keeps a dead server alive (field issue 9 — the sin it hunts).
   const healthSampler = new HostHealthSampler({ goodvibesDir });

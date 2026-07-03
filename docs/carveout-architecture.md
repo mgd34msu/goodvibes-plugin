@@ -43,9 +43,9 @@ Root `package.json` `workspaces` gains `"packages/*"`. The v1 workspaces stay li
 retire sweep. No SOURCE file is shared between the v1 and v2 trees — ports are **copies**, so v1 keeps
 running from the same repo while v2 evolves. Runtime state is a different matter (R15,
 verification finding): while both generations are installed, v2 servers and hooks write all
-project state under a namespaced `.goodvibes/v2/` (memory JSONs, telemetry DB, `.overflow/`,
+project state under a namespaced `.goodvibes/` (memory JSONs, telemetry DB, `.overflow/`,
 logs) so the two never fight over the same files and analytics stays trustworthy; the v2.0
-retire sweep migrates `.goodvibes/v2/` up to the top-level paths once v1 is gone.
+retire sweep migrates `.goodvibes/` up to the top-level paths once v1 is gone.
 
 ### 1.2 What "plugin dir" contains vs "package"
 
@@ -420,6 +420,7 @@ Parallelism: lanes 1, 3-parsers, 5, 6, 7 start together the moment 0 lands; 2 st
 - **R14 — v1 `goodvibes` marketplace entry stays through alpha, marked deprecated, removed at v2.0.** Same-repo users keep a working install until the sweep.
   - **Superseded 2026-07-02** — v1 was swept pre-release; there is no coexistence alpha window. The permanent `v1` git branch is the archive, and the `goodvibes` name/dir is reused by the consolidated v2 plugin. (The R15/R16 v1-yield guards are kept as dormant, fail-open safety.)
 - **R15 — v2 runtime state namespaced under `.goodvibes/v2/` during coexistence** *(verification finding)*: v1 and v2 otherwise fight over the same memory/telemetry files; the retire sweep migrates it up.
+  - **Retired 2.1.0 (2026-07-02)** — v1 is uninstallable, so the namespace subdirectory is gone: state lives directly under `.goodvibes/`. Both path resolvers (core/config `getStatePath`, hooks `statePath`) migrate a legacy `v2/` subdirectory up automatically, once per process, fail-open.
 - **R16 — v2 hooks yield to v1 when both plugins are installed** *(verification finding)*: prevents double-fired SessionStart/failure/commit-guard handlers during the R14 window; one explanatory line in SessionStart context instead.
 
 ---
@@ -430,7 +431,7 @@ Launch after lanes 1–8 land (lane 9 needs lane 6's ported base; lane 10 needs 
 
 | # | Lane | Scope | Depends on | Model |
 |---|---|---|---|---|
-| 9 | Analytics observability | `query` live mode (tail-tolerant JSONL reader over the CURRENT session, per-model pricing, main-vs-subagent split); host-health sampler (60s unref'd interval: loadavg, session children, orphan heuristic = ppid init/systemd + plugin-cache cmdline + sustained CPU) with `dashboard` health section + `doctor` listing offenders with ready-to-run kill commands, never auto-killing; agent-liveness scanner (transcript mtime + write-rate + tail-state → thinking/executing/wedged) as a `query`/`dashboard` mode; a health-state file under `.goodvibes/v2/` that intel's SessionStart may read for a one-line threshold nudge (graceful when absent). Analytics stays 7 tools — modes, not new tools. | 6 (+7 for the nudge wiring) | **opus** (process scanning + heuristics), transcript-reader mechanics delegable to **sonnet** |
+| 9 | Analytics observability | `query` live mode (tail-tolerant JSONL reader over the CURRENT session, per-model pricing, main-vs-subagent split); host-health sampler (60s unref'd interval: loadavg, session children, orphan heuristic = ppid init/systemd + plugin-cache cmdline + sustained CPU) with `dashboard` health section + `doctor` listing offenders with ready-to-run kill commands, never auto-killing; agent-liveness scanner (transcript mtime + write-rate + tail-state → thinking/executing/wedged) as a `query`/`dashboard` mode; a health-state file under `.goodvibes/` that intel's SessionStart may read for a one-line threshold nudge (graceful when absent). Analytics stays 7 tools — modes, not new tools. | 6 (+7 for the nudge wiring) | **opus** (process scanning + heuristics), transcript-reader mechanics delegable to **sonnet** |
 | 10 | `structural_edit` (intel tool 15) | Port the AST match/apply engine from v1 `precision-edit.ts` (ast + ast_pattern modes ONLY — no fuzzy, no plain-text find) onto lane 1's ast-grep/preview_replace base. Preview-first: `preview` returns per-match diffs + a preview token + per-file content hashes; `apply` requires token + hashes still matching (stale → per-entry `refused_stale`, never silent). Byte-exact newline/CRLF preservation outside edit spans (regression test on a CRLF fixture — the v1 defect). Per-entry status enum (`applied`/`refused_stale`/`rolled_back`/`failed`), envelope `success:false` when any atomic entry fails; rollback restores from pre-apply snapshots and reports `rolled_back` first-class (the v1 issue-7 lesson, inverted into a test). README states intel's posture: read-only except this one preview-gated editor. | 1 | **opus** (write-path atomicity + rollback design) |
 
 Headline counts supersede to intel 15 / total 25 (plan §14).

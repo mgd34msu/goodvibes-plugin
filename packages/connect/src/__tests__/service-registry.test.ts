@@ -1,6 +1,6 @@
 /**
  * Ported from v1 precision-engine `__tests__/utils/service-registry.test.ts`
- * (assertions intact). v2 persistence is `.goodvibes/v2/services.json` via
+ * (assertions intact). v2 persistence is `.goodvibes/services.json` via
  * `registry-store`; the registry reads fresh on every call, so a plain static
  * import + cwd mock replaces the v1 resetModules dance.
  */

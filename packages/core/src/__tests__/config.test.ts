@@ -1,9 +1,11 @@
 /**
- * Config loader + R15 namespacing sanity.
+ * Config loader + state-directory resolution (incl. the 2.1.0 legacy migration).
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import * as path from 'path';
+import * as fs from 'fs';
+import * as os from 'os';
 import {
   loadConfig,
   resetConfigCache,
@@ -46,11 +48,34 @@ describe('config defaults', () => {
   });
 });
 
-describe('R15 state namespacing', () => {
-  it('namespaces all project state under .goodvibes/v2/', () => {
+describe('state directory', () => {
+  it('resolves all project state under .goodvibes/', () => {
     expect(getStatePath('/proj', 'telemetry', 'telemetry.db')).toBe(
-      path.join('/proj', '.goodvibes', 'v2', 'telemetry', 'telemetry.db'),
+      path.join('/proj', '.goodvibes', 'telemetry', 'telemetry.db'),
     );
-    expect(projectConfigPath('/proj')).toBe(path.join('/proj', '.goodvibes', 'v2', 'config.json'));
+    expect(projectConfigPath('/proj')).toBe(path.join('/proj', '.goodvibes', 'config.json'));
+  });
+
+  it('migrates the legacy .goodvibes/v2/ layout up on first resolution (2.1.0)', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gv-state-migration-'));
+    try {
+      const legacyCache = path.join(tmp, '.goodvibes', 'v2', 'cache');
+      fs.mkdirSync(legacyCache, { recursive: true });
+      fs.writeFileSync(path.join(legacyCache, 'last-session-summary.json'), '{"cost_usd":1.5}');
+      // A v1 leftover at the destination: the legacy-v2 copy must win.
+      const destState = path.join(tmp, '.goodvibes', 'state');
+      fs.mkdirSync(destState, { recursive: true });
+      fs.writeFileSync(path.join(destState, 'retries.json'), '{"old":"v1"}');
+      fs.mkdirSync(path.join(tmp, '.goodvibes', 'v2', 'state'), { recursive: true });
+      fs.writeFileSync(path.join(tmp, '.goodvibes', 'v2', 'state', 'retries.json'), '{"new":"v2"}');
+
+      const resolved = getStatePath(tmp, 'cache', 'last-session-summary.json');
+      expect(resolved).toBe(path.join(tmp, '.goodvibes', 'cache', 'last-session-summary.json'));
+      expect(fs.readFileSync(resolved, 'utf-8')).toContain('1.5');
+      expect(fs.readFileSync(path.join(destState, 'retries.json'), 'utf-8')).toContain('v2');
+      expect(fs.existsSync(path.join(tmp, '.goodvibes', 'v2'))).toBe(false);
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
   });
 });

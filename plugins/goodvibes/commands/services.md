@@ -21,7 +21,7 @@ Trust invariants (enforced by the server, not this command):
   allowlisted hosts only.
 - Read-only by default: a service opts specific HTTP methods in via `write_methods`; a connection
   opts writes in via `allow_writes`.
-- Open (unrestricted) mode is human-only and out-of-band — a person edits `.goodvibes/v2/config.json`,
+- Open (unrestricted) mode is human-only and out-of-band — a person edits `.goodvibes/config.json`,
   and it is announced at session start. It reverts to restricted next session unless
   `dangerously_persist_across_sessions` is set. This command and the `service` tool cannot flip the
   trust mode.

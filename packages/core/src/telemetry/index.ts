@@ -6,8 +6,8 @@
  *  - Every shared state file is written atomically (temp file + rename), so a
  *    crash mid-write never corrupts the DB or a session file. v1's telemetry
  *    persist wrote in place; it is now atomic like KVState always was.
- *  - The database and session files live under the R15-namespaced
- *    `.goodvibes/v2/` state root, so v1 and v2 never share a telemetry DB.
+ *  - The database and session files live under the namespaced
+ *    `.goodvibes/` state root.
  *
  * Token counts stored here are payload-true — analytics reads them; callers pass
  * counts sourced from rendered payloads (see `core/envelope`), never a tool's
@@ -183,7 +183,7 @@ export class Telemetry {
     this.persist();
   }
 
-  /** Default DB path, namespaced under `.goodvibes/v2/` (R15). */
+  /** Default DB path, namespaced under `.goodvibes/` (R15). */
   private static defaultDbPath(): string {
     return statePath('telemetry', 'telemetry.db');
   }
@@ -460,7 +460,7 @@ export interface SessionStateData {
   [key: string]: unknown;
 }
 
-/** Per-session KV store persisted under the namespaced `.goodvibes/v2/state/`. */
+/** Per-session KV store persisted under the namespaced `.goodvibes/state/`. */
 export class KVState {
   private static instance: KVState | null = null;
   private readonly sessionId: string;
