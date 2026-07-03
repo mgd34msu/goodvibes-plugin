@@ -264437,7 +264437,7 @@ var structuralEditTool = { definition: definition14, handler: handler14 };
 
 // packages/intel/src/index.ts
 var SERVER_NAME = "intel";
-var SERVER_VERSION = "2.0.0-alpha.1";
+var SERVER_VERSION = "2.0.2";
 var TOOLS = [
   scaffoldTool,
   codeSurfaceTool,

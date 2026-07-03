@@ -6,8 +6,9 @@
  * `analytics_` prefix dropped per R13; the server key is the namespace).
  *
  * Process hygiene (field issue 9) comes from `@goodvibes/core/proc`:
- * `installProcessHygiene()` gives the server a parent-liveness watchdog, idle
- * self-exit, and plain SIGTERM death; every tool call runs under `withBudget`
+ * `installProcessHygiene()` gives the server a parent-liveness watchdog and
+ * plain SIGTERM death — no idle self-exit, ever (servers run for the life of
+ * their session); every tool call runs under `withBudget`
  * so a slow handler returns with honest `budget_exceeded` accounting instead of
  * hanging the client. All project state lives under the R15-namespaced
  * `.goodvibes/v2/` root via `getStatePath`/`statePath`.
@@ -21,6 +22,7 @@ import {
   type CallToolResult,
 } from '@modelcontextprotocol/sdk/types.js';
 import { installProcessHygiene, withBudget } from '@goodvibes/core/proc';
+import { logger } from '@goodvibes/core/logging';
 import { toCallToolResult, errorEnvelope } from '@goodvibes/core/envelope';
 import { loadConfig, statePath } from '@goodvibes/core/config';
 import { AnalyticsEngine } from './engine/index.js';
@@ -35,7 +37,7 @@ import { syncTool } from './tools/sync.js';
 import { configTool } from './tools/config.js';
 
 export const SERVER_NAME = 'analytics';
-export const SERVER_VERSION = '2.0.0-alpha.1';
+export const SERVER_VERSION = '2.0.2';
 
 /** The seven analytics tools, in surface order. */
 export const TOOL_MODULES: ToolModule[] = [
@@ -85,7 +87,24 @@ export function createServer(options: CreateServerOptions = {}): Server {
       options.onEngine?.(engine);
     }
     if (!initPromise) initPromise = engine.initialize();
-    await initPromise;
+    try {
+      await initPromise;
+    } catch (err) {
+      // A failed init must not leave a half-started engine behind: watchers
+      // and timers begun before the failing step would otherwise fire later
+      // against uninitialized state and bring the whole process down (the
+      // 2.0.1 live-cost incident). Tear down, reset, and let the next call
+      // retry cleanly; the caller receives an honest error envelope.
+      const broken = engine;
+      engine = null;
+      initPromise = null;
+      try {
+        await broken?.shutdown();
+      } catch {
+        /* best-effort teardown of a partially-initialized engine */
+      }
+      throw err;
+    }
     return engine;
   }
 
@@ -163,6 +182,29 @@ export async function main(): Promise<void> {
       engineRef = e;
     },
   });
+
+  // A fatal fault must never be a silent death. These handlers do NOT keep
+  // the process alive (no v1-style keep-alive): they write a diagnostic to
+  // the level-split error log, then exit through the same graceful path as
+  // session death — flush, release, die visibly.
+  const fatal = (kind: string) => (err: unknown) => {
+    try {
+      logger.error(`[analytics] ${kind}: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`);
+    } catch {
+      /* logging must never mask the exit */
+    }
+    healthSampler.stop();
+    void (async () => {
+      try {
+        await engineRef?.shutdown();
+      } catch {
+        /* never block the exit */
+      }
+      process.exit(1);
+    })();
+  };
+  process.on('unhandledRejection', fatal('unhandledRejection'));
+  process.on('uncaughtException', fatal('uncaughtException'));
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

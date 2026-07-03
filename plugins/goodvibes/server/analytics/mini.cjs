@@ -162,8 +162,9 @@ var TelemetryReader = class _TelemetryReader {
       } catch {
         bundleDir = typeof __dirname !== "undefined" ? __dirname : path.dirname(process.argv[1]);
       }
+      const wasmSubdir = path.join(bundleDir, "wasm", "sql-wasm.wasm");
       const wasmBesideBundle = path.join(bundleDir, "sql-wasm.wasm");
-      const sqlConfig = (0, import_node_fs.existsSync)(wasmBesideBundle) ? { locateFile: /* @__PURE__ */ __name((file) => path.join(bundleDir, file), "locateFile") } : {};
+      const sqlConfig = (0, import_node_fs.existsSync)(wasmSubdir) ? { locateFile: /* @__PURE__ */ __name((file) => path.join(bundleDir, "wasm", file), "locateFile") } : (0, import_node_fs.existsSync)(wasmBesideBundle) ? { locateFile: /* @__PURE__ */ __name((file) => path.join(bundleDir, file), "locateFile") } : {};
       this._SQL = await (0, import_sql.default)(sqlConfig);
       const buffer = (0, import_node_fs.readFileSync)(this.dbPath);
       this.db = new this._SQL.Database(buffer);
@@ -5567,6 +5568,8 @@ var GlobalDB = class {
     } catch {
       baseDir = process.cwd();
     }
+    const subdirWasm = (0, import_node_path7.resolve)((0, import_node_path7.join)(baseDir, "wasm", "sql-wasm.wasm"));
+    if ((0, import_node_fs10.existsSync)(subdirWasm)) return subdirWasm;
     const distWasm = (0, import_node_path7.resolve)((0, import_node_path7.join)(baseDir, "sql-wasm.wasm"));
     if ((0, import_node_fs10.existsSync)(distWasm)) return distWasm;
     const nodeWasm = (0, import_node_path7.resolve)((0, import_node_path7.join)(baseDir, "..", "..", "..", "node_modules", "sql.js", "dist", "sql-wasm.wasm"));

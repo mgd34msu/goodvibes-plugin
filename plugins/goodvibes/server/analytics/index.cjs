@@ -4770,13 +4770,13 @@ var require_core = __commonJS({
     }, warn() {
     }, error() {
     } };
-    function getLogger(logger) {
-      if (logger === false)
+    function getLogger(logger2) {
+      if (logger2 === false)
         return noLogs;
-      if (logger === void 0)
+      if (logger2 === void 0)
         return console;
-      if (logger.log && logger.warn && logger.error)
-        return logger;
+      if (logger2.log && logger2.warn && logger2.error)
+        return logger2;
       throw new Error("logger must implement log, warn and error methods");
     }
     __name(getLogger, "getLogger");
@@ -11032,13 +11032,13 @@ var require_core3 = __commonJS({
     }, warn() {
     }, error() {
     } };
-    function getLogger(logger) {
-      if (logger === false)
+    function getLogger(logger2) {
+      if (logger2 === false)
         return noLogs;
-      if (logger === void 0)
+      if (logger2 === void 0)
         return console;
-      if (logger.log && logger.warn && logger.error)
-        return logger;
+      if (logger2.log && logger2.warn && logger2.error)
+        return logger2;
       throw new Error("logger must implement log, warn and error methods");
     }
     __name(getLogger, "getLogger");
@@ -13335,19 +13335,6 @@ var require_dist = __commonJS({
   }
 });
 
-// packages/core/src/shared/tokens.ts
-function estimatePayloadTokens(payload) {
-  return Math.ceil(payload.length / PAYLOAD_CHARS_PER_TOKEN);
-}
-var PAYLOAD_CHARS_PER_TOKEN;
-var init_tokens = __esm({
-  "packages/core/src/shared/tokens.ts"() {
-    "use strict";
-    PAYLOAD_CHARS_PER_TOKEN = 3.5;
-    __name(estimatePayloadTokens, "estimatePayloadTokens");
-  }
-});
-
 // packages/core/src/config/index.ts
 function getStatePath(cwd, ...segments) {
   return path.join(cwd, ...V2_STATE_SEGMENTS, ...segments);
@@ -13438,45 +13425,16 @@ var init_config = __esm({
   }
 });
 
-// packages/analytics/src/engine/types.ts
-function toolResponse(text2, isError = false) {
-  const response = { content: [{ type: "text", text: text2 }] };
-  if (isError) response.isError = true;
-  return response;
+// packages/core/src/shared/tokens.ts
+function estimatePayloadTokens(payload) {
+  return Math.ceil(payload.length / PAYLOAD_CHARS_PER_TOKEN);
 }
-var DEFAULT_CONFIG2;
-var init_types = __esm({
-  "packages/analytics/src/engine/types.ts"() {
+var PAYLOAD_CHARS_PER_TOKEN;
+var init_tokens = __esm({
+  "packages/core/src/shared/tokens.ts"() {
     "use strict";
-    DEFAULT_CONFIG2 = {
-      enabled: true,
-      auto_start_mini: true,
-      auto_start_full: false,
-      auto_start_dashboard: false,
-      refresh_rate_ms: 1e3,
-      full_tui_refresh_rate_ms: 5e3,
-      dashboard_refresh_rate_ms: 5e3,
-      cost_per_1k_input_tokens: 3e-3,
-      cost_per_1k_output_tokens: 0.015,
-      budget: null,
-      budget_warn_thresholds: [0.5, 0.8, 1],
-      mini_budget_bar: false,
-      anomaly_detection: true,
-      auto_report_on_shutdown: true,
-      webhook_url: null,
-      webhook_events: ["session_end"],
-      global_db_path: "~/.claude/.goodvibes/analytics/analytics.db",
-      jsonl_base_path: "~/.claude/projects",
-      tmux: {
-        mini_pane_size: 5,
-        mini_position: "bottom",
-        full_pane_size: "60%",
-        dashboard_pane_size: "60%",
-        full_position: "right",
-        dashboard_position: "right"
-      }
-    };
-    __name(toolResponse, "toolResponse");
+    PAYLOAD_CHARS_PER_TOKEN = 3.5;
+    __name(estimatePayloadTokens, "estimatePayloadTokens");
   }
 });
 
@@ -13546,7 +13504,7 @@ function createLogger(options = {}) {
     tool: /* @__PURE__ */ __name((name, args) => emit("tool", `Calling ${name}`, args), "tool")
   };
 }
-var import_fs, path2, DEFAULT_MAX_BYTES, DEFAULT_KEEP;
+var import_fs, path2, DEFAULT_MAX_BYTES, DEFAULT_KEEP, defaultLogger, logger;
 var init_logging = __esm({
   "packages/core/src/logging/index.ts"() {
     "use strict";
@@ -13559,6 +13517,56 @@ var init_logging = __esm({
     __name(formatLine, "formatLine");
     __name(safeStringify, "safeStringify");
     __name(createLogger, "createLogger");
+    defaultLogger = null;
+    logger = {
+      debug: /* @__PURE__ */ __name((m, d) => (defaultLogger ??= createLogger()).debug(m, d), "debug"),
+      info: /* @__PURE__ */ __name((m, d) => (defaultLogger ??= createLogger()).info(m, d), "info"),
+      warn: /* @__PURE__ */ __name((m, d) => (defaultLogger ??= createLogger()).warn(m, d), "warn"),
+      error: /* @__PURE__ */ __name((m, d) => (defaultLogger ??= createLogger()).error(m, d), "error"),
+      tool: /* @__PURE__ */ __name((n, a) => (defaultLogger ??= createLogger()).tool(n, a), "tool")
+    };
+  }
+});
+
+// packages/analytics/src/engine/types.ts
+function toolResponse(text2, isError = false) {
+  const response = { content: [{ type: "text", text: text2 }] };
+  if (isError) response.isError = true;
+  return response;
+}
+var DEFAULT_CONFIG2;
+var init_types = __esm({
+  "packages/analytics/src/engine/types.ts"() {
+    "use strict";
+    DEFAULT_CONFIG2 = {
+      enabled: true,
+      auto_start_mini: true,
+      auto_start_full: false,
+      auto_start_dashboard: false,
+      refresh_rate_ms: 1e3,
+      full_tui_refresh_rate_ms: 5e3,
+      dashboard_refresh_rate_ms: 5e3,
+      cost_per_1k_input_tokens: 3e-3,
+      cost_per_1k_output_tokens: 0.015,
+      budget: null,
+      budget_warn_thresholds: [0.5, 0.8, 1],
+      mini_budget_bar: false,
+      anomaly_detection: true,
+      auto_report_on_shutdown: true,
+      webhook_url: null,
+      webhook_events: ["session_end"],
+      global_db_path: "~/.claude/.goodvibes/analytics/analytics.db",
+      jsonl_base_path: "~/.claude/projects",
+      tmux: {
+        mini_pane_size: 5,
+        mini_position: "bottom",
+        full_pane_size: "60%",
+        dashboard_pane_size: "60%",
+        full_position: "right",
+        dashboard_position: "right"
+      }
+    };
+    __name(toolResponse, "toolResponse");
   }
 });
 
@@ -15197,6 +15205,8 @@ var init_global_db = __esm({
         } catch {
           baseDir = process.cwd();
         }
+        const subdirWasm = (0, import_node_path7.resolve)((0, import_node_path7.join)(baseDir, "wasm", "sql-wasm.wasm"));
+        if ((0, import_node_fs10.existsSync)(subdirWasm)) return subdirWasm;
         const distWasm = (0, import_node_path7.resolve)((0, import_node_path7.join)(baseDir, "sql-wasm.wasm"));
         if ((0, import_node_fs10.existsSync)(distWasm)) return distWasm;
         const nodeWasm = (0, import_node_path7.resolve)((0, import_node_path7.join)(baseDir, "..", "..", "..", "node_modules", "sql.js", "dist", "sql-wasm.wasm"));
@@ -37151,6 +37161,9 @@ function installProcessHygiene(options = {}) {
 }
 __name(installProcessHygiene, "installProcessHygiene");
 
+// packages/analytics/src/index.ts
+init_logging();
+
 // packages/core/src/envelope/index.ts
 init_tokens();
 init_tokens();
@@ -37249,8 +37262,9 @@ var TelemetryReader = class _TelemetryReader {
       } catch {
         bundleDir = typeof __dirname !== "undefined" ? __dirname : path3.dirname(process.argv[1]);
       }
+      const wasmSubdir = path3.join(bundleDir, "wasm", "sql-wasm.wasm");
       const wasmBesideBundle = path3.join(bundleDir, "sql-wasm.wasm");
-      const sqlConfig = (0, import_node_fs3.existsSync)(wasmBesideBundle) ? { locateFile: /* @__PURE__ */ __name((file2) => path3.join(bundleDir, file2), "locateFile") } : {};
+      const sqlConfig = (0, import_node_fs3.existsSync)(wasmSubdir) ? { locateFile: /* @__PURE__ */ __name((file2) => path3.join(bundleDir, "wasm", file2), "locateFile") } : (0, import_node_fs3.existsSync)(wasmBesideBundle) ? { locateFile: /* @__PURE__ */ __name((file2) => path3.join(bundleDir, file2), "locateFile") } : {};
       this._SQL = await (0, import_sql.default)(sqlConfig);
       const buffer = (0, import_node_fs3.readFileSync)(this.dbPath);
       this.db = new this._SQL.Database(buffer);
@@ -38175,11 +38189,11 @@ var AnomalyDetector = class {
    * @param config    - Analytics configuration (detection can be disabled).
    * @param logger    - Optional structured logger; defaults to prefixed console.warn.
    */
-  constructor(telemetry, config2, logger = DEFAULT_LOGGER) {
+  constructor(telemetry, config2, logger2 = DEFAULT_LOGGER) {
     this.telemetry = telemetry;
     this.config = config2;
     this.rules = BUILT_IN_RULES;
-    this.logger = logger;
+    this.logger = logger2;
   }
   /**
    * Evaluate all rules against the current state and return any new anomalies.
@@ -39450,10 +39464,10 @@ var Aggregator = class _Aggregator {
    * @param config       - Analytics configuration.
    * @param logger       - Optional structured logger; defaults to prefixed console.warn.
    */
-  constructor(goodvibesDir, config2, logger = DEFAULT_LOGGER2) {
+  constructor(goodvibesDir, config2, logger2 = DEFAULT_LOGGER2) {
     this.goodvibesDir = goodvibesDir;
     this.config = config2;
-    this.logger = logger;
+    this.logger = logger2;
   }
   // ───────────────────────────────────────────────────────────────────────────
   // Public API
@@ -40885,7 +40899,7 @@ var configTool = {
 
 // packages/analytics/src/index.ts
 var SERVER_NAME = "analytics";
-var SERVER_VERSION = "2.0.0-alpha.1";
+var SERVER_VERSION = "2.0.2";
 var TOOL_MODULES = [
   queryTool,
   dashboardTool,
@@ -40912,7 +40926,18 @@ function createServer(options = {}) {
       options.onEngine?.(engine);
     }
     if (!initPromise) initPromise = engine.initialize();
-    await initPromise;
+    try {
+      await initPromise;
+    } catch (err) {
+      const broken = engine;
+      engine = null;
+      initPromise = null;
+      try {
+        await broken?.shutdown();
+      } catch {
+      }
+      throw err;
+    }
     return engine;
   }
   __name(getEngine, "getEngine");
@@ -40979,6 +41004,22 @@ async function main() {
       engineRef = e;
     }, "onEngine")
   });
+  const fatal = /* @__PURE__ */ __name((kind) => (err) => {
+    try {
+      logger.error(`[analytics] ${kind}: ${err instanceof Error ? err.stack ?? err.message : String(err)}`);
+    } catch {
+    }
+    healthSampler.stop();
+    void (async () => {
+      try {
+        await engineRef?.shutdown();
+      } catch {
+      }
+      process.exit(1);
+    })();
+  }, "fatal");
+  process.on("unhandledRejection", fatal("unhandledRejection"));
+  process.on("uncaughtException", fatal("uncaughtException"));
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }
