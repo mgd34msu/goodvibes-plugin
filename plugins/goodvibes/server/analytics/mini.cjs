@@ -25,7 +25,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 
 // packages/analytics/src/engine/mini.ts
-var import_node_path9 = require("node:path");
+var import_node_path10 = require("node:path");
 
 // packages/core/src/proc/index.ts
 function installProcessHygiene(options = {}) {
@@ -100,9 +100,9 @@ function installProcessHygiene(options = {}) {
 __name(installProcessHygiene, "installProcessHygiene");
 
 // packages/analytics/src/engine/daemon/aggregator.ts
-var import_node_path6 = require("node:path");
-var import_node_os2 = require("node:os");
-var import_node_fs9 = require("node:fs");
+var import_node_path7 = require("node:path");
+var import_node_os3 = require("node:os");
+var import_node_fs10 = require("node:fs");
 
 // packages/analytics/src/engine/data/telemetry-reader.ts
 var import_sql = __toESM(require("sql.js"), 1);
@@ -1281,9 +1281,9 @@ function sessionIdFromPath(jsonlPath) {
 __name(sessionIdFromPath, "sessionIdFromPath");
 
 // packages/analytics/src/engine/config.ts
-var import_node_fs5 = require("node:fs");
-var import_node_path2 = require("node:path");
-var import_node_os = require("node:os");
+var import_node_fs6 = require("node:fs");
+var import_node_path3 = require("node:path");
+var import_node_os2 = require("node:os");
 
 // packages/analytics/src/engine/types.ts
 var DEFAULT_CONFIG = {
@@ -1438,14 +1438,138 @@ function atomicWriteFileSync(filePath, data) {
   }
 }
 __name(atomicWriteFileSync, "atomicWriteFileSync");
+function atomicWriteJson(filePath, value) {
+  atomicWriteFileSync(filePath, JSON.stringify(value, null, 2));
+}
+__name(atomicWriteJson, "atomicWriteJson");
 var engineLoggerSingleton = null;
 function engineLogger() {
   return engineLoggerSingleton ??= createLogger();
 }
 __name(engineLogger, "engineLogger");
 
+// packages/analytics/src/engine/data/pricing-fetcher.ts
+var import_node_fs5 = require("node:fs");
+var import_node_os = require("node:os");
+var import_node_path2 = require("node:path");
+var PRICING_URL = "https://platform.claude.com/docs/en/about-claude/pricing.md";
+var PRICING_CACHE_PATH = (0, import_node_path2.join)((0, import_node_os.homedir)(), ".claude", "model-pricing.json");
+var TTL_HOURS = 24;
+var FETCH_TIMEOUT_MS = 1e4;
+function parsePrice(cell) {
+  const match = cell.match(/\$(\d+(?:\.\d+)?)\s*\/\s*MTok/i);
+  if (!match) throw new Error(`unparseable price cell: ${cell}`);
+  return parseFloat(match[1]);
+}
+__name(parsePrice, "parsePrice");
+function cleanName(raw) {
+  return raw.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/\s*\([^)]*\)/g, "").trim();
+}
+__name(cleanName, "cleanName");
+function rowEffectiveNow(cleanedName, now) {
+  const through = cleanedName.match(/through\s+([A-Za-z]+\s+\d{1,2},?\s+\d{4})/i);
+  if (through) {
+    const until = new Date(through[1]);
+    return !isNaN(until.getTime()) ? now <= until : true;
+  }
+  const starting = cleanedName.match(/starting\s+([A-Za-z]+\s+\d{1,2},?\s+\d{4})/i);
+  if (starting) {
+    const from = new Date(starting[1]);
+    return !isNaN(from.getTime()) ? now >= from : false;
+  }
+  return true;
+}
+__name(rowEffectiveNow, "rowEffectiveNow");
+function modelKey(cleanedName) {
+  const match = cleanedName.match(/Claude\s+([A-Za-z]+)\s+([\d.]+)/i);
+  if (!match) return null;
+  const family = match[1].toLowerCase();
+  const version = match[2].replace(/\./g, "-");
+  return { key: `claude-${family}-${version}`, display: `Claude ${match[1]} ${match[2]}` };
+}
+__name(modelKey, "modelKey");
+function parsePricingMarkdown(markdown, now = /* @__PURE__ */ new Date()) {
+  const section = markdown.match(/##\s*Model pricing[\s\S]*?(?=\n##\s|$)/i);
+  if (!section) throw new Error('no "Model pricing" section found');
+  const models = {};
+  for (const line of section[0].split("\n")) {
+    if (!line.trim().startsWith("|") || /^\|\s*-+/.test(line.trim()) || /\|\s*Model\s*\|/i.test(line)) continue;
+    const cells = line.split("|").map((c) => c.trim()).filter((c) => c.length > 0);
+    if (cells.length < 6) continue;
+    const cleaned = cleanName(cells[0]);
+    const keyed = modelKey(cleaned);
+    if (!keyed) continue;
+    if (!rowEffectiveNow(cleaned, now)) continue;
+    if (models[keyed.key]) continue;
+    try {
+      models[keyed.key] = {
+        name: keyed.display,
+        inputPrice: parsePrice(cells[1]),
+        cacheWrite5Min: parsePrice(cells[2]),
+        cacheWrite1Hour: parsePrice(cells[3]),
+        cacheHits: parsePrice(cells[4]),
+        outputPrice: parsePrice(cells[5])
+      };
+    } catch {
+    }
+  }
+  if (Object.keys(models).length === 0) {
+    throw new Error("pricing table parsed to zero models \u2014 page layout may have changed");
+  }
+  return models;
+}
+__name(parsePricingMarkdown, "parsePricingMarkdown");
+function cacheAgeHours(cachePath = PRICING_CACHE_PATH) {
+  try {
+    if (!(0, import_node_fs5.existsSync)(cachePath)) return Infinity;
+    const cache = JSON.parse((0, import_node_fs5.readFileSync)(cachePath, "utf-8"));
+    const fetched = new Date(cache.fetchedAt).getTime();
+    if (isNaN(fetched)) return Infinity;
+    return (Date.now() - fetched) / 36e5;
+  } catch {
+    return Infinity;
+  }
+}
+__name(cacheAgeHours, "cacheAgeHours");
+var inFlight = null;
+async function refreshPricingIfStale(options = {}) {
+  if (process.env.GOODVIBES_NO_PRICING_FETCH === "1") return false;
+  if (process.env.VITEST && !options.force) return false;
+  const cachePath = options.cachePath ?? PRICING_CACHE_PATH;
+  if (cacheAgeHours(cachePath) < (options.ttlHours ?? TTL_HOURS)) return false;
+  if (inFlight) return inFlight;
+  inFlight = (async () => {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+      timer.unref?.();
+      const response = await fetch(options.url ?? PRICING_URL, {
+        signal: controller.signal,
+        redirect: "follow"
+      });
+      clearTimeout(timer);
+      if (!response.ok) return false;
+      const markdown = await response.text();
+      const models = parsePricingMarkdown(markdown);
+      const file = {
+        fetchedAt: (/* @__PURE__ */ new Date()).toISOString(),
+        source: options.url ?? PRICING_URL,
+        models
+      };
+      atomicWriteJson(cachePath, file);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      inFlight = null;
+    }
+  })();
+  return inFlight;
+}
+__name(refreshPricingIfStale, "refreshPricingIfStale");
+
 // packages/analytics/src/engine/config.ts
-var MODEL_PRICING_CACHE_PATH = (0, import_node_path2.join)((0, import_node_os.homedir)(), ".claude", "model-pricing.json");
+var MODEL_PRICING_CACHE_PATH = (0, import_node_path3.join)((0, import_node_os2.homedir)(), ".claude", "model-pricing.json");
 var CACHE_WRITE_5MIN_MULT = 1.25;
 var CACHE_WRITE_1HOUR_MULT = 2;
 var CACHE_HIT_MULT = 0.1;
@@ -1473,12 +1597,13 @@ var FALLBACK_MODEL_PRICING = {
   "claude-haiku-4-5": priced("Claude Haiku 4.5", 1, 5)
 };
 function loadModelPricing() {
+  void refreshPricingIfStale();
   try {
-    if ((0, import_node_fs5.existsSync)(MODEL_PRICING_CACHE_PATH)) {
-      const content = (0, import_node_fs5.readFileSync)(MODEL_PRICING_CACHE_PATH, "utf-8");
+    if ((0, import_node_fs6.existsSync)(MODEL_PRICING_CACHE_PATH)) {
+      const content = (0, import_node_fs6.readFileSync)(MODEL_PRICING_CACHE_PATH, "utf-8");
       const cache = JSON.parse(content);
       if (cache.models && typeof cache.models === "object") {
-        return cache.models;
+        return { ...FALLBACK_MODEL_PRICING, ...cache.models };
       }
     }
   } catch {
@@ -1511,17 +1636,17 @@ function getModelRates(modelId, pricingMap) {
   };
 }
 __name(getModelRates, "getModelRates");
-var GLOBAL_CONFIG_PATH = (0, import_node_path2.join)(
-  (0, import_node_os.homedir)(),
+var GLOBAL_CONFIG_PATH = (0, import_node_path3.join)(
+  (0, import_node_os2.homedir)(),
   ".claude",
   ".goodvibes",
   "analytics",
   "analytics.json"
 );
 function tryLoadFile(filePath) {
-  if (!(0, import_node_fs5.existsSync)(filePath)) return null;
+  if (!(0, import_node_fs6.existsSync)(filePath)) return null;
   try {
-    const raw = (0, import_node_fs5.readFileSync)(filePath, "utf-8");
+    const raw = (0, import_node_fs6.readFileSync)(filePath, "utf-8");
     const parsed = JSON.parse(raw);
     if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
       return { ...DEFAULT_CONFIG, ...parsed };
@@ -1539,7 +1664,7 @@ __name(tryLoadFile, "tryLoadFile");
 function loadConfig(goodvibesDir2) {
   const globalConfig = tryLoadFile(GLOBAL_CONFIG_PATH);
   if (globalConfig) return globalConfig;
-  const projectConfig = tryLoadFile((0, import_node_path2.join)(goodvibesDir2, "analytics.json"));
+  const projectConfig = tryLoadFile((0, import_node_path3.join)(goodvibesDir2, "analytics.json"));
   if (projectConfig) return projectConfig;
   return { ...DEFAULT_CONFIG };
 }
@@ -2042,8 +2167,8 @@ var BudgetTracker = class {
 };
 
 // packages/analytics/src/engine/daemon/memory-updater.ts
-var import_node_fs6 = require("node:fs");
-var import_node_path3 = require("node:path");
+var import_node_fs7 = require("node:fs");
+var import_node_path4 = require("node:path");
 var HIGH_READ_COUNT = 5;
 var SLOW_COMMAND_MS = 2e4;
 var GOOD_CACHE_RATE = 0.7;
@@ -2144,7 +2269,7 @@ var MemoryUpdater = class {
    */
   apply(updates) {
     try {
-      (0, import_node_fs6.mkdirSync)(this.memoryDir, { recursive: true });
+      (0, import_node_fs7.mkdirSync)(this.memoryDir, { recursive: true });
     } catch (err) {
       if (err instanceof Error && "code" in err && err.code !== "EEXIST") {
         throw err;
@@ -2152,14 +2277,14 @@ var MemoryUpdater = class {
     }
     if (updates.patterns.length > 0) {
       this.mergeAndWrite(
-        (0, import_node_path3.join)(this.memoryDir, "patterns.json"),
+        (0, import_node_path4.join)(this.memoryDir, "patterns.json"),
         updates.patterns,
         "id"
       );
     }
     if (updates.preferences.length > 0) {
       this.mergeAndWrite(
-        (0, import_node_path3.join)(this.memoryDir, "preferences.json"),
+        (0, import_node_path4.join)(this.memoryDir, "preferences.json"),
         updates.preferences,
         "key"
       );
@@ -2206,7 +2331,7 @@ var MemoryUpdater = class {
    */
   readJsonArray(filePath) {
     try {
-      const raw = (0, import_node_fs6.readFileSync)(filePath, "utf-8");
+      const raw = (0, import_node_fs7.readFileSync)(filePath, "utf-8");
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
         return parsed;
@@ -2228,11 +2353,11 @@ var MemoryUpdater = class {
     const tmpPath = `${filePath}.${process.pid}.tmp`;
     const content = JSON.stringify(data, null, 2) + "\n";
     try {
-      (0, import_node_fs6.writeFileSync)(tmpPath, content, { encoding: "utf-8" });
-      (0, import_node_fs6.renameSync)(tmpPath, filePath);
+      (0, import_node_fs7.writeFileSync)(tmpPath, content, { encoding: "utf-8" });
+      (0, import_node_fs7.renameSync)(tmpPath, filePath);
     } catch (err) {
       try {
-        (0, import_node_fs6.unlinkSync)(tmpPath);
+        (0, import_node_fs7.unlinkSync)(tmpPath);
       } catch {
       }
       throw err;
@@ -2242,13 +2367,13 @@ var MemoryUpdater = class {
 
 // packages/analytics/src/engine/daemon/watcher.ts
 var import_node_events2 = require("node:events");
-var import_node_fs8 = require("node:fs");
-var import_node_path5 = require("node:path");
+var import_node_fs9 = require("node:fs");
+var import_node_path6 = require("node:path");
 
 // packages/analytics/src/engine/data/jsonl-watcher.ts
 var import_node_events = require("node:events");
-var import_node_fs7 = require("node:fs");
-var import_node_path4 = require("node:path");
+var import_node_fs8 = require("node:fs");
+var import_node_path5 = require("node:path");
 var import_promises2 = require("node:fs/promises");
 var JSONLWatcher = class extends import_node_events.EventEmitter {
   static {
@@ -2437,7 +2562,7 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
       });
     }, "onFileChange");
     try {
-      const fsWatcher = (0, import_node_fs7.watch)(filePath, { persistent: false }, onFileChange);
+      const fsWatcher = (0, import_node_fs8.watch)(filePath, { persistent: false }, onFileChange);
       fsWatcher.on("error", (_err) => {
         try {
           fsWatcher.close();
@@ -2467,7 +2592,7 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
   createPollingHandle(filePath, onChange) {
     let lastMtime = 0;
     try {
-      lastMtime = (0, import_node_fs7.statSync)(filePath).mtimeMs;
+      lastMtime = (0, import_node_fs8.statSync)(filePath).mtimeMs;
     } catch {
     }
     const interval = setInterval(() => {
@@ -2476,7 +2601,7 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
         return;
       }
       try {
-        const s = (0, import_node_fs7.statSync)(filePath);
+        const s = (0, import_node_fs8.statSync)(filePath);
         if (s.mtimeMs !== lastMtime) {
           lastMtime = s.mtimeMs;
           onChange();
@@ -2492,12 +2617,12 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
    */
   watchDirectoryForNewSession() {
     const dirPath = this.projectDir;
-    if (!(0, import_node_fs7.existsSync)(dirPath)) return;
+    if (!(0, import_node_fs8.existsSync)(dirPath)) return;
     let handle;
     const onDirChange = /* @__PURE__ */ __name((_eventType, filename) => {
       if (filename === null || !filename.endsWith(".jsonl")) return;
-      const fullPath = (0, import_node_path4.join)(dirPath, filename);
-      if (!(0, import_node_fs7.existsSync)(fullPath)) return;
+      const fullPath = (0, import_node_path5.join)(dirPath, filename);
+      if (!(0, import_node_fs8.existsSync)(fullPath)) return;
       this.switchToSession(fullPath).catch((err) => {
         this.emitError(err instanceof Error ? err : new Error(String(err)));
       });
@@ -2507,7 +2632,7 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
       }
     }, "onDirChange");
     try {
-      handle = (0, import_node_fs7.watch)(dirPath, { persistent: false }, onDirChange);
+      handle = (0, import_node_fs8.watch)(dirPath, { persistent: false }, onDirChange);
     } catch {
       handle = { close() {
       } };
@@ -2524,8 +2649,8 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
    * @param sessionId - The parent session ID.
    */
   async watchSubagentFiles(sessionId) {
-    const subagentDir = (0, import_node_path4.join)(this.projectDir, sessionId, "subagents");
-    if (!(0, import_node_fs7.existsSync)(subagentDir)) return;
+    const subagentDir = (0, import_node_path5.join)(this.projectDir, sessionId, "subagents");
+    if (!(0, import_node_fs8.existsSync)(subagentDir)) return;
     let entries;
     try {
       entries = await (0, import_promises2.readdir)(subagentDir);
@@ -2534,7 +2659,7 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
     }
     for (const entry of entries) {
       if (!entry.startsWith("agent-") || !entry.endsWith(".jsonl")) continue;
-      const fullPath = (0, import_node_path4.join)(subagentDir, entry);
+      const fullPath = (0, import_node_path5.join)(subagentDir, entry);
       if (!this.watchedFiles.has(fullPath)) {
         this.attachFileWatcher(fullPath, true);
       }
@@ -2553,15 +2678,15 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
       if (this.activeSessionId !== sessionId) return;
       if (filename === null) return;
       if (!filename.startsWith("agent-") || !filename.endsWith(".jsonl")) return;
-      const fullPath = (0, import_node_path4.join)(subagentDir, filename);
-      if (!(0, import_node_fs7.existsSync)(fullPath)) return;
+      const fullPath = (0, import_node_path5.join)(subagentDir, filename);
+      if (!(0, import_node_fs8.existsSync)(fullPath)) return;
       if (!this.watchedFiles.has(fullPath)) {
         this.attachFileWatcher(fullPath, true);
       }
     }, "onDirChange");
     let handle;
     try {
-      handle = (0, import_node_fs7.watch)(subagentDir, { persistent: false }, onDirChange);
+      handle = (0, import_node_fs8.watch)(subagentDir, { persistent: false }, onDirChange);
     } catch {
       handle = { close() {
       } };
@@ -2749,19 +2874,19 @@ var DataWatcher = class extends import_node_events2.EventEmitter {
   attachWatchers() {
     const entries = [
       {
-        targetPath: (0, import_node_path5.join)(this.goodvibesDir, "telemetry", "telemetry.db"),
+        targetPath: (0, import_node_path6.join)(this.goodvibesDir, "telemetry", "telemetry.db"),
         event: "telemetry-change"
       },
       {
-        targetPath: (0, import_node_path5.join)(this.goodvibesDir, "state"),
+        targetPath: (0, import_node_path6.join)(this.goodvibesDir, "state"),
         event: "session-change"
       },
       {
-        targetPath: (0, import_node_path5.join)(this.goodvibesDir, "project-index.json"),
+        targetPath: (0, import_node_path6.join)(this.goodvibesDir, "project-index.json"),
         event: "index-change"
       },
       {
-        targetPath: (0, import_node_path5.join)(this.goodvibesDir, "goodvibes.json"),
+        targetPath: (0, import_node_path6.join)(this.goodvibesDir, "goodvibes.json"),
         event: "config-change"
       }
     ];
@@ -2783,17 +2908,17 @@ var DataWatcher = class extends import_node_events2.EventEmitter {
    * @param event      - Watcher event name to emit on change.
    */
   watchPath(targetPath, event) {
-    const targetBasename = (0, import_node_path5.basename)(targetPath);
+    const targetBasename = (0, import_node_path6.basename)(targetPath);
     const isDir = this.pathIsDirectory(targetPath);
-    const watchTarget = (0, import_node_fs8.existsSync)(targetPath) ? targetPath : (0, import_node_path5.dirname)(targetPath);
+    const watchTarget = (0, import_node_fs9.existsSync)(targetPath) ? targetPath : (0, import_node_path6.dirname)(targetPath);
     const handler = /* @__PURE__ */ __name((_eventType, filename) => {
-      if ((0, import_node_fs8.existsSync)(targetPath)) {
+      if ((0, import_node_fs9.existsSync)(targetPath)) {
         if (!isDir && filename !== null && filename !== targetBasename) {
           return;
         }
       } else {
         if (filename !== targetBasename) return;
-        if ((0, import_node_fs8.existsSync)(targetPath)) {
+        if ((0, import_node_fs9.existsSync)(targetPath)) {
           this.rewatchPath(targetPath, event);
           return;
         }
@@ -2801,7 +2926,7 @@ var DataWatcher = class extends import_node_events2.EventEmitter {
       this.debounceEmit(event);
     }, "handler");
     try {
-      const watcher = (0, import_node_fs8.watch)(watchTarget, {
+      const watcher = (0, import_node_fs9.watch)(watchTarget, {
         persistent: false
         /* watcher won't keep the Node.js process alive */
       }, handler);
@@ -2848,7 +2973,7 @@ var DataWatcher = class extends import_node_events2.EventEmitter {
     if (this.watchers.has(targetPath)) return;
     let lastMtime = 0;
     try {
-      lastMtime = (0, import_node_fs8.statSync)(targetPath).mtimeMs;
+      lastMtime = (0, import_node_fs9.statSync)(targetPath).mtimeMs;
     } catch {
     }
     const interval = setInterval(() => {
@@ -2857,7 +2982,7 @@ var DataWatcher = class extends import_node_events2.EventEmitter {
         return;
       }
       try {
-        const stat2 = (0, import_node_fs8.statSync)(targetPath);
+        const stat2 = (0, import_node_fs9.statSync)(targetPath);
         if (stat2.mtimeMs !== lastMtime) {
           lastMtime = stat2.mtimeMs;
           this.debounceEmit(event);
@@ -2878,7 +3003,7 @@ var DataWatcher = class extends import_node_events2.EventEmitter {
    */
   pathIsDirectory(targetPath) {
     try {
-      return (0, import_node_fs8.statSync)(targetPath).isDirectory();
+      return (0, import_node_fs9.statSync)(targetPath).isDirectory();
     } catch {
       return false;
     }
@@ -2928,11 +3053,11 @@ __name(emptySessionMetrics, "emptySessionMetrics");
 function readMaxAgentChains(goodvibesDir2) {
   const DEFAULT = 6;
   for (const configPath of [
-    (0, import_node_path6.join)(goodvibesDir2, "goodvibes.json"),
-    (0, import_node_path6.join)((0, import_node_os2.homedir)(), ".goodvibes", "goodvibes.json")
+    (0, import_node_path7.join)(goodvibesDir2, "goodvibes.json"),
+    (0, import_node_path7.join)((0, import_node_os3.homedir)(), ".goodvibes", "goodvibes.json")
   ]) {
     try {
-      const raw = (0, import_node_fs9.readFileSync)(configPath, "utf8");
+      const raw = (0, import_node_fs10.readFileSync)(configPath, "utf8");
       const parsed = JSON.parse(raw);
       const val = parsed["max_parallel_agent_chains"];
       if (typeof val === "number" && val > 0) return val;
@@ -2990,30 +3115,30 @@ function toolToActivityType(tool) {
 }
 __name(toolToActivityType, "toolToActivityType");
 function resolveJsonlProjectDir(goodvibesDir2, jsonlBasePath) {
-  const expandedBase = jsonlBasePath.startsWith("~") ? (0, import_node_path6.join)((0, import_node_os2.homedir)(), jsonlBasePath.slice(1)) : jsonlBasePath;
-  if (!(0, import_node_fs9.existsSync)(expandedBase)) return null;
+  const expandedBase = jsonlBasePath.startsWith("~") ? (0, import_node_path7.join)((0, import_node_os3.homedir)(), jsonlBasePath.slice(1)) : jsonlBasePath;
+  if (!(0, import_node_fs10.existsSync)(expandedBase)) return null;
   let entries;
   try {
-    entries = (0, import_node_fs9.readdirSync)(expandedBase);
+    entries = (0, import_node_fs10.readdirSync)(expandedBase);
   } catch {
     return null;
   }
-  const projectRoot = (0, import_node_path6.dirname)((0, import_node_path6.resolve)(goodvibesDir2));
+  const projectRoot = (0, import_node_path7.dirname)((0, import_node_path7.resolve)(goodvibesDir2));
   const dashedPath = projectRoot.replace(/\//g, "-");
   for (const entry of entries) {
     if (entry === dashedPath) {
-      const candidate = (0, import_node_path6.join)(expandedBase, entry);
-      if ((0, import_node_fs9.existsSync)(candidate)) return candidate;
+      const candidate = (0, import_node_path7.join)(expandedBase, entry);
+      if ((0, import_node_fs10.existsSync)(candidate)) return candidate;
     }
   }
   let latestMtime = 0;
   let latestDir = null;
   for (const entry of entries) {
-    const dirPath = (0, import_node_path6.join)(expandedBase, entry);
+    const dirPath = (0, import_node_path7.join)(expandedBase, entry);
     try {
-      const s = (0, import_node_fs9.statSync)(dirPath);
+      const s = (0, import_node_fs10.statSync)(dirPath);
       if (s.isDirectory() && s.mtimeMs > latestMtime) {
-        const subEntries = (0, import_node_fs9.readdirSync)(dirPath);
+        const subEntries = (0, import_node_fs10.readdirSync)(dirPath);
         if (subEntries.some((f) => f.endsWith(".jsonl"))) {
           latestMtime = s.mtimeMs;
           latestDir = dirPath;
@@ -3198,7 +3323,7 @@ var Aggregator = class _Aggregator {
     }
     this.anomalyDetector = new AnomalyDetector(this.telemetry, this.config, this.logger);
     this.budgetTracker = new BudgetTracker(this.config);
-    this.memoryUpdater = new MemoryUpdater((0, import_node_path6.join)(this.goodvibesDir, "memory"));
+    this.memoryUpdater = new MemoryUpdater((0, import_node_path7.join)(this.goodvibesDir, "memory"));
     this.watcher = new DataWatcher(this.goodvibesDir, {
       jsonlProjectDir: jsonlProjectDir ?? void 0,
       jsonlCostConfig: {
@@ -3666,7 +3791,7 @@ var Aggregator = class _Aggregator {
     const maxAgentChains = readMaxAgentChains(this.goodvibesDir);
     const partialState = {
       session_id: sessionId,
-      project_hash: (0, import_node_path6.basename)((0, import_node_path6.dirname)(this.goodvibesDir)),
+      project_hash: (0, import_node_path7.basename)((0, import_node_path7.dirname)(this.goodvibesDir)),
       max_agent_chains: maxAgentChains,
       started_at: this.startedAt,
       uptime_ms: uptimeMs,
@@ -3696,7 +3821,7 @@ var Aggregator = class _Aggregator {
     const healthStatus = computeHealthStatus(allAnomalies, metrics);
     return {
       session_id: sessionId,
-      project_hash: (0, import_node_path6.basename)((0, import_node_path6.dirname)(this.goodvibesDir)),
+      project_hash: (0, import_node_path7.basename)((0, import_node_path7.dirname)(this.goodvibesDir)),
       max_agent_chains: maxAgentChains,
       started_at: this.startedAt,
       uptime_ms: uptimeMs,
@@ -3816,7 +3941,7 @@ var Aggregator = class _Aggregator {
         }
       }
       for (const rawPath of filePaths) {
-        const filePath = (0, import_node_path6.resolve)(rawPath);
+        const filePath = (0, import_node_path7.resolve)(rawPath);
         if (!fileStats.has(filePath)) {
           fileStats.set(filePath, { reads: 0, writes: 0, conflicts: 0, lastAccessed: timestamp });
         }
@@ -3902,7 +4027,7 @@ var Aggregator = class _Aggregator {
    */
   findSessionDir() {
     if (this.activeJsonlPath === null) return null;
-    return (0, import_node_path6.dirname)(this.activeJsonlPath);
+    return (0, import_node_path7.dirname)(this.activeJsonlPath);
   }
   /**
    * Parse a subagent JSONL file and return aggregated token/tool counts.
@@ -3911,15 +4036,15 @@ var Aggregator = class _Aggregator {
    * @param agentId    - Agent ID from the Task tool_use block (may be a prefix).
    */
   parseSubagentFile(sessionDir, agentId) {
-    const subagentsDir = (0, import_node_path6.join)(sessionDir, "subagents");
-    if (!(0, import_node_fs9.existsSync)(subagentsDir)) return null;
+    const subagentsDir = (0, import_node_path7.join)(sessionDir, "subagents");
+    if (!(0, import_node_fs10.existsSync)(subagentsDir)) return null;
     let entries;
     try {
-      const dirStat = (0, import_node_fs9.statSync)(subagentsDir);
+      const dirStat = (0, import_node_fs10.statSync)(subagentsDir);
       if (this.subagentDirCache !== null && this.subagentDirCache.mtime === dirStat.mtimeMs) {
         entries = this.subagentDirCache.files;
       } else {
-        entries = (0, import_node_fs9.readdirSync)(subagentsDir);
+        entries = (0, import_node_fs10.readdirSync)(subagentsDir);
         this.subagentDirCache = { mtime: dirStat.mtimeMs, files: entries };
       }
     } catch {
@@ -3930,18 +4055,18 @@ var Aggregator = class _Aggregator {
       if (!entry.startsWith("agent-") || !entry.endsWith(".jsonl")) continue;
       const fileId = entry.slice("agent-".length, -".jsonl".length);
       if (fileId === agentId || fileId.startsWith(agentId)) {
-        subagentFile = (0, import_node_path6.join)(subagentsDir, entry);
+        subagentFile = (0, import_node_path7.join)(subagentsDir, entry);
         break;
       }
     }
     if (subagentFile === null) return null;
     try {
-      const fileStat = (0, import_node_fs9.statSync)(subagentFile);
+      const fileStat = (0, import_node_fs10.statSync)(subagentFile);
       const cached = this.subagentCache.get(subagentFile);
       if (cached !== void 0 && cached.mtime === fileStat.mtimeMs) {
         return cached.data;
       }
-      const content = (0, import_node_fs9.readFileSync)(subagentFile, "utf8");
+      const content = (0, import_node_fs10.readFileSync)(subagentFile, "utf8");
       const lines = content.split("\n").filter((l) => l.trim() !== "");
       let tokens_in = 0;
       let tokens_out = 0;
@@ -4008,7 +4133,7 @@ var Aggregator = class _Aggregator {
     try {
       const metrics = this.state.metrics;
       const jsonl = this.jsonlTotals;
-      const projectHash = (0, import_node_path6.basename)((0, import_node_path6.dirname)(this.goodvibesDir));
+      const projectHash = (0, import_node_path7.basename)((0, import_node_path7.dirname)(this.goodvibesDir));
       const jsonlToolCalls = this.jsonlReader !== null ? this.jsonlReader.extractToolCalls(this.jsonlRecords) : [];
       const precisionCalls = jsonlToolCalls.filter(
         (tc) => (tc.name ?? "").startsWith("mcp__plugin_goodvibes_precision")
@@ -4110,14 +4235,14 @@ var Aggregator = class _Aggregator {
    *          is stale (>60s old), or cannot be parsed.
    */
   readStatuslineData() {
-    const filePath = (0, import_node_path6.join)((0, import_node_os2.homedir)(), ".claude", "debug-statusline-input.json");
+    const filePath = (0, import_node_path7.join)((0, import_node_os3.homedir)(), ".claude", "debug-statusline-input.json");
     try {
-      const stat2 = (0, import_node_fs9.statSync)(filePath);
+      const stat2 = (0, import_node_fs10.statSync)(filePath);
       const ageMs = Date.now() - stat2.mtimeMs;
       if (ageMs > STATUSLINE_STALENESS_MS) {
         return null;
       }
-      const raw = (0, import_node_fs9.readFileSync)(filePath, "utf-8");
+      const raw = (0, import_node_fs10.readFileSync)(filePath, "utf-8");
       const json = JSON.parse(raw);
       if (typeof json?.context_window?.used_percentage !== "number") {
         return null;
@@ -4577,13 +4702,13 @@ var MiniRenderer = class {
 };
 
 // packages/analytics/src/engine/data/db-init.ts
-var import_node_fs11 = require("node:fs");
-var import_node_path8 = require("node:path");
-var import_node_os3 = require("node:os");
+var import_node_fs12 = require("node:fs");
+var import_node_path9 = require("node:path");
+var import_node_os4 = require("node:os");
 
 // packages/analytics/src/engine/data/global-db.ts
-var import_node_fs10 = require("node:fs");
-var import_node_path7 = require("node:path");
+var import_node_fs11 = require("node:fs");
+var import_node_path8 = require("node:path");
 
 // packages/analytics/src/engine/data/db-schema.ts
 var SCHEMA_VERSION = 1;
@@ -4840,8 +4965,8 @@ var GlobalDB = class {
     const initSqlJs2 = await this.loadSqlJs();
     const wasmPath = this.resolveWasmPath();
     this.SQL = await initSqlJs2({ locateFile: /* @__PURE__ */ __name(() => wasmPath, "locateFile") });
-    if ((0, import_node_fs10.existsSync)(this.dbPath)) {
-      const buffer = (0, import_node_fs10.readFileSync)(this.dbPath);
+    if ((0, import_node_fs11.existsSync)(this.dbPath)) {
+      const buffer = (0, import_node_fs11.readFileSync)(this.dbPath);
       this.db = new this.SQL.Database(buffer);
     } else {
       this.db = new this.SQL.Database();
@@ -5568,31 +5693,31 @@ var GlobalDB = class {
     } catch {
       baseDir = process.cwd();
     }
-    const subdirWasm = (0, import_node_path7.resolve)((0, import_node_path7.join)(baseDir, "wasm", "sql-wasm.wasm"));
-    if ((0, import_node_fs10.existsSync)(subdirWasm)) return subdirWasm;
-    const distWasm = (0, import_node_path7.resolve)((0, import_node_path7.join)(baseDir, "sql-wasm.wasm"));
-    if ((0, import_node_fs10.existsSync)(distWasm)) return distWasm;
-    const nodeWasm = (0, import_node_path7.resolve)((0, import_node_path7.join)(baseDir, "..", "..", "..", "node_modules", "sql.js", "dist", "sql-wasm.wasm"));
-    if ((0, import_node_fs10.existsSync)(nodeWasm)) return nodeWasm;
-    return (0, import_node_path7.resolve)((0, import_node_path7.join)(baseDir, "sql-wasm.wasm"));
+    const subdirWasm = (0, import_node_path8.resolve)((0, import_node_path8.join)(baseDir, "wasm", "sql-wasm.wasm"));
+    if ((0, import_node_fs11.existsSync)(subdirWasm)) return subdirWasm;
+    const distWasm = (0, import_node_path8.resolve)((0, import_node_path8.join)(baseDir, "sql-wasm.wasm"));
+    if ((0, import_node_fs11.existsSync)(distWasm)) return distWasm;
+    const nodeWasm = (0, import_node_path8.resolve)((0, import_node_path8.join)(baseDir, "..", "..", "..", "node_modules", "sql.js", "dist", "sql-wasm.wasm"));
+    if ((0, import_node_fs11.existsSync)(nodeWasm)) return nodeWasm;
+    return (0, import_node_path8.resolve)((0, import_node_path8.join)(baseDir, "sql-wasm.wasm"));
   }
 };
 
 // packages/analytics/src/engine/data/db-init.ts
-var GOODVIBES_BASE = (0, import_node_path8.join)((0, import_node_os3.homedir)(), ".claude", ".goodvibes");
-var ANALYTICS_DIR = (0, import_node_path8.join)(GOODVIBES_BASE, "analytics", "v2");
+var GOODVIBES_BASE = (0, import_node_path9.join)((0, import_node_os4.homedir)(), ".claude", ".goodvibes");
+var ANALYTICS_DIR = (0, import_node_path9.join)(GOODVIBES_BASE, "analytics", "v2");
 var DB_FILENAME = "analytics.db";
 var _singleton = null;
 var _singletonPromise = null;
 function ensureGlobalAnalyticsDir() {
-  if (!(0, import_node_fs11.existsSync)(ANALYTICS_DIR)) {
-    (0, import_node_fs11.mkdirSync)(ANALYTICS_DIR, { recursive: true });
+  if (!(0, import_node_fs12.existsSync)(ANALYTICS_DIR)) {
+    (0, import_node_fs12.mkdirSync)(ANALYTICS_DIR, { recursive: true });
   }
   return ANALYTICS_DIR;
 }
 __name(ensureGlobalAnalyticsDir, "ensureGlobalAnalyticsDir");
 function getGlobalDbPath() {
-  return (0, import_node_path8.resolve)((0, import_node_path8.join)(ANALYTICS_DIR, DB_FILENAME));
+  return (0, import_node_path9.resolve)((0, import_node_path9.join)(ANALYTICS_DIR, DB_FILENAME));
 }
 __name(getGlobalDbPath, "getGlobalDbPath");
 async function initializeGlobalDb(dbPath) {
@@ -5618,7 +5743,7 @@ async function initializeGlobalDb(dbPath) {
 __name(initializeGlobalDb, "initializeGlobalDb");
 
 // packages/analytics/src/engine/mini.ts
-var goodvibesDir = (0, import_node_path9.resolve)(process.env["GOODVIBES_DIR"] ?? ".goodvibes");
+var goodvibesDir = (0, import_node_path10.resolve)(process.env["GOODVIBES_DIR"] ?? ".goodvibes");
 async function main() {
   const config = loadConfig(goodvibesDir);
   const aggregator = new Aggregator(goodvibesDir, config);

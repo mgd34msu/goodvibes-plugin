@@ -12,7 +12,7 @@
       "name": "goodvibes",
       "source": "./plugins/goodvibes",
       "description": "Structure-aware code intelligence, token/cost analytics with a tmux dashboard, and registered HTTP/database access under an explicit trust boundary — 25 tools across three MCP servers (intel 15, analytics 7, connect 3).",
-      "version": "2.0.3",
+      "version": "2.0.4",
       "author": {
         "name": "Mike Davis"
       }
