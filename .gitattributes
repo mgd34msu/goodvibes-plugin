@@ -1,0 +1,18 @@
+# Line endings are part of the shipped artifact here, not a cosmetic choice.
+#
+# plugins/goodvibes/ARTIFACTS.json hashes every committed file under the plugin
+# tree, and CI diffs a freshly rebuilt manifest against the committed one. On a
+# checkout with core.autocrlf=true (the Windows default) the working tree would
+# hold CRLF copies, so a contributor regenerating the manifest there would hash
+# different bytes for almost every text file and have it rejected by the Linux
+# dist-match job with nothing local to explain the failure. Pinning the working
+# tree to LF on every platform keeps those hashes machine-independent.
+* text=auto eol=lf
+
+# WASM payloads are copied byte for byte by the build. They must never be
+# eol-converted, and diffing them as text is useless.
+*.wasm binary
+
+# The server bundles are generated build output, not hand-edited source:
+# suppress whitespace warnings and collapse them in review by default.
+plugins/goodvibes/server/**/index.cjs -whitespace linguist-generated

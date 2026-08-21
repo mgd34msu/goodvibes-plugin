@@ -7,11 +7,18 @@
 #   1. Preconditions: on main, clean tree, CHANGELOG section for the new version.
 #   2. Bump plugins/goodvibes/.claude-plugin/plugin.json and
 #      .claude-plugin/marketplace.json in lockstep.
-#   3. npm run build (all three server bundles; committed, CI byte-diffs them).
-#   4. Gates: tsc --noEmit x4, vitest run, check-versions, claude plugin validate.
+#   3. npm run build (all three server bundles + ARTIFACTS.json; committed, CI
+#      byte-diffs them).
+#   4. Gates: tsc --noEmit x4, vitest run, lint, check-versions, the dist-match
+#      rebuild check, validate-plugin, smoke-mcp, claude plugin validate.
 #   5. Commit, tag vX.Y.Z, push main + tags.
-#   6. gh release create with the version's CHANGELOG section as notes.
-#   7. claude plugin marketplace update + plugin update (the local dogfood copy).
+#   6. Wait for the push CI run on that exact commit to conclude successfully.
+#   7. gh release create with the version's CHANGELOG section as notes.
+#   8. claude plugin marketplace update + plugin update (the local dogfood copy).
+#
+# The release is only published after CI on the pushed commit goes green. If CI
+# fails, the tag and commit are already on main and this script stops with the
+# recovery steps printed rather than shipping a broken release.
 set -euo pipefail
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; CYAN='\033[0;36m'; YELLOW='\033[1;33m'; NC='\033[0m'
@@ -20,6 +27,9 @@ cd "$PROJECT_ROOT"
 
 BUMP="${1:-patch}"
 DRY_RUN=false; NO_GIT=false; SKIP_BUILD=false; SKIP_REINSTALL=false
+# Overall deadline for the post-push CI wait. The 3-OS smoke matrix is the long
+# pole; 30 minutes covers it with room for a queued runner.
+CI_WAIT_SECONDS="${CI_WAIT_SECONDS:-1800}"
 for arg in "${@:2}"; do
   case "$arg" in
     --dry-run) DRY_RUN=true ;;
@@ -81,7 +91,33 @@ for pkg in core intel analytics connect; do
 done
 echo -e "${GREEN}tsc x4 clean${NC}"
 npx vitest run
+npm run lint
 node scripts/check-versions.mjs
+
+# dist-match, locally, before anything is committed. The release tree is
+# intentionally dirty (the bump plus the build above), so this cannot diff
+# against HEAD the way CI does. Staging the built tree first and then rebuilding
+# on top of it makes `git diff` compare the rebuild against what we just
+# produced, which is the same question CI asks: does a rebuild change anything?
+if $SKIP_BUILD; then
+  echo -e "${YELLOW}--skip-build: dist-match verification skipped, CI will be the first check of the committed bundles.${NC}"
+elif $NO_GIT; then
+  node scripts/artifact-manifest.mjs --check
+  echo -e "${GREEN}artifact manifest matches the built tree${NC}"
+else
+  git add -A -- plugins/goodvibes
+  npm run build
+  if ! git diff --exit-code -- plugins/goodvibes; then
+    echo -e "${RED}Rebuild changed the plugin tree: the build is not reproducible from these sources.${NC}"
+    echo -e "${RED}Nothing has been committed. Investigate the diff above before releasing.${NC}"
+    exit 1
+  fi
+  node scripts/artifact-manifest.mjs --check
+  echo -e "${GREEN}dist-match clean: a rebuild reproduces the staged plugin tree byte for byte${NC}"
+fi
+
+node scripts/validate-plugin.mjs
+node scripts/smoke-mcp.mjs
 claude plugin validate ./plugins/goodvibes
 
 # ── 5. Commit, tag, push ────────────────────────────────────────────────────
@@ -92,14 +128,63 @@ if ! $NO_GIT; then
   git push origin main --tags
   echo -e "${GREEN}Pushed main + v$NEXT${NC}"
 
-  # ── 6. GitHub release from the CHANGELOG section ──────────────────────────
+  # ── 6. Wait for CI on the pushed commit ───────────────────────────────────
+  # The release must not be published before the shipped artifact has passed
+  # the gates on a clean checkout. Local gates ran against a working tree that
+  # already had node_modules and built output in it; CI is the honest check.
+  RELEASE_SHA="$(git rev-parse HEAD)"
+  CI_DEADLINE=$(( $(date +%s) + CI_WAIT_SECONDS ))
+  RUN_ID=""
+  echo -e "${CYAN}Waiting for CI on $RELEASE_SHA (up to ${CI_WAIT_SECONDS}s)...${NC}"
+
+  while [[ -z "$RUN_ID" && "$(date +%s)" -lt "$CI_DEADLINE" ]]; do
+    RUN_ID="$(timeout 300 gh run list --workflow ci.yml --event push --commit "$RELEASE_SHA" \
+      --limit 1 --json databaseId --jq '.[0].databaseId // empty' 2>/dev/null || true)"
+    [[ -n "$RUN_ID" ]] && break
+    sleep 10
+  done
+
+  if [[ -z "$RUN_ID" ]]; then
+    echo -e "${RED}No CI run appeared for $RELEASE_SHA within ${CI_WAIT_SECONDS}s.${NC}"
+    echo -e "${YELLOW}main and tag v$NEXT are already pushed. No GitHub release was created.${NC}"
+    echo -e "${YELLOW}Recover: confirm CI at https://github.com/mgd34msu/goodvibes-plugin/actions,${NC}"
+    echo -e "${YELLOW}then publish manually with:${NC}"
+    echo -e "${YELLOW}  gh release create v$NEXT --latest --title v$NEXT --notes-file <changelog-section>${NC}"
+    exit 1
+  fi
+
+  CI_STATUS=""; CI_CONCLUSION=""
+  while [[ "$(date +%s)" -lt "$CI_DEADLINE" ]]; do
+    CI_JSON="$(timeout 300 gh run view "$RUN_ID" --json status,conclusion 2>/dev/null || echo '{}')"
+    CI_STATUS="$(node -p "try{JSON.parse(process.argv[1]).status||''}catch{''}" "$CI_JSON")"
+    CI_CONCLUSION="$(node -p "try{JSON.parse(process.argv[1]).conclusion||''}catch{''}" "$CI_JSON")"
+    [[ "$CI_STATUS" == "completed" ]] && break
+    echo -e "${CYAN}  CI run $RUN_ID: ${CI_STATUS:-pending}...${NC}"
+    sleep 15
+  done
+
+  if [[ "$CI_STATUS" != "completed" || "$CI_CONCLUSION" != "success" ]]; then
+    echo -e "${RED}CI did not finish green for v$NEXT (status=${CI_STATUS:-unknown} conclusion=${CI_CONCLUSION:-none}).${NC}"
+    echo -e "${YELLOW}main and tag v$NEXT are already pushed. No GitHub release was created,${NC}"
+    echo -e "${YELLOW}so nobody can install this version from the marketplace yet.${NC}"
+    echo -e "${YELLOW}Recover:${NC}"
+    echo -e "${YELLOW}  1. Inspect the failure: gh run view $RUN_ID --log-failed${NC}"
+    echo -e "${YELLOW}  2. Fix on main and push; the tag can be moved with:${NC}"
+    echo -e "${YELLOW}       git tag -f v$NEXT && git push origin -f v$NEXT${NC}"
+    echo -e "${YELLOW}  3. Publish once CI is green:${NC}"
+    echo -e "${YELLOW}       gh release create v$NEXT --latest --title v$NEXT --notes-file <changelog-section>${NC}"
+    exit 1
+  fi
+  echo -e "${GREEN}CI run $RUN_ID passed on $RELEASE_SHA${NC}"
+
+  # ── 7. GitHub release from the CHANGELOG section ──────────────────────────
   NOTES_FILE="$(mktemp)"
   awk "/^## \[$NEXT\]/{flag=1; next} /^## \[/{flag=0} flag" CHANGELOG.md > "$NOTES_FILE"
   gh release create "v$NEXT" --latest --title "v$NEXT" --notes-file "$NOTES_FILE"
   rm -f "$NOTES_FILE"
 fi
 
-# ── 7. Update the local install ─────────────────────────────────────────────
+# ── 8. Update the local install ─────────────────────────────────────────────
 if ! $SKIP_REINSTALL; then
   claude plugin marketplace update goodvibes-market
   claude plugin update goodvibes@goodvibes-market

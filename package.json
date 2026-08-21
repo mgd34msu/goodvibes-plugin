@@ -1,6 +1,6 @@
 {
   "name": "goodvibes-plugin",
-  "version": "2.0.0",
+  "version": "2.3.3",
   "private": true,
   "description": "GoodVibes — structure-aware code intelligence, session cost analytics, and an API workbench for Claude Code",
   "type": "module",
@@ -8,11 +8,17 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "node packages/intel/build.mjs && node packages/analytics/build.mjs && node packages/connect/build.mjs",
+    "build": "node packages/intel/build.mjs && node packages/analytics/build.mjs && node packages/connect/build.mjs && node scripts/artifact-manifest.mjs",
+    "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "vitest run",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "lint:workspaces": "npm run lint --workspaces --if-present",
+    "check:versions": "node scripts/check-versions.mjs",
+    "check:artifacts": "node scripts/artifact-manifest.mjs --check",
+    "validate:plugin": "node scripts/validate-plugin.mjs",
+    "smoke:mcp": "node scripts/smoke-mcp.mjs",
+    "verify": "npm run check:versions && npm run typecheck && npm test && npm run lint && npm run build && npm run check:artifacts && npm run validate:plugin && npm run smoke:mcp",
     "postinstall": "echo 'Run npm run build to build the server bundles'",
     "release": "./scripts/release.sh",
     "release:patch": "./scripts/release.sh patch",
@@ -31,6 +37,7 @@
     "typescript-eslint": "^8.53.1"
   },
   "allowScripts": {
+    "@vscode/ripgrep@1.15.14": true,
     "esbuild@0.27.2": true,
     "minimatch@3.1.5": true,
     "minimatch@10.2.4": true,

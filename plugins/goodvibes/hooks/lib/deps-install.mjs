@@ -4,9 +4,17 @@
  *
  * For each server (intel, analytics, connect) whose representative probe is
  * missing from the plugin copy: create `~/.claude/.goodvibes/deps/<server>/`,
- * copy the server's package.json there, run
- * `npm install --omit=dev --no-audit --no-fund --prefix <durable>`, then link
+ * copy the server's package.json AND package-lock.json there, run
+ * `npm ci --omit=dev --no-audit --no-fund` in that directory, then link
  * the plugin copy's node_modules to the durable install (see deps-link.mjs).
+ *
+ * The shipped manifest/lockfile pair is verified before npm runs and the
+ * installed tree is verified after it: every dependency version in the server
+ * manifest must be exact, the manifest's dependency map must equal the
+ * lockfile's root dependency map, and after `npm ci` every dependency's
+ * installed package.json must report exactly the pinned version. A user
+ * machine that would otherwise silently resolve something newer than the
+ * version CI tested fails loudly here instead.
  *
  * Never prompts; safe to run repeatedly (installed servers are skipped). A
  * lock file `~/.claude/.goodvibes/deps/.install.lock` keeps concurrent runs
@@ -26,8 +34,10 @@ import {
   appendFileSync,
   copyFileSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   readFileSync,
+  renameSync,
   rmSync,
   statSync,
   utimesSync,
@@ -50,6 +60,71 @@ const NPM_TIMEOUT_MS = 5 * 60 * 1000;
 
 /** A lock file older than this is a leftover from a dead run, ignore it. */
 const LOCK_STALE_MS = 10 * 60 * 1000;
+
+/**
+ * A dependency version the installer accepts: a bare semver, no range operator.
+ * `^1.2.3` would let every user machine resolve a different tree than the one
+ * CI built and tested against, which is the whole point of pinning.
+ */
+const EXACT_VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+
+/** Compare two dependency maps by their sorted name/version pairs. */
+function sameDependencyMap(left, right) {
+  const norm = (m) =>
+    JSON.stringify(Object.entries(m ?? {}).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
+  return norm(left) === norm(right);
+}
+
+/**
+ * Read and cross-check one server's shipped manifest/lockfile pair.
+ * Returns `{ dependencies }` or throws with the reason the pair is unusable.
+ */
+function readVerifiedSpec(pluginRoot, server) {
+  const source = path.join(pluginRoot, 'server', server);
+  const manifestFile = path.join(source, 'package.json');
+  const lockFilePath = path.join(source, 'package-lock.json');
+  if (!existsSync(lockFilePath)) {
+    throw new Error(`server/${server}/package-lock.json is missing; the shipped tree is incomplete`);
+  }
+  const manifest = JSON.parse(readFileSync(manifestFile, 'utf-8'));
+  const lock = JSON.parse(readFileSync(lockFilePath, 'utf-8'));
+  const dependencies = manifest.dependencies ?? {};
+
+  for (const [name, version] of Object.entries(dependencies)) {
+    if (typeof version !== 'string' || !EXACT_VERSION.test(version)) {
+      throw new Error(`${name} must be pinned to an exact version, found ${version}`);
+    }
+  }
+  const locked = lock.packages?.['']?.dependencies ?? {};
+  if (!sameDependencyMap(dependencies, locked)) {
+    throw new Error('package.json and package-lock.json dependencies disagree');
+  }
+  return { manifestFile, lockFilePath, dependencies };
+}
+
+/**
+ * After npm finishes: every pinned dependency must be present in the durable
+ * install at exactly the pinned version. Returns a list of problems (empty when
+ * the tree matches the pins).
+ */
+function verifyInstalledVersions(durable, dependencies) {
+  const nodeModules = path.join(durable, 'node_modules');
+  const problems = [];
+  for (const [name, expected] of Object.entries(dependencies)) {
+    const file = path.join(nodeModules, ...name.split('/'), 'package.json');
+    if (!existsSync(file)) {
+      problems.push(`${name} is missing`);
+      continue;
+    }
+    try {
+      const actual = JSON.parse(readFileSync(file, 'utf-8')).version;
+      if (actual !== expected) {problems.push(`${name} installed ${actual}, expected ${expected}`);}
+    } catch (err) {
+      problems.push(`${name} has an unreadable package.json (${err?.message ?? err})`);
+    }
+  }
+  return problems;
+}
 
 function lockFile() {
   return path.join(durableDepsRoot(), '.install.lock');
@@ -138,27 +213,103 @@ function releaseLock() {
   }
 }
 
-/** Run npm install for one durable prefix. Returns { ok, detail }. */
+/**
+ * Run `npm ci` in one durable directory. Returns { ok, detail }.
+ * `ci` rather than `install` so the committed lockfile is authoritative: npm
+ * refuses outright when the copied manifest and lockfile disagree, and it never
+ * silently re-resolves a dependency to a newer version.
+ */
 function runNpmInstall(prefix) {
-  const args = ['install', '--omit=dev', '--no-audit', '--no-fund', '--prefix', prefix];
+  const args = ['ci', '--omit=dev', '--no-audit', '--no-fund'];
   let result;
   if (process.platform === 'win32') {
-    // npm is a .cmd shim on Windows and must go through the shell; quote
-    // arguments so a prefix path with spaces survives the join.
-    const quoted = args.map((a) => (/\s/.test(a) ? `"${a}"` : a)).join(' ');
-    result = spawnSync(`npm ${quoted}`, { shell: true, timeout: NPM_TIMEOUT_MS, encoding: 'utf-8' });
+    // npm is a .cmd shim on Windows and must go through the shell.
+    result = spawnSync(`npm ${args.join(' ')}`, {
+      shell: true,
+      cwd: prefix,
+      timeout: NPM_TIMEOUT_MS,
+      encoding: 'utf-8',
+    });
   } else {
-    result = spawnSync('npm', args, { timeout: NPM_TIMEOUT_MS, encoding: 'utf-8' });
+    result = spawnSync('npm', args, { cwd: prefix, timeout: NPM_TIMEOUT_MS, encoding: 'utf-8' });
   }
   if (result.error) {
     const timedOut = result.error.code === 'ETIMEDOUT';
-    return { ok: false, detail: timedOut ? `npm install timed out after ${NPM_TIMEOUT_MS}ms` : String(result.error.message ?? result.error) };
+    return { ok: false, detail: timedOut ? `npm ci timed out after ${NPM_TIMEOUT_MS}ms` : String(result.error.message ?? result.error) };
   }
   if (result.status !== 0) {
     const tail = (result.stderr ?? '').trim().split('\n').slice(-5).join('\n');
-    return { ok: false, detail: `npm install exited ${result.status}${tail ? `\n${tail}` : ''}` };
+    return { ok: false, detail: `npm ci exited ${result.status}${tail ? `\n${tail}` : ''}` };
   }
   return { ok: true, detail: 'installed' };
+}
+
+/**
+ * True when the durable tree for `server` already holds exactly the pinned
+ * dependency set, so nothing needs to be fetched and the plugin copy only needs
+ * relinking. This is the fast path for an upgrade that changed only the RANGE
+ * STRINGS in the shipped manifest (2.3.3 replaced carets with exact pins): the
+ * bytes on disk are already the right versions, and running npm would be a
+ * pointless network round trip that also risks destroying a working tree.
+ */
+function durableAlreadySatisfies(durable, server, dependencies) {
+  if (!hasProbe(path.join(durable, 'node_modules'), server)) return false;
+  return verifyInstalledVersions(durable, dependencies).length === 0;
+}
+
+/**
+ * Install into a sibling staging directory and swap the result into place, so a
+ * failure can never leave the durable tree empty.
+ *
+ * `npm ci` deletes node_modules before it fetches anything. Run against the live
+ * durable directory, a registry outage midway through turns a working install
+ * into an empty one, and the SessionStart hook's 24h failure latch then blocks
+ * the retry that would fix it. Staging keeps the previous tree untouched until a
+ * verified replacement exists; the swap is two renames on one filesystem.
+ *
+ * Returns { ok, detail }.
+ */
+function stagedInstall(durable, spec, server) {
+  const staging = path.join(durableDepsRoot(), `.staging-${server}-${process.pid}`);
+  const live = path.join(durable, 'node_modules');
+  const retired = path.join(durableDepsRoot(), `.retired-${server}-${Date.now()}`);
+  try {
+    rmSync(staging, { recursive: true, force: true });
+    mkdirSync(staging, { recursive: true });
+    copyFileSync(spec.manifestFile, path.join(staging, 'package.json'));
+    copyFileSync(spec.lockFilePath, path.join(staging, 'package-lock.json'));
+
+    const npm = runNpmInstall(staging);
+    if (!npm.ok) return { ok: false, detail: npm.detail };
+    if (!hasProbe(path.join(staging, 'node_modules'), server)) {
+      return { ok: false, detail: `npm ci finished but ${SERVER_PROBES[server]} is missing` };
+    }
+    const drift = verifyInstalledVersions(staging, spec.dependencies);
+    if (drift.length > 0) {
+      return { ok: false, detail: `installed versions do not match the pins: ${drift.join('; ')}` };
+    }
+
+    // Promote. Move the old tree aside rather than deleting it, so a failed
+    // second rename can put it back.
+    mkdirSync(durable, { recursive: true });
+    const hadPrevious = lstatSync(live, { throwIfNoEntry: false }) !== undefined;
+    if (hadPrevious) renameSync(live, retired);
+    try {
+      renameSync(path.join(staging, 'node_modules'), live);
+    } catch (err) {
+      if (hadPrevious) renameSync(retired, live);
+      throw err;
+    }
+    // The manifest/lock fingerprint is written last: if this process dies
+    // between the two, the fingerprint still describes the older tree and the
+    // next run reinstalls rather than trusting a half-applied upgrade.
+    copyFileSync(spec.manifestFile, path.join(durable, 'package.json'));
+    copyFileSync(spec.lockFilePath, path.join(durable, 'package-lock.json'));
+    return { ok: true, detail: 'installed' };
+  } finally {
+    rmSync(staging, { recursive: true, force: true });
+    rmSync(retired, { recursive: true, force: true });
+  }
 }
 
 /**
@@ -176,21 +327,75 @@ export function installMissingDeps(pluginRoot) {
     }
     touchLock();
     const durable = durableDepsDir(server);
-    log(`${server}: installing native deps into ${durable}`);
     try {
-      mkdirSync(durable, { recursive: true });
-      copyFileSync(
-        path.join(pluginRoot, 'server', server, 'package.json'),
-        path.join(durable, 'package.json'),
-      );
-      const npm = runNpmInstall(durable);
-      if (!npm.ok) {
-        log(`${server}: FAILED - ${npm.detail}`);
+      let spec;
+      try {
+        spec = readVerifiedSpec(pluginRoot, server);
+      } catch (err) {
+        // Refusing here is the point: an unpinned or lock-disagreeing manifest
+        // would install something other than what this release was tested with.
+        // The durable bytes are still fine though, so relink to them and keep
+        // the server running on the previous release's dependencies.
+        const reason = err?.message ?? err;
+        if (hasProbe(path.join(durable, 'node_modules'), server)) {
+          try {
+            const how = linkDeps(pluginRoot, server);
+            if (depsSatisfied(pluginRoot, server)) {
+              log(
+                `${server}: FAILED - refusing to install, ${reason}. Relinked (${how}) to the ` +
+                  `existing durable install, so ${server} is running the previous release's ` +
+                  `dependencies until the shipped manifest and lockfile agree.`,
+              );
+              failed.push(server);
+              continue;
+            }
+          } catch {
+            /* fall through to the plain refusal below */
+          }
+        }
+        log(`${server}: FAILED - refusing to install, ${reason}`);
         failed.push(server);
         continue;
       }
-      if (!hasProbe(path.join(durable, 'node_modules'), server)) {
-        log(`${server}: FAILED - npm install finished but ${SERVER_PROBES[server]} is missing`);
+
+      // Fast path: the durable tree is already exactly the pinned set.
+      if (durableAlreadySatisfies(durable, server, spec.dependencies)) {
+        const how = linkDeps(pluginRoot, server);
+        if (!depsSatisfied(pluginRoot, server)) {
+          log(`${server}: FAILED - linked (${how}) but the plugin copy still cannot resolve deps`);
+          failed.push(server);
+          continue;
+        }
+        // Refresh the fingerprint so SessionStart's relink check matches too.
+        mkdirSync(durable, { recursive: true });
+        copyFileSync(spec.manifestFile, path.join(durable, 'package.json'));
+        copyFileSync(spec.lockFilePath, path.join(durable, 'package-lock.json'));
+        log(`${server}: durable install already matches the pins, relinked (${how}), no npm needed`);
+        skipped.push(server);
+        continue;
+      }
+
+      log(`${server}: installing native deps into ${durable}`);
+      const npm = stagedInstall(durable, spec, server);
+      if (!npm.ok) {
+        // The staged install never touched the live tree. If a previous
+        // install is still sitting there, relink to it: a server running last
+        // release's dependency versions beats a server that cannot start,
+        // and the next session retries the upgrade.
+        let recovered = '';
+        if (hasProbe(path.join(durable, 'node_modules'), server)) {
+          try {
+            const how = linkDeps(pluginRoot, server);
+            if (depsSatisfied(pluginRoot, server)) {
+              recovered =
+                ` The previous durable install was left intact and relinked (${how}), so ` +
+                `${server} still runs on the dependency versions it had before this upgrade.`;
+            }
+          } catch {
+            /* the plain failure below is still accurate */
+          }
+        }
+        log(`${server}: FAILED - ${npm.detail}.${recovered}`);
         failed.push(server);
         continue;
       }

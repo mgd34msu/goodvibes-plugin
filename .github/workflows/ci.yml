@@ -1,27 +1,42 @@
 # CI for the goodvibes plugin monorepo.
 #
-# Every job gates (no advisory group): 0 tsc errors, green vitest,
-# byte-identical rebuilt bundles, and manifest lockstep. The v1 engine/hooks
-# jobs and the known-red advisory baselines were removed with the v1 tree
-# (swept in b03c0db1); the permanent v1 branch is the archive.
+# Every job gates (no advisory group): 0 tsc errors, green vitest, byte-identical
+# rebuilt bundles, a current whole-tree artifact manifest, manifest lockstep, an
+# installable plugin tree, and three MCP servers that actually boot and answer.
+# The v1 engine/hooks jobs and the known-red advisory baselines were removed with
+# the v1 tree (swept in b03c0db1); the permanent v1 branch is the archive.
+#
+# Actions are pinned by commit SHA, not by tag: a tag is mutable and this
+# workflow builds the artifact users install.
 name: CI
 
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+# Read-only by default. No job here publishes, comments, or writes to the repo.
+permissions:
+  contents: read
+
+# One in-flight run per ref; a new push supersedes the run it replaces.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   packages:
     name: packages (${{ matrix.pkg }})
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         pkg: [core, intel, analytics, connect]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 20
           cache: npm
@@ -34,9 +49,10 @@ jobs:
   lint:
     name: lint
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 20
           cache: npm
@@ -48,26 +64,68 @@ jobs:
   dist-match:
     name: dist match (rebuild + byte diff)
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
-      - name: Rebuild server bundles
+      - name: Rebuild server bundles and the artifact manifest
         run: npm run build
-      - name: Assert committed bundles are byte-identical to a fresh rebuild
-        run: git diff --exit-code -- plugins/goodvibes/server
+      # The byte diff covers the whole shipped tree, not just the files the
+      # build writes: ARTIFACTS.json hashes all 107 committed plugin files, so a
+      # hand-edited hook, skill, command, or server manifest fails here too.
+      - name: Assert the committed plugin tree matches a fresh build
+        run: git diff --exit-code -- plugins/goodvibes
+      - name: Assert no untracked plugin files were produced
+        run: |
+          untracked="$(git ls-files --others --exclude-standard -- plugins/goodvibes)"
+          if [ -n "$untracked" ]; then
+            echo "Build produced untracked files under plugins/goodvibes:"
+            echo "$untracked"
+            exit 1
+          fi
+      - name: Validate the plugin tree is installable
+        run: npm run validate:plugin
+      - name: Smoke-test all MCP servers
+        run: npm run smoke:mcp
 
   manifests:
     name: manifest lockstep
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 20
-      # plugin.json ↔ marketplace.json lockstep for the goodvibes plugin.
+      # Version lockstep across plugin.json, marketplace.json, the root and
+      # workspace manifests, and the three shipped runtime manifests plus their
+      # lockfiles. Also asserts the runtime pins are exact and lock-matched.
       - run: node scripts/check-versions.mjs
+
+  platform-smoke:
+    name: MCP smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      # Build rather than trusting the committed bundle so a platform-specific
+      # build break is caught here; the byte-diff gate stays on Linux only,
+      # since line-ending normalization makes it meaningless on Windows.
+      - run: npm run build
+      - run: npm run validate:plugin
+      - run: npm run smoke:mcp
