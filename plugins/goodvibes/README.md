@@ -97,17 +97,21 @@ so the 25 schemas are not loaded into every session. The model pulls a tool's sc
 decides to call it.
 
 What is always-on is the metadata for skills, agents, and commands, which the model must see to
-know they exist. Measured with `claude plugin details` on 2026-08-21 against the installed
-2.3.3 build:
+know they exist. Measured with `claude plugin details` on 2026-08-21 against an installed
+2.3.5 build:
 
 | | Always-on | Notes |
 |---|---|---|
-| Whole plugin | **~882 tokens** | Added to every session |
-| Six skills | ~470 tokens | Largest are `intel-mastery` and `service-integration`, ~90 each |
+| Whole plugin | **~893 tokens** | Added to every session |
+| Six skills | ~480 tokens | Largest is `intel-mastery` at ~100, then `service-integration` at ~90 |
 | Four agents | ~200 tokens | ~50 each |
 | Five commands | ~230 tokens | ~30 to ~70 each |
 | 25 tool schemas | 0 | Resolved at runtime, not counted |
 | Nine hooks | 0 | Harness-only, no model context cost |
+
+The group rows are sums of per-component figures the tool reports rounded to the nearest ten, so
+they add up to slightly more than the whole-plugin number it reports directly. The bold figure is
+the one to quote.
 
 Invoking a skill or agent costs more, and costs it again each time it fires: roughly 620 to 1,600
 tokens depending on the component. That is the deal on offer. Nothing is loaded until you ask for
