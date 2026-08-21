@@ -16,22 +16,39 @@ Scale of findings: ~142 distinct issues across 11 audit areas (7 critical, ~41 h
 **The premise as shipped fails on its own terms.** Measured at default settings — the only configuration the mandatory redirection policy actually enforces — the precision tools cost MORE tokens than the native baseline:
 
 - `precision_read` at defaults loses at every file size tested: +49% (small file) to +3.5% (1,634-line file). It only wins with `include_line_numbers:false`, and only above ~300 lines (best measured: −14.9%).
+
 - `precision_grep` costs 1.79–1.87× native-equivalent bytes in every measured mode, and set a false `truncated:true` flag on a provably complete result set.
+
 - The flagship `extract:symbols` produced output LARGER than the raw file (56.2KB vs 47.2KB) and mislabeled 59 local variables (including a loop counter `i`) as exported.
+
 - The fixed overhead is ~13,500 tokens per main session (prompt chain ~6,070 + active output style ~5,930 + deferred tool names ~1,320 + injections) plus ~7,200 tokens per subagent spawn. A 6-agent orchestration pays ~43k tokens of tax before any work begins. Break-even needs 9–12 file ops/session at the claimed 75–95% savings — savings the measurements show are not realized at defaults — or 23–45 ops at realistic rates. The plugin's own analytics credited a live session with 6.2% realized efficiency.
+
 - The server's self-reported `token_estimate` under-reports the actual delivered payload by 1.16–2.41×, and `output.max_tokens` is not enforced for outline/symbols (one response was 104KB against an 8,000-token cap) — so the token-budgeting workflow the plugin's own docs prescribe cannot be executed on its own numbers.
 
 **The premise survives as a narrow, genuinely excellent capability claim.** These were verified repeatedly, conceded by the skeptic, and are things the 2026 native harness cannot do at comparable cost:
 
 - `extract:outline` — 66% real savings on a 1,634-line file AND sufficient to answer "what does this module export / where is X handled" with exact line spans, zero follow-up reads. The outline-then-ranged-read pipeline is the best thing in the project.
+
 - Multi-query batched grep with keyed results — 9 `count_only` queries across 3 directories in one ~117-token call. Native Grep is one pattern per call; parallel native calls cannot share an envelope or cap budget.
+
 - AST structural search (51 exact call sites across 8 files in 673ms via ast-grep), `expand_to:'function'` (match → exact enclosing function body in one call, via tree-sitter), `preview_replace` dry-run diffs, negation search.
+
 - `precision_glob` `with_stats` — per-file byte sizes for planning batch reads under a budget; native Glob returns paths only.
+
 - `max_line_length` as defense against pathological content — this repo contains a 22.3MB single-line file (`dist/index.cjs.map`) that would poison native content-mode grep.
+
 - Per-response cost metadata and explicit caps — the right idea, currently wrong numbers; no native tool tells the working agent what a result cost.
+
 - analytics-engine's session/cost telemetry — data the harness does not expose at all.
 
-**The policy layer fails unconditionally.** Mandatory redirection, the always-on prompt chain, and hard-blocking are indefensible on the evidence: the hook blocks the exact fallback the plugin's own escalation doctrine documents (confirmed live in this session — the fallback path is impossible); it does not check whether the precision-engine server is even alive before blocking (server down = every file operation in the session is bricked); each blocked call costs ~186 wasted tokens; and the WebFetch replacement made agents strictly worse off (SPA junk, 2KB previews of 79KB fetches, curl workarounds). The five-way-duplicated doctrine (chain + style + skills + hook messages + subagent injections) has drifted into teaching parameter names and enum values the schemas reject (`edits[].file` vs required `path`, a nonexistent `with_diff` verbosity).
+**The policy layer fails unconditionally.** Mandatory redirection, the always-on prompt chain, and hard-blocking are indefensible on the evidence:
+
+- The hook blocks the exact fallback the plugin's own escalation doctrine documents (confirmed live in this session — the fallback path is impossible).
+- It does not check whether the precision-engine server is even alive before blocking (server down = every file operation in the session is bricked).
+- Each blocked call costs ~186 wasted tokens.
+- The WebFetch replacement made agents strictly worse off (SPA junk, 2KB previews of 79KB fetches, curl workarounds).
+
+The five-way-duplicated doctrine (chain + style + skills + hook messages + subagent injections) has drifted into teaching parameter names and enum values the schemas reject (`edits[].file` vs required `path`, a nonexistent `with_diff` verbosity).
 
 **Judge's confidence: high.** Full briefs, concessions, and the ruling are preserved in the workflow record; the strategic recommendation is reproduced in Part 5.
 
@@ -42,9 +59,13 @@ Scale of findings: ~142 distinct issues across 11 audit areas (7 critical, ~41 h
 These are not token-efficiency questions. They affect whether users can trust the plugin, and they should be fixed before anything else ships.
 
 1. **The SessionStart hook silently rewrites the user's global `~/.claude/CLAUDE.md` on every session** (`hooks/scripts/src/.../claude-md-manager.ts`), installing the `~/.claude/.goodvibes/` prompt chain with no consent prompt and no uninstall path. The injected text also asserts that native tools "have been deprecated as of 2026-01-01" — presenting the plugin's preference as a platform fact, which is false. Fix: explicit one-time opt-in during install, a real uninstall command, and honest wording.
+
 2. **`precision_agent` hardcodes `--dangerously-skip-permissions` on every headless claude session it spawns**, with no opt-out parameter. Every spawned session runs with permission prompts disabled whether the caller wanted that or not. Fix: default to normal permissions; make skipping an explicit opt-in parameter. (Related: the agent prompt temp file is written world-readable with a fixed 2-second deletion race.)
+
 3. **The justvibes output style's "Implicit Permissions" clause instructs the model to disregard prior restrictions.** Instruction-hierarchy overrides like this are both a safety footgun and counterproductive — current models treat "ignore your other instructions" clauses as a suspicion signal, which degrades compliance with the rest of the style. Fix: state affirmatively what the mode may do autonomously; never negate other instruction sources.
+
 4. **Runtime directives leak across sessions.** The directive-drain guard keys on an `is_subagent` field Claude Code does not send, so orchestrator-bound WRFC directives were drained by unrelated read-only subagent sessions three separate times during this audit. Any agent's hook steals whatever is queued. Fix: scope directives to their intended recipient using a signal the platform actually provides (session id is available in the payloads).
+
 5. **`tool-update.mjs` logs every Bash command verbatim to a shared world-readable tmp file and auto-approves rewritten commands.** Command lines routinely contain tokens and secrets. Fix: stop logging command text, or log to a 0600 file under `.goodvibes/`, and never auto-approve a rewritten command without surfacing the rewrite.
 
 ---
@@ -56,32 +77,51 @@ All seven documented field issues are real; the audit found the exact causes plu
 ### precision-engine
 
 1. **Rolled-back edits report `status:'applied'` inside a `success:true` envelope** (critical, confirmed). `precision-edit.ts` atomic-failure path (~1197–1224) sets a `[ROLLED BACK]` hint but leaves status `applied`; the default `minimal` verbosity drops the hint, so the caller sees pure success for edits that never landed. `precision-write.ts` (461–476) has the identical defect — rolled-back writes stay `created`/`overwritten` and the summary counts them as written. The existing rollback test (`precision-write.test.ts:240–257`) asserts nothing. Fix: first-class `rolled_back` status, `success:false` envelope, recomputed summaries, real tests.
+
 2. **No `base_path` on read/write/edit/grep** (high, confirmed). Each handler hardcodes `const workDir = process.cwd()` (`precision-read.ts:1433`, `precision-write.ts:423`, `precision-edit.ts:1024` + `applyEdit` ~908–935, `precision-grep.ts:378`) while `discover`/`glob`/`exec` already expose base paths. In a git worktree, relative writes silently land in the launch tree. The internal plumbing (`workDir` params) already exists — the fix is one schema property and one line per handler.
+
 3. **Batch reads collapse same-path entries and cache stubs compound it** (critical, confirmed, live-reproduced during this audit). Results are built with `Object.fromEntries` keyed on path, so two range-reads of one file return only the second; `summary.files_read` still says 2. Fix: key results by entry index or path+range+extract.
+
 4. **The cache is server-global and delivery-blind** (high, confirmed). `FileStateCache` marks content "known" when ANY caller (including a write/edit) touches it, then serves content-free stubs to agents who never received the content — reproduced by 7 of 11 auditors, including stubs for first-in-session reads and stubs with `last_read: 0s ago` for content that overflowed to disk and never reached the model. `tokens_saved` is credited for content never delivered; ~1/3 of audit reads required `force:true`, forfeiting the savings the cache claims. Fix: serve the requested extract/range FROM cache on a hit (that is what a cache is for), key by path+range+extract+hash, and never stub a first-in-session read.
+
 5. **Every successful `precision_edit` silently converts CRLF files to LF wholesale** (high, confirmed) — a data-corruption class defect for cross-platform repos.
+
 6. **Atomic write transactions cannot restore overwritten files when `backup:false`** (high, confirmed) — rollback of an overwrite without a backup is silent data loss.
+
 7. **Grep caps are miswired** (high, confirmed) — root cause of field issue 2: the per-file `--max-count` (default 10) leaks into `count_only` totals; `max_total_matches` (100) ceilings `files_only` file lists, making the documented `max_results=100` unreachable (~10–11 files max at defaults, with nondeterministic membership between identical runs); and `truncated` is computed by comparing total matches against the per-file cap, so it fires falsely on virtually every search while `negate` hardcodes it `false` and `discover` drops it entirely.
+
 8. **The project index is corrupt on disk right now and nothing validates it** (critical, confirmed): a path-traversal `/tmp` entry, nested-object trees where flat entries belong, and 24 files recorded for a multi-thousand-file repo — and `discover` auto-injects this corrupt index into every response unrequested.
+
 9. **`exec` `minimal` verbosity omits stdout entirely** (high, confirmed — field issue 5): the `case 'minimal':` branch at `precision-exec.ts:1886` drops output while the `MINIMAL_STDOUT_PREVIEW_CHARS` constants written for it (lines 76/78) were wired into the standard-mode formatter instead. A unit test enshrines the wrong behavior. Same disease elsewhere: `read` `format:'minimal'` strips content that was explicitly requested with `force:true`, and `edit` `minimal`/`count_only` still emit full diff previews (~1,400 tokens each, observed live in this session).
+
 10. **`token_budget` pagination duplicates every line as both a content string and a lines array** (high, confirmed — field issue 6), roughly doubling the cost of the exact feature built to cap cost; `include_line_numbers:false` cannot suppress it.
+
 11. Additional confirmed highs: OCC/conflict detection is dead code for edits (concurrent edits race, last-write-wins); one background command silently backgrounds the ENTIRE exec batch; `precision_notebook`'s position-blind index offset can mutate the wrong cells in mixed-order batches; `normalizePath` mangles legitimate Linux paths matching `/x/...` into Windows drive letters (verifier: medium).
 
 ### runtime-engine
 
 12. **Directive delivery is globally unscoped** (critical, confirmed — observed live three times during this audit; see Part 1 item 4).
+
 13. **The watchdog never covers the primary hook-driven WRFC path** (high, confirmed) — hook-driven WRFC chains never become WorkflowEngine instances, so the self-healing layer watches the wrong population.
+
 14. **`session:started` handling wipes cross-session state** (high, confirmed): clears ALL pending directives and removes live sibling engines' socket pointer files. **`killOrphanDaemons` kills healthy daemons belonging to other projects** (high, confirmed).
+
 15. **`max_fix_attempts` is off-by-one** (high, confirmed): the final fix attempt executes but is never reviewed, and the two enforcement paths count different things. The directive queue is memory-only — daemon death between emit and drain loses directives (verifier: medium, given the urgent-file fallback).
+
 16. Hook events are double-emitted onto the EventBus — 60 duplicate entries in this project's live `events.jsonl` (medium, empirically confirmed). Auto-workflow creation spawns reviewer chains for every review-typed agent even when zero files changed — this session paid ~74k tokens for two 10/10 reviews of nothing.
 
 ### Packaging, content, and gates
 
 17. **All 25 skills are invisible to Claude Code** (high, confirmed): the tier-nested layout (`skills/<tier>/<name>/SKILL.md`) is not discovered by the current plugin spec — this live session exposes zero of them. The "Protocol Skills (Always Active)" claim is false in practice; the skills are reachable only through registry-engine tools. Fix: flatten to `skills/<name>/SKILL.md`.
+
 18. **Output styles are not migrated to the current spec** (high, confirmed): missing `keep-coding-instructions` (selecting them strips Claude Code's built-in engineering instructions), stale `/output-style` references (removed in CC v2.1.91), and internal contradictions (mandatory agent-count checking via Task Output vs. "NEVER use Task Output"; silent-mode vs. mandatory logging). justvibes and vibecoding are 87% identical with copy-drift.
+
 19. **Every canonical gate is broken** (high, confirmed): root `npm test` deadlocks (hooks vitest threads-pool hang); typecheck fails in 5 of 8 packages — precision-engine alone has 607 errors (47 in production source); root eslint: 2,442 problems; **no CI of any kind**; runtime-engine regressed beyond its recorded baseline (9 failing tests vs 1 known — a review threshold default changed 9.5→9.9 without updating tests). **None of the seven field-defect classes has any test coverage; one is asserted as correct behavior.** `precision-agent.test.ts` has failed collection since ~Feb 2026.
+
 20. **The registry tree-dirtying mystery is solved** (medium, confirmed): `build-registries.ts` stamps `generated: new Date().toISOString()` into all four `_registry.yaml` files and postinstall runs it on every `npm install` — content is otherwise fully deterministic. Drop the timestamp (or move it to a non-tracked sidecar) and the noise disappears.
+
 21. Registry/search defects: `search_skills` returns zero results for its own advertised default category `"all"`; `recommend_skills` returns empty for common tasks and ignores its documented `context` argument; generated trigger words are stopword garbage, degrading all search tools. Both Unix release install scripts have an unclosed `if` and fail immediately; `install:hooks` writes a `.claude/hooks.json` that current Claude Code never reads; `marketplace.json` advertises 1.0.0 for a 1.10.4 plugin; `npm run migrate` crashes on `__dirname` in ESM scope.
+
 22. Auxiliary-engine wrong-answer analyzers (high, confirmed): `project_deps_circular` fabricated a cycle from a doc comment (regex import extraction parses comments); `frontend_tailwind_conflicts` flags any two `text-*` classes and tells the agent to delete legitimate styling; `bundle_analyze` missed the actual 12MB bundle. These cause wrong EDITS, not just wasted tokens — a categorically worse failure mode. Also: `project_runtime_profile`/`memory` execute target-project code inside the shared MCP server process, and `code_breaking`/`semantic_diff` spawn nested `claude` CLI sessions from inside the server.
 
 ---
@@ -113,11 +153,17 @@ All seven documented field issues are real; the audit found the exact causes plu
 While orchestrating this review (not from agent reports — from my own tool calls):
 
 - A 2-file batched `precision_read` of markdown docs returned a 53.6KB JSON envelope that overflowed to disk; the harness persisted it and delivered a 2KB preview. The server then marked both files as cached-read — content I never received — and served content-free stubs on retry until `force:true` (field issue 4, live).
+
 - `output.format:'minimal'` on read returned 67 tokens of metadata and zero content for an explicit content request.
+
 - `precision_edit` with verbosity `minimal` AND `count_only` both emitted ~1,400-token diff previews (the wiring for diff suppression isn't connected — matches the audit finding that `minimal` "is not actually wired").
+
 - The native Read tool is hard-blocked with no fallback, making the plugin's own documented escalation path impossible (hooks audit confirmed: unconditional, no liveness check).
+
 - The WRFC runtime auto-created review chains for this read-only workflow twice and issued spawn directives for reviewers with "No files recorded yet" — ~74k tokens spent reviewing zero changes, both scoring 10/10 by definition.
+
 - `.goodvibes/logs/activity.md` is 54,199 lines / 1.2MB with raw `[DEBUG] SQLiteStore` output from the TUI interleaved into the human activity log — no rotation, no level filtering.
+
 - What worked well firsthand: ranged reads with `include_line_numbers:false` were clean and cheap; the batched multi-query capability is real; directive hold/drain delivered directives reliably to THIS session (the intended recipient case works).
 
 ---

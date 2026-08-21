@@ -38,8 +38,11 @@ The WRFC hook emitter injects spawn-reviewer directives into SUBAGENT sessions, 
 ## Root-cause hypotheses (for the fix session)
 
 1. The hook that watches for agent/workflow completion appears to subscribe to per-tool-call events inside every Claude session in the project directory, not to workflow-completion events in the orchestrator session only — hence one directive per PreToolUse in subagent sessions.
+
 2. wid generation looks time-based (wrfc_auto_<epoch-ms>_...) with no dedupe or debounce, so each firing creates a brand-new chain instead of re-referencing the pending one.
+
 3. There is no chain-registry check before emitting a spawn (a chain with zero recorded files and no completed work should not request a min-score-10 review).
+
 4. There is no session-role awareness: subagents and headless reviewers receive the same directives as the orchestrator, which is what makes the loop closable (reviewer spawns reviewer spawns reviewer).
 
 ## Suggested fixes (any of these breaks the loop; all four are worth doing)

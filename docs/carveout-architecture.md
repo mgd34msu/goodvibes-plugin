@@ -71,9 +71,13 @@ for its plugin, all three lockstep at `2.0.0`; `check-versions.mjs` gates it.
 ### 2.1 Ruling: three plugins, one marketplace — not one plugin with three servers
 
 - **Opt-in is the thesis** (plan §0: "three opt-in products"). The native opt-in unit is the plugin. One plugin with three `.mcp.json` servers starts all three processes for every user; "connect on demand" (plan §11: 2 processes/session + connect on demand) is only achievable natively by making connect a separate plugin the user installs when they need it.
+
 - **Trust separation.** connect holds credentials, the open-mode toggle, and live-DB access. Users who never registered a service should not have that server on disk or in memory.
+
 - **Install weight.** intel carries ripgrep + ast-grep natives + tree-sitter WASM (tens of MB). An analytics-only user pays none of it.
+
 - **Failure isolation** (field issue 9): fewer processes per session, and a defect in one product cannot leak processes for the others.
+
 - Marketplace UX: `goodvibes-market` lists four plugins during alpha (v1 `goodvibes` marked deprecated in its description at v2.0-alpha, removed at v2.0).
 
 Cost accepted: command namespaces change to `/goodvibes-intel:*` etc. (§7 R6), and shared content
@@ -335,16 +339,20 @@ do; the redaction pass strips known secret values from echoed responses.
 
 Per-package `build.mjs` matching v1's proven esbuild pattern (bundle, `platform: node`,
 `format: cjs`, `keepNames`, sourcemap), updated: `target: node20` (CI's node), outfile
-`../../plugins/goodvibes-<name>/server/index.cjs`. intel externals: `@ast-grep/napi`,
-`@vscode/ripgrep` (native), `sql.js`; the WASM copy step targets
-`plugins/goodvibes-intel/server/wasm/` and copies BOTH the tree-sitter grammars AND
-`sql-wasm.wasm` (mirroring v1 precision-engine's build.mjs — sql.js loads its WASM at runtime);
-`typescript` is bundled (pure JS, one copy, one version). analytics externals are exactly v1's
-proven list — `ink`, `react`, `react-devtools-core`, `yoga-wasm-web`, `sql.js` — none of which
-bundle cleanly; they ship as runtime deps with the sql-wasm copy. connect externals: `sql.js`
-(+ wasm copy); its db drivers resolve from the *target project* per the kept v1 pattern, so they
-are not deps at all. All three servers import `core/telemetry`, hence the sql.js handling
-everywhere. `@goodvibes/core` has no build — it is source consumed by the three server bundles.
+`../../plugins/goodvibes-<name>/server/index.cjs`. Externals differ per package:
+
+- intel externals: `@ast-grep/napi`, `@vscode/ripgrep` (native), `sql.js`; the WASM copy step
+  targets `plugins/goodvibes-intel/server/wasm/` and copies BOTH the tree-sitter grammars AND
+  `sql-wasm.wasm` (mirroring v1 precision-engine's build.mjs — sql.js loads its WASM at
+  runtime); `typescript` is bundled (pure JS, one copy, one version).
+- analytics externals are exactly v1's proven list — `ink`, `react`, `react-devtools-core`,
+  `yoga-wasm-web`, `sql.js` — none of which bundle cleanly; they ship as runtime deps with the
+  sql-wasm copy.
+- connect externals: `sql.js` (+ wasm copy); its db drivers resolve from the *target project*
+  per the kept v1 pattern, so they are not deps at all.
+
+All three servers import `core/telemetry`, hence the sql.js handling everywhere.
+`@goodvibes/core` has no build — it is source consumed by the three server bundles.
 
 ### 5.2 Vitest
 
@@ -356,7 +364,9 @@ root runs the workspace; v1 suites keep their per-engine invocation until the sw
 ### 5.3 Regression suites (release gates 2–3, plan §10)
 
 - **Envelope accounting** (`packages/core`): ports `PE/__tests__/utils/envelope.test.ts`; asserts `token_estimate` within 10% of rendered payload on fixtures, `max_tokens` enforcement, `truncated` truthfulness, `effective_caps` presence whenever trimmed.
+
 - **Field-defect classes** — one named test per class, living where the fix lives: F1 base_path/resolved-path echo (`core/fsx` + one per-tool case); F2 cap honesty in every grep format (`intel` grep suite); F3 same-path batch entries (`intel` read suite); F4 no-stub cache / probe mode (`core/cache`); F5/F7/F8 retire with exec/edit — F8's lesson becomes an api_request alternate-field validation test (`connect`); F6 single-representation pagination (`intel` read suite); F9 process hygiene (`core/proc`: spawn a real server child, kill the parent, assert exit ≤10s; fake-clock idle-exit test; budget-expiry envelope test). The v1 test asserting stub-cache behavior is deleted, per gate 2.
+
 - **Measurement suite**: the deep-review EXP harness ports to `packages/intel/bench/` (lane 1) and re-runs against v2 defaults in lane 8 (gate 5: intel beats native on kept operations at defaults, or the README claim comes off).
 
 ### 5.4 CI additions (`.github/workflows/ci.yml`; v1 jobs untouched until the sweep)
@@ -402,25 +412,40 @@ Parallelism: lanes 1, 3-parsers, 5, 6, 7 start together the moment 0 lands; 2 st
 
 - **R1 — Three plugins, not one.** The plugin is the native opt-in/trust/install-weight unit, and it is the only native way to honor "connect on demand" (§2.1).
   - **VETOED by Mike 2026-07-02** — ship ONE plugin named `goodvibes` at `plugins/goodvibes/`, with all three server processes (`intel`/`analytics`/`connect`) kept as separate stdio servers under one `.mcp.json`. Opt-in-per-product is not exercised; consolidation wins on packaging simplicity.
+
 - **R2 — v2 source in top-level `packages/`, plugin dirs carry committed bundles only.** Keeps v1 untouched-and-runnable, keeps installables lean, keeps the proven tracked-dist strategy with a CI byte-match.
+
 - **R3 — One shared package (`@goodvibes/core`) bundled per server, not runtime-linked.** No version drift possible; a core fix is three rebuilds, which CI already forces.
+
 - **R4 — TS compiler host lives in `packages/intel`, not core.** Only intel needs a compiler; putting it in core would bloat analytics/connect bundles for nothing.
+
 - **R5 — `typescript` pinned once at ~5.9.x; `vitest` at ^4 workspace-wide.** Ends the audit's double-bundle and the v2/v4 skew in one move.
+
 - **R6 — Command namespaces become `/goodvibes-intel:*` etc.** Forced by R1 (plugin name owns the namespace); UX change accepted and documented.
   - **Reverted 2026-07-02** (follows the R1 veto) — the single plugin owns one namespace, so commands are `/goodvibes:*` (`/goodvibes:plugin`, `/goodvibes:codebase-review`, `/goodvibes:analytics`, `/goodvibes:services`).
+
 - **R7 — `.lsp.json` does not carry into v2.** The plan's whole symbols posture is "native LSP owns this"; shipping our own LSP wiring contradicts it.
+
 - **R8 — v2 hooks are plain `.mjs` with no build step.** They shrink to trivial size in v2; deleting the hook build removes the src/dist-match burden for them entirely.
+
 - **R9 — Connect ships its own tiny SessionStart hook for the open-mode announcement.** Hook ownership follows the feature; intel's context hook must not depend on connect's presence.
+
 - **R10 — Concrete hygiene numbers** (30 min idle exit, 5 s ppid poll, 20 s analyzer / 30–120 s HTTP budgets): the plan mandates the mechanisms, not values — all config-overridable.
   - **Amended 2026-07-02 (Mike)** — the idle self-exit mechanism is REMOVED entirely (no 30-min idle timer). Servers run for the life of their session and rely on parent-liveness only; the ppid poll stays, the idle-exit clock is gone.
+
 - **R11 — `api_validate` stays static (spec-vs-routes) in intel.** Live probing would need credentials, which is connect's trust model; the tribunal evidence was for the static check.
+
 - **R12 — Intel hosts the shared content set (agents, WRFC template, memory/orchestration skills).** It is the flagship most users install; a fourth content-only plugin is marketplace clutter.
   - **Moot 2026-07-02** (follows the R1 veto) — with one plugin, there is no cross-plugin content-hosting question; all agents, skills, commands, and templates live in the single `goodvibes` plugin.
+
 - **R13 — analytics tool names drop the `analytics_` prefix.** The server key already namespaces them; matches intel/connect naming.
+
 - **R14 — v1 `goodvibes` marketplace entry stays through alpha, marked deprecated, removed at v2.0.** Same-repo users keep a working install until the sweep.
   - **Superseded 2026-07-02** — v1 was swept pre-release; there is no coexistence alpha window. The permanent `v1` git branch is the archive, and the `goodvibes` name/dir is reused by the consolidated v2 plugin. (The R15/R16 v1-yield guards are kept as dormant, fail-open safety.)
+
 - **R15 — v2 runtime state namespaced under `.goodvibes/v2/` during coexistence** *(verification finding)*: v1 and v2 otherwise fight over the same memory/telemetry files; the retire sweep migrates it up.
   - **Retired 2.1.0 (2026-07-02)** — v1 is uninstallable, so the namespace subdirectory is gone: state lives directly under `.goodvibes/`. Both path resolvers (core/config `getStatePath`, hooks `statePath`) migrate a legacy `v2/` subdirectory up automatically, once per process, fail-open.
+
 - **R16 — v2 hooks yield to v1 when both plugins are installed** *(verification finding)*: prevents double-fired SessionStart/failure/commit-guard handlers during the R14 window; one explanatory line in SessionStart context instead.
 
 ---

@@ -34,10 +34,15 @@ If a claim stops being true, it comes out of the README. That's the policy.
 ## Design principles
 
 - **Native tools are never blocked, redirected, or deprecated.** These are additions, not replacements. Use whichever tool wins for the job.
+
 - **Hooks observe, inform, and assist. Zero hooks block, rewrite, or steer.** All are fail-open: a broken hook can never brick a tool call.
+
 - **Servers live for the life of your session.** No idle self-exit, ever (regression-tested). Orphan defense is a parent-liveness watchdog that fires only when the session itself dies.
+
 - **Every tool runs under a per-request time budget** and returns an honest partial rather than hanging a client forever.
+
 - **connect is restricted by default**: credentials are pinned to their registered origins (never toggleable), destinations are allowlisted, writes are per-service opt-in, and "open" mode is a human-only, ephemeral toggle that announces itself every session it persists.
+
 - **State is namespaced** under `.goodvibes/` in your project; outside it the plugin writes only its own dependency home under `~/.claude/.goodvibes/` (`/goodvibes:plugin install-prompts` remains opt-in and has a real uninstall).
 
 ## Install
