@@ -1,6 +1,6 @@
 ---
 name: goodvibes-memory
-description: Documents the .goodvibes/memory/ cross-session memory files (decisions, patterns, failures, preferences): what's written automatically, what you should read and write, and the exact JSON shape of each file. Load at the start of a task to check prior context, and before finishing to record what you learned.
+description: "Documents the .goodvibes/memory/ cross-session memory files (decisions, patterns, failures, preferences): what's written automatically, what you should read and write, and the exact JSON shape of each file. Load at the start of a task to check prior context, and before finishing to record what you learned."
 ---
 
 # goodvibes-memory

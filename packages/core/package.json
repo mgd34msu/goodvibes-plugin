@@ -1,6 +1,6 @@
 {
   "name": "@goodvibes/core",
-  "version": "2.3.4",
+  "version": "2.3.5",
   "description": "Shared infrastructure for the GoodVibes v2 servers (envelope, fsx, proc, config, telemetry, cache, logging). Source-only; bundled into each server by esbuild.",
   "private": true,
   "type": "module",

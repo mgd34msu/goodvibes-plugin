@@ -1,6 +1,6 @@
 {
   "name": "goodvibes-analytics-server",
-  "version": "2.3.4",
+  "version": "2.3.5",
   "private": true,
   "description": "Runtime-only dependency manifest for the committed goodvibes-analytics server bundle. sql.js does not bundle cleanly; it installs in the background on first run (durable home under ~/.claude/.goodvibes/deps), no postinstall chain. Versions are exact and paired with package-lock.json so every user machine resolves the same tree CI tested.",
   "dependencies": {

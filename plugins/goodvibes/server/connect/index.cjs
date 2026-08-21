@@ -26053,7 +26053,7 @@ var HANDLERS = {
 
 // packages/connect/src/index.ts
 var SERVER_NAME = "connect";
-var SERVER_VERSION = true ? "2.3.4" : "0.0.0-dev";
+var SERVER_VERSION = true ? "2.3.5" : "0.0.0-dev";
 function createServer(onActivity) {
   const server = new Server(
     { name: SERVER_NAME, version: SERVER_VERSION },
