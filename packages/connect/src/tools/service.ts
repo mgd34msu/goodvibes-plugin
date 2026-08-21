@@ -36,7 +36,7 @@ import {
   type ServiceConfig,
   type DbConnection,
 } from '../fetch/service-registry.js';
-import { setServiceSecret, type ServiceAuth } from '../fetch/secrets-store.js';
+import { setServiceSecret, parseServiceAuth } from '../fetch/secrets-store.js';
 import { getAuthStatus } from '../fetch/auth/auth-orchestrator.js';
 
 /** Actions the `service` tool accepts. */
@@ -61,8 +61,11 @@ export interface ServiceInput {
   force?: boolean;
   /** For `register`. */
   config?: ServiceConfig;
-  /** For `set_auth`, stored 0600; NEVER echoed back. */
-  auth?: ServiceAuth;
+  /**
+   * For `set_auth`, stored 0600; NEVER echoed back. Unvalidated as it arrives,
+   * `parseServiceAuth` turns it into a `ServiceAuth` or rejects it.
+   */
+  auth?: unknown;
   /** For `register_connection`. */
   connection?: DbConnection;
 }
@@ -117,7 +120,16 @@ export const serviceTool = {
       },
       auth: {
         type: 'object',
-        description: 'Auth config stored to the 0600 secrets file. Never echoed back.',
+        description:
+          'Auth config stored to the 0600 secrets file. Never echoed back. Exactly one mode ' +
+          'per service, and only that mode\'s fields: {"type":"none"}, ' +
+          '{"type":"bearer","token":...}, {"type":"basic","username":...,"password":...}, ' +
+          '{"type":"api-key","header":...,"key":...}, ' +
+          '{"type":"custom-headers","headers":{...}}, ' +
+          '{"type":"oauth2","client_id":...,"token_url":...,"authorize_url":...,"scopes":[...]}, ' +
+          '{"type":"session","login_url":...,"login_body":{...},"token_path":...}. ' +
+          'Any credential value may be {"$env":"VAR_NAME"} instead of a literal. Mixing fields ' +
+          'from two modes is rejected.',
       },
       connection: {
         type: 'object',
@@ -186,7 +198,9 @@ export async function handleService(args: unknown): Promise<CallToolResult> {
       case 'set_auth': {
         if (!input.name) {return fail('`set_auth` requires a service `name`.');}
         if (!input.auth) {return fail('`set_auth` requires an `auth` config.');}
-        await setServiceSecret(input.name, input.auth);
+        const parsed = parseServiceAuth(input.auth);
+        if (!parsed.ok) {return fail(parsed.error);}
+        await setServiceSecret(input.name, parsed.auth);
         // Credential-free: report only the resulting status, never the secret.
         const auth_status = await getAuthStatus(input.name);
         return ok({ name: input.name, stored: true, auth_status });

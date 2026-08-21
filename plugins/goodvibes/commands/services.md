@@ -57,7 +57,7 @@ call with the matching `action`, then present the credential-free result.
 | `get <name>` | `get` | Credential-free summary of one service plus its auth STATUS. |
 | `register <name>` | `register` | Pass `config.base_url` (required); optional `default_headers`, `auth_type`, `description`, `timeout_ms`, `rate_limit_rps`, and `write_methods` (the per-service write opt-in). Confirm the destination before registering. Pass `force: true` only to overwrite an existing service. |
 | `remove <name>` | `remove` | Purges the service's stored credentials and URL patterns. |
-| `set-auth <name>` | `set_auth` | Pass the `auth` object. Prefer `{ "$env": "VAR_NAME" }` env references over literal secrets. Never print the value back. |
+| `set-auth <name>` | `set_auth` | Pass the `auth` object: one mode per service, carrying only that mode's fields. `{"type":"none"}`, `{"type":"bearer","token":...}`, `{"type":"basic","username":...,"password":...}`, `{"type":"api-key","header":...,"key":...}`, `{"type":"custom-headers","headers":{...}}`, `{"type":"oauth2","client_id":...,"token_url":...,"authorize_url":...,"scopes":[...]}`, or `{"type":"session","login_url":...,"login_body":{...},"token_path":...}`. Mixing two modes is rejected with the offending fields named. Prefer `{ "$env": "VAR_NAME" }` env references over literal secrets. Never print the value back. |
 | `set-url-pattern <name>` | `set_url_pattern` | Requires `hostname` and `name`. Maps an extra hostname to this registered service, so a bare-`url` request to that host resolves to the service (and its origin-pinned credentials). |
 | `allow <hostname>` | `allow` | Adds a destination host to the allowlist. |
 | `unallow <hostname>` | `unallow` | Removes a host from the allowlist. |

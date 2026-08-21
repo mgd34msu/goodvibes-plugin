@@ -45,7 +45,13 @@ registry operations.
 2. `service` `register`: register the API service (`config.base_url` required). Add `write_methods`
    only if the service needs non-GET methods.
 3. `service` `set_auth`: store the credential (0600, never echoed). Prefer `{ "$env": "VAR_NAME" }`
-   env references over a literal secret value.
+   env references over a literal secret value. One auth mode per service, carrying only that
+   mode's fields: `{"type":"none"}`, `{"type":"bearer","token":...}`,
+   `{"type":"basic","username":...,"password":...}`, `{"type":"api-key","header":...,"key":...}`,
+   `{"type":"custom-headers","headers":{...}}`,
+   `{"type":"oauth2","client_id":...,"token_url":...,"authorize_url":...,"scopes":[...]}`, or
+   `{"type":"session","login_url":...,"login_body":{...},"token_path":...}`. A record that mixes
+   two modes (a `token` beside `username`/`password`) is rejected, naming the offending fields.
 4. `api_request`: call the registered service by `service` name + `path` (or an allowlisted `url`).
    Batch related calls; each result is keyed by `id` (or array index) and error-isolated. Choose
    `extract`: json | text | headers | status (default json). An entry may carry a per-request

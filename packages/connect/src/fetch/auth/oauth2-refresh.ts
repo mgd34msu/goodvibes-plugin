@@ -5,7 +5,7 @@
  * Refreshes an access token from a refresh_token grant and stores the result.
  */
 
-import { type ServiceAuth, resolveSecretValue, setServiceSecret } from '../secrets-store.js';
+import { type OAuth2Auth, resolveSecretValue, setServiceSecret } from '../secrets-store.js';
 
 /** Result of a token refresh. */
 export interface TokenRefreshResult {
@@ -17,19 +17,19 @@ export interface TokenRefreshResult {
 }
 
 /** True when the access token is expired or within a 60s buffer of expiry. */
-export function isTokenExpired(auth: ServiceAuth): boolean {
+export function isTokenExpired(auth: OAuth2Auth): boolean {
   if (!auth.expires_at) {return false;}
   const buffer = 60 * 1000;
   return Date.now() + buffer >= auth.expires_at;
 }
 
 /** True when the config has what it needs to refresh. */
-export function canRefreshToken(auth: ServiceAuth): boolean {
+export function canRefreshToken(auth: OAuth2Auth): boolean {
   return !!(auth.refresh_token && auth.token_url && auth.client_id);
 }
 
 /** Perform the refresh_token grant. */
-export async function refreshAccessToken(auth: ServiceAuth): Promise<TokenRefreshResult> {
+export async function refreshAccessToken(auth: OAuth2Auth): Promise<TokenRefreshResult> {
   if (!auth.refresh_token || !auth.token_url || !auth.client_id) {
     return { success: false, error: 'Missing required fields: refresh_token, token_url, client_id' };
   }
@@ -93,12 +93,12 @@ export async function refreshAccessToken(auth: ServiceAuth): Promise<TokenRefres
 /** Refresh tokens and persist the updated auth for a service. */
 export async function refreshAndStore(
   serviceName: string,
-  currentAuth: ServiceAuth,
-): Promise<ServiceAuth | null> {
+  currentAuth: OAuth2Auth,
+): Promise<OAuth2Auth | null> {
   const result = await refreshAccessToken(currentAuth);
   if (!result.success || !result.access_token) {return null;}
 
-  const updatedAuth: ServiceAuth = {
+  const updatedAuth: OAuth2Auth = {
     ...currentAuth,
     access_token: result.access_token,
     refresh_token: result.refresh_token ?? currentAuth.refresh_token,

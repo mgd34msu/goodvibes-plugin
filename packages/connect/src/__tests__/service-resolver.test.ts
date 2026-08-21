@@ -38,7 +38,9 @@ describe('service-resolver', () => {
       expect(resolved!.name).toBe('github');
       expect(resolved!.config.base_url).toBe('https://api.github.com');
       expect(resolved!.auth?.type).toBe('bearer');
-      expect(resolved!.auth?.token).toBe('ghp_abc123');
+      expect((resolved!.auth as Extract<store.ResolvedServiceAuth, { type: 'bearer' }>).token).toBe(
+        'ghp_abc123',
+      );
       expect(resolved!.has_auth).toBe(true);
     });
 

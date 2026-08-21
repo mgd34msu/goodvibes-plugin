@@ -22545,6 +22545,408 @@ async function ensureGitignore(projectRoot) {
 }
 __name(ensureGitignore, "ensureGitignore");
 
+// packages/connect/src/fetch/service-auth.ts
+var AUTH_MODES = [
+  "none",
+  "bearer",
+  "basic",
+  "api-key",
+  "custom-headers",
+  "oauth2",
+  "session"
+];
+var FIELDS_BY_MODE = {
+  none: [],
+  bearer: ["token", "expires_at"],
+  basic: ["username", "password", "expires_at"],
+  "api-key": ["header", "key", "expires_at"],
+  "custom-headers": ["headers", "expires_at"],
+  oauth2: [
+    "client_id",
+    "client_secret",
+    "token_url",
+    "authorize_url",
+    "redirect_uri",
+    "scopes",
+    "access_token",
+    "refresh_token",
+    "expires_at"
+  ],
+  session: ["login_url", "login_body", "token_path", "access_token", "expires_at"]
+};
+function isEnvRef(value) {
+  return typeof value === "object" && value !== null && "$env" in value && typeof value.$env === "string";
+}
+__name(isEnvRef, "isEnvRef");
+function isSecretValue(value) {
+  return typeof value === "string" && value.trim() !== "" || isEnvRef(value);
+}
+__name(isSecretValue, "isSecretValue");
+function isNonEmptyString(value) {
+  return typeof value === "string" && value.trim() !== "";
+}
+__name(isNonEmptyString, "isNonEmptyString");
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+__name(isRecord, "isRecord");
+function secretMap(value) {
+  if (!isRecord(value)) {
+    return void 0;
+  }
+  const out = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (isSecretValue(entry)) {
+      out[key] = entry;
+    }
+  }
+  return Object.keys(out).length > 0 ? out : void 0;
+}
+__name(secretMap, "secretMap");
+function resolveSecretValue(value) {
+  if (value === void 0) {
+    return void 0;
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  if (isEnvRef(value)) {
+    return process.env[value.$env];
+  }
+  return void 0;
+}
+__name(resolveSecretValue, "resolveSecretValue");
+function resolveMap(map) {
+  const out = {};
+  for (const [key, value] of Object.entries(map)) {
+    const resolved = resolveSecretValue(value);
+    if (resolved !== void 0) {
+      out[key] = resolved;
+    }
+  }
+  return out;
+}
+__name(resolveMap, "resolveMap");
+function resolveAuthConfig(auth) {
+  switch (auth.type) {
+    case "none":
+      return { type: "none" };
+    case "bearer":
+      return { type: "bearer", token: resolveSecretValue(auth.token), expires_at: auth.expires_at };
+    case "basic":
+      return {
+        type: "basic",
+        username: resolveSecretValue(auth.username),
+        password: resolveSecretValue(auth.password),
+        expires_at: auth.expires_at
+      };
+    case "api-key":
+      return {
+        type: "api-key",
+        header: auth.header,
+        key: resolveSecretValue(auth.key),
+        expires_at: auth.expires_at
+      };
+    case "custom-headers":
+      return {
+        type: "custom-headers",
+        headers: resolveMap(auth.headers),
+        expires_at: auth.expires_at
+      };
+    case "oauth2":
+      return {
+        type: "oauth2",
+        client_id: resolveSecretValue(auth.client_id),
+        client_secret: resolveSecretValue(auth.client_secret),
+        token_url: auth.token_url,
+        authorize_url: auth.authorize_url,
+        redirect_uri: auth.redirect_uri,
+        scopes: auth.scopes ? [...auth.scopes] : void 0,
+        access_token: auth.access_token,
+        refresh_token: auth.refresh_token,
+        expires_at: auth.expires_at
+      };
+    case "session":
+      return {
+        type: "session",
+        login_url: auth.login_url,
+        login_body: auth.login_body ? resolveMap(auth.login_body) : void 0,
+        token_path: auth.token_path,
+        access_token: auth.access_token,
+        expires_at: auth.expires_at
+      };
+  }
+}
+__name(resolveAuthConfig, "resolveAuthConfig");
+function fail(error2) {
+  return { ok: false, error: error2 };
+}
+__name(fail, "fail");
+var SECRET_HINT = 'a non-empty string or {"$env":"VAR_NAME"}';
+function readExpiresAt(record2, mode) {
+  const value = record2.expires_at;
+  if (value === void 0) {
+    return { ok: true };
+  }
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return {
+      ok: false,
+      error: `${mode} auth field "expires_at" must be a number (epoch milliseconds).`
+    };
+  }
+  return { ok: true, expires_at: value };
+}
+__name(readExpiresAt, "readExpiresAt");
+function expiryField(expiresAt) {
+  return expiresAt === void 0 ? {} : { expires_at: expiresAt };
+}
+__name(expiryField, "expiryField");
+function parseOAuth2(record2, expiresAt) {
+  const auth = { type: "oauth2", ...expiryField(expiresAt) };
+  for (const field of ["client_id", "client_secret"]) {
+    const value = record2[field];
+    if (value === void 0) {
+      continue;
+    }
+    if (!isSecretValue(value)) {
+      return fail(`oauth2 auth field "${field}" must be ${SECRET_HINT}.`);
+    }
+    auth[field] = value;
+  }
+  for (const field of ["token_url", "authorize_url", "redirect_uri", "access_token", "refresh_token"]) {
+    const value = record2[field];
+    if (value === void 0) {
+      continue;
+    }
+    if (!isNonEmptyString(value)) {
+      return fail(`oauth2 auth field "${field}" must be a non-empty string.`);
+    }
+    auth[field] = value;
+  }
+  if (record2.scopes !== void 0) {
+    if (!Array.isArray(record2.scopes) || !record2.scopes.every((s) => typeof s === "string")) {
+      return fail('oauth2 auth field "scopes" must be an array of strings.');
+    }
+    auth.scopes = [...record2.scopes];
+  }
+  if (!auth.client_id && !auth.token_url && !auth.authorize_url && !auth.access_token) {
+    return fail(
+      'oauth2 auth needs at least "client_id" with "token_url"/"authorize_url" for the browser or refresh flow, or an "access_token" to use directly.'
+    );
+  }
+  return { ok: true, auth };
+}
+__name(parseOAuth2, "parseOAuth2");
+function parseSession(record2, expiresAt) {
+  const auth = { type: "session", ...expiryField(expiresAt) };
+  for (const field of ["login_url", "token_path", "access_token"]) {
+    const value = record2[field];
+    if (value === void 0) {
+      continue;
+    }
+    if (!isNonEmptyString(value)) {
+      return fail(`session auth field "${field}" must be a non-empty string.`);
+    }
+    auth[field] = value;
+  }
+  if (record2.login_body !== void 0) {
+    if (!isRecord(record2.login_body)) {
+      return fail('session auth field "login_body" must be an object of login fields.');
+    }
+    const body = {};
+    for (const [key, value] of Object.entries(record2.login_body)) {
+      if (!isSecretValue(value)) {
+        return fail(`session auth login_body["${key}"] must be ${SECRET_HINT}.`);
+      }
+      body[key] = value;
+    }
+    auth.login_body = body;
+  }
+  if (!auth.login_url && !auth.access_token) {
+    return fail(
+      'session auth needs a "login_url" (with "login_body") to acquire a token, or an "access_token" to use directly.'
+    );
+  }
+  if (auth.login_url && !auth.login_body) {
+    return fail('session auth with a "login_url" also needs a "login_body" to post to it.');
+  }
+  return { ok: true, auth };
+}
+__name(parseSession, "parseSession");
+function parseServiceAuth(raw) {
+  if (!isRecord(raw)) {
+    return fail(`auth must be an object with a "type" of: ${AUTH_MODES.join(", ")}.`);
+  }
+  const mode = raw.type;
+  if (typeof mode !== "string" || !AUTH_MODES.includes(mode)) {
+    const received = typeof mode === "string" ? `"${mode.slice(0, 40)}"` : typeof mode;
+    return fail(`auth "type" must be one of: ${AUTH_MODES.join(", ")}. Received: ${received}.`);
+  }
+  const authMode = mode;
+  const allowed = FIELDS_BY_MODE[authMode];
+  const foreign = Object.keys(raw).filter((key) => key !== "type" && !allowed.includes(key));
+  if (foreign.length > 0) {
+    return fail(
+      `auth type "${authMode}" does not accept field(s): ${foreign.join(", ")}. Fields for "${authMode}": ${allowed.length > 0 ? allowed.join(", ") : "(none)"}. Register one auth mode per service.`
+    );
+  }
+  const expiry = readExpiresAt(raw, authMode);
+  if (!expiry.ok) {
+    return fail(expiry.error);
+  }
+  switch (authMode) {
+    case "none":
+      return { ok: true, auth: { type: "none" } };
+    case "bearer":
+      if (!isSecretValue(raw.token)) {
+        return fail(`bearer auth requires "token": ${SECRET_HINT}.`);
+      }
+      return {
+        ok: true,
+        auth: { type: "bearer", token: raw.token, ...expiryField(expiry.expires_at) }
+      };
+    case "basic":
+      if (!isSecretValue(raw.username) || !isSecretValue(raw.password)) {
+        return fail(`basic auth requires "username" and "password", each ${SECRET_HINT}.`);
+      }
+      return {
+        ok: true,
+        auth: {
+          type: "basic",
+          username: raw.username,
+          password: raw.password,
+          ...expiryField(expiry.expires_at)
+        }
+      };
+    case "api-key":
+      if (!isNonEmptyString(raw.header)) {
+        return fail('api-key auth requires "header": the header name to send the key in.');
+      }
+      if (!isSecretValue(raw.key)) {
+        return fail(`api-key auth requires "key": ${SECRET_HINT}.`);
+      }
+      return {
+        ok: true,
+        auth: {
+          type: "api-key",
+          header: raw.header,
+          key: raw.key,
+          ...expiryField(expiry.expires_at)
+        }
+      };
+    case "custom-headers": {
+      if (!isRecord(raw.headers)) {
+        return fail('custom-headers auth requires "headers": an object of header names to values.');
+      }
+      const headers = {};
+      for (const [name, value] of Object.entries(raw.headers)) {
+        if (!isSecretValue(value)) {
+          return fail(`custom-headers auth value for "${name}" must be ${SECRET_HINT}.`);
+        }
+        headers[name] = value;
+      }
+      if (Object.keys(headers).length === 0) {
+        return fail("custom-headers auth requires at least one header.");
+      }
+      return {
+        ok: true,
+        auth: { type: "custom-headers", headers, ...expiryField(expiry.expires_at) }
+      };
+    }
+    case "oauth2":
+      return parseOAuth2(raw, expiry.expires_at);
+    case "session":
+      return parseSession(raw, expiry.expires_at);
+  }
+}
+__name(parseServiceAuth, "parseServiceAuth");
+function buildMode(mode, record2) {
+  const expiresAt = typeof record2.expires_at === "number" ? record2.expires_at : void 0;
+  switch (mode) {
+    case "none":
+      return { type: "none" };
+    case "bearer":
+      return isSecretValue(record2.token) ? { type: "bearer", token: record2.token, ...expiryField(expiresAt) } : void 0;
+    case "basic":
+      return isSecretValue(record2.username) && isSecretValue(record2.password) ? {
+        type: "basic",
+        username: record2.username,
+        password: record2.password,
+        ...expiryField(expiresAt)
+      } : void 0;
+    case "api-key":
+      return isNonEmptyString(record2.header) && isSecretValue(record2.key) ? { type: "api-key", header: record2.header, key: record2.key, ...expiryField(expiresAt) } : void 0;
+    case "custom-headers": {
+      const headers = secretMap(record2.headers);
+      return headers ? { type: "custom-headers", headers, ...expiryField(expiresAt) } : void 0;
+    }
+    case "oauth2": {
+      const auth = { type: "oauth2" };
+      if (isSecretValue(record2.client_id)) {
+        auth.client_id = record2.client_id;
+      }
+      if (isSecretValue(record2.client_secret)) {
+        auth.client_secret = record2.client_secret;
+      }
+      if (isNonEmptyString(record2.token_url)) {
+        auth.token_url = record2.token_url;
+      }
+      if (isNonEmptyString(record2.authorize_url)) {
+        auth.authorize_url = record2.authorize_url;
+      }
+      if (isNonEmptyString(record2.redirect_uri)) {
+        auth.redirect_uri = record2.redirect_uri;
+      }
+      if (Array.isArray(record2.scopes)) {
+        auth.scopes = record2.scopes.filter((s) => typeof s === "string");
+      }
+      if (isNonEmptyString(record2.access_token)) {
+        auth.access_token = record2.access_token;
+      }
+      if (isNonEmptyString(record2.refresh_token)) {
+        auth.refresh_token = record2.refresh_token;
+      }
+      if (typeof record2.expires_at === "number") {
+        auth.expires_at = record2.expires_at;
+      }
+      const usable = auth.client_id ?? auth.token_url ?? auth.authorize_url ?? auth.access_token;
+      return usable === void 0 ? void 0 : auth;
+    }
+    case "session": {
+      const auth = { type: "session" };
+      if (isNonEmptyString(record2.login_url)) {
+        auth.login_url = record2.login_url;
+      }
+      const body = secretMap(record2.login_body);
+      if (body) {
+        auth.login_body = body;
+      }
+      if (isNonEmptyString(record2.token_path)) {
+        auth.token_path = record2.token_path;
+      }
+      if (isNonEmptyString(record2.access_token)) {
+        auth.access_token = record2.access_token;
+      }
+      if (typeof record2.expires_at === "number") {
+        auth.expires_at = record2.expires_at;
+      }
+      return auth.login_url === void 0 && auth.access_token === void 0 ? void 0 : auth;
+    }
+  }
+}
+__name(buildMode, "buildMode");
+function normalizeStoredAuth(raw) {
+  if (!isRecord(raw)) {
+    return void 0;
+  }
+  const declared = raw.type;
+  if (typeof declared !== "string" || !AUTH_MODES.includes(declared)) {
+    return void 0;
+  }
+  return buildMode(declared, raw);
+}
+__name(normalizeStoredAuth, "normalizeStoredAuth");
+
 // packages/connect/src/fetch/secrets-store.ts
 function getSecretsPath() {
   return statePath("goodvibes.secrets.json");
@@ -22552,19 +22954,31 @@ function getSecretsPath() {
 __name(getSecretsPath, "getSecretsPath");
 async function loadSecrets() {
   const secretsPath = getSecretsPath();
+  let parsed;
   try {
     const content = await fs4.promises.readFile(secretsPath, "utf-8");
-    const parsed = JSON.parse(content);
-    return {
-      services: parsed.services ?? {},
-      global: parsed.global ?? {}
-    };
+    parsed = JSON.parse(content);
   } catch (error2) {
     if (error2.code === "ENOENT") {
       return { services: {}, global: {} };
     }
     throw error2;
   }
+  const services = {};
+  const unreadable = {};
+  for (const [name, record2] of Object.entries(parsed.services ?? {})) {
+    const auth = normalizeStoredAuth(record2);
+    if (auth) {
+      services[name] = auth;
+    } else {
+      unreadable[name] = record2;
+    }
+  }
+  const loaded = { services, global: parsed.global ?? {} };
+  if (Object.keys(unreadable).length > 0) {
+    loaded.unreadable = unreadable;
+  }
+  return loaded;
 }
 __name(loadSecrets, "loadSecrets");
 async function saveSecrets(secrets) {
@@ -22572,7 +22986,11 @@ async function saveSecrets(secrets) {
   const secretsDir = path4.dirname(secretsPath);
   await ensureGitignore(process.cwd());
   await fs4.promises.mkdir(secretsDir, { recursive: true });
-  await atomicWriteFile(secretsPath, JSON.stringify(secrets, null, 2) + "\n", { mode: 384 });
+  const onDisk = {
+    services: { ...secrets.unreadable ?? {}, ...secrets.services },
+    global: secrets.global
+  };
+  await atomicWriteFile(secretsPath, JSON.stringify(onDisk, null, 2) + "\n", { mode: 384 });
 }
 __name(saveSecrets, "saveSecrets");
 async function getServiceSecrets(name) {
@@ -22588,102 +23006,19 @@ async function setServiceSecret(name, auth) {
 __name(setServiceSecret, "setServiceSecret");
 async function removeServiceSecret(name) {
   const secrets = await loadSecrets();
-  if (!(name in secrets.services)) {
+  const stored = name in secrets.services;
+  const broken = secrets.unreadable !== void 0 && name in secrets.unreadable;
+  if (!stored && !broken) {
     return false;
   }
   delete secrets.services[name];
+  if (secrets.unreadable) {
+    delete secrets.unreadable[name];
+  }
   await saveSecrets(secrets);
   return true;
 }
 __name(removeServiceSecret, "removeServiceSecret");
-function isEnvRef(value) {
-  return typeof value === "object" && value !== null && "$env" in value && typeof value.$env === "string";
-}
-__name(isEnvRef, "isEnvRef");
-function resolveSecretValue(value) {
-  if (value === void 0) {
-    return void 0;
-  }
-  if (typeof value === "string") {
-    return value;
-  }
-  if (isEnvRef(value)) {
-    return process.env[value.$env];
-  }
-  return void 0;
-}
-__name(resolveSecretValue, "resolveSecretValue");
-function resolveAuthConfig(auth) {
-  const resolved = { type: auth.type };
-  if (auth.token !== void 0) {
-    resolved.token = resolveSecretValue(auth.token);
-  }
-  if (auth.username !== void 0) {
-    resolved.username = resolveSecretValue(auth.username);
-  }
-  if (auth.password !== void 0) {
-    resolved.password = resolveSecretValue(auth.password);
-  }
-  if (auth.key !== void 0) {
-    resolved.key = resolveSecretValue(auth.key);
-  }
-  if (auth.client_id !== void 0) {
-    resolved.client_id = resolveSecretValue(auth.client_id);
-  }
-  if (auth.client_secret !== void 0) {
-    resolved.client_secret = resolveSecretValue(auth.client_secret);
-  }
-  if (auth.access_token !== void 0) {
-    resolved.access_token = auth.access_token;
-  }
-  if (auth.refresh_token !== void 0) {
-    resolved.refresh_token = auth.refresh_token;
-  }
-  if (auth.header !== void 0) {
-    resolved.header = auth.header;
-  }
-  if (auth.token_url !== void 0) {
-    resolved.token_url = auth.token_url;
-  }
-  if (auth.authorize_url !== void 0) {
-    resolved.authorize_url = auth.authorize_url;
-  }
-  if (auth.redirect_uri !== void 0) {
-    resolved.redirect_uri = auth.redirect_uri;
-  }
-  if (auth.scopes !== void 0) {
-    resolved.scopes = [...auth.scopes];
-  }
-  if (auth.expires_at !== void 0) {
-    resolved.expires_at = auth.expires_at;
-  }
-  if (auth.login_url !== void 0) {
-    resolved.login_url = auth.login_url;
-  }
-  if (auth.token_path !== void 0) {
-    resolved.token_path = auth.token_path;
-  }
-  if (auth.headers) {
-    resolved.headers = {};
-    for (const [key, value] of Object.entries(auth.headers)) {
-      const resolvedVal = resolveSecretValue(value);
-      if (resolvedVal !== void 0) {
-        resolved.headers[key] = resolvedVal;
-      }
-    }
-  }
-  if (auth.login_body) {
-    resolved.login_body = {};
-    for (const [key, value] of Object.entries(auth.login_body)) {
-      const resolvedVal = resolveSecretValue(value);
-      if (resolvedVal !== void 0) {
-        resolved.login_body[key] = resolvedVal;
-      }
-    }
-  }
-  return resolved;
-}
-__name(resolveAuthConfig, "resolveAuthConfig");
 
 // packages/connect/src/fetch/service-registry.ts
 function getFetchConfig() {
@@ -23237,24 +23572,12 @@ __name(applyCustomHeaders, "applyCustomHeaders");
 function applyStaticAuth(headers, auth) {
   switch (auth.type) {
     case "bearer":
-      if (!auth.token) {
-        return false;
-      }
       return applyBearerAuth(headers, auth.token);
     case "basic":
-      if (!auth.username || !auth.password) {
-        return false;
-      }
       return applyBasicAuth(headers, auth.username, auth.password);
     case "api-key":
-      if (!auth.header || !auth.key) {
-        return false;
-      }
       return applyApiKeyAuth(headers, auth.header, auth.key);
     case "custom-headers":
-      if (!auth.headers) {
-        return false;
-      }
       return applyCustomHeaders(headers, auth.headers);
     case "none":
       return true;
@@ -24319,7 +24642,7 @@ var serviceTool = {
       },
       auth: {
         type: "object",
-        description: "Auth config stored to the 0600 secrets file. Never echoed back."
+        description: `Auth config stored to the 0600 secrets file. Never echoed back. Exactly one mode per service, and only that mode's fields: {"type":"none"}, {"type":"bearer","token":...}, {"type":"basic","username":...,"password":...}, {"type":"api-key","header":...,"key":...}, {"type":"custom-headers","headers":{...}}, {"type":"oauth2","client_id":...,"token_url":...,"authorize_url":...,"scopes":[...]}, {"type":"session","login_url":...,"login_body":{...},"token_path":...}. Any credential value may be {"$env":"VAR_NAME"} instead of a literal. Mixing fields from two modes is rejected.`
       },
       connection: {
         type: "object",
@@ -24340,7 +24663,7 @@ async function handleService(args) {
   const cfg = loadConfig();
   const { mode } = configForEnvelope(cfg);
   const input = args ?? {};
-  const fail = /* @__PURE__ */ __name((msg) => toCallToolResult(errorEnvelope(msg, { mode, execution_ms: elapsed() })), "fail");
+  const fail2 = /* @__PURE__ */ __name((msg) => toCallToolResult(errorEnvelope(msg, { mode, execution_ms: elapsed() })), "fail");
   const ok = /* @__PURE__ */ __name((data) => toCallToolResult(
     successEnvelope(data, { mode, execution_ms: elapsed() })
   ), "ok");
@@ -24355,80 +24678,84 @@ async function handleService(args) {
         });
       case "get": {
         if (!input.name) {
-          return fail("`get` requires a service `name`.");
+          return fail2("`get` requires a service `name`.");
         }
         const summary = getServiceSummary(input.name);
         if (!summary) {
-          return fail(`Service "${input.name}" is not registered.`);
+          return fail2(`Service "${input.name}" is not registered.`);
         }
         const auth_status = await getAuthStatus(input.name);
         return ok({ ...summary, auth_status });
       }
       case "register": {
         if (!input.name) {
-          return fail("`register` requires a service `name`.");
+          return fail2("`register` requires a service `name`.");
         }
         if (!input.config?.base_url) {
-          return fail("`register` requires `config.base_url`.");
+          return fail2("`register` requires `config.base_url`.");
         }
         if (!originValid(input.config.base_url)) {
-          return fail(`base_url "${input.config.base_url}" is not a valid absolute URL.`);
+          return fail2(`base_url "${input.config.base_url}" is not a valid absolute URL.`);
         }
         await addService(input.name, input.config, input.force ?? false);
         return ok({ registered: input.name, summary: getServiceSummary(input.name) });
       }
       case "remove": {
         if (!input.name) {
-          return fail("`remove` requires a service `name`.");
+          return fail2("`remove` requires a service `name`.");
         }
         const removed = await removeService(input.name);
         return ok({ removed, name: input.name });
       }
       case "set_auth": {
         if (!input.name) {
-          return fail("`set_auth` requires a service `name`.");
+          return fail2("`set_auth` requires a service `name`.");
         }
         if (!input.auth) {
-          return fail("`set_auth` requires an `auth` config.");
+          return fail2("`set_auth` requires an `auth` config.");
         }
-        await setServiceSecret(input.name, input.auth);
+        const parsed = parseServiceAuth(input.auth);
+        if (!parsed.ok) {
+          return fail2(parsed.error);
+        }
+        await setServiceSecret(input.name, parsed.auth);
         const auth_status = await getAuthStatus(input.name);
         return ok({ name: input.name, stored: true, auth_status });
       }
       case "set_url_pattern": {
         if (!input.hostname || !input.name) {
-          return fail("`set_url_pattern` requires `hostname` and `name`.");
+          return fail2("`set_url_pattern` requires `hostname` and `name`.");
         }
         await addUrlPattern(input.hostname, input.name);
         return ok({ hostname: input.hostname, service: input.name });
       }
       case "allow": {
         if (!input.hostname) {
-          return fail("`allow` requires a `hostname`.");
+          return fail2("`allow` requires a `hostname`.");
         }
         await addAllowlistHost(input.hostname);
         return ok({ allowlist: getAllowlist() });
       }
       case "unallow": {
         if (!input.hostname) {
-          return fail("`unallow` requires a `hostname`.");
+          return fail2("`unallow` requires a `hostname`.");
         }
         const removed = await removeAllowlistHost(input.hostname);
         return ok({ removed, allowlist: getAllowlist() });
       }
       case "register_connection": {
         if (!input.name) {
-          return fail("`register_connection` requires a `name`.");
+          return fail2("`register_connection` requires a `name`.");
         }
         if (!input.connection || !input.connection.url && !input.connection.url_env) {
-          return fail("`register_connection` requires `connection.url` or `connection.url_env`.");
+          return fail2("`register_connection` requires `connection.url` or `connection.url_env`.");
         }
         await addConnection(input.name, input.connection, input.force ?? false);
         return ok({ registered_connection: input.name, summary: getConnectionSummary(input.name) });
       }
       case "remove_connection": {
         if (!input.name) {
-          return fail("`remove_connection` requires a `name`.");
+          return fail2("`remove_connection` requires a `name`.");
         }
         const removed = await removeConnection(input.name);
         return ok({ removed, name: input.name });
@@ -24444,12 +24771,12 @@ async function handleService(args) {
           note: "Trust mode is human-only. To open it, a person edits .goodvibes/config.json out-of-band; no tool can flip it."
         });
       default:
-        return fail(
+        return fail2(
           `Unknown service action "${String(input.action)}". Valid: list, get, register, remove, set_auth, set_url_pattern, allow, unallow, status.`
         );
     }
   } catch (e) {
-    return fail(e instanceof Error ? e.message : String(e));
+    return fail2(e instanceof Error ? e.message : String(e));
   }
 }
 __name(handleService, "handleService");
@@ -25571,29 +25898,29 @@ async function handleDbQuery(args) {
   const cfg = loadConfig();
   const mode = cfg.mode;
   const input = args ?? {};
-  const fail = /* @__PURE__ */ __name((msg) => toCallToolResult(errorEnvelope(msg, { mode, execution_ms: elapsed() })), "fail");
+  const fail2 = /* @__PURE__ */ __name((msg) => toCallToolResult(errorEnvelope(msg, { mode, execution_ms: elapsed() })), "fail");
   if (!input.query || typeof input.query !== "string") {
-    return fail("db_query requires a `query` string.");
+    return fail2("db_query requires a `query` string.");
   }
   const target = resolveTarget(input, mode);
   if ("error" in target) {
-    return fail(target.error);
+    return fail2(target.error);
   }
   const connectionInfo = parseConnectionUrl(target.url);
   if (connectionInfo.type === "unknown") {
-    return fail(
+    return fail2(
       "Unable to parse the connection URL. Supported: postgresql://\u2026, mysql://\u2026, sqlite:///path or file:./db."
     );
   }
   const wantsWrite = input.write === true;
   const isWrite = isWriteOperation(input.query);
   if (isWrite && !wantsWrite) {
-    return fail(
+    return fail2(
       "This is a write statement and db_query is read-only by default. Pass write:true to opt in (and ensure the target permits writes)."
     );
   }
   if (isWrite && wantsWrite && !target.allowWrites) {
-    return fail(
+    return fail2(
       "Writes are not permitted on this target. Register the connection with allow_writes:true, or use open mode for a bare database_url."
     );
   }
@@ -25639,7 +25966,7 @@ async function handleDbQuery(args) {
     return { error: enhanceDatabaseError(msg, connectionInfo.type) };
   });
   if ("error" in outcome) {
-    return fail(outcome.error);
+    return fail2(outcome.error);
   }
   const { value } = outcome;
   const { executionResult, queryToExecute, truncated, explainOutput } = value;

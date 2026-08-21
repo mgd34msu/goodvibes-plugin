@@ -8,6 +8,11 @@
  * `core/config` `statePath`, so v1 and v2 credentials never collide (R15). The
  * basename is preserved so the triple gitignore guard still recognises it.
  *
+ * The auth shape itself lives in `service-auth.ts` and is re-exported here, so
+ * every consumer keeps importing it from the store. Reading the file is a trust
+ * boundary: each stored record goes through `normalizeStoredAuth` on the way in,
+ * and code past this module gets a `ServiceAuth` union value it can trust.
+ *
  * Value types:
  *  - literal string: "my-api-key"
  *  - environment reference: { "$env": "MY_API_KEY" } (resolved at use time)
@@ -18,47 +23,36 @@ import * as path from 'path';
 import { statePath } from '@goodvibes/core/config';
 import { atomicWriteFile } from '@goodvibes/core/fsx';
 import { ensureGitignore } from './secrets-guard.js';
+import { normalizeStoredAuth, type ServiceAuth, type SecretValue } from './service-auth.js';
 
-/** Auth configuration for a service. */
-export interface ServiceAuth {
-  type: 'bearer' | 'basic' | 'api-key' | 'oauth2' | 'session' | 'custom-headers' | 'none';
-  /** For bearer auth. */
-  token?: string | EnvRef;
-  /** For basic auth. */
-  username?: string | EnvRef;
-  password?: string | EnvRef;
-  /** For api-key auth. */
-  header?: string;
-  key?: string | EnvRef;
-  /** For custom-headers auth. */
-  headers?: Record<string, string | EnvRef>;
-  /** For OAuth2. */
-  client_id?: string | EnvRef;
-  client_secret?: string | EnvRef;
-  token_url?: string;
-  authorize_url?: string;
-  redirect_uri?: string;
-  scopes?: string[];
-  /** Runtime-acquired OAuth2 access token (always plain, managed by orchestrator). */
-  access_token?: string;
-  /** Runtime-acquired OAuth2 refresh token (always plain, managed by orchestrator). */
-  refresh_token?: string;
-  expires_at?: number;
-  /** For session auth. */
-  login_url?: string;
-  login_body?: Record<string, string | EnvRef>;
-  token_path?: string;
-}
-
-/** Environment-variable reference. */
-export interface EnvRef {
-  $env: string;
-}
+export {
+  isEnvRef,
+  resolveSecretValue,
+  resolveAuthConfig,
+  parseServiceAuth,
+  normalizeStoredAuth,
+} from './service-auth.js';
+export type {
+  EnvRef,
+  SecretValue,
+  AuthMode,
+  ServiceAuth,
+  ResolvedServiceAuth,
+  OAuth2Auth,
+  SessionAuth,
+  ParsedServiceAuth,
+} from './service-auth.js';
 
 /** Full secrets file structure. */
 export interface SecretsFile {
   services: Record<string, ServiceAuth>;
-  global: Record<string, string | EnvRef>;
+  global: Record<string, SecretValue>;
+  /**
+   * Stored records that matched no auth mode, kept verbatim. They are carried
+   * back out on the next write so an unrelated `set_auth` never quietly deletes
+   * a credential a person may still want to repair by hand.
+   */
+  unreadable?: Record<string, unknown>;
 }
 
 /** The credential file path (namespaced under `.goodvibes/`, R15). */
@@ -67,23 +61,40 @@ function getSecretsPath(): string {
 }
 
 /**
- * Load credentials from disk. Returns empty defaults when the file is absent.
+ * Load credentials from disk, normalizing each stored record into the auth
+ * union. Returns empty defaults when the file is absent.
  */
 export async function loadSecrets(): Promise<SecretsFile> {
   const secretsPath = getSecretsPath();
+  let parsed: { services?: Record<string, unknown>; global?: Record<string, SecretValue> };
+
   try {
     const content = await fs.promises.readFile(secretsPath, 'utf-8');
-    const parsed = JSON.parse(content) as Partial<SecretsFile>;
-    return {
-      services: parsed.services ?? {},
-      global: parsed.global ?? {},
-    };
+    parsed = JSON.parse(content) as typeof parsed;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       return { services: {}, global: {} };
     }
     throw error;
   }
+
+  const services: Record<string, ServiceAuth> = {};
+  const unreadable: Record<string, unknown> = {};
+
+  for (const [name, record] of Object.entries(parsed.services ?? {})) {
+    const auth = normalizeStoredAuth(record);
+    if (auth) {
+      services[name] = auth;
+    } else {
+      unreadable[name] = record;
+    }
+  }
+
+  const loaded: SecretsFile = { services, global: parsed.global ?? {} };
+  if (Object.keys(unreadable).length > 0) {
+    loaded.unreadable = unreadable;
+  }
+  return loaded;
 }
 
 /**
@@ -99,10 +110,15 @@ export async function saveSecrets(secrets: SecretsFile): Promise<void> {
   await ensureGitignore(process.cwd());
   await fs.promises.mkdir(secretsDir, { recursive: true });
 
-  await atomicWriteFile(secretsPath, JSON.stringify(secrets, null, 2) + '\n', { mode: 0o600 });
+  const onDisk = {
+    services: { ...(secrets.unreadable ?? {}), ...secrets.services },
+    global: secrets.global,
+  };
+
+  await atomicWriteFile(secretsPath, JSON.stringify(onDisk, null, 2) + '\n', { mode: 0o600 });
 }
 
-/** Get auth for a service, or undefined when absent. */
+/** Get auth for a service, or undefined when absent or unreadable. */
 export async function getServiceSecrets(name: string): Promise<ServiceAuth | undefined> {
   const secrets = await loadSecrets();
   return secrets.services[name];
@@ -118,81 +134,20 @@ export async function setServiceSecret(name: string, auth: ServiceAuth): Promise
 /** Remove auth for a service. Returns true when an entry was removed. */
 export async function removeServiceSecret(name: string): Promise<boolean> {
   const secrets = await loadSecrets();
-  if (!(name in secrets.services)) {
+  const stored = name in secrets.services;
+  const broken = secrets.unreadable !== undefined && name in secrets.unreadable;
+  if (!stored && !broken) {
     return false;
   }
   delete secrets.services[name];
+  if (secrets.unreadable) {
+    delete secrets.unreadable[name];
+  }
   await saveSecrets(secrets);
   return true;
 }
 
-/** Type guard: is a value an environment reference? */
-export function isEnvRef(value: unknown): value is EnvRef {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    '$env' in value &&
-    typeof (value as EnvRef).$env === 'string'
-  );
-}
-
-/**
- * Resolve a secret value: strings pass through; `{$env}` refs read from
- * `process.env`; unresolvable refs become undefined.
- */
-export function resolveSecretValue(value: string | EnvRef | undefined): string | undefined {
-  if (value === undefined) {return undefined;}
-  if (typeof value === 'string') {return value;}
-  if (isEnvRef(value)) {return process.env[value.$env];}
-  return undefined;
-}
-
-/**
- * Deep-resolve every `$env` reference in an auth config, returning a new object.
- * Unresolvable refs become undefined (consumers must validate before use).
- */
-export function resolveAuthConfig(auth: ServiceAuth): ServiceAuth {
-  const resolved: ServiceAuth = { type: auth.type };
-
-  if (auth.token !== undefined) {resolved.token = resolveSecretValue(auth.token) as string;}
-  if (auth.username !== undefined) {resolved.username = resolveSecretValue(auth.username) as string;}
-  if (auth.password !== undefined) {resolved.password = resolveSecretValue(auth.password) as string;}
-  if (auth.key !== undefined) {resolved.key = resolveSecretValue(auth.key) as string;}
-  if (auth.client_id !== undefined) {resolved.client_id = resolveSecretValue(auth.client_id) as string;}
-  if (auth.client_secret !== undefined)
-    {resolved.client_secret = resolveSecretValue(auth.client_secret) as string;}
-  if (auth.access_token !== undefined) {resolved.access_token = auth.access_token;}
-  if (auth.refresh_token !== undefined) {resolved.refresh_token = auth.refresh_token;}
-
-  if (auth.header !== undefined) {resolved.header = auth.header;}
-  if (auth.token_url !== undefined) {resolved.token_url = auth.token_url;}
-  if (auth.authorize_url !== undefined) {resolved.authorize_url = auth.authorize_url;}
-  if (auth.redirect_uri !== undefined) {resolved.redirect_uri = auth.redirect_uri;}
-  if (auth.scopes !== undefined) {resolved.scopes = [...auth.scopes];}
-  if (auth.expires_at !== undefined) {resolved.expires_at = auth.expires_at;}
-  if (auth.login_url !== undefined) {resolved.login_url = auth.login_url;}
-  if (auth.token_path !== undefined) {resolved.token_path = auth.token_path;}
-
-  if (auth.headers) {
-    resolved.headers = {};
-    for (const [key, value] of Object.entries(auth.headers)) {
-      const resolvedVal = resolveSecretValue(value);
-      if (resolvedVal !== undefined) {resolved.headers[key] = resolvedVal;}
-    }
-  }
-
-  if (auth.login_body) {
-    resolved.login_body = {};
-    for (const [key, value] of Object.entries(auth.login_body)) {
-      const resolvedVal = resolveSecretValue(value);
-      if (resolvedVal !== undefined) {resolved.login_body[key] = resolvedVal;}
-    }
-  }
-
-  return resolved;
-}
-
-/** List service names that have stored credentials. */
+/** List service names that have usable stored credentials. */
 export async function listServiceNames(): Promise<string[]> {
   const secrets = await loadSecrets();
   return Object.keys(secrets.services);

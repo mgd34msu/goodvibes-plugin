@@ -13,6 +13,9 @@ import * as store from '../fetch/secrets-store.js';
 
 const STATE = ['.goodvibes'];
 
+/** The resolved-auth member for one mode, so a test can read that mode's fields. */
+type Resolved<M extends store.AuthMode> = Extract<store.ResolvedServiceAuth, { type: M }>;
+
 describe('secrets-store', () => {
   let tmpDir: string;
 
@@ -138,7 +141,10 @@ describe('secrets-store', () => {
     it('should resolve bearer token env ref', () => {
       process.env.TEST_BEARER_TOKEN = 'my-bearer-token';
       try {
-        const auth = store.resolveAuthConfig({ type: 'bearer', token: { $env: 'TEST_BEARER_TOKEN' } });
+        const auth = store.resolveAuthConfig({
+          type: 'bearer',
+          token: { $env: 'TEST_BEARER_TOKEN' },
+        }) as Resolved<'bearer'>;
         expect(auth.token).toBe('my-bearer-token');
       } finally {
         delete process.env.TEST_BEARER_TOKEN;
@@ -157,7 +163,7 @@ describe('secrets-store', () => {
           refresh_token: 'runtime-refresh',
           token_url: 'https://auth.example.com/token',
           scopes: ['read', 'write'],
-        });
+        }) as Resolved<'oauth2'>;
         expect(auth.client_id).toBe('client-123');
         expect(auth.client_secret).toBe('secret-456');
         expect(auth.access_token).toBe('runtime-token');
@@ -178,7 +184,7 @@ describe('secrets-store', () => {
           login_url: 'https://example.com/login',
           login_body: { username: 'admin', password: { $env: 'TEST_LOGIN_PASS' } },
           token_path: 'data.access_token',
-        });
+        }) as Resolved<'session'>;
         expect(auth.login_body).toEqual({ username: 'admin', password: 'secret-pass' });
         expect(auth.login_url).toBe('https://example.com/login');
         expect(auth.token_path).toBe('data.access_token');
@@ -194,7 +200,7 @@ describe('secrets-store', () => {
           type: 'basic',
           username: { $env: 'TEST_USER' },
           password: { $env: 'TEST_MISSING' },
-        });
+        }) as Resolved<'basic'>;
         expect(auth.username).toBe('admin');
         expect(auth.password).toBeUndefined();
       } finally {
@@ -208,7 +214,7 @@ describe('secrets-store', () => {
         const auth = store.resolveAuthConfig({
           type: 'custom-headers',
           headers: { 'X-Custom': { $env: 'TEST_HEADER_VAL' }, 'X-Static': 'static-value' },
-        });
+        }) as Resolved<'custom-headers'>;
         expect(auth.headers).toEqual({ 'X-Custom': 'header-value', 'X-Static': 'static-value' });
       } finally {
         delete process.env.TEST_HEADER_VAL;

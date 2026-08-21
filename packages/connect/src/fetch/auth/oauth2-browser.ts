@@ -9,12 +9,12 @@
 
 import * as http from 'http';
 import * as crypto from 'crypto';
-import { type ServiceAuth, setServiceSecret, resolveSecretValue } from '../secrets-store.js';
+import { type OAuth2Auth, setServiceSecret, resolveSecretValue } from '../secrets-store.js';
 
 /** OAuth2 flow configuration. */
 export interface OAuth2FlowConfig {
   serviceName: string;
-  auth: ServiceAuth;
+  auth: OAuth2Auth;
   port?: number;
 }
 
@@ -47,7 +47,7 @@ export function generateState(): string {
 }
 
 /** Build the OAuth2 authorize URL. */
-export function buildAuthorizeUrl(auth: ServiceAuth, redirectUri: string, state: string): string {
+export function buildAuthorizeUrl(auth: OAuth2Auth, redirectUri: string, state: string): string {
   if (!auth.authorize_url || !auth.client_id) {
     throw new Error('Missing required fields: authorize_url, client_id');
   }
@@ -294,7 +294,7 @@ export async function startOAuth2Flow(config: OAuth2FlowConfig): Promise<OAuth2F
 
     const refreshToken = (tokenData.refresh_token as string) ?? auth.refresh_token;
 
-    const updatedAuth: ServiceAuth = {
+    const updatedAuth: OAuth2Auth = {
       ...auth,
       access_token: accessToken,
       refresh_token: refreshToken,

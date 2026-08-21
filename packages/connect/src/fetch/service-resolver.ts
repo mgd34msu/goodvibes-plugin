@@ -12,13 +12,13 @@ import {
   getFetchGlobalDefaults,
   type ServiceConfig,
 } from './service-registry.js';
-import { getServiceSecrets, resolveAuthConfig, type ServiceAuth } from './secrets-store.js';
+import { getServiceSecrets, resolveAuthConfig, type ResolvedServiceAuth } from './secrets-store.js';
 
 /** A fully resolved service (config + resolved auth). */
 export interface ResolvedService {
   name: string;
   config: ServiceConfig;
-  auth?: ServiceAuth;
+  auth?: ResolvedServiceAuth;
   has_auth: boolean;
 }
 

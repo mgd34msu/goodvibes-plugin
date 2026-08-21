@@ -21,8 +21,6 @@
  *     server that reflects a token back cannot leak it through the tool result.
  */
 
-import type { ServiceAuth } from './fetch/secrets-store.js';
-
 /** HTTP methods that never mutate server state (always allowed). */
 export const SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS'] as const;
 
@@ -156,6 +154,8 @@ export function isMethodAllowed(
  * reach the outgoing headers, so both must be redacted out of the response.
  */
 export interface SecretBearingAuth {
+  /** The auth mode tag. Read only so a `ServiceAuth` union value fits here. */
+  type?: unknown;
   token?: unknown;
   key?: unknown;
   username?: unknown;
@@ -175,7 +175,7 @@ export interface SecretBearingAuth {
  * @param auths - each auth applied to the request, service or per-request
  */
 export function collectSecretValues(
-  ...auths: Array<SecretBearingAuth | ServiceAuth | undefined>
+  ...auths: Array<SecretBearingAuth | undefined>
 ): string[] {
   const out = new Set<string>();
   const add = (v: unknown): void => {

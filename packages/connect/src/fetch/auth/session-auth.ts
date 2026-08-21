@@ -6,7 +6,7 @@
  * dot-path.
  */
 
-import { type ServiceAuth, type EnvRef, resolveSecretValue, setServiceSecret } from '../secrets-store.js';
+import { type SessionAuth, type SecretValue, resolveSecretValue, setServiceSecret } from '../secrets-store.js';
 
 /** Result of a session acquisition. */
 export interface SessionResult {
@@ -17,7 +17,7 @@ export interface SessionResult {
 }
 
 /** True when the config has what it needs to log in. */
-export function canAcquireSession(auth: ServiceAuth): boolean {
+export function canAcquireSession(auth: SessionAuth): boolean {
   return !!(auth.login_url && auth.login_body);
 }
 
@@ -34,7 +34,7 @@ export function extractFromPath(obj: unknown, jsonPath: string): unknown {
   return current;
 }
 
-function resolveLoginBody(body: Record<string, string | EnvRef>): Record<string, string> {
+function resolveLoginBody(body: Record<string, SecretValue>): Record<string, string> {
   const resolved: Record<string, string> = {};
   for (const [key, value] of Object.entries(body)) {
     const resolvedValue = resolveSecretValue(value);
@@ -44,7 +44,7 @@ function resolveLoginBody(body: Record<string, string | EnvRef>): Record<string,
 }
 
 /** Acquire a session token by posting to the login URL. */
-export async function acquireSessionToken(auth: ServiceAuth): Promise<SessionResult> {
+export async function acquireSessionToken(auth: SessionAuth): Promise<SessionResult> {
   if (!auth.login_url || !auth.login_body) {
     return { success: false, error: 'Missing required fields: login_url, login_body' };
   }
@@ -96,12 +96,12 @@ export async function acquireSessionToken(auth: ServiceAuth): Promise<SessionRes
 /** Acquire a session token and persist it. */
 export async function acquireAndStore(
   serviceName: string,
-  currentAuth: ServiceAuth,
-): Promise<ServiceAuth | null> {
+  currentAuth: SessionAuth,
+): Promise<SessionAuth | null> {
   const result = await acquireSessionToken(currentAuth);
   if (!result.success || !result.token) {return null;}
 
-  const updatedAuth: ServiceAuth = {
+  const updatedAuth: SessionAuth = {
     ...currentAuth,
     access_token: result.token,
     expires_at: result.expires_at,

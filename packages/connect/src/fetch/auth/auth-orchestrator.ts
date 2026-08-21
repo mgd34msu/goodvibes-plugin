@@ -11,7 +11,7 @@
 import { applyStaticAuth } from './static-auth.js';
 import { isTokenExpired, canRefreshToken, refreshAndStore } from './oauth2-refresh.js';
 import { canAcquireSession, acquireAndStore } from './session-auth.js';
-import { getServiceSecrets, type ServiceAuth } from '../secrets-store.js';
+import { getServiceSecrets, type OAuth2Auth } from '../secrets-store.js';
 import { globalCookieJar } from '../cookie-jar.js';
 import type { RequestAuth } from '../request-builder.js';
 
@@ -24,10 +24,10 @@ import type { RequestAuth } from '../request-builder.js';
  * of that race, and those entries fall back to the expired access token and
  * return spurious 401s. Concurrent callers share one grant instead.
  */
-const refreshesInFlight = new Map<string, Promise<ServiceAuth | null>>();
+const refreshesInFlight = new Map<string, Promise<OAuth2Auth | null>>();
 
 /** Refresh a service's token, joining a refresh already running for it. */
-async function refreshOnce(serviceName: string, auth: ServiceAuth): Promise<ServiceAuth | null> {
+async function refreshOnce(serviceName: string, auth: OAuth2Auth): Promise<OAuth2Auth | null> {
   const running = refreshesInFlight.get(serviceName);
   if (running) {return running;}
 

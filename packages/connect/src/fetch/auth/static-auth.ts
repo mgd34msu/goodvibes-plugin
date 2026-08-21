@@ -61,21 +61,19 @@ export function applyCustomHeaders(
 
 /**
  * Apply static auth by type. Returns true when applied, false when credentials
- * were missing (caller may fall through to higher tiers).
+ * were missing (caller may fall through to higher tiers). oauth2 and session
+ * are not static: the orchestrator handles their runtime tokens, so they land
+ * on the default and apply nothing here.
  */
 export function applyStaticAuth(headers: Record<string, string>, auth: ServiceAuth): boolean {
   switch (auth.type) {
     case 'bearer':
-      if (!auth.token) {return false;}
       return applyBearerAuth(headers, auth.token);
     case 'basic':
-      if (!auth.username || !auth.password) {return false;}
       return applyBasicAuth(headers, auth.username, auth.password);
     case 'api-key':
-      if (!auth.header || !auth.key) {return false;}
       return applyApiKeyAuth(headers, auth.header, auth.key);
     case 'custom-headers':
-      if (!auth.headers) {return false;}
       return applyCustomHeaders(headers, auth.headers);
     case 'none':
       return true;

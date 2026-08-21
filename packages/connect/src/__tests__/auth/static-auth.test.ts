@@ -11,6 +11,7 @@ import {
   applyCustomHeaders,
   applyStaticAuth,
 } from '../../fetch/auth/static-auth.js';
+import type { ServiceAuth } from '../../fetch/secrets-store.js';
 
 describe('static-auth', () => {
   describe('applyBearerAuth', () => {
@@ -167,12 +168,15 @@ describe('static-auth', () => {
 
     it('should return false for missing credentials', () => {
       const headers: Record<string, string> = {};
-      expect(applyStaticAuth(headers, { type: 'bearer' })).toBe(false);
+      // The union no longer allows a token-less bearer record, so the cast
+      // reproduces one to prove the applier still refuses it.
+      const tokenless = { type: 'bearer' } as unknown as ServiceAuth;
+      expect(applyStaticAuth(headers, tokenless)).toBe(false);
     });
 
-    it('should return false for unknown auth type', () => {
+    it('should return false for a non-static auth type', () => {
       const headers: Record<string, string> = {};
-      expect(applyStaticAuth(headers, { type: 'oauth2' as unknown as 'bearer' })).toBe(false);
+      expect(applyStaticAuth(headers, { type: 'oauth2' })).toBe(false);
     });
   });
 });
