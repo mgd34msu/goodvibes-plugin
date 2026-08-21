@@ -106,7 +106,7 @@ for pkg in core intel analytics connect; do
   npx tsc --noEmit -p "packages/$pkg"
 done
 echo -e "${GREEN}tsc x4 clean${NC}"
-npx vitest run
+npm test
 npm run lint
 node scripts/check-versions.mjs
 

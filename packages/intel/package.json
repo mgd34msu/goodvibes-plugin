@@ -1,6 +1,6 @@
 {
   "name": "@goodvibes/intel",
-  "version": "2.3.3",
+  "version": "2.3.4",
   "description": "GoodVibes intel MCP server — structure-aware code search/read + verified static analyzers (14 tools). Alpha scaffold.",
   "private": true,
   "type": "module",

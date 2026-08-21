@@ -1,6 +1,6 @@
 {
   "name": "goodvibes-intel-server",
-  "version": "2.3.3",
+  "version": "2.3.4",
   "private": true,
   "description": "Runtime-only dependency manifest for the committed goodvibes-intel server bundle. The unbundleable native/WASM deps install on first run via the Setup hook / plugin command (explicit consent), no postinstall chain. Versions are exact and paired with package-lock.json so every user machine resolves the same tree CI tested.",
   "allowScripts": {

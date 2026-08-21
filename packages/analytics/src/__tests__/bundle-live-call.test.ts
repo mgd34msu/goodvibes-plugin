@@ -28,8 +28,18 @@ describe('analytics bundle: real tool call over stdio', () => {
     async () => {
       const stateDir = mkdtempSync(path.join(tmpdir(), 'gv-bundle-test-'));
       // The child must NOT inherit VITEST: the bundle's entry guard skips
-      // main() under it, and the server would silently never start.
-      const childEnv: NodeJS.ProcessEnv = { ...process.env, GOODVIBES_DIR: stateDir };
+      // main() under it, and the server would silently never start. HOME is
+      // redirected too: live_cost prices the transcripts it finds under HOME,
+      // so inheriting it makes this test's runtime proportional to the host's
+      // real session history (measured 12s to 60s+ on a busy machine). An
+      // empty HOME still proves what this test exists to prove: the shipped
+      // layout resolves its wasm and the server answers without dying.
+      const childEnv: NodeJS.ProcessEnv = {
+        ...process.env,
+        GOODVIBES_DIR: stateDir,
+        HOME: stateDir,
+        USERPROFILE: stateDir,
+      };
       delete childEnv.VITEST;
       const child = spawn('node', [BUNDLE], {
         cwd: stateDir,
@@ -91,7 +101,7 @@ describe('analytics bundle: real tool call over stdio', () => {
           method: 'tools/call',
           params: { name: 'query', arguments: { mode: 'live_cost' } },
         });
-        const reply = (await waitFor(2, 20_000)) as {
+        const reply = (await waitFor(2, 60_000)) as {
           result?: { content?: Array<{ text?: string }> };
           error?: { message?: string };
         };
@@ -109,6 +119,6 @@ describe('analytics bundle: real tool call over stdio', () => {
         rmSync(stateDir, { recursive: true, force: true });
       }
     },
-    30_000,
+    90_000,
   );
 });

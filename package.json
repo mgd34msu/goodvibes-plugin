@@ -1,8 +1,8 @@
 {
   "name": "goodvibes-plugin",
-  "version": "2.3.3",
+  "version": "2.3.4",
   "private": true,
-  "description": "GoodVibes — structure-aware code intelligence, session cost analytics, and an API workbench for Claude Code",
+  "description": "GoodVibes \u2014 structure-aware code intelligence, session cost analytics, and an API workbench for Claude Code",
   "type": "module",
   "workspaces": [
     "packages/*"
@@ -10,7 +10,7 @@
   "scripts": {
     "build": "node packages/intel/build.mjs && node packages/analytics/build.mjs && node packages/connect/build.mjs && node scripts/artifact-manifest.mjs",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "vitest run",
+    "test": "vitest run --exclude '**/bundle-live-call.test.ts' && vitest run packages/analytics/src/__tests__/bundle-live-call.test.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "lint:workspaces": "npm run lint --workspaces --if-present",
