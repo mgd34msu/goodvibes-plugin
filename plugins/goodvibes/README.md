@@ -93,12 +93,28 @@ conservative:
 ## Token cost
 
 Tool schemas are **deferred behind Tool Search**, which is on by default in current Claude Code,
-so the 25 schemas are not loaded into every session; the model pulls a tool's schema when it
-decides to call it. What *is* always-on is a small amount of skill/command metadata (measured via
-`claude plugin details`): intel ~484, analytics ~33, connect ~19 tokens. For comparison, the v1
-monolith carried a ~13,530-token always-on tax. If your client has Tool Search disabled, the tool
-schemas load eagerly. That cost is your client's configuration, not something this plugin's
-manifest can change.
+so the 25 schemas are not loaded into every session. The model pulls a tool's schema when it
+decides to call it.
+
+What is always-on is the metadata for skills, agents, and commands, which the model must see to
+know they exist. Measured with `claude plugin details` on 2026-08-21 against the installed
+2.3.3 build:
+
+| | Always-on | Notes |
+|---|---|---|
+| Whole plugin | **~882 tokens** | Added to every session |
+| Six skills | ~470 tokens | Largest are `intel-mastery` and `service-integration`, ~90 each |
+| Four agents | ~200 tokens | ~50 each |
+| Five commands | ~230 tokens | ~30 to ~70 each |
+| 25 tool schemas | 0 | Resolved at runtime, not counted |
+| Nine hooks | 0 | Harness-only, no model context cost |
+
+Invoking a skill or agent costs more, and costs it again each time it fires: roughly 620 to 1,600
+tokens depending on the component. That is the deal on offer. Nothing is loaded until you ask for
+it, and asking for it is not free.
+
+If your client has Tool Search disabled, the tool schemas load eagerly. That cost is your
+client's configuration, not something this plugin's manifest can change.
 
 ## Measured performance
 

@@ -16,8 +16,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 14730,
-      "sha256": "00e72966cae33791dd9da3d642dde425755244739b6c78a7cb3b3a7c6c9417d9"
+      "bytes": 15343,
+      "sha256": "a925f4844d90d9ce00ab39500eb3e508b9026cc065fc932cb5a1b47d12fb0dfc"
     },
     {
       "path": "agents/architect.md",
@@ -81,8 +81,8 @@
     },
     {
       "path": "hooks/hooks.json",
-      "bytes": 2835,
-      "sha256": "b7c03bcce58ba151a259731f698db7550a94dba8154748e133d5c6ed4440d6f2"
+      "bytes": 3094,
+      "sha256": "abd6c35e236d89686256f2a979b649b882930fa26e5596f58581b3852878d284"
     },
     {
       "path": "hooks/lib/common.mjs",

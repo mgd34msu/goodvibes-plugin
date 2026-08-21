@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.5] - 2026-08-21
+
+### Fixed
+
+- The advertised tool counts can no longer drift from the servers: a live
+  smoke test boots the intel server and asserts the three places the docs
+  state its count (and the plugin-wide total) against `listTools()`, so an
+  undercounting README fails the suite. The stale "14-tool" comment above
+  the fifteen-entry array is gone with every other hardcoded count.
+- The hook manifest description no longer claims the hooks yield to an
+  installed v1; no such branch exists. It now states the real rules: no
+  build step, all three servers' hooks coexist, every hook fails open, and
+  only the commit guard ever withholds a command (warn first, deny a
+  repeat, scoped to two credential files).
+- Benchmark harness files state why they measure what they measure instead
+  of citing internal plan sections; their console output drops internal
+  labels.
+
+### Changed
+
+- The README's cost figures are measured, with provenance: ~882 tokens
+  always-on (grouped as the CLI reports it) and a stated ~620-1,600 token
+  on-invoke range that was previously undisclosed. The v1 comparison says
+  73 tools, which is what the v1 branch's own README states; the
+  unmeasurable v1 token-tax figure is removed rather than repeated.
+
 ## [2.3.4] - 2026-08-21
 
 ### Changed

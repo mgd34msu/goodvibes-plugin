@@ -75,11 +75,11 @@ capability works; anything that needs a native dependency returns an honest
 
 ## History
 
-GoodVibes v1 was a 77-tool replacement harness built in an earlier era of
-Claude Code. A measured deep review found its best ideas had been absorbed by
-the platform and its policy layer cost more than it saved, so v2 kept the
-verified winners, fixed every field defect (all nine are regression-tested),
-and retired the rest. The complete v1 lives forever on the
+GoodVibes v1 was a 73-tool replacement harness across six MCP engines, built in
+an earlier era of Claude Code. A measured deep review found its best ideas had
+been absorbed by the platform and its policy layer cost more than it saved, so
+v2 kept the verified winners, fixed every field defect (all nine are
+regression-tested), and retired the rest. The complete v1 lives forever on the
 [`v1` branch](https://github.com/mgd34msu/goodvibes-plugin/tree/v1); the full
 investigative record (the deep review, the field-issue reports, the plan)
 lives in [`docs/history/`](docs/history/).

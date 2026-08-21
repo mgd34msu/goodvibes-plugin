@@ -3,7 +3,7 @@
  * the single `goodvibes` plugin (three servers: intel, analytics, connect).
  *
  * Wires `core/proc` (process hygiene) and `core/envelope` (response shape) and
- * serves the 15 intel tools over stdio. Native/WASM-backed capabilities load
+ * serves the intel tools over stdio. Native/WASM-backed capabilities load
  * their deps lazily and degrade to an honest setup-pointer envelope when the
  * one-time plugin setup has not installed them yet (2.0.5).
  */
@@ -36,8 +36,8 @@ import { componentTreeTool } from './tools/component_tree.js';
 import { hookDependenciesTool } from './tools/hook_dependencies.js';
 import { clientBoundaryTool } from './tools/client_boundary.js';
 import { layoutAnalysisTool } from './tools/layout_analysis.js';
-// Lane 10: structural_edit (§8 addendum, intel tool 15), the one preview-gated
-// write surface on an otherwise read-only server.
+// Lane 10: structural_edit (§8 addendum), the one preview-gated write surface
+// on an otherwise read-only server.
 import { structuralEditTool } from './tools/structural_edit.js';
 
 export const SERVER_NAME = 'intel';
@@ -47,9 +47,13 @@ declare const __GV_VERSION__: string | undefined;
 export const SERVER_VERSION = typeof __GV_VERSION__ !== 'undefined' ? __GV_VERSION__ : '0.0.0-dev';
 
 /**
- * Every tool this server serves. One module per tool under `src/tools/`; each
- * lane appends its own definition(s) here. The 14-tool intel surface lands
- * across lanes 1-4 and 7 (§4.1).
+ * Every tool this server serves, one module per tool under `src/tools/`.
+ *
+ * Adding a tool is one import above and one entry here. The size of this array
+ * is deliberately not restated in prose anywhere in this file: `TOOLS.length`
+ * is what `tools/list` reports, and a number written beside it can only ever
+ * drift away from it. `__tests__/smoke.test.ts` asserts that the counts the
+ * shipped READMEs advertise still equal the number of tools actually served.
  */
 const TOOLS: ToolDefinition[] = [
   scaffoldTool,

@@ -1,5 +1,5 @@
 {
-  "description": "goodvibes v2 hooks — plain .mjs, no build step (§7 R8). Merged union of the intel, analytics, and connect lifecycle hooks; each yields to v1 when it is installed alongside (R16) and fails open (a hook bug never blocks the session).",
+  "description": "goodvibes lifecycle hooks: plain .mjs, no build step. The intel, analytics, and connect hooks run side by side from this one directory. Every hook fails open, so a hook that throws still returns a valid response and can never block the session or the tool call it observes. The PreToolUse commit guard is the only hook that ever withholds a command, and only to keep goodvibes.secrets.json or goodvibes.cookies.json out of a commit: it warns on the first risky git command and denies a repeat.",
   "hooks": {
     "SessionStart": [
       {

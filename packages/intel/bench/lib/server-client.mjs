@@ -3,9 +3,13 @@
  *
  * Deliberately dependency-free (no `@modelcontextprotocol/sdk` client import)
  * so these scripts run with plain `node` against the committed bundle, the
- * same way a real MCP host would talk to it, no test framework, no build
- * step. Part of the EXP measurement-harness port (plan §5.3 "Measurement
- * suite"): re-run by lane 8 against the finished v2 build (gate 5).
+ * same way a real MCP host would talk to it, with no test framework and no
+ * build step in between.
+ *
+ * That matters for what the benchmark is allowed to claim. Measuring through
+ * the SDK client would measure the SDK's framing as much as the server's, and
+ * measuring the TypeScript sources would measure code no user ever runs. This
+ * talks to the exact bundle that ships.
  */
 
 import { spawn } from 'node:child_process';

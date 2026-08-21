@@ -1,14 +1,17 @@
 #!/usr/bin/env node
 /**
- * EXP3 equivalent (deep-review Appendix A), structure extraction vs a native
- * full read. The claimed win ("outline = 7,027t, −65.6% vs native full read")
- * is the premise's proof point; this reruns it against the finished v2
- * `code_read` (extract: outline) instead of v1 `precision_read`.
+ * Structure extraction against a native full read, for `code_read` with
+ * `extract: outline`.
+ *
+ * This is the measurement behind the outline token-savings claim in the
+ * READMEs. The saving is not a fixed ratio: it tracks how much of a file is
+ * body rather than signature, so measuring several files of different shapes
+ * is what makes the reported range honest rather than one flattering file.
  *
  * Usage: node packages/intel/bench/measure-outline.mjs [file...]
  * Requires: packages/intel built (`node packages/intel/build.mjs`) and a
- * working tree-sitter grammar set (see lib/tree-sitter.ts's
- * `treeSitterOutlineAvailable` doc if this reports parse failures).
+ * working tree-sitter grammar set (see `treeSitterOutlineAvailable` in
+ * src/__tests__/test-utils.ts if this reports parse failures).
  */
 
 import fs from 'node:fs/promises';
@@ -61,7 +64,7 @@ async function main() {
     return out;
   });
 
-  console.log('EXP3: outline vs native full read (tokens = bytes/3.5)\n');
+  console.log('outline vs native full read (tokens = bytes/3.5)\n');
   console.log('| File | Lines | Raw bytes | Native (full read) | code_read outline | Δ |');
   console.log('|---|---|---|---|---|---|');
   let anyError = false;
@@ -81,7 +84,7 @@ async function main() {
   if (anyError) {
     console.log(
       'VERDICT: inconclusive; one or more files failed outline extraction (see errors above; likely the ' +
-        'tree-sitter grammar wasm ABI gap noted in test-utils.ts / the lane 1 report).',
+        'tree-sitter grammar wasm ABI gap described in src/__tests__/test-utils.ts).',
     );
     process.exitCode = 2;
   } else {

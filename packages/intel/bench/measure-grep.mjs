@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 /**
- * EXP4 equivalent (deep-review Appendix A), search vs native `git grep`,
- * ground-truthed by match count. v1 measured "files_only 7,813t vs native
- * 4,370t (1.79×)", a case where the old defaults LOST to native; the row's
- * required fixes (field issue 2's cap-honesty rebuild) are what this reruns
- * against, to see whether the v2 defaults actually close that gap on kept
- * operations (gate 5).
+ * Search against native `git grep`, ground-truthed by match count.
+ *
+ * The match-count check is the point, not a formality. A search tool can
+ * always look cheaper by returning less, so a token comparison only means
+ * something when both sides found the same number of matches. If the counts
+ * disagree this reports FAIL, however favourable the token numbers look.
+ *
+ * An earlier generation of this tool lost to native here, returning more
+ * tokens than `git grep` for the same query. That is why the comparison
+ * exists at defaults rather than at a tuned configuration.
  *
  * Usage: node packages/intel/bench/measure-grep.mjs [pattern] [subdir]
  * Requires: packages/intel built; `git` on PATH; run from inside a git repo
@@ -61,7 +65,7 @@ async function main() {
   const codeGrepMatchCount = q?.match_count ?? 0;
   const codeGrepTokens = estimateTokens(JSON.stringify(env?.data ?? {}));
 
-  console.log(`EXP4: search vs native git grep (tokens = bytes/3.5)\n`);
+  console.log(`search vs native git grep (tokens = bytes/3.5)\n`);
   console.log(`Pattern: ${JSON.stringify(pattern)}  Path: ${subdir}\n`);
   console.log('| | Matches | Tokens |');
   console.log('|---|---|---|');
