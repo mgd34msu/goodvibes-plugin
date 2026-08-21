@@ -16,13 +16,13 @@
     },
     {
       "path": "README.md",
-      "bytes": 11109,
-      "sha256": "6e08739955085741d2637e309cae3abb5f7c01449b0e125ebd59efc5eaf470f2"
+      "bytes": 14730,
+      "sha256": "00e72966cae33791dd9da3d642dde425755244739b6c78a7cb3b3a7c6c9417d9"
     },
     {
       "path": "agents/architect.md",
-      "bytes": 3044,
-      "sha256": "b1f9e0bf549e0e8559e7ce252aa4ebdafe8887328612cb29be6a6b3567781e74"
+      "bytes": 3018,
+      "sha256": "3e18df449d1ccd07baeaff0c7d9aa6c50a5b6154e57fd10df2c193bc51575383"
     },
     {
       "path": "agents/engineer.md",
@@ -46,8 +46,8 @@
     },
     {
       "path": "commands/codebase-review.md",
-      "bytes": 3913,
-      "sha256": "079fe2a99850d8b7c665938ed723ed802d1fe193620221a4887f0ecf528cfc7f"
+      "bytes": 3891,
+      "sha256": "b167d2025ef3689b6eedc8ab4760590cbc33936615099fc0f2957a263bcf3081"
     },
     {
       "path": "commands/lib/prompt-installer.mjs",
@@ -56,23 +56,23 @@
     },
     {
       "path": "commands/plugin.md",
-      "bytes": 6460,
-      "sha256": "46ce589c9ed63a8abf83e7ab54ce37aa92412c88cf2c0d991e46f74c1cb6beb5"
+      "bytes": 6482,
+      "sha256": "9ce52958c250a4b00eaf011621b69092b236ef9a0c3e3fa80b3e53cd4e4b2d86"
     },
     {
       "path": "commands/services.md",
-      "bytes": 6405,
-      "sha256": "62fb43006a57d12448eca401e3114247891e63844d31e9980bdaca2e347cae4f"
+      "bytes": 6409,
+      "sha256": "cf224cfb745bc0719b0ac948d32f954d46a48783da0d54c1ed62eaca7b884575"
     },
     {
       "path": "commands/setup.md",
-      "bytes": 2687,
-      "sha256": "5800b5b2e8236c66efc05d21205be06126abbec38e01a50e8f59dffb16c184e2"
+      "bytes": 2699,
+      "sha256": "bae51eee51a2307b8c781d9c50521a55b3b5c484ff8c710dee2abdc64550cafa"
     },
     {
       "path": "hooks/README.md",
-      "bytes": 3979,
-      "sha256": "41074afaa51a839e3f18f0a272b19a9826003dfb5e20646ee0e39e907a5275fc"
+      "bytes": 4830,
+      "sha256": "3a8c15554abf718e6e275ba2bdba194c45afe8fa00a35c941fa9ad727d3e2eed"
     },
     {
       "path": "hooks/commit-guard.mjs",
@@ -241,18 +241,18 @@
     },
     {
       "path": "skills/README.md",
-      "bytes": 1155,
-      "sha256": "c82fa47d8a97c7904989b1fabe2f088fdedf3fd047b1b6d473344ad4ee8fb18a"
+      "bytes": 1494,
+      "sha256": "202d58d8ba8d75870d13076946e74ff8ceefcf031d103416d7feee7c6ad0f91e"
     },
     {
       "path": "skills/goodvibes-memory/SKILL.md",
-      "bytes": 3368,
-      "sha256": "eb7eddf1b3c6bb23b7ac19e7797bf314664045828588773430d27896e150d830"
+      "bytes": 3328,
+      "sha256": "74aa1d92b369ee41910cd39fb110ebe906bf41fcf4bd7c58421d4ca2b4150384"
     },
     {
       "path": "skills/intel-mastery/SKILL.md",
-      "bytes": 5614,
-      "sha256": "fc84a4cd05bbaf5654721579c88bbf65f0dd4d368605f1657a4263de323f095f"
+      "bytes": 6433,
+      "sha256": "ee905ffbfd2df2add0765ad3bd8657da7574cf9b4f315d8c6c541985ed9bbe82"
     },
     {
       "path": "skills/project-onboarding/SKILL.md",
@@ -261,13 +261,13 @@
     },
     {
       "path": "skills/review-scoring/SKILL.md",
-      "bytes": 3178,
-      "sha256": "c334d2a2de3235787f64143ef57d7386859fa46dba20ade4428e43efca20f9c9"
+      "bytes": 3180,
+      "sha256": "f8ea5c4a9e66433f65a9194c9e261728ec9a495813180e94eb3e9a983d302675"
     },
     {
       "path": "skills/service-integration/SKILL.md",
-      "bytes": 5174,
-      "sha256": "544ce294d7a69cb136f09ff8a66d3f575c06cae4fb255d5d19ba3cf9f7ed0f3f"
+      "bytes": 5183,
+      "sha256": "4f76a4b4d5fe789d2787d37119e9d581e8b00e79b3270466e89f7aab4becc6c3"
     },
     {
       "path": "skills/task-orchestration/SKILL.md",
@@ -276,8 +276,8 @@
     },
     {
       "path": "templates/README.md",
-      "bytes": 1705,
-      "sha256": "26e011dea6c0b69f0433f95c08d12e422ea27995d2fe967dc765a48a5af60279"
+      "bytes": 2192,
+      "sha256": "bbe3e5273f387c36c3e8405194223f11dc7cf0492b80f6cccd4e75c5eb8b6490"
     },
     {
       "path": "templates/full/next-saas/files/.env.example.hbs",

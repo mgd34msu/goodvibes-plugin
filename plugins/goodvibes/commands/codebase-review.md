@@ -11,10 +11,10 @@ allowed-tools:
 
 # Codebase review (WRFC)
 
-Runs the Write-Review-Fix-Confirm loop against an actual diff. This is the productized version
-of the deep-review architecture: diff-triggered (never runs against unchanged code, never
-triggers off agent type), grounded checks weighted above model opinion, refutation-based
-findings instead of a single approve/reject score. See the `task-orchestration` skill for the
+Runs the Write-Review-Fix-Confirm loop against an actual diff. Three properties define it. It is
+diff-triggered, so it never runs against unchanged code and never fires off an agent type.
+Grounded checks outrank model opinion. Findings are refutation-based rather than a single
+approve or reject score. See the `task-orchestration` skill for the
 WRFC pattern and the `review-scoring` skill for the rubric this command's reviewer step uses.
 
 ## Usage

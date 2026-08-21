@@ -5,10 +5,11 @@ description: Documents the .goodvibes/memory/ cross-session memory files (decisi
 
 # goodvibes-memory
 
-Project memory that survives across sessions, namespaced under `.goodvibes/memory/` (R15: kept
-separate from any v1 `.goodvibes/` state so the two generations never collide while both are
-installed). Four files, each a plain JSON array, no bespoke markdown parser to keep in sync,
-unlike v1's `.md`-with-custom-parser design.
+Project memory that survives across sessions, stored under `.goodvibes/memory/`.
+
+Four files, each a plain JSON array. Plain JSON is the point: any tool can read or write these
+without a parser written specifically for them, so the format cannot drift away from the code
+that reads it.
 
 ## Files and shapes
 

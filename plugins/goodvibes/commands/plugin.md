@@ -27,9 +27,9 @@ Manage the goodvibes plugin installation (intel / analytics / connect servers, h
 | `install-prompts` | Opt in: install a compact pointer file (may write to `~/.claude/`). |
 | `uninstall-prompts` | Cleanly remove everything `install-prompts` wrote. |
 
-There is no `update` subcommand. Updates flow through the marketplace install path, not a
-plugin-managed script (v1's `update.sh`/`update.ps1` referenced a nonexistent `update.ps1` and
-did not survive the carve-out).
+There is no `update` subcommand. Updates flow through the marketplace install path rather than a
+script the plugin manages itself, so there is one update mechanism to trust instead of two that
+can disagree about what version is installed.
 
 ## Instructions
 
@@ -47,8 +47,8 @@ binaries and WASM loaders that do not bundle cleanly), listed in that server's o
 | `analytics` | `sql.js` |
 | `connect` | `sql.js` (database drivers resolve from the target project, not installed here) |
 
-Installation is automatic: the first session after a plugin install (or after an update that
-changes a server's dependency list) spawns a detached background installer, which writes into
+Installation is automatic. The first session after a plugin install, or after an update that
+changes a server's dependency list, spawns a detached background installer, which writes into
 the durable home `~/.claude/.goodvibes/deps/<server>/` and links each
 `${CLAUDE_PLUGIN_ROOT}/server/<name>/node_modules` to it. A plugin update replaces the plugin
 copy but not the durable home; the SessionStart hook silently relinks at the next session.

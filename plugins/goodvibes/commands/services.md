@@ -17,14 +17,18 @@ Trust invariants (enforced by the server, not this command):
 
 - Credentials are pinned to their registered origin (protocol + host + port) and never sent
   elsewhere, even in open mode.
+
 - The destination allowlist is on by default: registered service origins and explicitly
   allowlisted hosts only.
+
 - Read-only by default: a service opts specific HTTP methods in via `write_methods`; a connection
   opts writes in via `allow_writes`.
+
 - Open (unrestricted) mode is human-only and out-of-band. A person edits `.goodvibes/config.json`,
   and it is announced at session start. It reverts to restricted next session unless
   `dangerously_persist_across_sessions` is set. This command and the `service` tool cannot flip the
   trust mode.
+
 - `set_auth` stores secrets at mode 0600 and never echoes them back; no action ever returns a secret
   value. `get` returns an auth STATUS, `list`/`status` return names and summaries only.
 

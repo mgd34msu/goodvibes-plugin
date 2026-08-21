@@ -1,7 +1,17 @@
 # GoodVibes v2.0-alpha — Carve-out Architecture
 
+> **This is a dated design record, not current documentation.** It captures the 2026-07-02 ruling
+> that turned [`docs/goodvibes-plan.md`](goodvibes-plan.md) into a build order. Parts of it
+> describe an alpha tree that no longer exists, and its tool counts are the counts as planned,
+> not as shipped. Where it disagrees with the code, the code is right. For what the plugin does
+> today, read [`README.md`](../README.md) and
+> [`plugins/goodvibes/README.md`](../plugins/goodvibes/README.md).
+>
+> Comments throughout `packages/` cite this file by section number, so its numbering is kept
+> stable rather than tidied.
+
 Date: 2026-07-02
-Inputs: `docs/goodvibes-plan.md` (authoritative; §11 final surface, all 29 tribunal verdicts banked), `docs/deep-review-2026-07-01.md` Part 5, `docs/precision-engine-field-issues-2026-07-01.md` (issues 1–9, non-negotiable requirements on the new servers).
+Inputs: `docs/goodvibes-plan.md` (authoritative; §11 final surface, all 29 tribunal verdicts banked), `docs/history/deep-review-2026-07-01.md` Part 5, `docs/history/precision-engine-field-issues-2026-07-01.md` (issues 1–9, non-negotiable requirements on the new servers).
 Status: design ruling for the alpha carve-out. Open rulings in §7 are vetoable; everything else restates plan decisions in implementation terms.
 
 ---

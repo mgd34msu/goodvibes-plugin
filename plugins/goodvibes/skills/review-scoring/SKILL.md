@@ -20,8 +20,10 @@ it." For the change under review:
 1. **List the claims.** What does the implementer say the change does? (Handles the empty-input
    case. Covered by a test. Matches the existing error-handling pattern. Doesn't leak the new
    field to unauthorized users.)
+
 2. **Try to falsify each one.** For each claim, find the concrete input, state, or code path that
    would make it false. Actually trace it or run it, don't just judge plausibility.
+
 3. **Record what survived and what didn't**, each with:
    - **File/line.** Where the defect is, precisely.
    - **Failure scenario.** The concrete input/state that triggers wrong output, a crash, or

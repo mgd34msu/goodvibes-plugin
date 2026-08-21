@@ -5,8 +5,8 @@ Claude Code: **25 tools across three MCP servers**, in one plugin. The three ser
 independent stdio processes (`intel`, `analytics`, `connect`); each runs only for the life of the
 session that started it.
 
-> Status: **v2.0.0**. Numbers below are measured on this build; where a number could not be
-> reproduced in the build environment, this README says so plainly instead of quoting it.
+> Status: **v2.3.4**. Every number below was reproduced against this build with
+> `node packages/intel/bench/run-all.mjs`. Nothing here is carried over from an older run.
 
 ## The three servers
 
@@ -100,7 +100,7 @@ monolith carried a ~13,530-token always-on tax. If your client has Tool Search d
 schemas load eagerly. That cost is your client's configuration, not something this plugin's
 manifest can change.
 
-## Measured performance (intel gate 5)
+## Measured performance
 
 Re-run on this build with `node packages/intel/bench/run-all.mjs`. Token counts use `bytes / 3.5`,
 applied identically to the intel tool and the native baseline.
@@ -108,17 +108,20 @@ applied identically to the intel tool and the native baseline.
 ### code_grep vs native `git grep`: **PASS**
 
 At defaults, `code_grep`'s `files_only` output returned the **same 76 matches** as `git grep` in
-**902 tokens vs 2,415, a 62.7% reduction** (2.68x fewer tokens). This is the flagship measured
-claim.
+**902 tokens vs 2,420, a 62.7% reduction** (2.68x fewer tokens). Identical match counts are the
+point: the saving comes from how the result is rendered, not from returning less of it.
 
-### code_read outline: **inconclusive on this build**
+### code_read outline vs a native full read: **PASS**
 
-The outline benchmark could not be measured here (a tree-sitter grammar `.wasm` / web-tree-sitter
-ABI version gap, an asset/toolchain issue, not a code defect). Until the grammar assets are
-refreshed for web-tree-sitter 0.26.x, this README makes no measured outline token-savings claim.
-The `code_read` line/range paths and every analyzer that rides the bundled TypeScript compiler
-(`code_surface`, `code_safe_delete`, `api_*`, `db_schema` usage) are unaffected. They do not use
-tree-sitter.
+Outline extraction beat a full native read on every file measured. The spread is not noise. The
+win tracks how much of a file is body rather than signature, so a dense implementation file saves
+more than a small one that is mostly declarations.
+
+| File | Lines | Native full read | `code_read` outline | Change |
+|---|---|---|---|---|
+| `packages/intel/src/tools/code_read.ts` | 764 | 8,851t | 2,378t | **−73.1%** |
+| `packages/intel/src/tools/code_grep.ts` | 661 | 7,314t | 2,595t | **−64.5%** |
+| `packages/core/src/cache/index.ts` | 388 | 3,783t | 2,251t | **−40.5%** |
 
 ## When native tools are the right choice
 
@@ -126,29 +129,87 @@ Be honest with yourself about the operation:
 
 - **A plain full-file read.** Use the native `Read` tool. `code_read` earns its keep on
   *structural outline* extraction and line-range reads of large files.
+
 - **A one-shot grep whose every hit you're going to read anyway.** Native `Grep` is simpler.
   `code_grep` pays off when you want capped, deduplicated results or batched queries in one call.
+
 - **A quick one-off edit.** Native `Edit`/`Write` are simpler. `structural_edit` earns its keep on
   AST-scoped or batched changes where you want a diff preview, a stale-file guard, and atomic
   rollback before any bytes are written.
+
 - **Reading a public web page or a one-off unauthenticated URL.** Use the native `WebFetch` tool.
   connect is not a general web reader; reach for it only for authenticated, registered-service calls
   or live database access under the trust boundary above.
+
 - **Per-session token/cost accounting you don't need.** Skip analytics; it is purely additive.
 
 ## Content
 
-- **Commands:** `/goodvibes:plugin` (setup / status / prompt install), `/goodvibes:codebase-review`
-  (review workflow entry), `/goodvibes:analytics` (session cost/token views), `/goodvibes:services`
-  (connect service registry).
-- **Agents:** engineer, refutation-reviewer, tester, architect (auto-discovered from `agents/`).
-- **Skills:** intel-mastery, project-onboarding, goodvibes-memory, task-orchestration,
-  review-scoring, service-integration (loaded on demand by name).
-- **Hooks:** SessionStart context + open-mode announcement + silent native-dependency
-  relink/background install, Setup (kicks the same background installer on `claude init`),
-  SubagentStart pointers, PostToolUseFailure, a warn-first commit guard, and the analytics
-  SessionEnd / Stop / SubagentStop / PreCompact telemetry hooks. All observe/inform only and
-  fail open. Project state is written under the `.goodvibes/` directory.
+### Commands
+
+Five slash commands ship in `commands/`. Each is an entry point to a capability the servers
+already expose, not a separate feature.
+
+| Command | What it does |
+|---|---|
+| `/goodvibes:plugin` | Plugin management: health status, native-dependency repair, and the optional prompt-pointer install and uninstall |
+| `/goodvibes:setup` | Re-runs the native dependency install in the foreground. This is the manual repair path when the automatic background install did not finish |
+| `/goodvibes:analytics` | Session cost and token views, the HTML report, budgets, tags, export, and sync |
+| `/goodvibes:services` | Manages the connect registry: register services and database connections, store credentials, set read-only against write access, manage the destination allowlist, and report trust status |
+| `/goodvibes:codebase-review` | Runs the review-then-fix workflow over the current diff, with grounded checks and a refutation-based defect list |
+
+### Agents
+
+Four subagents are auto-discovered from `agents/`. They are role definitions with their own tool
+sets and prompts, invoked through the native Agent tool.
+
+| Agent | Use it for |
+|---|---|
+| `architect` | Designing an approach, breaking a task into a plan others execute, or mapping an unfamiliar codebase before work starts |
+| `engineer` | Backend and frontend implementation once the approach is decided |
+| `refutation-reviewer` | Reviewing a change by trying to disprove it works, producing an honest defect list |
+| `tester` | Writing and running tests that verify real behavior, on risk rather than a coverage percentage |
+
+### Skills
+
+Six skills load on demand by name. None is always-on; each costs nothing until it is invoked.
+
+| Skill | What it teaches |
+|---|---|
+| `intel-mastery` | Token-efficient use of the intel tools, and when a native `Read`/`Grep`/`Glob` is the better call |
+| `project-onboarding` | Mapping an unfamiliar codebase's architecture with the intel analyzers before changing it |
+| `goodvibes-memory` | The `.goodvibes/memory/` cross-session files, what is written automatically, and the JSON shape of each |
+| `task-orchestration` | Splitting work across parallel subagents using native Workflow and Task tooling |
+| `review-scoring` | The refutation-based review rubric: a severity-ranked defect list rather than a pass/fail score |
+| `service-integration` | Reaching authenticated APIs and project databases through the connect trust boundary |
+
+### Hooks
+
+Nine lifecycle events are registered in `hooks/hooks.json`, running ten plain `.mjs` scripts with
+no build step. Every hook fails open, so a hook that throws can never break the session or the
+tool call that triggered it.
+
+| Event | Script | What it does |
+|---|---|---|
+| `SessionStart` | `session-start.mjs` | Relinks native dependencies after a plugin update and starts the background installer when they are missing |
+| `SessionStart` | `session-start-open-mode.mjs` | Announces that connect is in open mode, every session that mode persists |
+| `Setup` | `setup.mjs` | Starts the same background dependency installer on `claude init` |
+| `SubagentStart` | `subagent-start.mjs` | Gives a starting subagent pointers to the relevant skills |
+| `PreToolUse` | `commit-guard.mjs` | Watches `git add` / `commit` / `stage` on Bash for the plugin's credential files. **The one hook that can stop a command** |
+| `PostToolUseFailure` | `post-tool-use-failure.mjs` | Adds context after a failed Bash call |
+| `SessionEnd` | `session-end.mjs` | Records end-of-session analytics |
+| `Stop` | `stop.mjs` | Records turn-level analytics |
+| `SubagentStop` | `subagent-stop.mjs` | Records subagent analytics |
+| `PreCompact` | `pre-compact.mjs` | Records analytics before a context compaction |
+
+**The commit guard is the single exception to observe-and-inform.** It protects exactly two
+files, `goodvibes.secrets.json` and `goodvibes.cookies.json`, and only against git commands that
+would stage them, whether named explicitly or swept in by `git add -A`, `git add .`, `git add -u`,
+or `git commit -a`. It is warn-first: the first risky attempt is allowed through with a warning
+and leaves a marker at `.goodvibes/.commit-guard-warned`, and a repeat attempt is denied. If the
+guard itself errors it allows the command, because a guard failure must never block real work.
+
+Project state is written under the `.goodvibes/` directory.
 
 ## Install
 

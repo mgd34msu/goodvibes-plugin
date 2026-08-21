@@ -25,8 +25,8 @@ Every performance claim in this README was measured against the native tool
 baseline at **default settings**, with ground-truth verification. The
 benchmark harness ships in `packages/intel/bench/` so you can rerun it:
 
-- `code_read` outline: **−40% to −72%** of the token cost of a full native read, sufficient to answer structure questions with zero follow-up reads
-- `code_grep` files mode: **−63%** vs native search with identical match counts (76 = 76)
+- `code_read` outline: **−40% to −73%** of the token cost of a full native read, sufficient to answer structure questions with zero follow-up reads. The spread is real: the win grows with how much of a file is body rather than signature
+- `code_grep` files mode: **−62.7%** vs native search with identical match counts (76 = 76)
 - Responses self-report their cost (`token_estimate` computed from the actual rendered payload), enforce `output.max_tokens`, and set `truncated`/`effective_caps` only when something was actually trimmed
 
 If a claim stops being true, it comes out of the README. That's the policy.
@@ -35,7 +35,7 @@ If a claim stops being true, it comes out of the README. That's the policy.
 
 - **Native tools are never blocked, redirected, or deprecated.** These are additions, not replacements. Use whichever tool wins for the job.
 
-- **Hooks observe, inform, and assist. Zero hooks block, rewrite, or steer.** All are fail-open: a broken hook can never brick a tool call.
+- **Hooks observe and inform. Exactly one can stop a command, and only to keep your credentials out of a commit.** The `PreToolUse` commit guard inspects `git add` / `commit` / `stage` for the plugin's own secrets files (`goodvibes.secrets.json`, `goodvibes.cookies.json`). The first risky attempt is warned and allowed through; repeat it and the guard denies it. Nothing rewrites or redirects a tool call, and every hook fails open, so a broken hook can never brick one.
 
 - **Servers live for the life of your session.** No idle self-exit, ever (regression-tested). Orphan defense is a parent-liveness watchdog that fires only when the session itself dies.
 
@@ -82,9 +82,16 @@ verified winners, fixed every field defect (all nine are regression-tested),
 and retired the rest. The complete v1 lives forever on the
 [`v1` branch](https://github.com/mgd34msu/goodvibes-plugin/tree/v1); the full
 investigative record (the deep review, the field-issue reports, the plan)
-lives in [`docs/history/`](docs/history/). The living architecture record is
-[`docs/goodvibes-plan.md`](docs/goodvibes-plan.md) and
-[`docs/carveout-architecture.md`](docs/carveout-architecture.md).
+lives in [`docs/history/`](docs/history/).
+
+Two dated design records sit beside that history and are still cited directly by
+the source tree: [`docs/goodvibes-plan.md`](docs/goodvibes-plan.md), the
+2026-07-01 disposition plan that decided each v1 component's fate, and
+[`docs/carveout-architecture.md`](docs/carveout-architecture.md), the 2026-07-02
+ruling that turned it into a build order. Read them as records of what was
+decided and why, not as a description of how the plugin behaves today. Comments
+throughout `packages/` cite their numbered sections, so those section numbers
+are kept stable rather than renumbered.
 
 ## Versioning
 
