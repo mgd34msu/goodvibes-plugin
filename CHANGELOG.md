@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.4] - 2026-08-21
+
+### Changed
+
+- Service credentials are a typed union per auth mode, parsed at the boundary.
+  A registration mixing modes is rejected naming the offending fields, and a
+  stored record whose declared mode cannot be built applies no credentials and
+  is preserved byte-for-byte for repair instead of being reinterpreted; wire
+  behavior for every working legacy record is unchanged, verified against the
+  previous applier. Static modes carry their expiry stamp so auth status
+  reports expiry honestly.
+- The connect query gate tokenizer fails closed on unrecognized SQL instead
+  of allowing writable common table expressions past a read-only connection.
+- MCP server runtime dependencies install from exact pins with committed
+  lockfiles. The installer skips npm entirely when the durable tree already
+  satisfies the pins, stages real installs and promotes by rename with
+  rollback, and relinks the previous install on failure, so a registry outage
+  degrades to last-release dependencies instead of dead servers.
+- CI validates the shipped tree and starts all three MCP servers on three
+  operating systems with a liveness assertion; ARTIFACTS.json hashes every
+  shipped file so any hand edit trips the byte-diff gate; source maps are no
+  longer shipped; releases wait for green CI on the pushed commit before the
+  GitHub release exists.
+
 ## [2.3.3] - 2026-07-03
 
 ### Changed

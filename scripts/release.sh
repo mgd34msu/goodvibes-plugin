@@ -65,18 +65,34 @@ fi
 if $DRY_RUN; then echo -e "${YELLOW}Dry run: would bump to $NEXT, build, gate, tag v$NEXT, release.${NC}"; exit 0; fi
 
 # ── 2. Bump both manifests ──────────────────────────────────────────────────
+# Every source check-versions asserts must move together; bumping a subset
+# fails the gate this script runs four steps later.
 node -e "
 const fs = require('fs');
-for (const [file, patch] of [
-  ['$PLUGIN_JSON', (m) => { m.version = '$NEXT'; }],
-  ['$MARKETPLACE_JSON', (m) => { m.plugins.find((p) => p.name === 'goodvibes').version = '$NEXT'; }],
-]) {
-  const m = JSON.parse(fs.readFileSync(file, 'utf8'));
-  patch(m);
-  fs.writeFileSync(file, JSON.stringify(m, null, 2) + '\n');
+const write = (file, m) => fs.writeFileSync(file, JSON.stringify(m, null, 2) + '\n');
+const json = (file) => JSON.parse(fs.readFileSync(file, 'utf8'));
+const v = '$NEXT';
+const plugin = json('$PLUGIN_JSON'); plugin.version = v; write('$PLUGIN_JSON', plugin);
+const market = json('$MARKETPLACE_JSON');
+market.plugins.find((p) => p.name === 'goodvibes').version = v; write('$MARKETPLACE_JSON', market);
+for (const file of ['package.json',
+  'packages/core/package.json', 'packages/intel/package.json',
+  'packages/analytics/package.json', 'packages/connect/package.json',
+  'plugins/goodvibes/server/intel/package.json',
+  'plugins/goodvibes/server/analytics/package.json',
+  'plugins/goodvibes/server/connect/package.json']) {
+  const m = json(file); m.version = v; write(file, m);
+}
+for (const file of ['package-lock.json',
+  'plugins/goodvibes/server/intel/package-lock.json',
+  'plugins/goodvibes/server/analytics/package-lock.json',
+  'plugins/goodvibes/server/connect/package-lock.json']) {
+  const m = json(file); m.version = v;
+  if (m.packages && m.packages['']) m.packages[''].version = v;
+  write(file, m);
 }
 "
-echo -e "${GREEN}Manifests bumped to $NEXT${NC}"
+echo -e "${GREEN}All version sources bumped to $NEXT${NC}"
 
 # ── 3. Build ────────────────────────────────────────────────────────────────
 if ! $SKIP_BUILD; then
