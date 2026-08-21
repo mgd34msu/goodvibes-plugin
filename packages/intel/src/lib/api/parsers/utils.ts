@@ -1,7 +1,7 @@
 /**
  * Shared helpers for the API route parsers.
  *
- * File discovery is NOT ported from v1 here — the parsers ride the shared
+ * File discovery is NOT ported from v1 here, the parsers ride the shared
  * intel compiler host's `findSourceFiles` (§3.3) for directory walking
  * instead of the v1 bespoke recursive walker, so route scanning shares one
  * skip-directory policy with every other analyzer.

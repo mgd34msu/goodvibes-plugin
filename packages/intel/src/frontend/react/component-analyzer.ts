@@ -1,5 +1,5 @@
 /**
- * React component analyzer — Lane 4.
+ * React component analyzer, Lane 4.
  *
  * Ported from frontend-engine `core/react/component-analyzer.ts`, rewired off the
  * v1 per-file `ts.createSourceFile` onto the shared compiler host (§3.3): the

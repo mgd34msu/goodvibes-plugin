@@ -15598,7 +15598,7 @@ var require_typescript = __commonJS({
         walkUpParenthesizedTypesAndGetParentAndChild: /* @__PURE__ */ __name(() => walkUpParenthesizedTypesAndGetParentAndChild, "walkUpParenthesizedTypesAndGetParentAndChild"),
         whitespaceOrMapCommentRegExp: /* @__PURE__ */ __name(() => whitespaceOrMapCommentRegExp, "whitespaceOrMapCommentRegExp"),
         writeCommentRange: /* @__PURE__ */ __name(() => writeCommentRange, "writeCommentRange"),
-        writeFile: /* @__PURE__ */ __name(() => writeFile3, "writeFile"),
+        writeFile: /* @__PURE__ */ __name(() => writeFile4, "writeFile"),
         writeFileEnsuringDirectories: /* @__PURE__ */ __name(() => writeFileEnsuringDirectories, "writeFileEnsuringDirectories"),
         zipWith: /* @__PURE__ */ __name(() => zipWith, "zipWith")
       });
@@ -35454,7 +35454,7 @@ ${lanes.join("\n")}
         return combinePaths(newDirPath, sourceFilePath);
       }
       __name(getSourceFilePathInNewDirWorker, "getSourceFilePathInNewDirWorker");
-      function writeFile3(host, diagnostics, fileName, text, writeByteOrderMark, sourceFiles, data) {
+      function writeFile4(host, diagnostics, fileName, text, writeByteOrderMark, sourceFiles, data) {
         host.writeFile(
           fileName,
           text,
@@ -35466,7 +35466,7 @@ ${lanes.join("\n")}
           data
         );
       }
-      __name(writeFile3, "writeFile");
+      __name(writeFile4, "writeFile");
       function ensureDirectoriesExist(directoryPath, createDirectory, directoryExists) {
         if (directoryPath.length > getRootLength(directoryPath) && !directoryExists(directoryPath)) {
           const parentDirectory = getDirectoryPath(directoryPath);
@@ -49251,8 +49251,8 @@ ${lanes.join("\n")}
       }
       __name(getExternalModuleNameLiteral, "getExternalModuleNameLiteral");
       function tryRenameExternalModule(factory2, moduleName, sourceFile) {
-        const rename = sourceFile.renamedDependencies && sourceFile.renamedDependencies.get(moduleName.text);
-        return rename ? factory2.createStringLiteral(rename) : void 0;
+        const rename2 = sourceFile.renamedDependencies && sourceFile.renamedDependencies.get(moduleName.text);
+        return rename2 ? factory2.createStringLiteral(rename2) : void 0;
       }
       __name(tryRenameExternalModule, "tryRenameExternalModule");
       function tryGetModuleNameFromFile(factory2, file, host, options) {
@@ -52927,8 +52927,8 @@ ${lanes.join("\n")}
           return !!arr.isMissingList;
         }
         __name(isMissingList, "isMissingList");
-        function parseBracketedList(kind, parseElement, open2, close) {
-          if (parseExpected(open2)) {
+        function parseBracketedList(kind, parseElement, open3, close) {
+          if (parseExpected(open3)) {
             const result = parseDelimitedList(kind, parseElement);
             parseExpected(close);
             return result;
@@ -55507,7 +55507,7 @@ ${lanes.join("\n")}
           return finishNode(factory2.createJsxSpreadAttribute(expression), pos);
         }
         __name(parseJsxSpreadAttribute, "parseJsxSpreadAttribute");
-        function parseJsxClosingElement(open2, inExpressionContext) {
+        function parseJsxClosingElement(open3, inExpressionContext) {
           const pos = getNodePos();
           parseExpected(
             31
@@ -55521,7 +55521,7 @@ ${lanes.join("\n")}
             /*shouldAdvance*/
             false
           )) {
-            if (inExpressionContext || !tagNamesAreEquivalent(open2.tagName, tagName)) {
+            if (inExpressionContext || !tagNamesAreEquivalent(open3.tagName, tagName)) {
               nextToken();
             } else {
               scanJsxText();
@@ -150381,7 +150381,7 @@ ${lanes.join("\n")}
             return;
           }
           const buildInfo = host.getBuildInfo() || { version: version2 };
-          writeFile3(
+          writeFile4(
             host,
             emitterDiagnostics,
             buildInfoPath,
@@ -150598,7 +150598,7 @@ ${lanes.join("\n")}
             }
             if (sourceMapFilePath) {
               const sourceMap = sourceMapGenerator.toString();
-              writeFile3(
+              writeFile4(
                 host,
                 emitterDiagnostics,
                 sourceMapFilePath,
@@ -150613,7 +150613,7 @@ ${lanes.join("\n")}
           }
           const text = writer.getText();
           const data = { sourceMapUrlPos, diagnostics: transform22.diagnostics };
-          writeFile3(host, emitterDiagnostics, jsFilePath, text, !!compilerOptions.emitBOM, sourceFiles, data);
+          writeFile4(host, emitterDiagnostics, jsFilePath, text, !!compilerOptions.emitBOM, sourceFiles, data);
           writer.clear();
           return !data.skippedDtsWrite;
         }
@@ -190556,19 +190556,19 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
       __name(tryChangeModuleExportsObject, "tryChangeModuleExportsObject");
       function convertNamedExport(sourceFile, assignment, changes, exports22) {
         const { text } = assignment.left.name;
-        const rename = exports22.get(text);
-        if (rename !== void 0) {
+        const rename2 = exports22.get(text);
+        if (rename2 !== void 0) {
           const newNodes = [
             makeConst(
               /*modifiers*/
               void 0,
-              rename,
+              rename2,
               assignment.right
             ),
             makeExportDeclaration([factory.createExportSpecifier(
               /*isTypeOnly*/
               false,
-              rename,
+              rename2,
               text
             )])
           ];
@@ -212071,19 +212071,19 @@ ${content}
           );
         }
         __name(spanForTemplateLiteral, "spanForTemplateLiteral");
-        function spanForObjectOrArrayLiteral(node, open2 = 19) {
+        function spanForObjectOrArrayLiteral(node, open3 = 19) {
           return spanForNode(
             node,
             /*autoCollapse*/
             false,
             /*useFullStart*/
             !isArrayLiteralExpression(node.parent) && !isCallExpression(node.parent),
-            open2
+            open3
           );
         }
         __name(spanForObjectOrArrayLiteral, "spanForObjectOrArrayLiteral");
-        function spanForNode(hintSpanNode, autoCollapse = false, useFullStart = true, open2 = 19, close = open2 === 19 ? 20 : 24) {
-          const openToken = findChildOfKind(n, open2, sourceFile);
+        function spanForNode(hintSpanNode, autoCollapse = false, useFullStart = true, open3 = 19, close = open3 === 19 ? 20 : 24) {
+          const openToken = findChildOfKind(n, open3, sourceFile);
           const closeToken = findChildOfKind(n, close, sourceFile);
           return openToken && closeToken && spanBetweenTokens(openToken, closeToken, hintSpanNode, sourceFile, autoCollapse, useFullStart);
         }
@@ -214978,9 +214978,9 @@ ${options.prefix}` : "\n" : options.prefix
       }
       __name(endPositionToDeleteNodeInList, "endPositionToDeleteNodeInList");
       function getClassOrObjectBraceEnds(cls, sourceFile) {
-        const open2 = findChildOfKind(cls, 19, sourceFile);
+        const open3 = findChildOfKind(cls, 19, sourceFile);
         const close = findChildOfKind(cls, 20, sourceFile);
-        return [open2 == null ? void 0 : open2.end, close == null ? void 0 : close.end];
+        return [open3 == null ? void 0 : open3.end, close == null ? void 0 : close.end];
       }
       __name(getClassOrObjectBraceEnds, "getClassOrObjectBraceEnds");
       function getMembersOrProperties(node) {
@@ -222074,7 +222074,7 @@ ${options.prefix}` : "\n" : options.prefix
         walkUpParenthesizedTypesAndGetParentAndChild: /* @__PURE__ */ __name(() => walkUpParenthesizedTypesAndGetParentAndChild, "walkUpParenthesizedTypesAndGetParentAndChild"),
         whitespaceOrMapCommentRegExp: /* @__PURE__ */ __name(() => whitespaceOrMapCommentRegExp, "whitespaceOrMapCommentRegExp"),
         writeCommentRange: /* @__PURE__ */ __name(() => writeCommentRange, "writeCommentRange"),
-        writeFile: /* @__PURE__ */ __name(() => writeFile3, "writeFile"),
+        writeFile: /* @__PURE__ */ __name(() => writeFile4, "writeFile"),
         writeFileEnsuringDirectories: /* @__PURE__ */ __name(() => writeFileEnsuringDirectories, "writeFileEnsuringDirectories"),
         zipWith: /* @__PURE__ */ __name(() => zipWith, "zipWith")
       });
@@ -235500,9 +235500,9 @@ var require_is_glob = __commonJS({
           }
         }
         if (str2[index] === "\\") {
-          var open2 = str2[index + 1];
+          var open3 = str2[index + 1];
           index += 2;
-          var close = chars[open2];
+          var close = chars[open3];
           if (close) {
             var n = str2.indexOf(close, index);
             if (n !== -1) {
@@ -235528,9 +235528,9 @@ var require_is_glob = __commonJS({
           return true;
         }
         if (str2[index] === "\\") {
-          var open2 = str2[index + 1];
+          var open3 = str2[index + 1];
           index += 2;
-          var close = chars[open2];
+          var close = chars[open3];
           if (close) {
             var n = str2.indexOf(close, index);
             if (n !== -1) {
@@ -236508,7 +236508,7 @@ var require_parse = __commonJS({
           continue;
         }
         if (value === CHAR_DOUBLE_QUOTE || value === CHAR_SINGLE_QUOTE || value === CHAR_BACKTICK) {
-          const open2 = value;
+          const open3 = value;
           let next;
           if (options.keepQuotes !== true) {
             value = "";
@@ -236518,7 +236518,7 @@ var require_parse = __commonJS({
               value += next + advance();
               continue;
             }
-            if (next === open2) {
+            if (next === open3) {
               if (options.keepQuotes === true) value += next;
               break;
             }
@@ -236561,8 +236561,8 @@ var require_parse = __commonJS({
         if (value === CHAR_COMMA && depth > 0) {
           if (block.ranges > 0) {
             block.ranges = 0;
-            const open2 = block.nodes.shift();
-            block.nodes = [open2, { type: "text", value: stringify(block) }];
+            const open3 = block.nodes.shift();
+            block.nodes = [open3, { type: "text", value: stringify(block) }];
           }
           push({ type: "comma", value });
           block.commas++;
@@ -237660,16 +237660,16 @@ var require_parse2 = __commonJS({
         const analysis = analyzeRepeatedExtglob(body, opts);
         if ((token.type === "plus" || token.type === "star") && analysis.risky) {
           const safeOutput = analysis.safeOutput ? (token.output ? "" : ONE_CHAR) + (opts.capture ? `(${analysis.safeOutput})` : analysis.safeOutput) : void 0;
-          const open2 = tokens[token.tokensIndex];
-          open2.type = "text";
-          open2.value = literal2;
-          open2.output = safeOutput || utils.escapeRegex(literal2);
+          const open3 = tokens[token.tokensIndex];
+          open3.type = "text";
+          open3.value = literal2;
+          open3.output = safeOutput || utils.escapeRegex(literal2);
           for (let i = token.tokensIndex + 1; i < tokens.length; i++) {
             tokens[i].value = "";
             tokens[i].output = "";
             delete tokens[i].suffix;
           }
-          state.output = token.output + open2.output;
+          state.output = token.output + open3.output;
           state.backtrack = true;
           push({ type: "paren", extglob: true, value, output: "" });
           decrement("parens");
@@ -237889,15 +237889,15 @@ var require_parse2 = __commonJS({
         }
         if (value === "{" && opts.nobrace !== true) {
           increment("braces");
-          const open2 = {
+          const open3 = {
             type: "brace",
             value,
             output: "(",
             outputIndex: state.output.length,
             tokensIndex: state.tokens.length
           };
-          braces.push(open2);
-          push(open2);
+          braces.push(open3);
+          push(open3);
           continue;
         }
         if (value === "}") {
@@ -253782,12 +253782,12 @@ async function runScaffold(args) {
   if (!dryRun && args.run_install !== false) {
     postCreateResults.push(await runShell(installCommand(pm), outputPath, POST_CREATE_TIMEOUT_MS));
   } else if (dryRun && args.run_install !== false) {
-    postCreateResults.push({ command: installCommand(pm), success: true, output: "(dry run \u2014 not executed)" });
+    postCreateResults.push({ command: installCommand(pm), success: true, output: "(dry run, not executed)" });
   }
   if (!dryRun && args.run_git_init !== false) {
     postCreateResults.push(await runShell("git init", outputPath, 1e4));
   } else if (dryRun && args.run_git_init !== false) {
-    postCreateResults.push({ command: "git init", success: true, output: "(dry run \u2014 not executed)" });
+    postCreateResults.push({ command: "git init", success: true, output: "(dry run, not executed)" });
   }
   const nextSteps = [`cd ${args.output_dir}`];
   if (args.template === "next-saas") {
@@ -253848,7 +253848,7 @@ var scaffoldTool = {
         run_install: { type: "boolean", description: "Run the package manager install after copying files (default true)." },
         run_git_init: { type: "boolean", description: "Run 'git init' after copying files (default true)." },
         package_manager: { type: "string", enum: ["npm", "pnpm", "yarn", "bun"], description: "Defaults to npm." },
-        dry_run: { type: "boolean", description: "Preview only \u2014 no filesystem writes, no shell commands (default false)." },
+        dry_run: { type: "boolean", description: "Preview only: no filesystem writes, no shell commands (default false)." },
         output: {
           type: "object",
           properties: { max_tokens: { type: "number" } },
@@ -254617,7 +254617,7 @@ __name(isValidColumn, "isValidColumn");
 // packages/intel/src/tools/code_surface.ts
 var definition = {
   name: "code_surface",
-  description: "Use before modifying or reviewing a module to know what is public API versus internal implementation. Analyze the public vs internal API surface of a module or package using the TypeScript compiler. Returns exported symbols with kind, type signature, JSDoc, file and 1-based line \u2014 split into public (reachable from entry points) and internal. Static compiler analysis; no code is executed.",
+  description: "Use before modifying or reviewing a module to know what is public API versus internal implementation. Analyze the public vs internal API surface of a module or package using the TypeScript compiler. Returns exported symbols with kind, type signature, JSDoc, file and 1-based line, split into public (reachable from entry points) and internal. Static compiler analysis; no code is executed.",
   inputSchema: {
     type: "object",
     properties: {
@@ -254801,7 +254801,7 @@ function identifierAt(text, offset) {
 __name(identifierAt, "identifierAt");
 var definition2 = {
   name: "code_safe_delete",
-  description: "Use before deleting a symbol to see every reference that would break, instead of grepping and hoping. Check whether the symbol at a file position can be safely deleted. Uses the TypeScript LanguageService reference engine (semantic, compiler-resolved \u2014 not a text search) to find every usage, then splits them into blocking external references and non-blocking self-references. `safe: true` means no other file uses the symbol. Static analysis; nothing is deleted or executed.",
+  description: "Use before deleting a symbol to see every reference that would break, instead of grepping and hoping. Check whether the symbol at a file position can be safely deleted. Uses the TypeScript LanguageService reference engine (semantic, compiler-resolved, not a text search) to find every usage, then splits them into blocking external references and non-blocking self-references. `safe: true` means no other file uses the symbol. Static analysis; nothing is deleted or executed.",
   inputSchema: {
     type: "object",
     properties: {
@@ -255976,7 +255976,7 @@ var TreeSitterCore = class {
   /**
    * Initialize the parser, loading `web-tree-sitter` lazily on first use.
    * @throws {TreeSitterUnavailableError} when the native/WASM dep is not
-   *   installed yet — callers surface the standard setup-pointer envelope.
+   *   installed yet, callers surface the standard setup-pointer envelope.
    */
   async init() {
     if (this.initialized) {
@@ -256020,7 +256020,7 @@ var TreeSitterCore = class {
       return lang;
     } catch (error2) {
       const raw = error2 instanceof Error ? error2.message : String(error2);
-      this.lastLoadError = raw ? raw : `the .wasm grammar's dylink section format is incompatible with this web-tree-sitter version (built for an older tree-sitter ABI) \u2014 rebuild it or install a matching tree-sitter-wasms release.`;
+      this.lastLoadError = raw ? raw : `the .wasm grammar's dylink section format is incompatible with this web-tree-sitter version (built for an older tree-sitter ABI). Rebuild it or install a matching tree-sitter-wasms release.`;
       return null;
     }
   }
@@ -256048,7 +256048,7 @@ var TreeSitterCore = class {
   }
   /**
    * Hierarchical outline with start+end positions. `exported` is set ONLY on
-   * top-level entries (direct children of the source file) — never inherited
+   * top-level entries (direct children of the source file), never inherited
    * onto nested class/interface/namespace members.
    */
   getOutline(tree, filePath) {
@@ -256290,7 +256290,7 @@ async function readSingleFile(spec, globalExtract, output, defaultRange, workDir
     const buffer2 = await fs9.readFile(resolved_path);
     result.probe = true;
     if (isBinaryFile(buffer2)) {
-      result.error = "Binary file \u2014 code_read only reads text content (outline/lines).";
+      result.error = "Binary file: code_read only reads text content (outline/lines).";
       return result;
     }
     const content2 = buffer2.toString("utf-8");
@@ -256349,7 +256349,7 @@ async function readSingleFile(spec, globalExtract, output, defaultRange, workDir
   }
   const buffer = await fs9.readFile(resolved_path);
   if (isBinaryFile(buffer)) {
-    result.error = "Binary file \u2014 code_read only reads text content (outline/lines).";
+    result.error = "Binary file: code_read only reads text content (outline/lines).";
     return result;
   }
   const content = buffer.toString("utf-8");
@@ -256885,7 +256885,7 @@ var RipgrepCore = class {
    * Run ripgrep. `cwd` is set to the search root whenever one is known: ripgrep
    * resolves relative `--glob` patterns (e.g. `dir/*.ts`, produced by
    * `splitGlobPattern`/subdirectory-anchored code_glob patterns) against the
-   * PROCESS's working directory, not the positional search-path argument —
+   * PROCESS's working directory, not the positional search-path argument,
    * confirmed empirically (`rg --files --glob 'dir/*.ts' /abs/path` only
    * matches when the process cwd is `/abs/path`). Without this, subdirectory
    * glob patterns silently returned zero results whenever the server's cwd
@@ -257172,7 +257172,7 @@ function generateReplacePreview(files, searchPattern, replaceString) {
     }
   }
   const safe = matches.length > 0 && !anyFallback;
-  const summary = matches.length === 0 ? "No replacements would be made (pattern not found or no content available)." : safe ? `All ${matches.length} replacement(s) are safe (no fallback strategy needed).` : `${matches.length} replacement(s) found; some used a fallback strategy \u2014 review before applying.`;
+  const summary = matches.length === 0 ? "No replacements would be made (pattern not found or no content available)." : safe ? `All ${matches.length} replacement(s) are safe (no fallback strategy needed).` : `${matches.length} replacement(s) found; some used a fallback strategy. Review before applying.`;
   const hint = matches.length > 0 ? `To apply: use a file-write tool with find: ${JSON.stringify(searchPattern)}, replace: ${JSON.stringify(replaceString)}` : "No replacements would be made (pattern not found or no content available).";
   return { matches, total_replacements: matches.length, files_affected: affectedFiles.size, safe, summary, hint };
 }
@@ -257634,7 +257634,7 @@ async function executeQuery(query, output, workDir) {
 __name(executeQuery, "executeQuery");
 var definition4 = {
   name: "code_grep",
-  description: "Prefer this over plain grep for repo-wide searches you would otherwise page through: one batched call replaces several native searches and returned 62.7% fewer tokens for identical match sets (measured, 76/76 matches). Batch pattern search with a clean cap layer (max_results caps the file list, max_per_item caps matches per file, max_total_matches caps matches overall \u2014 counts are always true, never capped). Output modes: count_only, files_only (default), locations, matches, context, stats. Supports negate (files WITHOUT a pattern), ranked relevance sort, and preview_replace dry runs.",
+  description: "Prefer this over plain grep for repo-wide searches you would otherwise page through: one batched call replaces several native searches and returned 62.7% fewer tokens for identical match sets (measured, 76/76 matches). Batch pattern search with a clean cap layer (max_results caps the file list, max_per_item caps matches per file, max_total_matches caps matches overall; counts are always true, never capped). Output modes: count_only, files_only (default), locations, matches, context, stats. Supports negate (files WITHOUT a pattern), ranked relevance sort, and preview_replace dry runs.",
   inputSchema: {
     type: "object",
     properties: {
@@ -259217,7 +259217,7 @@ __name(validateRoutesAgainstSpec, "validateRoutesAgainstSpec");
 // packages/intel/src/tools/api_validate.ts
 var definition8 = {
   name: "api_validate",
-  description: "Use to catch drift between a written spec and the actual routes before it ships. Validate an OpenAPI/Swagger spec against actual API routes found in source \u2014 statically, spec-vs-routes only (no live HTTP requests). Reports routes the spec declares but code does not implement (missing_route), routes code implements but the spec omits (undocumented_route), and path-parameter name mismatches (parameter_mismatch), each with a JSONPath into the spec document pinpointing the location.",
+  description: "Use to catch drift between a written spec and the actual routes before it ships. Validate an OpenAPI/Swagger spec against actual API routes found in source: statically, spec-vs-routes only (no live HTTP requests). Reports routes the spec declares but code does not implement (missing_route), routes code implements but the spec omits (undocumented_route), and path-parameter name mismatches (parameter_mismatch), each with a JSONPath into the spec document pinpointing the location.",
   inputSchema: {
     type: "object",
     properties: {
@@ -259857,7 +259857,7 @@ __name(scanPrismaUsage, "scanPrismaUsage");
 // packages/intel/src/tools/db_schema.ts
 var definition9 = {
   name: "db_schema",
-  description: "Use to read a project data model without hunting for schema files. Extract a project database schema (Prisma, Drizzle, or raw SQL \u2014 auto-detected by default) into a unified models/fields/relations shape. Optional usage mode (usage: true) statically maps Prisma client call sites (model, operation, file, line) and flags calls inside loops as N+1 risk (in_loop), plus per-model call frequency. Static analysis; no database connection is made.",
+  description: "Use to read a project data model without hunting for schema files. Extract a project database schema (Prisma, Drizzle, or raw SQL, auto-detected by default) into a unified models/fields/relations shape. Optional usage mode (usage: true) statically maps Prisma client call sites (model, operation, file, line) and flags calls inside loops as N+1 risk (in_loop), plus per-model call frequency. Static analysis; no database connection is made.",
   inputSchema: {
     type: "object",
     properties: {
@@ -261576,40 +261576,40 @@ var UNSTABLE_OBJECT_METHODS = /* @__PURE__ */ new Set(["keys", "values", "entrie
 function classifyDependency(depText, scope, _sourceFile) {
   const base = depText.split(".")[0];
   if (scope.setterVars.has(base)) {
-    return { stability: "stable", reason: "setState function from useState \u2014 guaranteed stable by React" };
+    return { stability: "stable", reason: "setState function from useState: guaranteed stable by React" };
   }
   if (scope.dispatchVars.has(base)) {
-    return { stability: "stable", reason: "dispatch from useReducer \u2014 guaranteed stable by React" };
+    return { stability: "stable", reason: "dispatch from useReducer: guaranteed stable by React" };
   }
   if (scope.refVars.has(base) && !depText.includes(".current")) {
-    return { stability: "stable", reason: "useRef() object \u2014 stable reference (note: .current is mutable but not tracked)" };
+    return { stability: "stable", reason: "useRef() object: stable reference (note: .current is mutable but not tracked)" };
   }
   if (scope.useCallbackVars.has(base)) {
-    return { stability: "stable", reason: "useCallback-wrapped function \u2014 stable across renders (when its own deps are stable)" };
+    return { stability: "stable", reason: "useCallback-wrapped function: stable across renders (when its own deps are stable)" };
   }
   if (scope.useMemoVars.has(base)) {
-    return { stability: "stable", reason: "useMemo result \u2014 stable reference (memoized)" };
+    return { stability: "stable", reason: "useMemo result: stable reference (memoized)" };
   }
   if (scope.useIdVars.has(base)) {
-    return { stability: "stable", reason: "useId() result \u2014 stable string reference" };
+    return { stability: "stable", reason: "useId() result: stable string reference" };
   }
   if (scope.importedIdentifiers.has(base)) {
-    return { stability: "stable", reason: "Imported identifier \u2014 module-level reference, stable across renders" };
+    return { stability: "stable", reason: "Imported identifier: module-level reference, stable across renders" };
   }
   if (scope.moduleScopeIdentifiers.has(base)) {
-    return { stability: "stable", reason: "Module-scope declaration \u2014 defined outside component, stable" };
+    return { stability: "stable", reason: "Module-scope declaration: defined outside component, stable" };
   }
   if (/^(true|false|null|undefined|\d+|'[^']*'|"[^"]*")$/.test(depText.trim())) {
-    return { stability: "stable", reason: "Primitive literal \u2014 always the same value" };
+    return { stability: "stable", reason: "Primitive literal: always the same value" };
   }
   if (depText.trim().startsWith("{")) {
-    return { stability: "unstable", reason: "Inline object literal \u2014 creates new reference every render" };
+    return { stability: "unstable", reason: "Inline object literal: creates new reference every render" };
   }
   if (depText.trim().startsWith("[")) {
-    return { stability: "unstable", reason: "Inline array literal \u2014 creates new reference every render" };
+    return { stability: "unstable", reason: "Inline array literal: creates new reference every render" };
   }
   if (depText.includes("=>") || depText.trimStart().startsWith("function")) {
-    return { stability: "unstable", reason: "Inline function expression \u2014 creates new reference every render; wrap in useCallback" };
+    return { stability: "unstable", reason: "Inline function expression: creates new reference every render; wrap in useCallback" };
   }
   const arrayMethodMatch = depText.match(/\.([a-z]+)\s*\(/);
   if (arrayMethodMatch && UNSTABLE_ARRAY_METHODS.has(arrayMethodMatch[1])) {
@@ -261624,14 +261624,14 @@ function classifyDependency(depText, scope, _sourceFile) {
   }
   if (scope.stateVars.has(base)) {
     if (depText.includes(".current")) {
-      return { stability: "unknown", reason: "ref.current value \u2014 .current is mutable and not tracked by React's dep system" };
+      return { stability: "unknown", reason: "ref.current value: .current is mutable and not tracked by React's dep system" };
     }
-    return { stability: "unknown", reason: "State variable \u2014 stable for primitives, unstable for object/array state (new ref on each setState)" };
+    return { stability: "unknown", reason: "State variable: stable for primitives, unstable for object/array state (new ref on each setState)" };
   }
   if (depText.includes(".")) {
-    return { stability: "unknown", reason: "Member access expression \u2014 stability depends on the source object's stability" };
+    return { stability: "unknown", reason: "Member access expression: stability depends on the source object's stability" };
   }
-  return { stability: "unknown", reason: "Cannot determine statically \u2014 may be a prop, context value, or custom hook return" };
+  return { stability: "unknown", reason: "Cannot determine statically: may be a prop, context value, or custom hook return" };
 }
 __name(classifyDependency, "classifyDependency");
 function analyzeDependencies(rawDeps, scope, sourceFile) {
@@ -262324,7 +262324,7 @@ function classifyComponents(graph, directiveMap) {
       reasons.set(file, 'Has "use client" directive');
     } else if (info.directive === '"use server"') {
       classifications.set(file, "server");
-      reasons.set(file, 'Has "use server" directive \u2014 explicitly server-only');
+      reasons.set(file, 'Has "use server" directive: explicitly server-only');
     }
   }
   const queue = [];
@@ -262352,7 +262352,7 @@ function classifyComponents(graph, directiveMap) {
   for (const [file] of graph) {
     const info = directiveMap.get(file);
     const cls = classifications.get(file) ?? "server";
-    const reason = reasons.get(file) ?? "No directive, not imported by client components \u2014 server by default";
+    const reason = reasons.get(file) ?? "No directive, not imported by client components: server by default";
     results.push({ file, classification: cls, reason, directive: info?.directive ?? void 0 });
   }
   return results;
@@ -262631,7 +262631,7 @@ async function handler12(rawArgs) {
         clientInherited: classifications.filter((c) => c.classification === "client-inherited").length,
         ambiguous: classifications.filter((c) => c.classification === "ambiguous").length,
         ...clientFiles.length === 0 && !args.entry ? {
-          note: 'No "use client" directives found in the scanned directory \u2014 all files are treated as server components.'
+          note: 'No "use client" directives found in the scanned directory: all files are treated as server components.'
         } : {}
       };
       const boundaries = Array.from(boundaryMap.entries()).map(([file, childCount]) => ({ file, resolved_path: path25.resolve(baseDir, file), childCount })).sort((a, b) => b.childCount - a.childCount);
@@ -264502,7 +264502,7 @@ __name(analyzeStackingElements, "analyzeStackingElements");
 var DEFAULT_SECTIONS = ["overflow", "stacking"];
 var definition13 = {
   name: "layout_analysis",
-  description: `Use to reason about rendered layout from Tailwind classes without launching a browser. Analyze a JSX/TSX component's CSS layout from its Tailwind classes. Returns a hierarchy backbone (element, classes, layout_role, children) plus opt-in sections: "overflow" (nested-flex min-height risks + fix options; the absolute-positioning heuristic is a guarded low-confidence flag), "sizing" (ancestor constraint chain \u2014 requires a selector), and "stacking" (z-index contexts with every context-creation trigger per element). Responsive analysis is not available in this alpha. Static analysis; no code is executed.`,
+  description: `Use to reason about rendered layout from Tailwind classes without launching a browser. Analyze a JSX/TSX component's CSS layout from its Tailwind classes. Returns a hierarchy backbone (element, classes, layout_role, children) plus opt-in sections: "overflow" (nested-flex min-height risks + fix options; the absolute-positioning heuristic is a guarded low-confidence flag), "sizing" (ancestor constraint chain, requires a selector), and "stacking" (z-index contexts with every context-creation trigger per element). Responsive analysis is not available in this alpha. Static analysis; no code is executed.`,
   inputSchema: {
     type: "object",
     properties: {
@@ -264902,7 +264902,7 @@ async function astPatternSpans(filePath, original, pattern, replaceTemplate, lan
     return {
       spans: [],
       available: false,
-      reason: nativeDepMessage("structural_edit ast_pattern mode") + ' Meanwhile, use mode "ast" (TypeScript-compiler node matching) or "exact" \u2014 neither needs a native dependency.'
+      reason: nativeDepMessage("structural_edit ast_pattern mode") + ' Meanwhile, use mode "ast" (TypeScript-compiler node matching) or "exact"; neither needs a native dependency.'
     };
   }
   const langName = languageOverride ? AST_GREP_LANG[languageOverride.toLowerCase()] ?? languageOverride : astGrepLangFor(filePath);
@@ -265105,7 +265105,7 @@ function truncateDiff(diff, cap) {
   const tail = Math.floor(cap * 0.25);
   return {
     diff: `${diff.slice(0, head)}
-... [diff truncated \u2014 full content via code_read] ...
+... [diff truncated: full content via code_read] ...
 ${diff.slice(-tail)}`,
     truncated: true
   };
@@ -265267,7 +265267,7 @@ async function runPreview(input, startedAt) {
       error: errorCount,
       files: token.files.length
     },
-    next: readyCount > 0 ? `Call structural_edit action:"apply" with preview_token:"${token.token}" within 10 minutes to write ${readyCount} ready edit(s).` : "No ready edits \u2014 nothing to apply."
+    next: readyCount > 0 ? `Call structural_edit action:"apply" with preview_token:"${token.token}" within 10 minutes to write ${readyCount} ready edit(s).` : "No ready edits: nothing to apply."
   };
   const env = successEnvelope(data, {
     execution_ms: Math.round(performance.now() - startedAt),
@@ -265500,7 +265500,7 @@ async function run(args) {
 __name(run, "run");
 var definition14 = {
   name: "structural_edit",
-  description: `Use for multi-site or AST-anchored edits where a plain string replace is risky (rename all call sites, change every matching pattern). The ONE write tool on this read-only server \u2014 a preview-gated, AST-aware editor. Two steps: action:"preview" returns a per-entry unified diff, a single-use preview_token, and each file's content hash WITHOUT writing; action:"apply" takes that token, re-checks every hash, and writes. A file changed since preview is refused (refused_stale), never silently re-matched. Atomic mode (default) rolls the whole batch back from pre-apply snapshots if any entry cannot apply, returning success:false. Modes: exact (byte-exact string), ast (TypeScript-compiler node matching), ast_pattern (ast-grep \u2014 unavailable unless @ast-grep/napi is installed). No fuzzy, no regex. Newlines/CRLF outside edit spans are preserved byte-for-byte.`,
+  description: `Use for multi-site or AST-anchored edits where a plain string replace is risky (rename all call sites, change every matching pattern). The ONE write tool on this read-only server: a preview-gated, AST-aware editor. Two steps: action:"preview" returns a per-entry unified diff, a single-use preview_token, and each file's content hash WITHOUT writing; action:"apply" takes that token, re-checks every hash, and writes. A file changed since preview is refused (refused_stale), never silently re-matched. Atomic mode (default) rolls the whole batch back from pre-apply snapshots if any entry cannot apply, returning success:false. Modes: exact (byte-exact string), ast (TypeScript-compiler node matching), ast_pattern (ast-grep, unavailable unless @ast-grep/napi is installed). No fuzzy, no regex. Newlines/CRLF outside edit spans are preserved byte-for-byte.`,
   inputSchema: {
     type: "object",
     properties: {

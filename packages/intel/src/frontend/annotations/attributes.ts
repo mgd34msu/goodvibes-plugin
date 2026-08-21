@@ -1,5 +1,5 @@
 /**
- * `attributes` annotation for component_tree — Lane 4 (§4.4.1).
+ * `attributes` annotation for component_tree, Lane 4 (§4.4.1).
  *
  * Distilled from frontend-engine `core/accessibility/*`. Per tribunal, attributes
  * are a STATIC overlay of the VERIFIED checks only and NEVER claim computed-style
@@ -9,7 +9,7 @@
  *  - click-without-role (onClick on a non-focusable element with no role),
  *  - ARIA required-attribute presence (explicit role's required attrs).
  * The v1 className-derived checks (focus-outline, color-contrast, expandable) are
- * dropped as computed-style claims. Shape per §4.4.1 (array generalization —
+ * dropped as computed-style claims. Shape per §4.4.1 (array generalization,
  * ruling R4-2): [{ element, role, issues }] for elements with ≥1 issue.
  *
  * @module frontend/annotations/attributes
@@ -125,7 +125,7 @@ export function annotateAttributes(componentNode: ts.Node, sourceFile: ts.Source
     const role = getRole(tag, attrs);
     const issues: string[] = [];
 
-    // 1. missing-alt (WCAG 1.1.1) — verified: img with no alt, not decorative.
+    // 1. missing-alt (WCAG 1.1.1), verified: img with no alt, not decorative.
     if (tag === 'img' && !attrs.has('alt')) {
       const decorative =
         attrs.get('aria-hidden') === 'true' ||
@@ -134,7 +134,7 @@ export function annotateAttributes(componentNode: ts.Node, sourceFile: ts.Source
       if (!decorative) {issues.push('missing_alt');}
     }
 
-    // 2. click-without-role (WCAG 4.1.2) — verified: onClick on a non-focusable
+    // 2. click-without-role (WCAG 4.1.2), verified: onClick on a non-focusable
     //    HTML element with no explicit role.
     const hasClick = attrs.has('onClick') || attrs.has('onclick');
     const isInteractive = NATIVELY_FOCUSABLE.has(tag) || attrs.has('role');
@@ -142,7 +142,7 @@ export function annotateAttributes(componentNode: ts.Node, sourceFile: ts.Source
       issues.push('click_without_role');
     }
 
-    // 3. ARIA required-attribute presence — verified: explicit role's required attrs.
+    // 3. ARIA required-attribute presence, verified: explicit role's required attrs.
     const explicitRole = attrs.get('role');
     if (explicitRole && ARIA_REQUIRED[explicitRole]) {
       const required = ARIA_REQUIRED[explicitRole];

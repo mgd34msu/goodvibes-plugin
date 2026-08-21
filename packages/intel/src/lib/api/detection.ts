@@ -1,7 +1,7 @@
 /**
  * Framework detection for `api_routes` / `api_spec` / `api_validate`.
  *
- * Ported near-verbatim from v1 project-engine `core/api/detection.ts` — reads
+ * Ported near-verbatim from v1 project-engine `core/api/detection.ts`, reads
  * package.json dependencies/devDependencies and returns the first framework
  * match in priority order.
  *

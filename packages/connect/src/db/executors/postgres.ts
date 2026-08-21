@@ -1,5 +1,5 @@
 /**
- * PostgreSQL query executor — ported from v1 project-engine
+ * PostgreSQL query executor, ported from v1 project-engine
  * `core/database/executors/postgres.ts`. The `pg` driver loads lazily from the
  * target project (honest install hint when absent).
  */
@@ -33,11 +33,19 @@ export function getPostgresTypeName(oid: number): string {
   return typeMap[oid] || 'unknown';
 }
 
-/** Execute a SQL query against PostgreSQL using a single isolated client. */
+/**
+ * Execute a SQL query against PostgreSQL using a single isolated client.
+ * @param connectionInfo - parsed connection details
+ * @param query - SQL to execute
+ * @param params - parameters for `$n` placeholders
+ * @param readonly - run inside a `BEGIN READ ONLY` transaction so the server
+ * itself rejects a mutation the text classifier failed to recognise
+ */
 export async function executePostgres(
   connectionInfo: DatabaseConnectionInfo,
   query: string,
   params: unknown[] = [],
+  readonly = true,
 ): Promise<ExecutionResult> {
   const pg = await loadPostgresDriver();
   if (!pg) {
@@ -66,6 +74,7 @@ export async function executePostgres(
   }
 
   try {
+    if (readonly) {await client.query('BEGIN READ ONLY');}
     const result = await client.query(query, params);
     const columns: ColumnInfo[] =
       result.fields?.map((field: { name: string; dataTypeID: number }) => ({
@@ -79,6 +88,9 @@ export async function executePostgres(
       cause,
     );
   } finally {
+    if (readonly) {
+      await client.query('ROLLBACK').catch(() => undefined);
+    }
     await client.end();
   }
 }

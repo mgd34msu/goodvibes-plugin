@@ -1,5 +1,5 @@
 /**
- * structural_edit (intel tool 15) — the write-path regression net.
+ * structural_edit (intel tool 15), the write-path regression net.
  *
  * Every non-negotiable condition from carve-out §8 lane 10 / plan §14.B has a
  * test here: preview→apply round trip, stale-hash refusal, first-class rollback
@@ -44,7 +44,7 @@ function tokenFilePath(token: string): string {
   return getStatePath(stateRoot, 'edit-tokens', `${token}.json`);
 }
 
-describe('structural_edit — preview/apply round trip (exact mode)', () => {
+describe('structural_edit: preview/apply round trip (exact mode)', () => {
   it('previews a diff + token without writing, then applies it', async () => {
     const file = await writeFile(dir, 'a.ts', 'const value = 1;\nconst other = 2;\n');
 
@@ -113,7 +113,7 @@ describe('structural_edit — preview/apply round trip (exact mode)', () => {
   });
 });
 
-describe('structural_edit — ast mode (TypeScript compiler)', () => {
+describe('structural_edit: ast mode (TypeScript compiler)', () => {
   it('replaces a whole function declaration node', async () => {
     const file = await writeFile(dir, 'fn.ts', 'export function foo(): number {\n  return 1;\n}\n');
     const preview = expectSuccess<{ preview_token: string; entries: Record<string, { status: string; match_count: number }> }>(
@@ -134,7 +134,7 @@ describe('structural_edit — ast mode (TypeScript compiler)', () => {
   });
 });
 
-describe('structural_edit — stale-hash refusal (never silently re-matches)', () => {
+describe('structural_edit: stale-hash refusal (never silently re-matches)', () => {
   it('refuses an entry whose file changed since preview', async () => {
     const file = await writeFile(dir, 's.ts', 'value = 1\n');
     const preview = expectSuccess<{ preview_token: string }>(await call({
@@ -150,12 +150,12 @@ describe('structural_edit — stale-hash refusal (never silently re-matches)', (
     expect(apply.success).toBe(false);
     expect(apply.data!.entries.e.status).toBe('refused_stale');
     expect(apply.data!.summary.refused_stale).toBe(1);
-    // The stale content is untouched — we did NOT re-match or overwrite it.
+    // The stale content is untouched, we did NOT re-match or overwrite it.
     expect(await fs.readFile(file, 'utf-8')).toBe('value = 999\n');
   });
 });
 
-describe('structural_edit — atomic rollback reporting (v1 issue-7, inverted)', () => {
+describe('structural_edit: atomic rollback reporting (v1 issue-7, inverted)', () => {
   it('rolls the fresh entry back from its snapshot and reports rolled_back + refused_stale, success:false', async () => {
     const fileA = await writeFile(dir, 'A.ts', 'AAA one\n');
     const fileB = await writeFile(dir, 'B.ts', 'BBB one\n');
@@ -212,7 +212,7 @@ describe('structural_edit — atomic rollback reporting (v1 issue-7, inverted)',
   });
 });
 
-describe('structural_edit — CRLF preservation (v1 silent-conversion lesson)', () => {
+describe('structural_edit: CRLF preservation (v1 silent-conversion lesson)', () => {
   it('leaves CRLF bytes outside the edit span exactly, and renders the replacement in CRLF too', async () => {
     const crlf = 'const a = 1;\r\nconst b = 2;\r\nconst c = 3;\r\n';
     const file = await writeFile(dir, 'crlf.ts', crlf);
@@ -227,14 +227,14 @@ describe('structural_edit — CRLF preservation (v1 silent-conversion lesson)', 
 
     const after = await fs.readFile(file, 'utf-8');
     expect(after).toBe('const a = 1;\r\nconst b = 20;\r\nconst bb = 22;\r\nconst c = 3;\r\n');
-    // Not a single lone LF anywhere — every newline is a full CRLF.
+    // Not a single lone LF anywhere, every newline is a full CRLF.
     for (let i = 0; i < after.length; i++) {
       if (after[i] === '\n') {expect(after[i - 1]).toBe('\r');}
     }
   });
 });
 
-describe('structural_edit — token expiry (10-minute TTL)', () => {
+describe('structural_edit: token expiry (10-minute TTL)', () => {
   it('rejects an expired token', async () => {
     const file = await writeFile(dir, 'exp.ts', 'k = 1\n');
     const preview = expectSuccess<{ preview_token: string }>(await call({
@@ -255,7 +255,7 @@ describe('structural_edit — token expiry (10-minute TTL)', () => {
   });
 });
 
-describe('structural_edit — ast_pattern behavior tracks @ast-grep/napi availability', () => {
+describe('structural_edit: ast_pattern behavior tracks @ast-grep/napi availability', () => {
   const astGrepAvailable = (() => {
     try {
       createRequire(import.meta.url).resolve('@ast-grep/napi');
@@ -304,7 +304,7 @@ describe('structural_edit — ast_pattern behavior tracks @ast-grep/napi availab
   });
 });
 
-describe('structural_edit — input validation', () => {
+describe('structural_edit: input validation', () => {
   it('rejects an unknown action', async () => {
     const r = parseResult(await call({ action: 'destroy' }));
     expect(r.success).toBe(false);

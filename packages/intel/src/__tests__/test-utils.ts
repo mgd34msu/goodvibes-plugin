@@ -2,7 +2,7 @@
  * Test utilities for the search/read trio (code_read, code_grep, code_glob).
  *
  * Every test gets an isolated temp directory and passes it explicitly as
- * `base_path` (never relies on `process.chdir`) — this exercises the same
+ * `base_path` (never relies on `process.chdir`), this exercises the same
  * `base_path` contract real callers use (field issue 1) and keeps parallel
  * test files from ever touching one another's fixtures.
  */
@@ -78,12 +78,12 @@ export async function writeFiles(root: string, files: Record<string, string>): P
  * which requires the newer wasm "dylink.0" custom-section format; the v1
  * grammars use the legacy "dylink" section and fail to load
  * (`Language.load` throws). This is a genuine asset/toolchain version gap,
- * not a code defect — outline-extraction tests that need a working grammar
+ * not a code defect, outline-extraction tests that need a working grammar
  * gate on this probe and skip with a clear reason instead of failing red,
  * so the vitest gate stays honest about what is and is not exercised. Fix:
  * install a `tree-sitter-wasms` release built for web-tree-sitter 0.26.x (or
  * rebuild the grammars with a matching `tree-sitter-cli`) and re-run
- * `packages/intel/wasm/` asset refresh — no code change needed once that
+ * `packages/intel/wasm/` asset refresh, no code change needed once that
  * lands.
  */
 let outlineCapabilityCache: boolean | null = null;

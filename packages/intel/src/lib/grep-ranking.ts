@@ -5,16 +5,16 @@
  * in-place sort + one relevance scalar, no content duplication"). v1's
  * `rankResults()` (a) returned a separate `ranked_files` array that carried a
  * full COPY of each file's `matches` array alongside the original `files`
- * array — the exact content-duplication issue 6 also flagged, just on the
+ * array, the exact content-duplication issue 6 also flagged, just on the
  * ranking path instead of the pagination path; (b) shelled out to `git log`
- * synchronously per file via `execFileSync` — a blocking sync call per
+ * synchronously per file via `execFileSync`, a blocking sync call per
  * ranked file, exactly what `core/proc`'s "no blocking sync loops" rule
  * forbids; (c) coupled ranking to the `FileStateCache` singleton for no
  * strong signal value.
  *
  * v2: `rankFiles` computes ONE `relevance` scalar per file from data already
  * in hand (no shell-outs, no cache lookups) and sorts the SAME file objects
- * in place — no parallel array, no duplicated match content.
+ * in place, no parallel array, no duplicated match content.
  */
 
 export interface RankableMatch {
@@ -66,7 +66,7 @@ const WEIGHTS = { EXACT_MATCH: 0.45, EXPORTED: 0.25, PATH_DEPTH: 0.3 };
 
 /**
  * Score and sort `files` IN PLACE by relevance (descending). Attaches a single
- * `relevance` scalar (0.0–1.0) to each existing file object — the `matches`
+ * `relevance` scalar (0.0–1.0) to each existing file object, the `matches`
  * array already on each entry is reused, never copied into a parallel result.
  * @param files - file results to rank (mutated: reordered, `relevance` set)
  * @param pattern - the search pattern used, for exact-match scoring

@@ -1,8 +1,8 @@
 /**
- * `@goodvibes/core/logging` — level-routed logging with rotation.
+ * `@goodvibes/core/logging`, level-routed logging with rotation.
  *
  * Fixes plan §7.5: debug output (the `SQLiteStore: saved to disk` TUI spam)
- * never interleaves into human logs again — debug routes to its own file, while
+ * never interleaves into human logs again, debug routes to its own file, while
  * info/warn/error go to the human activity log. Both files rotate with a size
  * cap so `activity.md` can never grow to 1.2 MB / 54k lines again. Files live
  * under the namespaced `.goodvibes/logs/`.
@@ -84,7 +84,7 @@ export function createLogger(options: LoggerOptions = {}): Logger {
       try {
         renameSync(from, to);
       } catch {
-        // missing intermediate rotation — skip
+        // missing intermediate rotation, skip
       }
     }
   }

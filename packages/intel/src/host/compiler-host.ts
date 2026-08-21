@@ -1,5 +1,5 @@
 /**
- * The one intel compiler host — a single wrapped TypeScript LanguageService /
+ * The one intel compiler host, a single wrapped TypeScript LanguageService /
  * Program per tsconfig scope, shared by every intel analyzer (§3.3, R4).
  *
  * Ported and rebuilt from project-engine `core/code-intel/language-service.ts`.
@@ -7,7 +7,7 @@
  *  - No global `getProjectRoot()`: callers resolve `base_path` → absolute via
  *    `core/fsx` and hand the host absolute paths. The host does no path rewriting
  *    beyond slash-normalization for TS's own key space (`toTsPath`).
- *  - No background `setInterval` cleanup (field issue 9 — a timer that keeps the
+ *  - No background `setInterval` cleanup (field issue 9, a timer that keeps the
  *    event loop alive is exactly the orphaned-server bug). The cache is bounded
  *    by COUNT with least-recently-accessed eviction, and `dispose()` tears it
  *    all down on shutdown.

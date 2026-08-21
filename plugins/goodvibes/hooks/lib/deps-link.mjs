@@ -1,5 +1,5 @@
 /**
- * deps-link — point a plugin server's node_modules at the durable install.
+ * deps-link, point a plugin server's node_modules at the durable install.
  *
  * Native dependencies live in the durable home `~/.claude/.goodvibes/deps/<server>/`
  * so they survive plugin-cache replacement on update. `linkDeps` makes
@@ -8,7 +8,7 @@
  *
  *   1. directory symlink (POSIX, or Windows with Developer Mode)
  *   2. junction (Windows without symlink permission)
- *   3. recursive copy (last resort — always works, costs disk)
+ *   3. recursive copy (last resort, always works, costs disk)
  *
  * Dependency-free plain .mjs. Also runnable directly:
  *   node deps-link.mjs <pluginRoot> <server>
@@ -26,7 +26,7 @@ export const SERVER_PROBES = {
   connect: 'sql.js',
 };
 
-/** Root of the durable dependency home — survives plugin updates. */
+/** Root of the durable dependency home, survives plugin updates. */
 export function durableDepsRoot() {
   return path.join(homedir(), '.claude', '.goodvibes', 'deps');
 }
@@ -62,7 +62,7 @@ export function linkDeps(pluginRoot, server) {
       rmSync(target, { recursive: true, force: true });
     }
   } catch {
-    /* fall through — the link attempts below surface any real problem */
+    /* fall through, the link attempts below surface any real problem */
   }
   try {
     symlinkSync(source, target, 'dir');

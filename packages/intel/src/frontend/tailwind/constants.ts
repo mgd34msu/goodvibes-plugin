@@ -1,5 +1,5 @@
 /**
- * Tailwind class dictionary — Lane 4.
+ * Tailwind class dictionary, Lane 4.
  * Ported from frontend-engine `core/tailwind/constants.ts` (the corrected class
  * dictionary, §4.4.2). Only the three maps the layout parser needs are carried;
  * the responsive breakpoint tables do NOT port (responsive ships post-rebuild).

@@ -63,6 +63,28 @@ describe('secrets-store', () => {
       const content = JSON.parse(await fs.promises.readFile(secretsPath, 'utf-8'));
       expect(content.services.test.token).toBe('tok');
     });
+
+    it('replaces the secrets file by rename, never opening it for writing', async () => {
+      const secretsPath = path.join(tmpDir, ...STATE, 'goodvibes.secrets.json');
+      await store.setServiceSecret('github', { type: 'bearer', token: 'one' });
+      // Only a rename over the path can update a file this process cannot write
+      // to, so a truncating in-place write would fail here.
+      await fs.promises.chmod(secretsPath, 0o444);
+      await expect(fs.promises.writeFile(secretsPath, 'direct')).rejects.toThrow();
+
+      await store.setServiceSecret('gitlab', { type: 'bearer', token: 'two' });
+
+      const secrets = await store.loadSecrets();
+      expect(secrets.services.github).toEqual({ type: 'bearer', token: 'one' });
+      expect(secrets.services.gitlab).toEqual({ type: 'bearer', token: 'two' });
+      expect((await fs.promises.stat(secretsPath)).mode & 0o777).toBe(0o600);
+    });
+
+    it('leaves no temp residue beside the secrets file', async () => {
+      await store.setServiceSecret('svc', { type: 'bearer', token: 'tok' });
+      const entries = await fs.promises.readdir(path.join(tmpDir, ...STATE));
+      expect(entries.filter((e) => e.includes('.tmp'))).toEqual([]);
+    });
   });
 
   describe('getServiceSecrets / setServiceSecret', () => {

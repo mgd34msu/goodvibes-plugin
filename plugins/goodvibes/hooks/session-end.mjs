@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * SessionEnd hook — plan §8 SessionEnd row, KEEP (slim).
+ * SessionEnd hook, plan §8 SessionEnd row, KEEP (slim).
  *
  * v1 (`plugins/goodvibes/hooks/scripts/src/session-end/index.ts`, read-only)
  * mixed session-summary writing with tmux dashboard-pane teardown and a
@@ -13,7 +13,7 @@
  * just ended (priced from its transcript JSONL, dependency-free) and write it
  * to `.goodvibes/cache/last-session-summary.json`, maintaining a running
  * project total. SessionStart reads that file to surface one value line every
- * session. The recap is fully fail-open — any error skips it, never blocking
+ * session. The recap is fully fail-open, any error skips it, never blocking
  * the marker write or the hook response.
  */
 
@@ -66,7 +66,7 @@ function writeSessionRecap(cacheDir, input, cwd, sessionId) {
 
     writeJsonAtomic(summaryPath, recap);
   } catch {
-    /* fail-open — a missing recap must never break the hook */
+    /* fail-open, a missing recap must never break the hook */
   }
 }
 

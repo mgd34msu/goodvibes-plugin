@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * SubagentStop hook — plan §8 SubagentStop row, REBUILD
+ * SubagentStop hook, plan §8 SubagentStop row, REBUILD
  * (tribunal 2026-07-02): "the telemetry/validation/test-verification pipeline
- * is legitimate and feeds analytics — keep it; delete the ~1.5KB orchestrator
+ * is legitimate and feeds analytics, keep it; delete the ~1.5KB orchestrator
  * injection entirely. Telemetry-only, silent."
  *
  * Ported from `plugins/goodvibes/hooks/scripts/src/subagent-stop/**` (v1,
@@ -13,12 +13,12 @@
  *    compute duration, extract files the agent modified from its transcript,
  *    run a bounded `tsc --noEmit` when TypeScript files were touched, and
  *    write one JSONL telemetry record per completion.
- *  - DELETED: `buildOrchestratorContext` and everything it returned — v1's
+ *  - DELETED: `buildOrchestratorContext` and everything it returned, v1's
  *    ~1.5KB of "next steps" doctrine injected into the parent session. This
  *    hook returns NO systemMessage/additionalContext at all (silent).
  *  - SCOPED DOWN: v1's `findTestsForFile`/`runTests` pipeline (automation/
  *    test-runner.ts) matched and ran project test suites per completed
- *    subagent — too slow and too failure-prone to run unconditionally inside
+ *    subagent, too slow and too failure-prone to run unconditionally inside
  *    a hook that must answer quickly and fail open (the exact shape of field
  *    issue 9's busy-loop lesson). v2 keeps the bounded type-check signal and
  *    honestly reports `tests.ran: false` rather than silently claiming a test
@@ -79,7 +79,7 @@ function extractFilesModified(transcriptPath, maxLines = 5000) {
   return [...files];
 }
 
-/** Bounded `tsc --noEmit` run. Never throws — reports pass/fail/skip honestly. */
+/** Bounded `tsc --noEmit` run. Never throws, reports pass/fail/skip honestly. */
 function typeCheck(cwd, filesModified) {
   const tsFiles = filesModified.filter((f) => f.endsWith('.ts') || f.endsWith('.tsx'));
   if (tsFiles.length === 0) return { ran: false, valid: true, errors: [] };

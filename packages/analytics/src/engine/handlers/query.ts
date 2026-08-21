@@ -1,5 +1,5 @@
 /**
- * analytics_query handler — ad-hoc queries against live session data.
+ * analytics_query handler, ad-hoc queries against live session data.
  *
  * Queries the Aggregator's current DashboardState and returns formatted
  * results. Supports scoped queries (tokens, cache, commands, agents, files,
@@ -559,7 +559,7 @@ function renderActivity(
     const duration = e.duration_ms !== undefined ? ` ${formatDuration(e.duration_ms)}` : '';
     const cache = e.cache_hit === true ? ' [cache]' : '';
     const tokens = e.tokens !== undefined ? ` ${formatNumber(e.tokens)}t` : '';
-    lines.push(`  ${e.timestamp} ${e.tool}${duration}${cache}${tokens} — ${e.description}`);
+    lines.push(`  ${e.timestamp} ${e.tool}${duration}${cache}${tokens}: ${e.description}`);
   }
   if (activity.length > 20) {
     lines.push(`  ... and ${activity.length - 20} more`);

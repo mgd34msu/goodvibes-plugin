@@ -1,5 +1,5 @@
 /**
- * Secrets file guard — prevents accidental git commits of credential files.
+ * Secrets file guard, prevents accidental git commits of credential files.
  *
  * Ported from v1 precision-engine `utils/fetch/secrets-guard.ts` (logic intact,
  * verified robust by the plan). The protected basenames are unchanged so the
@@ -24,7 +24,7 @@ export function isSecretFile(filePath: string): boolean {
 }
 
 /**
- * Ensure `.gitignore` contains entries for the credential files. Idempotent —
+ * Ensure `.gitignore` contains entries for the credential files. Idempotent,
  * appends only the missing basenames. Called before any secrets/cookies write.
  * @param projectRoot - directory whose `.gitignore` is amended
  */
@@ -38,7 +38,7 @@ export async function ensureGitignore(projectRoot: string): Promise<void> {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
       throw error;
     }
-    // No .gitignore exists — we create one below.
+    // No .gitignore exists, we create one below.
   }
 
   const lines = content.split('\n').map((l) => l.trim());

@@ -1,13 +1,13 @@
 /**
- * `api_spec` — generate an OpenAPI 3.0.3 spec from detected API routes.
+ * `api_spec`, generate an OpenAPI 3.0.3 spec from detected API routes.
  *
  * Ports project-engine `extensions/api/spec.ts` + `core/api/{openapi,
- * type-extraction}.ts` (§4.1). Pairs with `api_routes` — it calls the same
+ * type-extraction}.ts` (§4.1). Pairs with `api_routes`, it calls the same
  * `scanFrameworkRoutes` orchestration directly (in-process; v1 self-called
  * its own `routes.ts` handler and re-parsed the JSON response, which does not
  * port). READ-ONLY: unlike v1, the generated spec is returned in the
  * response only and is never written to disk (intel's read-only posture,
- * §4.1 api_spec row — "no sync"); `format: "yaml"` returns the YAML text
+ * §4.1 api_spec row, "no sync"); `format: "yaml"` returns the YAML text
  * in-memory alongside the JSON `spec` object.
  *
  * v2 wrappers: `base_path`/`resolved_path` echo (issue 1), `core/proc`
@@ -275,7 +275,7 @@ export async function handler(rawArgs: unknown): Promise<CallToolResult> {
         description: typeof parsed.description === 'string' ? parsed.description : undefined,
       };
     } catch {
-      // No package.json (or unreadable) — spec falls back to args/defaults.
+      // No package.json (or unreadable), spec falls back to args/defaults.
     }
 
     const { spec, endpoints, missingTypes } = buildSpec(routes, args, pkg, baseDir);

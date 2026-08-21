@@ -1,5 +1,5 @@
 /**
- * BudgetTracker — Stateless budget computation with threshold alerting.
+ * BudgetTracker, Stateless budget computation with threshold alerting.
  *
  * Computes a BudgetState from the current SessionMetrics and tracks which
  * warning thresholds have already been surfaced, ensuring each threshold
@@ -7,8 +7,8 @@
  *
  * Design notes:
  *   - Stateless computation: takes metrics as input, emits state as output.
- *   - No file I/O — reads config from constructor, metrics from update().
- *   - Stateful — callers should not share instances across workers.
+ *   - No file I/O, reads config from constructor, metrics from update().
+ *   - Stateful, callers should not share instances across workers.
  */
 
 import type { BudgetState, SessionMetrics, AnalyticsConfig } from '../types.js';
@@ -128,7 +128,7 @@ export class BudgetTracker {
    *
    * A threshold is "crossed" when the current usage percentage equals or
    * exceeds the threshold fraction. Each threshold is returned at most once
-   * per session — subsequent calls return null for already-reported thresholds.
+   * per session, subsequent calls return null for already-reported thresholds.
    *
    * @returns The lowest newly-crossed threshold or null if none.
    */

@@ -1,8 +1,8 @@
 /**
- * goodvibes-connect — warn-first secrets commit guard (PreToolUse on Bash).
+ * goodvibes-connect, warn-first secrets commit guard (PreToolUse on Bash).
  *
  * Plain `.mjs`, no build step (R8). This is the REBUILT guard the plan requires:
- * real detection, warn-first escalation, and tests — nothing placebo. Unlike the
+ * real detection, warn-first escalation, and tests, nothing placebo. Unlike the
  * v1 guard (which only matched a literal filename and let `git add -A` through on
  * the strength of .gitignore), this one:
  *   1. matches explicit references to a protected credential file, AND
@@ -57,7 +57,7 @@ export function scanStatusForProtected(porcelain, basenames) {
   for (const rawLine of String(porcelain ?? '').split('\n')) {
     if (!rawLine.trim()) continue;
     // Porcelain v1 is fixed-column: "XY PATH" (path starts at index 3); a rename
-    // shows "old -> new" — take the destination.
+    // shows "old -> new", take the destination.
     const pathPart = rawLine.slice(3).trim().split(' -> ').pop();
     if (!pathPart) continue;
     const base = basename(pathPart.replace(/^"|"$/g, ''));
@@ -197,7 +197,7 @@ async function main() {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch(() => {
-    // Fail open — a guard failure must never block legitimate work.
+    // Fail open, a guard failure must never block legitimate work.
     process.stdout.write(JSON.stringify({ continue: true }));
   });
 }

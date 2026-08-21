@@ -6,12 +6,12 @@
  * Rebuilt small on purpose: v1's prompt chain was ~6,070 tokens across seven
  * always-on files (CORE-PRINCIPLES, GATHER-PLAN-APPLY, PRECISION-MASTERY,
  * PRIMARY-GOALS, SKILLS, SUBAGENT-PROTOCOL, UPGRADE-NOTIFICATIONS), installed
- * silently by the SessionStart hook. Plan §9.6 retires that mechanism —
+ * silently by the SessionStart hook. Plan §9.6 retires that mechanism,
  * install/uninstall are explicit, opt-in commands only, and the steady-state
  * budget is ≤1,500 tokens. Most of v1's doctrine either retired outright
  * (gather-plan-apply, the always-on precision doctrine) or moved to the
  * on-demand skills this plugin ships (intel-mastery, goodvibes-memory,
- * task-orchestration, review-scoring, project-onboarding) — so this installer
+ * task-orchestration, review-scoring, project-onboarding), so this installer
  * writes ONE compact pointer file, not seven doctrine files.
  *
  * Usage: node prompt-installer.mjs <install|uninstall|status> [projectDir]
@@ -32,7 +32,7 @@ on demand, so this card is the always-on map of when each tool beats the native 
 For a small file or a one-off trivial search, native Read/Grep are fine — these earn their
 keep on repo-scale work and repetition.
 
-## intel — structure-aware reading, search, analysis (TypeScript/JS-centric)
+## intel, structure-aware reading, search, analysis (TypeScript/JS-centric)
 - \`code_read\` — you need a file's STRUCTURE or a slice, not the whole file: extract "outline"
   returns signatures/members at 40-73% fewer tokens than a full read (measured); extract
   "lines" fetches exact ranges, batched across many files in one call.
@@ -51,12 +51,12 @@ keep on repo-scale work and repetition.
   analyzers: composition, hook-dependency bugs, "use client" boundaries, Tailwind layout.
 - \`scaffold\` — a new app from a bundled template instead of hand-assembled boilerplate.
 
-## analytics — session cost from transcript actuals, never self-estimates
+## analytics, session cost from transcript actuals, never self-estimates
 \`/goodvibes:analytics\` (summary | status | report | doctor | budget | export | tag | sync).
 \`report\` renders a self-contained HTML dashboard; \`doctor\` scans for orphaned plugin
 processes when the host feels slow.
 
-## connect — authenticated HTTP + databases behind a trust boundary
+## connect, authenticated HTTP + databases behind a trust boundary
 Register targets with \`/goodvibes:services\`, then \`api_request\` (credentials pinned to their
 registered origin, read-only unless opted in) and \`db_query\` (registered connections only).
 Restricted by default; the trust mode cannot be flipped by a tool.
@@ -76,7 +76,7 @@ function resolveTargetDir(projectDir) {
       unlinkSync(probe);
       return home;
     } catch {
-      /* not writable — fall through */
+      /* not writable, fall through */
     }
   }
   // 2. Highest ancestor of projectDir containing a CLAUDE.md.
@@ -148,7 +148,7 @@ function uninstall(projectDir) {
       rmdirSync(goodvibesDir);
     }
   } catch {
-    /* non-empty or already gone — fine */
+    /* non-empty or already gone, fine */
   }
 
   return { targetDir, removed: removedFiles.length > 0, importRemoved, removedFiles };

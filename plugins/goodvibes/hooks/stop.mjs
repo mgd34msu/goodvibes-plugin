@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Stop hook — plan §8 Stop row, KEEP (tribunal 2026-07-02).
+ * Stop hook, plan §8 Stop row, KEEP (tribunal 2026-07-02).
  * "Session-close telemetry writer touching only its own cache namespace; no
  * changes needed."
  *
@@ -10,7 +10,7 @@
  * session (once per turn the main loop stops), so v2's version stays
  * intentionally cheap: append one line per stop event to a per-session
  * telemetry log, silently, and prune it occasionally. No systemMessage, no
- * context injection — telemetry-only, matching the "no changes needed"
+ * context injection, telemetry-only, matching the "no changes needed"
  * disposition in spirit (silent, own-namespace-only) even though the v1
  * source's specific data model (a global analytics.json) doesn't carry
  * forward under R15 project-state namespacing.

@@ -1,7 +1,7 @@
 /**
- * Hook smoke tests (§ lane 7 brief: "Hooks get smoke tests — node script piping
+ * Hook smoke tests (§ lane 7 brief: "Hooks get smoke tests, node script piping
  * synthetic stdin"). Each goodvibes intel hook is a plain, unbuilt `.mjs` file
- * (§7 R8) — these tests spawn it as a REAL `node` subprocess (not an in-process
+ * (§7 R8), these tests spawn it as a REAL `node` subprocess (not an in-process
  * import) and pipe synthetic hook input on stdin, exactly like Claude Code
  * would invoke it, then assert on the JSON it writes to stdout.
  *
@@ -208,7 +208,7 @@ describe('goodvibes intel hooks: schema and content', () => {
     expect(fs.existsSync(path.join(cwd, '.goodvibes', '.setup-marker.json'))).toBe(false);
 
     // Probes missing: the hook kicks the detached installer (suppressed here by
-    // GOODVIBES_NO_BG_INSTALL=1) and is STILL silent — SessionStart owns the lines.
+    // GOODVIBES_NO_BG_INSTALL=1) and is STILL silent, SessionStart owns the lines.
     const bareRoot = makeTmpCwd();
     const bareHome = makeTmpCwd();
     const missing = JSON.parse(
@@ -345,7 +345,7 @@ describe('goodvibes intel hooks: schema and content', () => {
 
     for (const [server, probe] of PROBES) {
       // Durable home: installed modules + a package.json with an EXTRA leftover
-      // dependency (the update removed one) — superset-or-equal must relink.
+      // dependency (the update removed one), superset-or-equal must relink.
       const durable = path.join(home, '.claude', '.goodvibes', 'deps', server);
       fs.mkdirSync(path.join(durable, 'node_modules', ...probe.split('/')), { recursive: true });
       fs.writeFileSync(

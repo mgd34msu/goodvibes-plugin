@@ -1,5 +1,5 @@
 /**
- * Envelope accounting suite (release gate 2/3) — ported and adapted from v1
+ * Envelope accounting suite (release gate 2/3), ported and adapted from v1
  * precision-engine `__tests__/utils/envelope.test.ts`.
  *
  * Asserts: compact JSON, `token_estimate` within 10% of the rendered payload,

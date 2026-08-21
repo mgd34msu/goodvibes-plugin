@@ -1,19 +1,19 @@
 /**
- * structural_edit — intel tool 15, the ONE write surface on an otherwise
+ * structural_edit, intel tool 15, the ONE write surface on an otherwise
  * read-only server (plan §14.B; carve-out §8 addendum lane 10).
  *
  * Two-step, preview-gated contract:
- *   action "preview" — run the match engine across the batch, return a per-entry
+ *   action "preview", run the match engine across the batch, return a per-entry
  *     unified diff, a single-use `preview_token`, and each file's content hash.
  *     Writes NOTHING.
- *   action "apply"   — take the token, re-hash every file, and write. Any file
- *     changed since preview is refused per-entry (`refused_stale`) — never
+ *   action "apply"  , take the token, re-hash every file, and write. Any file
+ *     changed since preview is refused per-entry (`refused_stale`), never
  *     silently re-matched. In atomic mode (default) any non-applied entry rolls
  *     the whole batch back from pre-apply snapshots and returns `success:false`
  *     with the rolled-back entries reported first-class (the v1 issue-7 lesson).
  *
  * Only the three permitted modes ship: `exact`, `ast` (TypeScript-compiler node
- * matching), `ast_pattern` (ast-grep — degrades to an honest "unavailable"
+ * matching), `ast_pattern` (ast-grep, degrades to an honest "unavailable"
  * error in this build; see engine). No fuzzy, no regex.
  *
  * Every filesystem interaction goes through `base_path` and echoes each entry's
@@ -87,7 +87,7 @@ function truncateDiff(diff: string, cap: number): { diff: string; truncated: boo
   const head = Math.floor(cap * 0.6);
   const tail = Math.floor(cap * 0.25);
   return {
-    diff: `${diff.slice(0, head)}\n... [diff truncated — full content via code_read] ...\n${diff.slice(-tail)}`,
+    diff: `${diff.slice(0, head)}\n... [diff truncated: full content via code_read] ...\n${diff.slice(-tail)}`,
     truncated: true,
   };
 }
@@ -275,7 +275,7 @@ async function runPreview(input: StructuralEditInput, startedAt: number): Promis
     },
     next: readyCount > 0
       ? `Call structural_edit action:"apply" with preview_token:"${token.token}" within 10 minutes to write ${readyCount} ready edit(s).`
-      : 'No ready edits — nothing to apply.',
+      : 'No ready edits: nothing to apply.',
   };
 
   const env: Envelope<typeof data> = successEnvelope(data, {
@@ -560,12 +560,12 @@ async function run(args: unknown): Promise<CallToolResult> {
 const definition: Tool = {
   name: 'structural_edit',
   description:
-    'Use for multi-site or AST-anchored edits where a plain string replace is risky (rename all call sites, change every matching pattern). The ONE write tool on this read-only server — a preview-gated, AST-aware editor. Two steps: action:"preview" ' +
+    'Use for multi-site or AST-anchored edits where a plain string replace is risky (rename all call sites, change every matching pattern). The ONE write tool on this read-only server: a preview-gated, AST-aware editor. Two steps: action:"preview" ' +
     'returns a per-entry unified diff, a single-use preview_token, and each file\'s content hash WITHOUT writing; ' +
     'action:"apply" takes that token, re-checks every hash, and writes. A file changed since preview is refused ' +
     '(refused_stale), never silently re-matched. Atomic mode (default) rolls the whole batch back from pre-apply ' +
     'snapshots if any entry cannot apply, returning success:false. Modes: exact (byte-exact string), ast ' +
-    '(TypeScript-compiler node matching), ast_pattern (ast-grep — unavailable unless @ast-grep/napi is installed). ' +
+    '(TypeScript-compiler node matching), ast_pattern (ast-grep, unavailable unless @ast-grep/napi is installed). ' +
     'No fuzzy, no regex. Newlines/CRLF outside edit spans are preserved byte-for-byte.',
   inputSchema: {
     type: 'object',

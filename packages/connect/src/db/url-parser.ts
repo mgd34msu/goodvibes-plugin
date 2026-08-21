@@ -1,5 +1,5 @@
 /**
- * Database connection URL parser — ported verbatim from v1 project-engine
+ * Database connection URL parser, ported verbatim from v1 project-engine
  * `core/database/url-parser.ts` (PostgreSQL / MySQL / SQLite, in-memory and bare
  * file paths).
  */

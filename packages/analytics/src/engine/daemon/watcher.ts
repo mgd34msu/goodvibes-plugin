@@ -1,5 +1,5 @@
 /**
- * DataWatcher — File-system watcher for analytics-engine daemon.
+ * DataWatcher, File-system watcher for analytics-engine daemon.
  *
  * Watches 4 key paths and emits typed events when their content changes:
  *   - telemetry/telemetry.db    → 'telemetry-change'
@@ -118,7 +118,6 @@ export class DataWatcher extends EventEmitter {
     this.goodvibesDir = goodvibesDir;
     this.pollIntervalMs = options?.pollIntervalMs ?? 1000;
 
-    // Create the JSONLWatcher if a project directory was provided.
     if (options?.jsonlProjectDir !== undefined) {
       this.jsonlWatcher = new JSONLWatcher(options.jsonlProjectDir, {
         batchIntervalMs: options.jsonlBatchIntervalMs,
@@ -144,7 +143,7 @@ export class DataWatcher extends EventEmitter {
 
   /**
    * Start watching all tracked paths.
-   * Safe to call multiple times — subsequent calls are no-ops if already running.
+   * Safe to call multiple times, subsequent calls are no-ops if already running.
    */
   start(): void {
     if (this.running) {return;}
@@ -159,7 +158,7 @@ export class DataWatcher extends EventEmitter {
 
   /**
    * Stop all active watchers and cancel pending debounce timers.
-   * Safe to call multiple times — subsequent calls on a stopped watcher are no-ops.
+   * Safe to call multiple times, subsequent calls on a stopped watcher are no-ops.
    */
   stop(): void {
     if (!this.running) {return;}
@@ -181,7 +180,7 @@ export class DataWatcher extends EventEmitter {
       try {
         watcher.close();
       } catch {
-        /* best-effort cleanup — ignore errors during teardown */
+        /* best-effort cleanup, ignore errors during teardown */
       }
     }
     this.watchers.clear();
@@ -283,7 +282,7 @@ export class DataWatcher extends EventEmitter {
         // Watching parent directory for target creation.
         // Only react when the target file itself appears.
         if (filename !== targetBasename) {return;}
-        // File appeared — re-watch directly and fire immediately.
+        // File appeared, re-watch directly and fire immediately.
         if (existsSync(targetPath)) {
           this.rewatchPath(targetPath, event);
           return;

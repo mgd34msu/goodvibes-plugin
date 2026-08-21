@@ -7,13 +7,13 @@
  * project-engine preview-edits" fold-in:
  *  - RULING (ambiguity resolution, see lane report): project-engine's
  *    `preview-edits.ts` validates edits by running them through the shared
- *    TypeScript compiler host (baseline vs. post-edit diagnostics) — that
+ *    TypeScript compiler host (baseline vs. post-edit diagnostics), that
  *    host is lane 2's concurrent build and `preview_replace` here is a
  *    static text-level dry run, not a type-check, so the compiler-diagnostic
  *    half does not port. What DOES port: (a) a real unified-diff hunk per
  *    match (`--- file` / `+++ file` / `@@ -line,1 +line,1 @@` / `-old` /
  *    `+new`) replacing v1's bare `-old\n+new` two-liner; (b) a top-level
- *    `safe`/`summary` pair mirroring preview-edits' shape — `safe` is false
+ *    `safe`/`summary` pair mirroring preview-edits' shape, `safe` is false
  *    when any match required a regex-fallback strategy (an ambiguous
  *    replacement), true otherwise.
  */
@@ -34,7 +34,7 @@ export interface ReplacePreviewResult {
   matches: ReplacePreviewMatch[];
   total_replacements: number;
   files_affected: number;
-  /** False when any match needed a fallback strategy — review before applying. */
+  /** False when any match needed a fallback strategy, review before applying. */
   safe: boolean;
   summary: string;
   hint: string;
@@ -147,7 +147,7 @@ export function generateReplacePreview(
       ? 'No replacements would be made (pattern not found or no content available).'
       : safe
         ? `All ${matches.length} replacement(s) are safe (no fallback strategy needed).`
-        : `${matches.length} replacement(s) found; some used a fallback strategy — review before applying.`;
+        : `${matches.length} replacement(s) found; some used a fallback strategy. Review before applying.`;
   const hint =
     matches.length > 0
       ? `To apply: use a file-write tool with find: ${JSON.stringify(searchPattern)}, replace: ${JSON.stringify(replaceString)}`

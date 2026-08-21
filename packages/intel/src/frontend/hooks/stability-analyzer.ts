@@ -1,5 +1,5 @@
 /**
- * Stability analyzer for hook dependencies — Lane 4.
+ * Stability analyzer for hook dependencies, Lane 4.
  * Ported verbatim from frontend-engine `core/hooks/stability-analyzer.ts`.
  *
  * @module frontend/hooks/stability-analyzer
@@ -24,41 +24,41 @@ export function classifyDependency(
   const base = depText.split('.')[0];
 
   if (scope.setterVars.has(base)) {
-    return { stability: 'stable', reason: 'setState function from useState — guaranteed stable by React' };
+    return { stability: 'stable', reason: 'setState function from useState: guaranteed stable by React' };
   }
   if (scope.dispatchVars.has(base)) {
-    return { stability: 'stable', reason: 'dispatch from useReducer — guaranteed stable by React' };
+    return { stability: 'stable', reason: 'dispatch from useReducer: guaranteed stable by React' };
   }
   if (scope.refVars.has(base) && !depText.includes('.current')) {
-    return { stability: 'stable', reason: 'useRef() object — stable reference (note: .current is mutable but not tracked)' };
+    return { stability: 'stable', reason: 'useRef() object: stable reference (note: .current is mutable but not tracked)' };
   }
   if (scope.useCallbackVars.has(base)) {
-    return { stability: 'stable', reason: 'useCallback-wrapped function — stable across renders (when its own deps are stable)' };
+    return { stability: 'stable', reason: 'useCallback-wrapped function: stable across renders (when its own deps are stable)' };
   }
   if (scope.useMemoVars.has(base)) {
-    return { stability: 'stable', reason: 'useMemo result — stable reference (memoized)' };
+    return { stability: 'stable', reason: 'useMemo result: stable reference (memoized)' };
   }
   if (scope.useIdVars.has(base)) {
-    return { stability: 'stable', reason: 'useId() result — stable string reference' };
+    return { stability: 'stable', reason: 'useId() result: stable string reference' };
   }
   if (scope.importedIdentifiers.has(base)) {
-    return { stability: 'stable', reason: 'Imported identifier — module-level reference, stable across renders' };
+    return { stability: 'stable', reason: 'Imported identifier: module-level reference, stable across renders' };
   }
   if (scope.moduleScopeIdentifiers.has(base)) {
-    return { stability: 'stable', reason: 'Module-scope declaration — defined outside component, stable' };
+    return { stability: 'stable', reason: 'Module-scope declaration: defined outside component, stable' };
   }
   if (/^(true|false|null|undefined|\d+|'[^']*'|"[^"]*")$/.test(depText.trim())) {
-    return { stability: 'stable', reason: 'Primitive literal — always the same value' };
+    return { stability: 'stable', reason: 'Primitive literal: always the same value' };
   }
 
   if (depText.trim().startsWith('{')) {
-    return { stability: 'unstable', reason: 'Inline object literal — creates new reference every render' };
+    return { stability: 'unstable', reason: 'Inline object literal: creates new reference every render' };
   }
   if (depText.trim().startsWith('[')) {
-    return { stability: 'unstable', reason: 'Inline array literal — creates new reference every render' };
+    return { stability: 'unstable', reason: 'Inline array literal: creates new reference every render' };
   }
   if (depText.includes('=>') || depText.trimStart().startsWith('function')) {
-    return { stability: 'unstable', reason: 'Inline function expression — creates new reference every render; wrap in useCallback' };
+    return { stability: 'unstable', reason: 'Inline function expression: creates new reference every render; wrap in useCallback' };
   }
 
   const arrayMethodMatch = depText.match(/\.([a-z]+)\s*\(/);
@@ -77,16 +77,16 @@ export function classifyDependency(
 
   if (scope.stateVars.has(base)) {
     if (depText.includes('.current')) {
-      return { stability: 'unknown', reason: "ref.current value — .current is mutable and not tracked by React's dep system" };
+      return { stability: 'unknown', reason: "ref.current value: .current is mutable and not tracked by React's dep system" };
     }
-    return { stability: 'unknown', reason: 'State variable — stable for primitives, unstable for object/array state (new ref on each setState)' };
+    return { stability: 'unknown', reason: 'State variable: stable for primitives, unstable for object/array state (new ref on each setState)' };
   }
 
   if (depText.includes('.')) {
-    return { stability: 'unknown', reason: "Member access expression — stability depends on the source object's stability" };
+    return { stability: 'unknown', reason: "Member access expression: stability depends on the source object's stability" };
   }
 
-  return { stability: 'unknown', reason: 'Cannot determine statically — may be a prop, context value, or custom hook return' };
+  return { stability: 'unknown', reason: 'Cannot determine statically: may be a prop, context value, or custom hook return' };
 }
 
 /** Analyze all dependencies for a hook and return classified DependencyInfo[]. */

@@ -13679,10 +13679,50 @@ function atomicWriteFileSync(filePath, data) {
 function atomicWriteJson(filePath, value) {
   atomicWriteFileSync(filePath, JSON.stringify(value, null, 2));
 }
+function sleepSync(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+function acquireFileLock(target, waitMs = LOCK_WAIT_MS) {
+  const lockPath = `${target}.lock`;
+  const deadline = Date.now() + waitMs;
+  for (; ; ) {
+    try {
+      return (0, import_node_fs.openSync)(lockPath, "wx", 384);
+    } catch (err) {
+      if (err.code !== "EEXIST") {
+        throw err;
+      }
+      let age;
+      try {
+        age = Date.now() - (0, import_node_fs.statSync)(lockPath).mtimeMs;
+      } catch {
+        continue;
+      }
+      if (age > LOCK_TAKEOVER_MS || Date.now() > deadline) {
+        try {
+          (0, import_node_fs.unlinkSync)(lockPath);
+        } catch {
+        }
+        continue;
+      }
+      sleepSync(LOCK_POLL_MS);
+    }
+  }
+}
+function releaseFileLock(target, fd) {
+  try {
+    (0, import_node_fs.closeSync)(fd);
+  } catch {
+  }
+  try {
+    (0, import_node_fs.unlinkSync)(`${target}.lock`);
+  } catch {
+  }
+}
 function engineLogger() {
   return engineLoggerSingleton ??= createLogger();
 }
-var import_node_fs, import_node_crypto, engineLoggerSingleton;
+var import_node_fs, import_node_crypto, LOCK_TAKEOVER_MS, LOCK_POLL_MS, LOCK_WAIT_MS, engineLoggerSingleton;
 var init_runtime = __esm({
   "packages/analytics/src/engine/runtime.ts"() {
     "use strict";
@@ -13691,6 +13731,12 @@ var init_runtime = __esm({
     init_logging();
     __name(atomicWriteFileSync, "atomicWriteFileSync");
     __name(atomicWriteJson, "atomicWriteJson");
+    LOCK_TAKEOVER_MS = 15e3;
+    LOCK_POLL_MS = 20;
+    LOCK_WAIT_MS = 1e4;
+    __name(sleepSync, "sleepSync");
+    __name(acquireFileLock, "acquireFileLock");
+    __name(releaseFileLock, "releaseFileLock");
     engineLoggerSingleton = null;
     __name(engineLogger, "engineLogger");
   }
@@ -13767,7 +13813,7 @@ function parsePricingMarkdown(markdown, now = /* @__PURE__ */ new Date()) {
     }
   }
   if (Object.keys(models).length === 0) {
-    throw new Error("pricing table parsed to zero models \u2014 page layout may have changed");
+    throw new Error("pricing table parsed to zero models; page layout may have changed");
   }
   return models;
 }
@@ -14196,7 +14242,7 @@ var init_jsonl_reader = __esm({
        * Parse a single JSON line into a JSONLRecord.
        *
        * Returns null on any parse failure (invalid JSON, missing type field,
-       * or unrecognised type value) — never throws.
+       * or unrecognised type value), never throws.
        *
        * @param line - Single trimmed line of text from a JSONL file.
        * @returns Parsed record, or null if the line is malformed or unrecognised.
@@ -14475,7 +14521,7 @@ var init_jsonl_reader = __esm({
       /**
        * Extract precision tool timing data from JSONL progress records.
        *
-       * Only 'completed' progress records contain elapsedTimeMs — 'started'
+       * Only 'completed' progress records contain elapsedTimeMs, 'started'
        * records are ignored since we only need the total duration.
        *
        * @param records - Parsed JSONL records to scan.
@@ -14780,7 +14826,7 @@ function rowToAgent(row) {
     exit_code: row["exit_code"] != null ? Number(row["exit_code"]) : void 0
   };
 }
-var import_node_fs11, import_node_path8, SAVE_DEBOUNCE_MS, SqlJsUnavailableError, GlobalDB;
+var import_node_fs11, import_node_path8, SqlJsUnavailableError, GlobalDB;
 var init_global_db = __esm({
   "packages/analytics/src/engine/data/global-db.ts"() {
     "use strict";
@@ -14788,7 +14834,6 @@ var init_global_db = __esm({
     import_node_path8 = require("node:path");
     init_runtime();
     init_db_schema();
-    SAVE_DEBOUNCE_MS = 500;
     SqlJsUnavailableError = class extends Error {
       static {
         __name(this, "SqlJsUnavailableError");
@@ -14810,7 +14855,12 @@ var init_global_db = __esm({
       dbPath;
       db = null;
       SQL = null;
-      saveTimer = null;
+      /** File descriptor of the cross-process write lock while it is held. */
+      lockFd = null;
+      /** Identity of the DB file as of our last load or save. */
+      diskFingerprint = null;
+      /** True while a `transaction()` owns the lock on behalf of nested writes. */
+      inTransaction = false;
       /**
        * @param dbPath - Absolute path to the SQLite database file.
        */
@@ -14832,31 +14882,30 @@ var init_global_db = __esm({
         const initSqlJs = await this.loadSqlJs();
         const wasmPath = this.resolveWasmPath();
         this.SQL = await initSqlJs({ locateFile: /* @__PURE__ */ __name(() => wasmPath, "locateFile") });
-        if ((0, import_node_fs11.existsSync)(this.dbPath)) {
-          const buffer = (0, import_node_fs11.readFileSync)(this.dbPath);
-          this.db = new this.SQL.Database(buffer);
-        } else {
-          this.db = new this.SQL.Database();
+        const fd = acquireFileLock(this.dbPath);
+        try {
+          this.loadFromDisk();
+          const db = this.getDb();
+          db.run("PRAGMA journal_mode=WAL;");
+          db.run("PRAGMA synchronous=NORMAL;");
+          db.run("PRAGMA foreign_keys=ON;");
+          db.run(SCHEMA_SQL);
+          const currentVersion = getSchemaVersion(db);
+          if (currentVersion < SCHEMA_VERSION) {
+            applyMigrations(db, currentVersion);
+          }
+          this.persist();
+        } finally {
+          releaseFileLock(this.dbPath, fd);
+          this.lockFd = null;
         }
-        this.db.run("PRAGMA journal_mode=WAL;");
-        this.db.run("PRAGMA synchronous=NORMAL;");
-        this.db.run("PRAGMA foreign_keys=ON;");
-        this.db.run(SCHEMA_SQL);
-        const currentVersion = getSchemaVersion(this.db);
-        if (currentVersion < SCHEMA_VERSION) {
-          applyMigrations(this.db, currentVersion);
-        }
-        this.saveToDisk();
       }
       /**
        * Flush the in-memory database to disk and close it.
-       * Cancels any pending debounced save. Safe to call multiple times.
+       * Safe to call multiple times.
        */
       close() {
-        if (this.saveTimer) {
-          clearTimeout(this.saveTimer);
-          this.saveTimer = null;
-        }
+        this.releaseLock();
         if (this.db) {
           this.saveToDisk();
           this.db.close();
@@ -14875,26 +14924,135 @@ var init_global_db = __esm({
         return this.db;
       }
       /**
-       * Write the in-memory database to disk immediately.
-       *
-       * sql.js keeps the entire database in memory and exports a Uint8Array for
-       * persistence. This method performs a synchronous file write.
-       *
-       * Called automatically (debounced) after each write operation.
+       * Flush the in-memory database to disk if nothing else has written the file
+       * since our last save. When another process HAS written it, our snapshot is
+       * older than the file and exporting it would revert their rows, so the flush
+       * is skipped: every mutation persists itself, so there is nothing of ours
+       * left unwritten.
        */
       saveToDisk() {
         if (!this.db) {
           return;
         }
+        const fd = acquireFileLock(this.dbPath);
         try {
-          const data = this.db.export();
-          atomicWriteFileSync(this.dbPath, Buffer.from(data));
-          engineLogger().debug("GlobalDB saved to disk", { path: this.dbPath, bytes: data.byteLength });
+          const onDisk = this.fingerprint();
+          if (onDisk !== null && onDisk !== this.diskFingerprint) {
+            engineLogger().debug("GlobalDB flush skipped, file advanced in another process", {
+              path: this.dbPath
+            });
+            return;
+          }
+          this.persist();
         } catch (err) {
           engineLogger().error("GlobalDB saveToDisk failed", {
             error: err instanceof Error ? err.message : String(err)
           });
+        } finally {
+          releaseFileLock(this.dbPath, fd);
         }
+      }
+      /**
+       * Run several mutations under a single lock and a single disk write. Without
+       * this a bulk sync would export the whole file once per row.
+       *
+       * @param fn - the mutations to run
+       */
+      transaction(fn) {
+        if (this.inTransaction) {
+          return fn();
+        }
+        this.beginWrite();
+        this.inTransaction = true;
+        try {
+          return fn();
+        } finally {
+          this.inTransaction = false;
+          this.commitWrite();
+        }
+      }
+      /**
+       * Take the cross-process write lock and make the in-memory copy current.
+       * Reloading BEFORE the mutation is the whole point: the mutation then lands
+       * on top of whatever other processes have committed, so exporting our
+       * snapshot afterwards cannot revert their rows.
+       */
+      beginWrite() {
+        if (this.inTransaction) {
+          return this.getDb();
+        }
+        if (this.lockFd !== null) {
+          this.releaseLock();
+        }
+        this.lockFd = acquireFileLock(this.dbPath);
+        this.reloadIfChanged();
+        return this.getDb();
+      }
+      /** Persist the mutation begun by {@link beginWrite} and drop the lock. */
+      commitWrite() {
+        if (this.inTransaction) {
+          return;
+        }
+        try {
+          this.persist();
+        } catch (err) {
+          engineLogger().error("GlobalDB commit failed", {
+            error: err instanceof Error ? err.message : String(err)
+          });
+        } finally {
+          this.releaseLock();
+        }
+      }
+      releaseLock() {
+        if (this.lockFd === null) {
+          return;
+        }
+        releaseFileLock(this.dbPath, this.lockFd);
+        this.lockFd = null;
+      }
+      /**
+       * Identity of the DB file on disk. Every save renames a fresh temp file into
+       * place, so the inode changes on each write and this never mistakes another
+       * process's save for our own.
+       */
+      fingerprint() {
+        try {
+          const s = (0, import_node_fs11.statSync)(this.dbPath);
+          return `${s.ino}:${s.size}:${s.mtimeMs}`;
+        } catch {
+          return null;
+        }
+      }
+      /** Open the file (or an empty DB) and record which bytes we are holding. */
+      loadFromDisk() {
+        if (!this.SQL) {
+          throw new Error("GlobalDB: sql.js not loaded.");
+        }
+        this.db?.close();
+        this.db = (0, import_node_fs11.existsSync)(this.dbPath) ? new this.SQL.Database((0, import_node_fs11.readFileSync)(this.dbPath)) : new this.SQL.Database();
+        this.diskFingerprint = this.fingerprint();
+      }
+      /** Reload when another process has written the file since our last save. */
+      reloadIfChanged() {
+        const onDisk = this.fingerprint();
+        if (onDisk === null || onDisk === this.diskFingerprint) {
+          return;
+        }
+        this.loadFromDisk();
+        this.getDb().run("PRAGMA foreign_keys=ON;");
+        engineLogger().debug("GlobalDB reloaded, file advanced in another process", {
+          path: this.dbPath
+        });
+      }
+      /** Export the in-memory DB over the file (caller holds the lock). */
+      persist() {
+        if (!this.db) {
+          return;
+        }
+        const data = this.db.export();
+        atomicWriteFileSync(this.dbPath, Buffer.from(data));
+        this.diskFingerprint = this.fingerprint();
+        engineLogger().debug("GlobalDB saved to disk", { path: this.dbPath, bytes: data.byteLength });
       }
       // ───────────────────────────────────────────────────────────────────────────
       // Session CRUD
@@ -14909,7 +15067,7 @@ var init_global_db = __esm({
        * @param session - Session fields to persist. `session_id` is required.
        */
       upsertSession(session) {
-        const db = this.getDb();
+        const db = this.beginWrite();
         const s = session;
         db.run(
           `INSERT INTO sessions (
@@ -14957,7 +15115,7 @@ var init_global_db = __esm({
             s.status ?? "active"
           ]
         );
-        this.scheduleSave();
+        this.commitWrite();
       }
       /**
        * Retrieve a session by ID, with its tags joined.
@@ -15062,9 +15220,9 @@ var init_global_db = __esm({
        * @param status    - New status value ('active' | 'completed' | 'archived').
        */
       updateSessionStatus(sessionId, status) {
-        const db = this.getDb();
+        const db = this.beginWrite();
         db.run("UPDATE sessions SET status = ? WHERE session_id = ?", [status, sessionId]);
-        this.scheduleSave();
+        this.commitWrite();
       }
       // ───────────────────────────────────────────────────────────────────────────
       // API Call Recording
@@ -15075,7 +15233,7 @@ var init_global_db = __esm({
        * @param call - API call data to persist.
        */
       insertApiCall(call) {
-        const db = this.getDb();
+        const db = this.beginWrite();
         db.run(
           `INSERT INTO api_calls (
         session_id, timestamp, model, input_tokens, output_tokens,
@@ -15094,7 +15252,7 @@ var init_global_db = __esm({
             call.stop_reason ?? null
           ]
         );
-        this.scheduleSave();
+        this.commitWrite();
       }
       /**
        * Retrieve all API calls for a session, ordered by timestamp ascending.
@@ -15121,7 +15279,7 @@ var init_global_db = __esm({
        * @param summary - Tool summary data to persist or accumulate.
        */
       upsertToolSummary(summary) {
-        const db = this.getDb();
+        const db = this.beginWrite();
         db.run(
           `INSERT INTO tool_summaries (
         session_id, tool_name, call_count, success_count, error_count,
@@ -15145,7 +15303,7 @@ var init_global_db = __esm({
             summary.total_output_tokens
           ]
         );
-        this.scheduleSave();
+        this.commitWrite();
       }
       /**
        * Retrieve all tool summaries for a session.
@@ -15169,7 +15327,7 @@ var init_global_db = __esm({
        * @param agent - Agent data to persist.
        */
       upsertAgent(agent) {
-        const db = this.getDb();
+        const db = this.beginWrite();
         db.run(
           `INSERT INTO agents (
         session_id, agent_id, agent_type, parent_session_id, model,
@@ -15196,7 +15354,7 @@ var init_global_db = __esm({
             agent.exit_code ?? null
           ]
         );
-        this.scheduleSave();
+        this.commitWrite();
       }
       /**
        * Retrieve all agent records for a session.
@@ -15222,12 +15380,12 @@ var init_global_db = __esm({
        * @param source    - Origin of the tag ('manual' | 'auto'). Defaults to 'manual'.
        */
       addTag(sessionId, tag, source = "manual") {
-        const db = this.getDb();
+        const db = this.beginWrite();
         db.run(
           `INSERT OR IGNORE INTO tags (session_id, tag, source) VALUES (?, ?, ?)`,
           [sessionId, tag, source]
         );
-        this.scheduleSave();
+        this.commitWrite();
       }
       /**
        * Remove a tag from a session.
@@ -15236,9 +15394,9 @@ var init_global_db = __esm({
        * @param tag       - Tag string to remove.
        */
       removeTag(sessionId, tag) {
-        const db = this.getDb();
+        const db = this.beginWrite();
         db.run("DELETE FROM tags WHERE session_id = ? AND tag = ?", [sessionId, tag]);
-        this.scheduleSave();
+        this.commitWrite();
       }
       /**
        * Retrieve all tags for a session, ordered by creation time.
@@ -15320,7 +15478,7 @@ var init_global_db = __esm({
        * @param state - Sync state record to persist.
        */
       upsertSyncState(state) {
-        const db = this.getDb();
+        const db = this.beginWrite();
         db.run(
           `INSERT INTO sync_state (jsonl_path, session_id, last_offset, last_synced_at)
        VALUES (?, ?, ?, ?)
@@ -15330,7 +15488,7 @@ var init_global_db = __esm({
          last_synced_at = excluded.last_synced_at`,
           [state.jsonl_path, state.session_id, state.last_offset, state.last_synced_at]
         );
-        this.scheduleSave();
+        this.commitWrite();
       }
       // ───────────────────────────────────────────────────────────────────────────
       // Batch Operations
@@ -15347,7 +15505,7 @@ var init_global_db = __esm({
         if (calls.length === 0) {
           return;
         }
-        const db = this.getDb();
+        const db = this.beginWrite();
         db.run("BEGIN");
         try {
           for (const call of calls) {
@@ -15375,7 +15533,7 @@ var init_global_db = __esm({
           db.run("ROLLBACK");
           throw err;
         }
-        this.scheduleSave();
+        this.commitWrite();
       }
       /**
        * Bulk-upsert session records inside a single transaction.
@@ -15386,7 +15544,7 @@ var init_global_db = __esm({
         if (sessions.length === 0) {
           return;
         }
-        const db = this.getDb();
+        const db = this.beginWrite();
         db.run("BEGIN");
         try {
           for (const session of sessions) {
@@ -15443,7 +15601,7 @@ var init_global_db = __esm({
           db.run("ROLLBACK");
           throw err;
         }
-        this.scheduleSave();
+        this.commitWrite();
       }
       // ───────────────────────────────────────────────────────────────────────────
       // Aggregate Queries
@@ -15527,22 +15685,6 @@ var init_global_db = __esm({
         return result;
       }
       /**
-       * Schedule a debounced disk save.
-       *
-       * Multiple writes within `SAVE_DEBOUNCE_MS` will be coalesced into a
-       * single disk write, reducing I/O pressure during bulk operations.
-       */
-      scheduleSave() {
-        if (this.saveTimer) {
-          clearTimeout(this.saveTimer);
-        }
-        this.saveTimer = setTimeout(() => {
-          this.saveTimer = null;
-          this.saveToDisk();
-        }, SAVE_DEBOUNCE_MS);
-        this.saveTimer.unref?.();
-      }
-      /**
        * Dynamically load the sql.js module.
        *
        * Handles both ESM (import()) and CJS (require()) environments by trying
@@ -15587,9 +15729,17 @@ var init_global_db = __esm({
         if ((0, import_node_fs11.existsSync)(distWasm)) {
           return distWasm;
         }
-        const nodeWasm = (0, import_node_path8.resolve)((0, import_node_path8.join)(baseDir, "..", "..", "..", "node_modules", "sql.js", "dist", "sql-wasm.wasm"));
-        if ((0, import_node_fs11.existsSync)(nodeWasm)) {
-          return nodeWasm;
+        let search = baseDir;
+        for (; ; ) {
+          const nodeWasm = (0, import_node_path8.resolve)((0, import_node_path8.join)(search, "node_modules", "sql.js", "dist", "sql-wasm.wasm"));
+          if ((0, import_node_fs11.existsSync)(nodeWasm)) {
+            return nodeWasm;
+          }
+          const parent = (0, import_node_path8.dirname)(search);
+          if (parent === search) {
+            break;
+          }
+          search = parent;
         }
         return (0, import_node_path8.resolve)((0, import_node_path8.join)(baseDir, "sql-wasm.wasm"));
       }
@@ -15863,7 +16013,7 @@ async function computeLiveSessionCost(options) {
       main: null,
       subagents: [],
       grand_total_usd: 0,
-      degraded: "no active session transcript found \u2014 live cost unavailable"
+      degraded: "no active session transcript found; live cost unavailable"
     };
   }
   const reader = new JSONLReader(options.costConfig, options.pricingMap);
@@ -15990,7 +16140,7 @@ async function collectReportData(aggregator, scope) {
   if (scope !== "session") {
     const db = aggregator.getGlobalDb();
     if (db === null) {
-      dbNote = "global analytics DB unavailable \u2014 historical and cross-project sections omitted";
+      dbNote = "global analytics DB unavailable; historical and cross-project sections omitted";
     } else {
       try {
         const past = db.getSessionsByProject(session.project_hash);
@@ -16097,7 +16247,7 @@ function renderAnalyticsReportHtml(data) {
     "<head>",
     '<meta charset="utf-8">',
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
-    `<title>GoodVibes analytics report \u2014 session ${esc2(data.session.session_id)}</title>`,
+    `<title>GoodVibes analytics report: session ${esc2(data.session.session_id)}</title>`,
     `<style>${STYLE}</style>`,
     "</head>",
     "<body>",
@@ -16381,7 +16531,7 @@ function renderDoctorReport(state, opts = {}) {
         `  pid ${o.pid} (ppid ${o.ppid}, ${o.reparented_to}) ${o.cpu_percent}% CPU x${o.sustained_windows} windows`
       );
       lines.push(`    cmd: ${o.cmdline}`);
-      lines.push(`    run: ${o.kill_command}   # review first \u2014 goodvibes never kills processes for you`);
+      lines.push(`    run: ${o.kill_command}   # review first; goodvibes never kills processes for you`);
     }
   }
   return lines.join("\n");
@@ -16436,7 +16586,7 @@ var init_host_health = __esm({
       }
       /**
        * Start the slow sampler. The interval is `unref()`ed so it never keeps the
-       * process alive on its own (field issue 9 — this feature must not become the
+       * process alive on its own (field issue 9, this feature must not become the
        * bug it hunts). Takes one sample immediately so a state file exists promptly.
        */
       start() {
@@ -16489,7 +16639,7 @@ var init_host_health = __esm({
             session_root_pid: this.sessionRootPid,
             session_child_count: 0,
             orphans: [],
-            degraded: `process table unavailable at ${this.procRoot} \u2014 orphan detection offline`
+            degraded: `process table unavailable at ${this.procRoot}; orphan detection offline`
           };
           this.lastState = degraded;
           return degraded;
@@ -16718,7 +16868,7 @@ function scanAgentLiveness(options) {
   const liveChildren = options.liveChildAgentIds ?? /* @__PURE__ */ new Set();
   const prevSizes = options.prevSizes;
   if (!options.sessionDir) {
-    return { session_dir: null, agents: [], degraded: "no active session directory \u2014 agent liveness unavailable" };
+    return { session_dir: null, agents: [], degraded: "no active session directory; agent liveness unavailable" };
   }
   const files = collectAgentFiles(options.sessionDir);
   if (files.length === 0) {
@@ -17301,7 +17451,7 @@ function renderActivity(activity) {
     const duration3 = e.duration_ms !== void 0 ? ` ${formatDuration(e.duration_ms)}` : "";
     const cache = e.cache_hit === true ? " [cache]" : "";
     const tokens = e.tokens !== void 0 ? ` ${formatNumber(e.tokens)}t` : "";
-    lines.push(`  ${e.timestamp} ${e.tool}${duration3}${cache}${tokens} \u2014 ${e.description}`);
+    lines.push(`  ${e.timestamp} ${e.tool}${duration3}${cache}${tokens}: ${e.description}`);
   }
   if (activity.length > 20) {
     lines.push(`  ... and ${activity.length - 20} more`);
@@ -17666,9 +17816,11 @@ var init_tag_store = __esm({
        * @param source    - Origin of the tags. Defaults to 'manual'.
        */
       addTags(sessionId, tags, source = "manual") {
-        for (const tag of tags) {
-          this.addTag(sessionId, tag, source);
-        }
+        this.db.transaction(() => {
+          for (const tag of tags) {
+            this.addTag(sessionId, tag, source);
+          }
+        });
       }
       /**
        * Remove a tag from a session.
@@ -17730,7 +17882,7 @@ var init_tag_store = __esm({
        * 4. Detects activity type from tool usage patterns (write-heavy = feature dev).
        *
        * Returns deduplicated, sorted suggestions with confidence levels.
-       * Does NOT apply tags automatically — callers confirm before persisting.
+       * Does NOT apply tags automatically, callers confirm before persisting.
        *
        * Note: For higher-quality inference on complex or ambiguous sessions,
        * consider using precision_agent with LLM-based analysis. This heuristic
@@ -18466,7 +18618,7 @@ async function handleExport(aggregator, input, goodvibesDir) {
     if (input.scope === "current") {
       const state = aggregator.getState();
       data = extractSections(state, sections);
-      title = `Session Export \u2014 ${state.session_id}`;
+      title = `Session Export: ${state.session_id}`;
     } else if (input.scope === "historical" || input.scope === "all_projects") {
       const allArchives = store.list();
       const tags = input.tags ?? [];
@@ -18482,7 +18634,7 @@ async function handleExport(aggregator, input, goodvibesDir) {
         entries[archive.session_id] = extractArchiveSections(archive, sections);
       }
       data = entries;
-      title = `Historical Export \u2014 ${archives.length} sessions`;
+      title = `Historical Export: ${archives.length} sessions`;
     } else {
       const sessionId = input.scope.replace(/^session:/, "");
       const archive = store.load(sessionId);
@@ -18490,7 +18642,7 @@ async function handleExport(aggregator, input, goodvibesDir) {
         return text(`Session not found: ${sessionId}`);
       }
       data = extractArchiveSections(archive, sections);
-      title = `Session Export \u2014 ${archive.tags?.[0] ?? archive.name ?? sessionId}`;
+      title = `Session Export: ${archive.tags?.[0] ?? archive.name ?? sessionId}`;
     }
     let rendered;
     switch (input.format) {
@@ -18984,29 +19136,31 @@ var init_sync_engine = __esm({
             status: isCompleted ? "completed" : "active",
             ...isCompleted ? { ended_at: lastActivityAt } : {}
           };
-          this.db.upsertSession(session);
-          if (apiCalls.length > 0) {
-            this.db.batchInsertApiCalls(apiCalls);
-          }
-          if (isSubagent && parentSessionId) {
-            const agentId = path10.basename(filePath, ".jsonl");
-            this.db.upsertAgent({
-              session_id: parentSessionId,
-              agent_id: agentId,
-              agent_type: "subagent",
-              parent_session_id: parentSessionId,
-              model: sessionInfo.model,
-              spawned_at: sessionInfo.startedAt,
-              completed_at: isCompleted ? lastActivityAt : void 0,
-              total_tokens: totalInputTokens + totalOutputTokens,
-              duration_ms: 0
+          this.db.transaction(() => {
+            this.db.upsertSession(session);
+            if (apiCalls.length > 0) {
+              this.db.batchInsertApiCalls(apiCalls);
+            }
+            if (isSubagent && parentSessionId) {
+              const agentId = path10.basename(filePath, ".jsonl");
+              this.db.upsertAgent({
+                session_id: parentSessionId,
+                agent_id: agentId,
+                agent_type: "subagent",
+                parent_session_id: parentSessionId,
+                model: sessionInfo.model,
+                spawned_at: sessionInfo.startedAt,
+                completed_at: isCompleted ? lastActivityAt : void 0,
+                total_tokens: totalInputTokens + totalOutputTokens,
+                duration_ms: 0
+              });
+            }
+            this.db.upsertSyncState({
+              jsonl_path: filePath,
+              session_id: sessionId,
+              last_offset: parseResult.newOffset,
+              last_synced_at: (/* @__PURE__ */ new Date()).toISOString()
             });
-          }
-          this.db.upsertSyncState({
-            jsonl_path: filePath,
-            session_id: sessionId,
-            last_offset: parseResult.newOffset,
-            last_synced_at: (/* @__PURE__ */ new Date()).toISOString()
           });
           return { filePath, sessionId, status: "synced", newRecords: newRecordCount, bytesProcessed };
         } catch (err) {
@@ -37666,7 +37820,7 @@ var TelemetryReader = class _TelemetryReader {
   /**
    * Initialize sql.js WASM and open the database from the file on disk.
    *
-   * Safe to call multiple times — subsequent calls are no-ops if already
+   * Safe to call multiple times, subsequent calls are no-ops if already
    * initialized. If the DB file does not exist, marks as unavailable and
    * returns without error (callers get empty results).
    */
@@ -38030,7 +38184,7 @@ var TelemetryReader = class _TelemetryReader {
    * NOTE: The database stores `metadata` as a JSON string (written by precision-engine).
    * The `TelemetryRecord.metadata` field is typed as `string` to match the stored
    * representation. Consumers needing a structured object should call
-   * `JSON.parse(record.metadata)` — the interface intentionally does not auto-parse
+   * `JSON.parse(record.metadata)`, the interface intentionally does not auto-parse
    * to avoid the cost on paths that don't need it.
    */
   static rowToRecord(row) {
@@ -38872,7 +39026,7 @@ var BudgetTracker = class {
    *
    * A threshold is "crossed" when the current usage percentage equals or
    * exceeds the threshold fraction. Each threshold is returned at most once
-   * per session — subsequent calls return null for already-reported thresholds.
+   * per session, subsequent calls return null for already-reported thresholds.
    *
    * @returns The lowest newly-crossed threshold or null if none.
    */
@@ -38941,7 +39095,7 @@ var MemoryUpdater = class {
   /**
    * Analyse a dashboard state snapshot and produce pattern/preference updates.
    *
-   * Does NOT write anything to disk — call apply() to persist the results.
+   * Does NOT write anything to disk, call apply() to persist the results.
    *
    * @param state - Current DashboardState from the analytics daemon.
    * @returns Object with `patterns` and `preferences` arrays.
@@ -38981,7 +39135,7 @@ var MemoryUpdater = class {
       patterns.push({
         id: "pat_analytics_cache_efficiency",
         name: "HighCacheHitRate",
-        description: `Cache hit rate was ${Math.round(cache.hit_rate * 100)}% this session. Current precision_read usage patterns are token-efficient \u2014 maintain them.`,
+        description: `Cache hit rate was ${Math.round(cache.hit_rate * 100)}% this session. Current precision_read usage patterns are token-efficient; maintain them.`,
         when_to_use: "When deciding whether to change file-reading patterns; current approach is working well.",
         example_files: [],
         keywords: ["cache", "hit-rate", "efficiency", "precision_read", "positive"]
@@ -39175,7 +39329,7 @@ var JSONLWatcher = class extends import_node_events.EventEmitter {
    *
    * Finds the active session JSONL, begins watching it, sets up subagent
    * watching, and starts the batch flush interval. Safe to call multiple
-   * times — subsequent calls are no-ops if already running.
+   * times, subsequent calls are no-ops if already running.
    */
   start() {
     if (this.running) {
@@ -39596,7 +39750,7 @@ var DataWatcher = class extends import_node_events2.EventEmitter {
   // -------------------------------------------------------------------------
   /**
    * Start watching all tracked paths.
-   * Safe to call multiple times — subsequent calls are no-ops if already running.
+   * Safe to call multiple times, subsequent calls are no-ops if already running.
    */
   start() {
     if (this.running) {
@@ -39610,7 +39764,7 @@ var DataWatcher = class extends import_node_events2.EventEmitter {
   }
   /**
    * Stop all active watchers and cancel pending debounce timers.
-   * Safe to call multiple times — subsequent calls on a stopped watcher are no-ops.
+   * Safe to call multiple times, subsequent calls on a stopped watcher are no-ops.
    */
   stop() {
     if (!this.running) {
@@ -39994,13 +40148,13 @@ var Aggregator = class _Aggregator {
   telemetry;
   session;
   index;
-  // Model pricing map — loaded on initialize() from ~/.claude/model-pricing.json.
+  // Model pricing map, loaded on initialize() from ~/.claude/model-pricing.json.
   pricingMap = {};
-  // JSONL reader — created in initialize() from config pricing.
+  // JSONL reader, created in initialize() from config pricing.
   jsonlReader = null;
   // Accumulated JSONL records from the current file, merged in batches.
   jsonlRecords = [];
-  // Cumulative tool counters — never decrease even when sliding window drops old records.
+  // Cumulative tool counters, never decrease even when sliding window drops old records.
   cumulativeToolTotal = 0;
   cumulativeToolFailures = 0;
   // Resolved path to the active JSONL file (null if not found).
@@ -40009,11 +40163,11 @@ var Aggregator = class _Aggregator {
   jsonlSessionId = null;
   // Aggregated totals from JSONL records (recomputed after each accumulation).
   jsonlTotals = emptyJsonlTotals();
-  /** Cache for subagent file reads keyed by file path — avoids re-reading unchanged files. */
+  /** Cache for subagent file reads keyed by file path, avoids re-reading unchanged files. */
   subagentCache = /* @__PURE__ */ new Map();
-  /** Cache for subagent directory listing — avoids re-reading unchanged directories. */
+  /** Cache for subagent directory listing, avoids re-reading unchanged directories. */
   subagentDirCache = null;
-  // GlobalDB instance — injected by AnalyticsEngine before initialize().
+  // GlobalDB instance, injected by AnalyticsEngine before initialize().
   globalDb = null;
   // Debounce timer for GlobalDB upserts.
   globalDbSaveTimer = null;
@@ -40053,7 +40207,7 @@ var Aggregator = class _Aggregator {
    * Inject the GlobalDB instance from the owning AnalyticsEngine.
    *
    * Must be called before `initialize()` if GlobalDB write-back is desired.
-   * Safe to call at any time — if called after initialize(), subsequent
+   * Safe to call at any time, if called after initialize(), subsequent
    * GlobalDB upserts will use the new instance.
    *
    * @param db - Initialized GlobalDB instance, or null to disable write-back.
@@ -40246,7 +40400,7 @@ var Aggregator = class _Aggregator {
    * Clean shutdown: stop the DataWatcher, close the TelemetryReader,
    * and flush any pending GlobalDB write.
    *
-   * Safe to call multiple times — subsequent calls are no-ops.
+   * Safe to call multiple times, subsequent calls are no-ops.
    *
    * @returns Promise that resolves once shutdown is complete.
    */
@@ -40337,7 +40491,7 @@ var Aggregator = class _Aggregator {
    */
   static MAX_JSONL_RECORDS = 1e4;
   static MAX_SEEN_UUIDS = 5e4;
-  /** UUIDs already accumulated — records arrive twice at startup (the initial
+  /** UUIDs already accumulated, records arrive twice at startup (the initial
    *  full-file parse plus the watcher's own offset-0 catch-up read), and any
    *  watcher re-attach resets its offset; without this every early event (and
    *  its tokens) counted double. */
@@ -41076,7 +41230,7 @@ var Aggregator = class _Aggregator {
   /**
    * Execute a function and return its result, or a fallback value on error.
    *
-   * Errors are logged at warn level but do not propagate — a single reader
+   * Errors are logged at warn level but do not propagate, a single reader
    * failure must not abort the full aggregation cycle.
    *
    * @param fn       - Function to execute.
@@ -41184,14 +41338,14 @@ var AnalyticsQueryInput = external_exports.object({
    */
   scope: external_exports.enum(["tokens", "cache", "commands", "agents", "files", "cost", "health", "project", "all"]).default("all"),
   /**
-   * Observability mode (lane 9) — a MODE of `query`, not a new tool. When set,
+   * Observability mode (lane 9), a MODE of `query`, not a new tool. When set,
    * it overrides `scope`:
    *   - 'live_cost': price the current session's still-growing transcript,
    *                  per model, split main-loop vs per-subagent.
-   *   - 'doctor':    host-health report — load, session children, and any
+   *   - 'doctor':    host-health report, load, session children, and any
    *                  orphaned sustained-CPU plugin processes with ready-to-run
    *                  kill commands (never executed).
-   *   - 'agents':    background-agent liveness — thinking / executing / wedged.
+   *   - 'agents':    background-agent liveness, thinking / executing / wedged.
    */
   mode: external_exports.enum(["live_cost", "doctor", "agents"]).optional(),
   time_range: external_exports.enum(["session", "last_5m", "last_30m", "last_1h"]).default("session"),
@@ -41304,7 +41458,7 @@ var AnalyticsEngine = class {
     } catch (err) {
       this.globalDb = null;
       this.globalDbUnavailableReason = err instanceof SqlJsUnavailableError ? nativeDepMessage("Cross-project analytics history") : `Cross-project analytics history unavailable: ${err instanceof Error ? err.message : String(err)}`;
-      engineLogger().warn("GlobalDB unavailable \u2014 live modes only", {
+      engineLogger().warn("GlobalDB unavailable; live modes only", {
         error: err instanceof Error ? err.message : String(err)
       });
     }
@@ -41324,7 +41478,7 @@ var AnalyticsEngine = class {
    * Dispatch an MCP tool call by name.
    *
    * Validates the tool name and input schema before invoking the handler.
-   * Returns a structured `ToolResponse` — never throws.
+   * Returns a structured `ToolResponse`, never throws.
    *
    * @param name - MCP tool name (e.g. `"analytics_query"`).
    * @param args - Raw (unvalidated) arguments from the MCP client.

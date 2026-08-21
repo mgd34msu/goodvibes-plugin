@@ -1,4 +1,4 @@
-/** `sync` — ingest Claude JSONL session files into the global analytics DB. */
+/** `sync`, ingest Claude JSONL session files into the global analytics DB. */
 import type { ToolModule } from './types.js';
 
 export const syncTool: ToolModule = {

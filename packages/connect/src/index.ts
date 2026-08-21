@@ -1,5 +1,5 @@
 /**
- * goodvibes-connect MCP server — the registered HTTP/database server of the
+ * goodvibes-connect MCP server, the registered HTTP/database server of the
  * single `goodvibes` plugin (three servers: intel, analytics, connect).
  *
  * Wires `core/proc` and `core/envelope` and serves the 3 tools (api_request,

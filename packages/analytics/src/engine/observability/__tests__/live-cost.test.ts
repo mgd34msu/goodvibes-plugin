@@ -1,6 +1,6 @@
 /**
  * Live session-cost tests (lane 9) against a fixture transcript whose FINAL
- * line is truncated — exactly what the reader sees when it reads a file that
+ * line is truncated, exactly what the reader sees when it reads a file that
  * Claude Code is still appending to. The truncated tail must be skipped (not
  * fatal), valid records must still be priced, and cost must split main-loop vs
  * per-subagent using the per-model cache-aware table.

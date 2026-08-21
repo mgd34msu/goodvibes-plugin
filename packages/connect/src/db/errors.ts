@@ -1,5 +1,5 @@
 /**
- * Database error classes + message enhancement — ported from v1 project-engine
+ * Database error classes + message enhancement, ported from v1 project-engine
  * `core/database/errors.ts` (the "honest install hints"/actionable-message
  * behavior the plan praised). Schema-only helpers are dropped.
  */

@@ -1,4 +1,4 @@
-/** `budget` — set/check/clear the session budget (per-model cache-aware cost). */
+/** `budget`, set/check/clear the session budget (per-model cache-aware cost). */
 import type { ToolModule } from './types.js';
 
 export const budgetTool: ToolModule = {

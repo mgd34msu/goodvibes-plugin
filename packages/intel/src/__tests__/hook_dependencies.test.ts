@@ -1,5 +1,5 @@
 /**
- * hook_dependencies fixture tests — one hook per known issue class in
+ * hook_dependencies fixture tests, one hook per known issue class in
  * fixtures/frontend-app/src/HooksDemo.tsx. Asserts the issue taxonomy, the
  * stale-closure detail, the `hook` filter, and the resolved_path echo (issue 1).
  */

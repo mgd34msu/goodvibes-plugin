@@ -265,4 +265,24 @@ describe('CookieJar', () => {
       expect(avgIndex).toBeGreaterThan(500);
     });
   });
+  describe('durable persistence', () => {
+    it('replaces the jar file by rename, never opening it for writing', async () => {
+      const cookiePath = path.join(tmpDir, ...STATE, 'goodvibes.cookies.json');
+      await jar.setCookies('https://example.com/', ['a=1; Path=/']);
+      await jar.save();
+      // Only a rename over the path can update a file this process cannot write
+      // to, so a truncating in-place write would fail here.
+      await fs.promises.chmod(cookiePath, 0o444);
+      await expect(fs.promises.writeFile(cookiePath, 'direct')).rejects.toThrow();
+
+      await jar.setCookies('https://example.com/', ['b=2; Path=/']);
+      await jar.save();
+
+      const stored = JSON.parse(await fs.promises.readFile(cookiePath, 'utf-8'));
+      expect(stored.cookies.map((c: { name: string }) => c.name).sort()).toEqual(['a', 'b']);
+      expect((await fs.promises.stat(cookiePath)).mode & 0o777).toBe(0o600);
+      const entries = await fs.promises.readdir(path.join(tmpDir, ...STATE));
+      expect(entries.filter((e) => e.includes('.tmp'))).toEqual([]);
+    });
+  });
 });

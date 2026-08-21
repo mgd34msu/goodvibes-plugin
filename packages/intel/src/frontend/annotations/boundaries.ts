@@ -1,5 +1,5 @@
 /**
- * `boundaries` annotation for component_tree — Lane 4 (§4.4.1).
+ * `boundaries` annotation for component_tree, Lane 4 (§4.4.1).
  *
  * Distilled from frontend-engine `core/error-boundaries/scanner.ts`. Per tribunal:
  * carry `has_fallback`/`has_reset` booleans and detect BOTH class boundaries

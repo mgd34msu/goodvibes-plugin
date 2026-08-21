@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * Setup hook — fires on `claude init`.
+ * Setup hook, fires on `claude init`.
  *
  * Native dependencies install themselves: when any server's probe is missing
  * from the plugin copy, this hook kicks `lib/deps-install.mjs` as a DETACHED
- * background process (stdio ignored, unref'd — init never waits on npm) and
+ * background process (stdio ignored, unref'd, init never waits on npm) and
  * says nothing. The installer is single-instance (lock file) and a no-op when
  * everything is already installed, so firing on every init is harmless.
  * SessionStart owns the user-visible line about install progress or failure;

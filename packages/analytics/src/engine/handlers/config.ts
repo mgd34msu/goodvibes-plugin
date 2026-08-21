@@ -77,9 +77,9 @@ async function persistConfig(goodvibesDir: string, config: AnalyticsConfig): Pro
  * Handle the `analytics_config` tool.
  *
  * Actions:
- * - `get`    — Return the full config or a specific key (dot-notation supported).
- * - `set`    — Set a specific config key (dot-notation). Persists to global analytics.json.
- * - `reload` — Hot-reload the config from disk and apply it to the running Aggregator.
+ * - `get`   , Return the full config or a specific key (dot-notation supported).
+ * - `set`   , Set a specific config key (dot-notation). Persists to global analytics.json.
+ * - `reload`, Hot-reload the config from disk and apply it to the running Aggregator.
  *
  * @param aggregator  - The running Aggregator instance.
  * @param input       - Validated AnalyticsConfigInput from the MCP tool call.
@@ -121,7 +121,7 @@ export async function handleConfig(
         return text(`${input.key} = ${JSON.stringify(value, null, 2)}`);
       }
 
-      // No key — return full config
+      // No key, return full config
       return text(JSON.stringify(config, null, 2));
     }
 

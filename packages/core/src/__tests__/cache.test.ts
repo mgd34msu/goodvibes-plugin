@@ -1,9 +1,9 @@
 /**
- * F4 — no-stub cache / probe mode (release gate 2).
+ * F4, no-stub cache / probe mode (release gate 2).
  *
  * Ports the v1 file-cache rebuild tests (miss→unchanged, no self-credit,
  * modified diff, update-then-freshness) and adds probe-mode coverage. The v1
- * test that asserted stub-on-read behavior is intentionally absent — it dies
+ * test that asserted stub-on-read behavior is intentionally absent, it dies
  * with the stub (gate 2).
  */
 
@@ -66,7 +66,7 @@ describe('FileStateCache lookup (v2 rebuild)', () => {
     const hitFresh = cache.freshness(hit);
     expect(hitFresh.unchanged_since_last_read).toBe(true);
     expect(hitFresh.content_hash).toBe(missFresh.content_hash);
-    // The content is always available on the entry — never withheld as a stub.
+    // The content is always available on the entry, never withheld as a stub.
     expect(hit.entry.content).toBe('hello');
   });
 });

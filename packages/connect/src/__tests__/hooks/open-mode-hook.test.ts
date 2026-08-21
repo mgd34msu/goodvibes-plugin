@@ -3,7 +3,7 @@
  * (plugins/goodvibes/hooks/session-start-open-mode.mjs).
  *
  * The real `.mjs` is imported by a runtime-computed file URL so tsc does not try
- * to pull a plain-JS file outside this package into the program — the tests
+ * to pull a plain-JS file outside this package into the program, the tests
  * exercise exactly the code that ships.
  */
 

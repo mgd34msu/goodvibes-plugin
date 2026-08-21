@@ -4,13 +4,13 @@
  * Renders a fully self-contained HTML page (inline CSS, inline SVG charts, no
  * external URLs, scripts, or fonts) from the SAME engine data the query
  * handler reads: the Aggregator's DashboardState (transcript actuals) plus the
- * live-cost per-model breakdown, and — when the global DB has data — this
+ * live-cost per-model breakdown, and, when the global DB has data, this
  * project's session history and a cross-project summary.
  *
  * Two layers:
- *   - `renderAnalyticsReportHtml()` — pure string builder, testable with
+ *   - `renderAnalyticsReportHtml()`, pure string builder, testable with
  *     synthetic data.
- *   - `collectReportData()` / `writeAnalyticsReport()` — gather live data and
+ *   - `collectReportData()` / `writeAnalyticsReport()`, gather live data and
  *     persist the page to `<goodvibesDir>/reports/analytics-report.html`
  *     (stable name, overwritten each run).
  */
@@ -47,7 +47,7 @@ export interface CrossProjectSummary {
 export interface AnalyticsReportData {
   generated_at: string;
   scope: ReportScope;
-  /** Live session snapshot — same DashboardState the query handler renders. */
+  /** Live session snapshot, same DashboardState the query handler renders. */
   session: DashboardState;
   /** Per-model transcript costs (main loop + subagents), or null when unavailable. */
   live_cost: LiveCostReport | null;
@@ -67,7 +67,7 @@ export interface WrittenReport {
   summary: [string, string, string];
 }
 
-/** Report file location under the project state dir — stable, overwritten. */
+/** Report file location under the project state dir, stable, overwritten. */
 export const REPORT_SEGMENTS = ['reports', 'analytics-report.html'] as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -79,7 +79,7 @@ export const REPORT_SEGMENTS = ['reports', 'analytics-report.html'] as const;
  *
  * The session snapshot and per-model costs come from the transcript (actuals);
  * history and cross-project sections come from the global DB when it is
- * available and has data — otherwise they are null and the renderer says why.
+ * available and has data, otherwise they are null and the renderer says why.
  */
 export async function collectReportData(
   aggregator: Aggregator,
@@ -109,7 +109,7 @@ export async function collectReportData(
   if (scope !== 'session') {
     const db = aggregator.getGlobalDb();
     if (db === null) {
-      dbNote = 'global analytics DB unavailable — historical and cross-project sections omitted';
+      dbNote = 'global analytics DB unavailable; historical and cross-project sections omitted';
     } else {
       try {
         const past = db.getSessionsByProject(session.project_hash);
@@ -338,7 +338,7 @@ export function renderAnalyticsReportHtml(data: AnalyticsReportData): string {
     '<head>',
     '<meta charset="utf-8">',
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
-    `<title>GoodVibes analytics report — session ${esc(data.session.session_id)}</title>`,
+    `<title>GoodVibes analytics report: session ${esc(data.session.session_id)}</title>`,
     `<style>${STYLE}</style>`,
     '</head>',
     '<body>',

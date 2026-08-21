@@ -1,5 +1,5 @@
 /**
- * analytics_sync handler — sync JSONL session data into the global analytics database.
+ * analytics_sync handler, sync JSONL session data into the global analytics database.
  *
  * Delegates to SyncEngine which orchestrates JSONL scanning, incremental
  * parsing, and GlobalDB insertion. Supports syncing the current project only

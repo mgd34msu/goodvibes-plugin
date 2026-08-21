@@ -1,4 +1,4 @@
-/** `export` — export session data as JSON/CSV/markdown. */
+/** `export`, export session data as JSON/CSV/markdown. */
 import type { ToolModule } from './types.js';
 
 export const exportTool: ToolModule = {

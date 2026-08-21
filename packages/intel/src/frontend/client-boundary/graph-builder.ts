@@ -1,9 +1,9 @@
 /**
- * Import graph builder for client boundary analysis — Lane 4.
+ * Import graph builder for client boundary analysis, Lane 4.
  *
  * Ported from frontend-engine `core/client-boundary/graph-builder.ts`, rewired to
  * consume host-parsed SourceFiles (§3.3) instead of re-reading + re-parsing each
- * file. Import RESOLUTION still hits the filesystem (`fs.existsSync`) — that is
+ * file. Import RESOLUTION still hits the filesystem (`fs.existsSync`), that is
  * path lookup, not parsing.
  *
  * @module frontend/client-boundary/graph-builder
@@ -109,7 +109,7 @@ export function classifyComponents(
       reasons.set(file, 'Has "use client" directive');
     } else if (info.directive === '"use server"') {
       classifications.set(file, 'server');
-      reasons.set(file, 'Has "use server" directive — explicitly server-only');
+      reasons.set(file, 'Has "use server" directive: explicitly server-only');
     }
   }
 
@@ -139,7 +139,7 @@ export function classifyComponents(
     const info = directiveMap.get(file);
     const cls = classifications.get(file) ?? 'server';
     const reason =
-      reasons.get(file) ?? 'No directive, not imported by client components — server by default';
+      reasons.get(file) ?? 'No directive, not imported by client components: server by default';
     results.push({ file, classification: cls, reason, directive: info?.directive ?? undefined });
   }
   return results;

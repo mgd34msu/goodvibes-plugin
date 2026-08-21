@@ -1,5 +1,5 @@
 /**
- * db-init.ts — Global analytics directory setup and database initialization.
+ * db-init.ts, Global analytics directory setup and database initialization.
  *
  * Provides helpers for ensuring the global analytics directory exists,
  * resolving the database path, and running full initialization (schema +

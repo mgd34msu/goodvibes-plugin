@@ -1,5 +1,5 @@
 /**
- * `@goodvibes/core/telemetry` — the shared telemetry writer and record schema.
+ * `@goodvibes/core/telemetry`, the shared telemetry writer and record schema.
  *
  * Ported from v1 precision-engine `state/telemetry.ts` and `state/kv-state.ts`,
  * with two v2 changes:
@@ -9,15 +9,15 @@
  *  - The database and session files live under the namespaced
  *    `.goodvibes/` state root.
  *
- * Token counts stored here are payload-true — analytics reads them; callers pass
+ * Token counts stored here are payload-true, analytics reads them; callers pass
  * counts sourced from rendered payloads (see `core/envelope`), never a tool's
  * own pre-serialization self-estimate.
  */
 
 // `sql.js` is an externalized WASM dependency (see intel/analytics/connect
 // build.mjs) that the one-time plugin setup installs into each server's
-// node_modules. It is loaded LAZILY on first telemetry init — never at module
-// load — so a fresh install (or a post-update install that has not run setup
+// node_modules. It is loaded LAZILY on first telemetry init, never at module
+// load, so a fresh install (or a post-update install that has not run setup
 // yet) boots and answers `initialize`/`tools/list` instead of crashing on a
 // missing `require('sql.js')`. Only the runtime VALUE import is deferred; the
 // type import is erased by the compiler and costs nothing at runtime.
@@ -150,7 +150,7 @@ export class Telemetry {
   private static initializedDbPath: string | null = null;
   /**
    * Set when `initialize()` could not load `sql.js` (dep not installed yet).
-   * Telemetry then stays a no-op — it never blocks or crashes a tool call.
+   * Telemetry then stays a no-op, it never blocks or crashes a tool call.
    */
   private static unavailableReason: string | null = null;
 
@@ -210,7 +210,7 @@ export class Telemetry {
   /**
    * Initialize the singleton. Loads the WASM module lazily (the only async
    * step). If `sql.js` is not installed yet, telemetry degrades to
-   * marked-unavailable — `initialize()` returns without throwing so a fresh
+   * marked-unavailable, `initialize()` returns without throwing so a fresh
    * install never has a missing dep block a tool call.
    */
   public static async initialize(dbPath?: string): Promise<void> {

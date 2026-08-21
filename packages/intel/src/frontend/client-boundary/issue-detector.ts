@@ -1,5 +1,5 @@
 /**
- * Issue detector for client boundary analysis — Lane 4.
+ * Issue detector for client boundary analysis, Lane 4.
  * Ported verbatim from frontend-engine `core/client-boundary/issue-detector.ts`.
  *
  * @module frontend/client-boundary/issue-detector

@@ -1,5 +1,5 @@
 /**
- * connect request builder — assembles fetch-ready requests from a spec + service.
+ * connect request builder, assembles fetch-ready requests from a spec + service.
  *
  * Ported from v1 precision-engine `utils/fetch/request-builder.ts` (URL/query,
  * body encoding for json/form/multipart/raw, header merge, per-request auth all

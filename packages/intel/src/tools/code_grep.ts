@@ -1,12 +1,12 @@
 /**
- * code_grep — batched, structure-aware search with a clean cap layer, ranking,
+ * code_grep, batched, structure-aware search with a clean cap layer, ranking,
  * negation, replace-preview, and stats.
  *
  * Ported from v1 `precision-engine/src/handlers/precision-grep.ts` plus
  * `core/{ripgrep,tree-sitter}.ts` and `utils/{grep-pagination,grep-negation,
  * grep-replace-preview,grep-stats}.ts`. `grep-ranking.ts` is REBUILT cheap
  * (see `lib/grep-ranking.ts`); `grep-relationships.ts` does not port (plan
- * §4.1 code_grep row); `core/ast-grep.ts` does not port either — RULING (see
+ * §4.1 code_grep row); `core/ast-grep.ts` does not port either, RULING (see
  * lane report): the v1 `precision_grep` handler never calls `AstGrepCore` (it
  * is only used by the retiring `discover`/`precision_edit` handlers), so no
  * v2 `code_grep` behavior depends on it.
@@ -16,11 +16,11 @@
  *  - `max_per_item` caps matches included PER FILE.
  *  - `max_total_matches` caps matches included ACROSS ALL FILES.
  *  - `count_only`/file counts (`file_count`/`match_count`) are always TRUE
- *    counts, never capped — no per-file `--max-count` is ever passed to
+ *    counts, never capped, no per-file `--max-count` is ever passed to
  *    ripgrep for count_only/files_only, so a per-file cap can never leak into
  *    a total.
  *  - `truncated` is set only when a cap actually trimmed output, and
- *    `effective_caps` echoes exactly the caps that bit — in EVERY output
+ *    `effective_caps` echoes exactly the caps that bit, in EVERY output
  *    format, including `count_only`.
  * Field issue 1 (base_path): every file result echoes an absolute
  * `resolved_path`.
@@ -158,7 +158,7 @@ function splitGlobPattern(globPattern: string): { dir: string; glob: string } | 
 /**
  * Transform a RipgrepSearchResult into a GrepResult. Cap semantics (each cap
  * does exactly one job, field issue 2):
- *  - count_only counts with NO caps applied — true line-based totals.
+ *  - count_only counts with NO caps applied, true line-based totals.
  *  - maxFiles (max_results) caps the file LIST only.
  *  - maxPerItem (max_per_item) caps matches included per file.
  *  - maxTotalMatches caps matches included across all files.
@@ -438,7 +438,7 @@ async function executeQuery(
     ...((query.include_hidden ?? true) === false ? ['**/.*', '.*'] : []),
   ];
 
-  // No per-file maxCount is passed to ripgrep — every cap applies post-parse
+  // No per-file maxCount is passed to ripgrep, every cap applies post-parse
   // in transformRipgrepResult so file_count/match_count stay TRUE counts.
   const ripgrepResult = await ripgrepCore.search({
     pattern: patternStr,
@@ -467,7 +467,7 @@ const definition: Tool = {
   name: 'code_grep',
   description:
     'Prefer this over plain grep for repo-wide searches you would otherwise page through: one batched call replaces several native searches and returned 62.7% fewer tokens for identical match sets (measured, 76/76 matches). Batch pattern search with a clean cap layer (max_results caps the file list, max_per_item caps matches per ' +
-    'file, max_total_matches caps matches overall — counts are always true, never capped). Output modes: ' +
+    'file, max_total_matches caps matches overall; counts are always true, never capped). Output modes: ' +
     'count_only, files_only (default), locations, matches, context, stats. Supports negate (files WITHOUT a ' +
     'pattern), ranked relevance sort, and preview_replace dry runs.',
   inputSchema: {
@@ -519,7 +519,7 @@ const definition: Tool = {
   },
 };
 
-/** Budget-partial design: see the ruling in `tools/code_read.ts`'s `handler` doc — same tradeoff applies here (batched, independent per-query work). */
+/** Budget-partial design: see the ruling in `tools/code_read.ts`'s `handler` doc, same tradeoff applies here (batched, independent per-query work). */
 export async function handler(args: unknown): Promise<CallToolResult> {
   const start = performance.now();
   const cfg = loadConfig();

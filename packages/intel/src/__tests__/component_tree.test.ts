@@ -1,5 +1,5 @@
 /**
- * component_tree fixture tests — bare tree plus one case per annotation mode
+ * component_tree fixture tests, bare tree plus one case per annotation mode
  * (§4.4.1) over fixtures/frontend-app. The state test locks the tribunal FIX:
  * each state variable flows ONLY to the children it is actually passed to.
  */

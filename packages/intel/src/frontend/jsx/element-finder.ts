@@ -1,5 +1,5 @@
 /**
- * JSX element finder — Lane 4.
+ * JSX element finder, Lane 4.
  * Ported from frontend-engine `core/jsx/element-finder.ts`. Used by the sizing
  * section to build an ElementNode chain up to a selected element.
  *

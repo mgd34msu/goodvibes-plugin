@@ -1,5 +1,5 @@
 /**
- * `code_surface` — public vs internal API surface of a module/package.
+ * `code_surface`, public vs internal API surface of a module/package.
  *
  * Ports project-engine `extensions/code-intel/api-surface.ts` onto the shared
  * compiler host (§3.3, §4.1). v2 wrappers per the port row:
@@ -61,7 +61,7 @@ const definition: Tool = {
   description:
     'Use before modifying or reviewing a module to know what is public API versus internal implementation. Analyze the public vs internal API surface of a module or package using the ' +
     'TypeScript compiler. Returns exported symbols with kind, type signature, JSDoc, ' +
-    'file and 1-based line — split into public (reachable from entry points) and ' +
+    'file and 1-based line, split into public (reachable from entry points) and ' +
     'internal. Static compiler analysis; no code is executed.',
   inputSchema: {
     type: 'object',
@@ -201,11 +201,9 @@ function capToTokens(env: Envelope<CodeSurfaceData>, maxTokens?: number): Envelo
     },
   });
 
-  // Drop internal entries from the end until it fits or none remain.
   while (data.internal_api.length > 0 && estimatePayloadTokens(renderEnvelope(trim())) > maxTokens) {
     data.internal_api.pop();
   }
-  // Then public entries if still over.
   while (data.public_api.length > 0 && estimatePayloadTokens(renderEnvelope(trim())) > maxTokens) {
     data.public_api.pop();
   }

@@ -1,6 +1,6 @@
 /**
  * `api_spec` fixture tests: a spec snapshot per fixture app (§4.1 port row).
- * Read-only — asserts nothing is written to disk and the spec comes back in
+ * Read-only, asserts nothing is written to disk and the spec comes back in
  * the response payload only.
  */
 

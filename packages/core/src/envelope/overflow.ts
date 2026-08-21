@@ -1,5 +1,5 @@
 /**
- * Overflow spill directory — kept per plan §7.5 (it saved the review's data more
+ * Overflow spill directory, kept per plan §7.5 (it saved the review's data more
  * than once), with age-based cleanup. When a payload is too large to return
  * inline, the full text is written to a spill file under `.goodvibes/overflow/`
  * (namespaced) and the caller receives a head/tail preview plus the path.
@@ -112,11 +112,11 @@ export async function cleanupOverflowFiles(
           cleaned++;
         }
       } catch {
-        // Skip files that cannot be stat'd or removed — non-critical.
+        // Skip files that cannot be stat'd or removed, non-critical.
       }
     }
   } catch {
-    // Directory does not exist yet — nothing to clean.
+    // Directory does not exist yet, nothing to clean.
   }
   return cleaned;
 }

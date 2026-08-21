@@ -1,7 +1,7 @@
 /**
  * Observability modes for the analytics engine (lane 9).
  *
- * These are MODES of the existing `query` / `dashboard` tools — not new tools.
+ * These are MODES of the existing `query` / `dashboard` tools, not new tools.
  * Analytics stays at seven tools; the three capabilities here (live session
  * cost, host health / doctor, agent liveness) are surfaced through the existing
  * surface and share the transcript-reader + pricing base.

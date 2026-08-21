@@ -290,7 +290,7 @@ export class HistoricalStore {
       }
       return parsed as SessionArchive;
     } catch {
-      // Malformed JSON or file not found — skip gracefully
+      // Malformed JSON or file not found, skip gracefully
       return null;
     }
   }

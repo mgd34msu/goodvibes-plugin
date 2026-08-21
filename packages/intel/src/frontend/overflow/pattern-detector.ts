@@ -1,5 +1,5 @@
 /**
- * Overflow pattern detector — Lane 4.
+ * Overflow pattern detector, Lane 4.
  * Ported verbatim from frontend-engine `core/overflow/pattern-detector.ts`.
  * Keeps the nested-flex min-height detector (pattern 7); the absolute-positioning
  * heuristic (pattern 4) stays severity `low` and the merged tool guards it further

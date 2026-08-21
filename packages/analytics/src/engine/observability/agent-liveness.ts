@@ -1,15 +1,15 @@
 /**
  * Agent-liveness scanner (lane 9).
  *
- * Classifies background agents from their transcript files alone — no process
+ * Classifies background agents from their transcript files alone, no process
  * introspection required (Claude subagents are in-process, not OS children, so
  * an OS-child signal is usually absent by design). For each agent transcript we
  * combine three cheap signals:
  *
- *   - mtime age      — how long since the file last grew
- *   - write rate     — bytes added since the previous scan (when a prior scan
+ *   - mtime age     , how long since the file last grew
+ *   - write rate    , bytes added since the previous scan (when a prior scan
  *                      snapshot is supplied), else unknown
- *   - tail state     — the last meaningful event in the transcript
+ *   - tail state    , the last meaningful event in the transcript
  *
  * into one of: `executing` (a live child, or a tool call issued and the file is
  * still actively growing), `thinking` (recent assistant/thinking output, no
@@ -79,7 +79,7 @@ export type SizeSnapshot = Map<string, { size: number; atMs: number }>;
 
 /** Options for {@link scanAgentLiveness}. */
 export interface AgentLivenessOptions {
-  /** `<projectDir>/<session-id>` — parent of `subagents/` and `tasks/`. */
+  /** `<projectDir>/<session-id>`, parent of `subagents/` and `tasks/`. */
   sessionDir: string | null;
   /** Wedged threshold in minutes (default 3). */
   wedgedMinutes?: number;
@@ -179,7 +179,7 @@ function collectAgentFiles(sessionDir: string): string[] {
       if (e.startsWith('agent-') && e.endsWith('.jsonl')) {files.push(join(subagentsDir, e));}
     }
   } catch {
-    /* no subagents dir — fine */
+    /* no subagents dir, fine */
   }
 
   // tasks/ may nest a level; walk shallowly (2 levels) for *.jsonl.
@@ -232,7 +232,7 @@ function agentIdFromFile(file: string): string {
  * Scan a session's background-agent transcripts and classify each one.
  *
  * Reuses {@link JSONLReader} for tail-tolerant parsing (a truncated final line
- * and unknown event types are skipped, never fatal). Never throws — an
+ * and unknown event types are skipped, never fatal). Never throws, an
  * unreadable file becomes an `unknown`-state entry, a missing session dir a
  * `degraded` report.
  */
@@ -243,7 +243,7 @@ export function scanAgentLiveness(options: AgentLivenessOptions): AgentLivenessR
   const prevSizes = options.prevSizes;
 
   if (!options.sessionDir) {
-    return { session_dir: null, agents: [], degraded: 'no active session directory — agent liveness unavailable' };
+    return { session_dir: null, agents: [], degraded: 'no active session directory; agent liveness unavailable' };
   }
 
   const files = collectAgentFiles(options.sessionDir);

@@ -1,5 +1,5 @@
 /**
- * JSONLWatcher — Live tail watcher for Claude session JSONL files.
+ * JSONLWatcher, Live tail watcher for Claude session JSONL files.
  *
  * Extends EventEmitter to emit batched JSONLRecord arrays as new content is
  * appended to the active session JSONL file. Supports:
@@ -13,9 +13,9 @@
  *   - Clean shutdown via stop()
  *
  * Events:
- *   'records'        — emits JSONLRecord[] batched since last interval
- *   'error'          — emits Error for I/O failures
- *   'session-change' — emits new session ID string when active file changes
+ *   'records'       , emits JSONLRecord[] batched since last interval
+ *   'error'         , emits Error for I/O failures
+ *   'session-change', emits new session ID string when active file changes
  */
 
 import { EventEmitter } from 'node:events';
@@ -34,7 +34,7 @@ import type { JSONLRecord } from './jsonl-types.js';
 
 /**
  * Configuration options for JSONLWatcher.
- * All fields are optional — sensible defaults are provided.
+ * All fields are optional, sensible defaults are provided.
  */
 export interface JSONLWatcherOptions {
   /**
@@ -60,7 +60,7 @@ export interface JSONLWatcherOptions {
 export interface JSONLWatcherEvents {
   /** Emitted when a batch of parsed records is ready. */
   'records': (records: JSONLRecord[]) => void;
-  /** Emitted when an I/O error occurs (non-fatal — watcher continues). */
+  /** Emitted when an I/O error occurs (non-fatal, watcher continues). */
   'error': (err: Error) => void;
   /** Emitted when the active session JSONL file changes (rotation event). */
   'session-change': (newSessionId: string) => void;
@@ -157,7 +157,7 @@ export class JSONLWatcher extends EventEmitter {
    *
    * Finds the active session JSONL, begins watching it, sets up subagent
    * watching, and starts the batch flush interval. Safe to call multiple
-   * times — subsequent calls are no-ops if already running.
+   * times, subsequent calls are no-ops if already running.
    */
   start(): void {
     if (this.running) {return;}
@@ -266,7 +266,7 @@ export class JSONLWatcher extends EventEmitter {
   private async initSessionWatch(): Promise<void> {
     const activePath = await findActiveJsonlFile(this.projectDir);
     if (activePath === null) {
-      // No JSONL files yet — watch the project directory for creation.
+      // No JSONL files yet, watch the project directory for creation.
       this.watchDirectoryForNewSession();
       return;
     }
@@ -397,7 +397,7 @@ export class JSONLWatcher extends EventEmitter {
       const fullPath = join(dirPath, filename);
       if (!existsSync(fullPath)) {return;}
 
-      // A new JSONL appeared — switch to it.
+      // A new JSONL appeared, switch to it.
       this.switchToSession(fullPath).catch((err: unknown) => {
         this.emitError(err instanceof Error ? err : new Error(String(err)));
       });
@@ -409,7 +409,7 @@ export class JSONLWatcher extends EventEmitter {
     try {
       handle = watch(dirPath, { persistent: false }, onDirChange);
     } catch {
-      // Can't watch directory — the rotation timer will pick it up.
+      // Can't watch directory, the rotation timer will pick it up.
       handle = { close(): void { /* no-op */ } };
     }
   }
@@ -543,7 +543,7 @@ export class JSONLWatcher extends EventEmitter {
     if (activePath === null) {return;}
     if (activePath === this.activeSessionPath) {return;}
 
-    // A newer JSONL file exists — switch to it.
+    // A newer JSONL file exists, switch to it.
     await this.switchToSession(activePath);
   }
 
@@ -559,6 +559,6 @@ export class JSONLWatcher extends EventEmitter {
     if (this.listenerCount('error') > 0) {
       this.emit('error', err);
     }
-    // If no listener, swallow — avoid crashing on non-fatal I/O errors.
+    // If no listener, swallow, avoid crashing on non-fatal I/O errors.
   }
 }

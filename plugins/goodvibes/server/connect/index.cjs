@@ -22441,6 +22441,61 @@ __name(startTimer, "startTimer");
 // packages/connect/src/fetch/registry-store.ts
 var fs2 = __toESM(require("fs"), 1);
 var path2 = __toESM(require("path"), 1);
+
+// packages/core/src/fsx/index.ts
+var fsPromises = __toESM(require("fs/promises"), 1);
+var import_crypto = require("crypto");
+async function atomicWriteFile(filePath, data, options = {}) {
+  const tmp = `${filePath}.${process.pid}.${(0, import_crypto.randomBytes)(6).toString("hex")}.tmp`;
+  try {
+    await fsPromises.writeFile(tmp, data, options.mode !== void 0 ? { mode: options.mode } : {});
+    if (options.mode !== void 0) {
+      await fsPromises.chmod(tmp, options.mode);
+    }
+    await fsPromises.rename(tmp, filePath);
+  } catch (err) {
+    await fsPromises.unlink(tmp).catch(() => void 0);
+    throw err;
+  }
+}
+__name(atomicWriteFile, "atomicWriteFile");
+var LOCK_TAKEOVER_MS = 15e3;
+var LOCK_POLL_MS = 20;
+async function withFileLock(target, fn, waitMs = 1e4) {
+  const lockPath = `${target}.lock`;
+  const deadline = Date.now() + waitMs;
+  let handle;
+  for (; ; ) {
+    try {
+      handle = await fsPromises.open(lockPath, "wx", 384);
+      break;
+    } catch (err) {
+      if (err.code !== "EEXIST") {
+        throw err;
+      }
+      let age;
+      try {
+        age = Date.now() - (await fsPromises.stat(lockPath)).mtimeMs;
+      } catch {
+        continue;
+      }
+      if (age > LOCK_TAKEOVER_MS || Date.now() > deadline) {
+        await fsPromises.unlink(lockPath).catch(() => void 0);
+        continue;
+      }
+      await new Promise((r) => setTimeout(r, LOCK_POLL_MS));
+    }
+  }
+  try {
+    return await fn();
+  } finally {
+    await handle.close().catch(() => void 0);
+    await fsPromises.unlink(lockPath).catch(() => void 0);
+  }
+}
+__name(withFileLock, "withFileLock");
+
+// packages/connect/src/fetch/registry-store.ts
 function registryPath() {
   return statePath("services.json");
 }
@@ -22457,7 +22512,7 @@ __name(getRegistry, "getRegistry");
 async function saveRegistry(config2) {
   const file = registryPath();
   await fs2.promises.mkdir(path2.dirname(file), { recursive: true });
-  await fs2.promises.writeFile(file, JSON.stringify(config2, null, 2) + "\n", "utf-8");
+  await atomicWriteFile(file, JSON.stringify(config2, null, 2) + "\n");
 }
 __name(saveRegistry, "saveRegistry");
 
@@ -22517,10 +22572,7 @@ async function saveSecrets(secrets) {
   const secretsDir = path4.dirname(secretsPath);
   await ensureGitignore(process.cwd());
   await fs4.promises.mkdir(secretsDir, { recursive: true });
-  await fs4.promises.writeFile(secretsPath, JSON.stringify(secrets, null, 2) + "\n", {
-    encoding: "utf-8",
-    mode: 384
-  });
+  await atomicWriteFile(secretsPath, JSON.stringify(secrets, null, 2) + "\n", { mode: 384 });
 }
 __name(saveSecrets, "saveSecrets");
 async function getServiceSecrets(name) {
@@ -23446,7 +23498,7 @@ var CookieJar = class {
         content = JSON.stringify({ cookies: this.cookies, updated_at: updatedAt }, null, 2) + "\n";
       }
     }
-    await fs5.promises.writeFile(cookiePath, content, { encoding: "utf-8", mode: 384 });
+    await atomicWriteFile(cookiePath, content, { mode: 384 });
     this.dirty = false;
   }
   async ensureLoaded() {
@@ -23601,6 +23653,21 @@ var CookieJar = class {
 var globalCookieJar = new CookieJar();
 
 // packages/connect/src/fetch/auth/auth-orchestrator.ts
+var refreshesInFlight = /* @__PURE__ */ new Map();
+async function refreshOnce(serviceName, auth) {
+  const running = refreshesInFlight.get(serviceName);
+  if (running) {
+    return running;
+  }
+  const pending = refreshAndStore(serviceName, auth);
+  refreshesInFlight.set(serviceName, pending);
+  try {
+    return await pending;
+  } finally {
+    refreshesInFlight.delete(serviceName);
+  }
+}
+__name(refreshOnce, "refreshOnce");
 async function applyAuth(headers, url, requestAuth, serviceName) {
   let authApplied = false;
   if (requestAuth && requestAuth.type !== "none") {
@@ -23640,7 +23707,7 @@ async function applyAuth(headers, url, requestAuth, serviceName) {
       if (auth.type === "oauth2") {
         let currentAuth = auth;
         if (isTokenExpired(currentAuth) && canRefreshToken(currentAuth)) {
-          const refreshedAuth = await refreshAndStore(serviceName, currentAuth);
+          const refreshedAuth = await refreshOnce(serviceName, currentAuth);
           if (refreshedAuth) {
             currentAuth = refreshedAuth;
           }
@@ -23688,7 +23755,7 @@ async function handleAuthFailure(response, serviceName) {
     }
     if (auth.type === "oauth2") {
       if (canRefreshToken(auth)) {
-        const refreshed = await refreshAndStore(serviceName, auth);
+        const refreshed = await refreshOnce(serviceName, auth);
         if (refreshed) {
           return { retry: true };
         }
@@ -23835,28 +23902,30 @@ function isMethodAllowed(method, opts) {
   };
 }
 __name(isMethodAllowed, "isMethodAllowed");
-function collectSecretValues(auth) {
+function collectSecretValues(...auths) {
   const out = /* @__PURE__ */ new Set();
   const add = /* @__PURE__ */ __name((v) => {
     if (typeof v === "string" && v.trim().length >= 4) {
       out.add(v);
     }
   }, "add");
-  if (!auth) {
-    return [];
-  }
-  add(auth.token);
-  add(auth.key);
-  add(auth.password);
-  add(auth.access_token);
-  add(auth.refresh_token);
-  add(auth.client_secret);
-  if (typeof auth.username === "string" && typeof auth.password === "string") {
-    add(Buffer.from(`${auth.username}:${auth.password}`, "utf-8").toString("base64"));
-  }
-  if (auth.headers) {
-    for (const value of Object.values(auth.headers)) {
-      add(value);
+  for (const auth of auths) {
+    if (!auth) {
+      continue;
+    }
+    add(auth.token);
+    add(auth.key);
+    add(auth.password);
+    add(auth.access_token);
+    add(auth.refresh_token);
+    add(auth.client_secret);
+    if (typeof auth.username === "string" && typeof auth.password === "string") {
+      add(Buffer.from(`${auth.username}:${auth.password}`, "utf-8").toString("base64"));
+    }
+    if (auth.headers) {
+      for (const value of Object.values(auth.headers)) {
+        add(value);
+      }
     }
   }
   return [...out];
@@ -24091,7 +24160,7 @@ async function runEntry(entry, mode) {
       }
     }
     const extracted = await extractResponse(response, extract);
-    const secrets = collectSecretValues(built.service?.auth);
+    const secrets = collectSecretValues(built.service?.auth, entry.auth);
     const body = extracted.body !== void 0 ? redactValue(extracted.body, secrets) : void 0;
     const headers = extracted.headers ? redactValue(extracted.headers, secrets) : void 0;
     return {
@@ -24494,72 +24563,233 @@ var WRITE_KEYWORDS = [
   "MERGE",
   "GRANT",
   "REVOKE",
-  "VACUUM"
+  "VACUUM",
+  "ATTACH",
+  "DETACH",
+  "REINDEX",
+  "ANALYZE",
+  "CLUSTER",
+  "COPY",
+  "LOAD",
+  "IMPORT",
+  "RENAME",
+  "COMMENT",
+  "CALL",
+  "DO",
+  "EXECUTE",
+  "PREPARE",
+  "DEALLOCATE",
+  "SET",
+  "RESET",
+  "LOCK",
+  "UNLOCK",
+  "BEGIN",
+  "START",
+  "COMMIT",
+  "ROLLBACK",
+  "SAVEPOINT",
+  "RELEASE"
+];
+var FUNCTION_LIKE_WRITE_KEYWORDS = ["INSERT", "REPLACE", "TRUNCATE"];
+var EXPLAIN_OPTION_WORDS = [
+  "ANALYZE",
+  "ANALYSE",
+  "VERBOSE",
+  "QUERY",
+  "PLAN",
+  "COSTS",
+  "SETTINGS",
+  "GENERIC_PLAN",
+  "BUFFERS",
+  "WAL",
+  "TIMING",
+  "SUMMARY",
+  "MEMORY",
+  "SERIALIZE",
+  "FORMAT",
+  "TEXT",
+  "XML",
+  "JSON",
+  "YAML",
+  "ON",
+  "OFF",
+  "TRUE",
+  "FALSE"
+];
+var READ_STATEMENT_STARTERS = [
+  "SELECT",
+  "WITH",
+  "VALUES",
+  "TABLE",
+  "SHOW",
+  "DESCRIBE",
+  "DESC",
+  "PRAGMA"
 ];
 
 // packages/connect/src/db/query-analysis.ts
-var STRIP_LINE_COMMENTS = /^--.*$/gm;
-var STRIP_BLOCK_COMMENTS = /\/\*[\s\S]*?\*\//g;
-var CTE_END_PATTERNS = {};
-function getCteEndPattern(keyword) {
-  if (!CTE_END_PATTERNS[keyword]) {
-    CTE_END_PATTERNS[keyword] = new RegExp(`\\)\\s*${keyword}\\b`, "i");
-  }
-  return CTE_END_PATTERNS[keyword];
-}
-__name(getCteEndPattern, "getCteEndPattern");
-function stripLeadingComments(query) {
-  return query.replace(STRIP_LINE_COMMENTS, "").replace(STRIP_BLOCK_COMMENTS, "").trim();
-}
-__name(stripLeadingComments, "stripLeadingComments");
-function isWriteOperation(query) {
-  const normalizedQuery = query.trim().toUpperCase();
-  const withoutComments = stripLeadingComments(normalizedQuery);
-  for (const keyword of WRITE_KEYWORDS) {
-    if (withoutComments.startsWith(keyword)) {
-      return true;
+var WRITE_KEYWORD_SET = new Set(WRITE_KEYWORDS.map((k) => k.toUpperCase()));
+var FUNCTION_LIKE_SET = new Set(FUNCTION_LIKE_WRITE_KEYWORDS.map((k) => k.toUpperCase()));
+var EXPLAIN_OPTION_SET = new Set(EXPLAIN_OPTION_WORDS.map((k) => k.toUpperCase()));
+var READ_STARTER_SET = new Set(READ_STATEMENT_STARTERS.map((k) => k.toUpperCase()));
+var LITERAL = " _lit ";
+var IDENTIFIER = " _id ";
+var TOKEN_RE = /[A-Za-z_][A-Za-z_0-9$]*|[();,]|[^\s]/g;
+function normalizeSql(sql) {
+  let out = "";
+  let i = 0;
+  const n = sql.length;
+  while (i < n) {
+    const c = sql[i];
+    const next = i + 1 < n ? sql[i + 1] : "";
+    if (c === "-" && next === "-" || c === "#") {
+      while (i < n && sql[i] !== "\n") {
+        i++;
+      }
+      out += " ";
+      continue;
     }
+    if (c === "/" && next === "*") {
+      const end = sql.indexOf("*/", i + 2);
+      i = end === -1 ? n : end + 2;
+      out += " ";
+      continue;
+    }
+    if (c === "$") {
+      const dollarTag = /^\$[A-Za-z_][A-Za-z_0-9]*\$|^\$\$/.exec(sql.slice(i));
+      if (dollarTag) {
+        const tag = dollarTag[0];
+        const end = sql.indexOf(tag, i + tag.length);
+        i = end === -1 ? n : end + tag.length;
+        out += LITERAL;
+        continue;
+      }
+    }
+    if (c === "'" || c === '"' || c === "`") {
+      const quote = c;
+      i++;
+      while (i < n) {
+        if (sql[i] === "\\" && quote !== '"') {
+          i += 2;
+          continue;
+        }
+        if (sql[i] === quote) {
+          if (sql[i + 1] === quote) {
+            i += 2;
+            continue;
+          }
+          i++;
+          break;
+        }
+        i++;
+      }
+      out += quote === "'" ? LITERAL : IDENTIFIER;
+      continue;
+    }
+    out += c;
+    i++;
   }
-  if (withoutComments.startsWith("WITH")) {
-    for (const keyword of WRITE_KEYWORDS) {
-      if (getCteEndPattern(keyword).test(withoutComments)) {
+  return out;
+}
+__name(normalizeSql, "normalizeSql");
+function splitStatements(normalized) {
+  return normalized.split(";").map((s) => s.trim()).filter((s) => s.length > 0);
+}
+__name(splitStatements, "splitStatements");
+function tokenize(normalized) {
+  const tokens = [];
+  TOKEN_RE.lastIndex = 0;
+  let match;
+  while ((match = TOKEN_RE.exec(normalized)) !== null) {
+    tokens.push(match[0].toUpperCase());
+  }
+  return tokens;
+}
+__name(tokenize, "tokenize");
+function skipExplainWrapper(tokens) {
+  if (tokens[0] !== "EXPLAIN") {
+    return 0;
+  }
+  let i = 1;
+  while (i < tokens.length) {
+    const t = tokens[i];
+    if (t === "(" || t === ")" || t === "," || EXPLAIN_OPTION_SET.has(t)) {
+      i++;
+      continue;
+    }
+    break;
+  }
+  return i;
+}
+__name(skipExplainWrapper, "skipExplainWrapper");
+function isWriteStatement(tokens) {
+  const start = skipExplainWrapper(tokens);
+  if (start >= tokens.length) {
+    return false;
+  }
+  if (tokens[start] === "PRAGMA") {
+    return tokens.includes("=");
+  }
+  let atStatementBoundary = true;
+  for (let i = start; i < tokens.length; i++) {
+    const token = tokens[i];
+    if (token === "(" || token === ")") {
+      atStatementBoundary = true;
+      continue;
+    }
+    if (atStatementBoundary && WRITE_KEYWORD_SET.has(token)) {
+      if (!(FUNCTION_LIKE_SET.has(token) && tokens[i + 1] === "(")) {
         return true;
       }
     }
+    atStatementBoundary = false;
   }
   return false;
+}
+__name(isWriteStatement, "isWriteStatement");
+function isWriteOperation(query) {
+  return splitStatements(normalizeSql(query)).some((stmt) => isWriteStatement(tokenize(stmt)));
 }
 __name(isWriteOperation, "isWriteOperation");
 function isReadOnlyQuery(query) {
-  const normalizedQuery = query.trim().toUpperCase();
-  const withoutComments = stripLeadingComments(normalizedQuery);
-  if (withoutComments.startsWith("SELECT") || withoutComments.startsWith("EXPLAIN")) {
-    return true;
+  const statements = splitStatements(normalizeSql(query));
+  if (statements.length === 0) {
+    return false;
   }
-  if (withoutComments.startsWith("WITH")) {
-    return !WRITE_KEYWORDS.some((keyword) => getCteEndPattern(keyword).test(withoutComments));
-  }
-  if (withoutComments.startsWith("PRAGMA")) {
-    return !withoutComments.includes("=");
-  }
-  return false;
+  return statements.every((stmt) => {
+    const tokens = tokenize(stmt);
+    if (isWriteStatement(tokens)) {
+      return false;
+    }
+    const start = skipExplainWrapper(tokens);
+    const head = tokens[start];
+    if (head === void 0) {
+      return tokens[0] === "EXPLAIN";
+    }
+    return READ_STARTER_SET.has(head);
+  });
 }
 __name(isReadOnlyQuery, "isReadOnlyQuery");
 function hasLimitClause(query) {
-  const normalizedQuery = query.trim().toUpperCase();
-  return /\bLIMIT\s+\d+/i.test(normalizedQuery) || /\bLIMIT\s+\$\d+/i.test(normalizedQuery) || /\bLIMIT\s+\?/i.test(normalizedQuery);
+  const normalized = normalizeSql(query);
+  return /\bLIMIT\s+\d+/i.test(normalized) || /\bLIMIT\s+\$\d+/i.test(normalized) || /\bLIMIT\s+\?/i.test(normalized) || /\bLIMIT\s+ALL\b/i.test(normalized);
 }
 __name(hasLimitClause, "hasLimitClause");
 function addLimitClause(query, limit) {
   const trimmedQuery = query.trim();
-  if (!/^(SELECT|WITH)/i.test(trimmedQuery)) {
+  const statements = splitStatements(normalizeSql(trimmedQuery));
+  if (statements.length !== 1) {
+    return trimmedQuery;
+  }
+  if (!/^(SELECT|WITH)\b/i.test(statements[0])) {
     return trimmedQuery;
   }
   if (hasLimitClause(trimmedQuery)) {
     return trimmedQuery;
   }
   const withoutSemicolon = trimmedQuery.replace(/;\s*$/, "");
-  return `${withoutSemicolon} LIMIT ${limit}`;
+  return `${withoutSemicolon}
+LIMIT ${limit}`;
 }
 __name(addLimitClause, "addLimitClause");
 
@@ -24781,7 +25011,7 @@ function getPostgresTypeName(oid) {
   return typeMap[oid] || "unknown";
 }
 __name(getPostgresTypeName, "getPostgresTypeName");
-async function executePostgres(connectionInfo, query, params = []) {
+async function executePostgres(connectionInfo, query, params = [], readonly2 = true) {
   const pg = await loadPostgresDriver();
   if (!pg) {
     throw new Error("PostgreSQL driver (pg) is not installed in this project. Install with: npm install pg");
@@ -24805,6 +25035,9 @@ async function executePostgres(connectionInfo, query, params = []) {
     );
   }
   try {
+    if (readonly2) {
+      await client.query("BEGIN READ ONLY");
+    }
     const result = await client.query(query, params);
     const columns = result.fields?.map((field) => ({
       name: field.name,
@@ -24817,6 +25050,9 @@ async function executePostgres(connectionInfo, query, params = []) {
       cause
     );
   } finally {
+    if (readonly2) {
+      await client.query("ROLLBACK").catch(() => void 0);
+    }
     await client.end();
   }
 }
@@ -24849,7 +25085,7 @@ function getMysqlTypeName(typeCode) {
   return typeMap[typeCode] || "unknown";
 }
 __name(getMysqlTypeName, "getMysqlTypeName");
-async function executeMysql(connectionInfo, query, params = []) {
+async function executeMysql(connectionInfo, query, params = [], readonly2 = true) {
   const mysql = await loadMysqlDriver();
   if (!mysql) {
     throw new Error("MySQL driver (mysql2) is not installed in this project. Install with: npm install mysql2");
@@ -24872,6 +25108,9 @@ async function executeMysql(connectionInfo, query, params = []) {
     );
   }
   try {
+    if (readonly2) {
+      await connection.query("START TRANSACTION READ ONLY");
+    }
     const [rows, fields] = await connection.execute({ sql: query, timeout: 3e4 }, params);
     const columns = fields?.map((field) => ({
       name: field.name,
@@ -24884,6 +25123,9 @@ async function executeMysql(connectionInfo, query, params = []) {
       cause
     );
   } finally {
+    if (readonly2) {
+      await connection.query("ROLLBACK").catch(() => void 0);
+    }
     await connection.end();
   }
 }
@@ -24931,13 +25173,32 @@ async function getSqlJs() {
   }
 }
 __name(getSqlJs, "getSqlJs");
+function fileFingerprint(filepath) {
+  if (filepath === ":memory:") {
+    return null;
+  }
+  try {
+    const s = (0, import_node_fs.statSync)(filepath);
+    return `${s.ino}:${s.size}:${s.mtimeMs}`;
+  } catch {
+    return null;
+  }
+}
+__name(fileFingerprint, "fileFingerprint");
 var SqliteConnectionPool = class {
   static {
     __name(this, "SqliteConnectionPool");
   }
   connections = /* @__PURE__ */ new Map();
   waiters = /* @__PURE__ */ new Map();
-  maxConnectionsPerDb = 5;
+  /**
+   * Read-write pools hold ONE connection per file. Each connection is an
+   * independent in-memory copy that is written back whole, so two of them
+   * against one file would each export their own copy and the second save
+   * would drop the first's rows.
+   */
+  maxReadConnectionsPerDb = 5;
+  maxWriteConnectionsPerDb = 1;
   idleTimeoutMs = 6e4;
   cleanupInterval = null;
   constructor() {
@@ -24947,8 +25208,36 @@ var SqliteConnectionPool = class {
   getPoolKey(filepath, readonly2) {
     return `${filepath}:${readonly2 ? "ro" : "rw"}`;
   }
+  /**
+   * Check a connection out of the pool and make sure its in-memory copy still
+   * matches the file. Reloading here is what stops a read from serving rows
+   * that a write (in this process or another) has already replaced.
+   */
   async acquire(options) {
+    const connection = await this.checkout(options);
+    await this.refreshIfStale(connection, options);
+    return connection;
+  }
+  async refreshIfStale(connection, options) {
+    if (options.filepath === ":memory:") {
+      return;
+    }
+    const current = fileFingerprint(options.filepath);
+    if (current === connection.fingerprint) {
+      return;
+    }
+    try {
+      connection.database.close();
+    } catch (err) {
+      logWarn("Failed to close a stale SQLite connection", err);
+    }
+    connection.database = await this.createConnection(options);
+    connection.isOpen = true;
+    connection.fingerprint = fileFingerprint(options.filepath);
+  }
+  async checkout(options) {
     const key = this.getPoolKey(options.filepath, options.readonly ?? true);
+    const maxConnections = options.readonly ?? true ? this.maxReadConnectionsPerDb : this.maxWriteConnectionsPerDb;
     let poolConnections = this.connections.get(key);
     if (!poolConnections) {
       poolConnections = [];
@@ -24960,7 +25249,7 @@ var SqliteConnectionPool = class {
       available.lastUsed = Date.now();
       return available;
     }
-    if (poolConnections.length < this.maxConnectionsPerDb) {
+    if (poolConnections.length < maxConnections) {
       const db = await this.createConnection(options);
       const pooled = {
         database: db,
@@ -24968,7 +25257,8 @@ var SqliteConnectionPool = class {
         readonly: options.readonly ?? true,
         lastUsed: Date.now(),
         inUse: true,
-        isOpen: true
+        isOpen: true,
+        fingerprint: fileFingerprint(options.filepath)
       };
       poolConnections.push(pooled);
       return pooled;
@@ -25022,7 +25312,8 @@ var SqliteConnectionPool = class {
       return;
     }
     const data = connection.database.export();
-    await (0, import_promises.writeFile)(connection.filepath, Buffer.from(data));
+    await atomicWriteFile(connection.filepath, Buffer.from(data));
+    connection.fingerprint = fileFingerprint(connection.filepath);
   }
   async createConnection(options) {
     const SQL = await getSqlJs();
@@ -25036,7 +25327,7 @@ var SqliteConnectionPool = class {
       db = new SQL.Database();
       if (!options.readonly) {
         const data = db.export();
-        await (0, import_promises.writeFile)(options.filepath, Buffer.from(data));
+        await atomicWriteFile(options.filepath, Buffer.from(data));
       }
     }
     try {
@@ -25100,17 +25391,23 @@ function getConnectionPool() {
 }
 __name(getConnectionPool, "getConnectionPool");
 async function withConnection(options, callback) {
-  const pool = getConnectionPool();
-  const connection = await pool.acquire(options);
-  try {
-    const result = await callback(connection.database);
-    if (!options.readonly) {
-      await pool.saveToFile(connection);
+  const run = /* @__PURE__ */ __name(async () => {
+    const pool = getConnectionPool();
+    const connection = await pool.acquire(options);
+    try {
+      const result = await callback(connection.database);
+      if (!options.readonly) {
+        await pool.saveToFile(connection);
+      }
+      return result;
+    } finally {
+      pool.release(connection);
     }
-    return result;
-  } finally {
-    pool.release(connection);
+  }, "run");
+  if (options.readonly === false && options.filepath !== ":memory:") {
+    return withFileLock(options.filepath, run);
   }
+  return run();
 }
 __name(withConnection, "withConnection");
 
@@ -25198,7 +25495,7 @@ __name(executeSqlite, "executeSqlite");
 // packages/connect/src/tools/db-query.ts
 var dbQueryTool = {
   name: "db_query",
-  description: "Run a SQL query under the connect trust boundary. Restricted mode requires a connection registered via the service tool; a bare database_url is open-mode only. Read-only by default \u2014 writes require write:true AND a target that permits them (a connection allow_writes opt-in, or open mode). Drivers load from the target project.",
+  description: "Run a SQL query under the connect trust boundary. Restricted mode requires a connection registered via the service tool; a bare database_url is open-mode only. Read-only by default; writes require write:true AND a target that permits them (a connection allow_writes opt-in, or open mode). Drivers load from the target project.",
   inputSchema: {
     type: "object",
     properties: {
@@ -25218,9 +25515,9 @@ var dbQueryTool = {
 async function executeQuery(connectionInfo, sql, params, readonly2) {
   switch (connectionInfo.type) {
     case "postgresql":
-      return executePostgres(connectionInfo, sql, params);
+      return executePostgres(connectionInfo, sql, params, readonly2);
     case "mysql":
-      return executeMysql(connectionInfo, sql, params);
+      return executeMysql(connectionInfo, sql, params, readonly2);
     case "sqlite":
       return executeSqlite(connectionInfo, sql, params, readonly2);
     default:
@@ -25308,9 +25605,12 @@ async function handleDbQuery(args) {
   const outcome = await withBudget(cfg.budgets.db_query_ms, async () => {
     let queryToExecute2 = input.query.trim();
     let truncated2 = false;
-    if (limit > 0 && !hasLimitClause(queryToExecute2) && /^(SELECT|WITH)\b/i.test(queryToExecute2)) {
-      queryToExecute2 = addLimitClause(queryToExecute2, limit);
-      truncated2 = true;
+    if (limit > 0) {
+      const limited = addLimitClause(queryToExecute2, limit);
+      if (limited !== queryToExecute2) {
+        queryToExecute2 = limited;
+        truncated2 = true;
+      }
     }
     let explainOutput2;
     if (explain && !isWriteOperation(queryToExecute2)) {

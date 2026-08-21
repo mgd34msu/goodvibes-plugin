@@ -5,7 +5,7 @@
  * matching, expiration, eviction policy all intact). v2 changes: the file moves
  * under the namespaced state dir (`.goodvibes/goodvibes.cookies.json`) via
  * `core/config` `statePath`, and the gitignore guard is anchored at the real
- * project root (`process.cwd()`) rather than two directories up — the extra
+ * project root (`process.cwd()`) rather than two directories up, the extra
  * `v2` path segment made the old `dirname(dirname(...))` land inside
  * `.goodvibes/` instead of the project root.
  */
@@ -13,6 +13,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { statePath } from '@goodvibes/core/config';
+import { atomicWriteFile } from '@goodvibes/core/fsx';
 import { ensureGitignore } from './secrets-guard.js';
 
 /** Stored cookie. */
@@ -105,7 +106,9 @@ export class CookieJar {
       }
     }
 
-    await fs.promises.writeFile(cookiePath, content, { encoding: 'utf-8', mode: 0o600 });
+    // Temp-then-rename: a truncated jar would fail to parse and drop every
+    // stored session cookie, not just the one being written.
+    await atomicWriteFile(cookiePath, content, { mode: 0o600 });
     this.dirty = false;
   }
 

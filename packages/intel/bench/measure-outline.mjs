@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * EXP3 equivalent (deep-review Appendix A) — structure extraction vs a native
+ * EXP3 equivalent (deep-review Appendix A), structure extraction vs a native
  * full read. The claimed win ("outline = 7,027t, −65.6% vs native full read")
  * is the premise's proof point; this reruns it against the finished v2
  * `code_read` (extract: outline) instead of v1 `precision_read`.
@@ -61,7 +61,7 @@ async function main() {
     return out;
   });
 
-  console.log('EXP3 — outline vs native full read (tokens = bytes/3.5)\n');
+  console.log('EXP3: outline vs native full read (tokens = bytes/3.5)\n');
   console.log('| File | Lines | Raw bytes | Native (full read) | code_read outline | Δ |');
   console.log('|---|---|---|---|---|---|');
   let anyError = false;
@@ -80,12 +80,12 @@ async function main() {
   console.log('');
   if (anyError) {
     console.log(
-      'VERDICT: inconclusive — one or more files failed outline extraction (see errors above; likely the ' +
+      'VERDICT: inconclusive; one or more files failed outline extraction (see errors above; likely the ' +
         'tree-sitter grammar wasm ABI gap noted in test-utils.ts / the lane 1 report).',
     );
     process.exitCode = 2;
   } else {
-    console.log(allBeatNative ? 'VERDICT: PASS — code_read outline beats native full read on every file.' : 'VERDICT: FAIL — code_read outline did not beat native full read on every file.');
+    console.log(allBeatNative ? 'VERDICT: PASS; code_read outline beats native full read on every file.' : 'VERDICT: FAIL; code_read outline did not beat native full read on every file.');
     process.exitCode = allBeatNative ? 0 : 1;
   }
 }

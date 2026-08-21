@@ -1,5 +1,5 @@
 /**
- * code_glob — token-efficient file finding with filters, presets, and
+ * code_glob, token-efficient file finding with filters, presets, and
  * gitignore-aware excludes.
  *
  * Ported from v1 `precision-engine/src/handlers/precision-glob.ts`
@@ -17,11 +17,11 @@
  * RULING (backend simplification, see lane report): v1 auto-selected
  * fast-glob over ripgrep for `has_content`-filtered or subdirectory-anchored
  * patterns (`dir/*.ts`), commented as "ripgrep cannot handle subdirectory
- * patterns" — verified false for ripgrep 13+ (`rg --files --glob 'dir/*.ts'`
+ * patterns", verified false for ripgrep 13+ (`rg --files --glob 'dir/*.ts'`
  * resolves correctly; confirmed empirically in this workspace). `auto` and
  * `ripgrep` both now use the ripgrep listing unconditionally. `fast-glob` is
  * requestable explicitly for parity with v1's surface; if the package is not
- * installed (genuinely missing in this workspace — see report) the call
+ * installed (genuinely missing in this workspace, see report) the call
  * degrades to the ripgrep listing with a `warning` instead of failing.
  */
 
@@ -46,7 +46,7 @@ import { resolveWorkDir } from '../lib/workdir.js';
 import { RipgrepCore } from '../lib/ripgrep.js';
 
 const ripgrepCore = new RipgrepCore();
-// Plain global `require`, not `createRequire(import.meta.url)` — see
+// Plain global `require`, not `createRequire(import.meta.url)`, see
 // lib/ripgrep.ts's `resolveRgPath` doc for why: esbuild bundles this ESM
 // source to CJS (build.mjs), and `import.meta` is empty in CJS output.
 declare const require: (id: string) => unknown;
@@ -237,7 +237,7 @@ const definition: Tool = {
   },
 };
 
-/** Budget-partial design: see the ruling in `tools/code_read.ts`'s `handler` doc — same tradeoff applies here (batched listing/filtering work). */
+/** Budget-partial design: see the ruling in `tools/code_read.ts`'s `handler` doc, same tradeoff applies here (batched listing/filtering work). */
 export async function handler(args: unknown): Promise<CallToolResult> {
   const start = performance.now();
   const cfg = loadConfig();

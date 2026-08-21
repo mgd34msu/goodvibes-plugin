@@ -1,5 +1,5 @@
 /**
- * `state` annotation for component_tree — Lane 4 (§4.4.1).
+ * `state` annotation for component_tree, Lane 4 (§4.4.1).
  *
  * Tribunal FIX: the v1 `passed_to_children` mapping added EVERY state-sourced JSX
  * prop to EVERY state variable (it only checked the passed value's category, not

@@ -95,7 +95,7 @@ export const FALLBACK_MODEL_PRICING: ModelPricingMap = {
  * own lazy fetcher (`data/pricing-fetcher.ts`), which pulls the official
  * platform docs pricing page on a 24h TTL. Fetched rates win per model; the
  * fallback fills anything the page doesn't list. Calling this also kicks a
- * non-blocking staleness refresh so the NEXT cost query sees fresh data —
+ * non-blocking staleness refresh so the NEXT cost query sees fresh data,
  * this call never waits on the network.
  *
  * @returns Map of model ID to ModelPricingInfo (prices in $/MTok).
@@ -119,7 +119,7 @@ export function loadModelPricing(): ModelPricingMap {
   return { ...FALLBACK_MODEL_PRICING };
 }
 
-/** Where the current pricing numbers come from — surfaced in cost output. */
+/** Where the current pricing numbers come from, surfaced in cost output. */
 export interface PricingProvenance {
   source: 'first-party' | 'fallback-table';
   url?: string;
@@ -329,7 +329,7 @@ export function watchConfig(
     debounceTimer.unref?.();
   };
 
-  // Node.js watchFile uses polling — suitable for config files
+  // Node.js watchFile uses polling, suitable for config files
   watchFile(filePath, { interval: 1000, persistent: false }, handler);
 
   return () => {

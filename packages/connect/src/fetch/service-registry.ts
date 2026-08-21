@@ -1,5 +1,5 @@
 /**
- * connect service registry — named API service configurations.
+ * connect service registry, named API service configurations.
  *
  * Ported from v1 precision-engine `utils/fetch/service-registry.ts`. Behaviour
  * (add/remove/collision/url-patterns/summaries, purge-secrets-on-remove) is
@@ -77,7 +77,7 @@ export async function removeService(name: string): Promise<boolean> {
 
   await saveRegistry(fetchConfig);
 
-  // Purge credentials (best-effort — a service may have had none).
+  // Purge credentials (best-effort, a service may have had none).
   try {
     await removeServiceSecret(name);
   } catch {

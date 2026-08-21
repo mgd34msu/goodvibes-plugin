@@ -1,5 +1,5 @@
 /**
- * AST primitives for React component detection — Lane 4.
+ * AST primitives for React component detection, Lane 4.
  *
  * Ported verbatim from frontend-engine `shared/ast.ts` (the read-only v1 quarry).
  * Pure functions over a `ts.SourceFile`; they carry no parsing of their own. The

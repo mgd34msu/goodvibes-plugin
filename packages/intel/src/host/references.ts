@@ -3,7 +3,7 @@
  *
  * Ported from project-engine `core/code-intel/references.ts`. Every function
  * here uses TypeScript's semantic reference engine
- * (`getReferencesAtPosition` / `findReferences`) — NEVER a text/regex scan.
+ * (`getReferencesAtPosition` / `findReferences`), NEVER a text/regex scan.
  * That is the guarantee code_safe_delete depends on (§4.1 port note).
  */
 
@@ -57,7 +57,7 @@ export function isSameLine(
 
 /**
  * True when a reference sits in the same declaration as the definition
- * (same-line heuristic — a self-reference within the declaration itself).
+ * (same-line heuristic, a self-reference within the declaration itself).
  */
 export function isInSameDeclaration(
   refFile: string,

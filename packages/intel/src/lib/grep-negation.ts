@@ -1,6 +1,6 @@
 /**
  * Grep negation: find files that DON'T contain a pattern (convention
- * enforcement — components missing PropTypes, routes without auth, etc.).
+ * enforcement, components missing PropTypes, routes without auth, etc.).
  * Ported from v1 `precision-engine/src/utils/grep-negation.ts`.
  */
 

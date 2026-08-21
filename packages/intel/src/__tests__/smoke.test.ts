@@ -2,7 +2,7 @@
  * Boot smoke test: the server answers `initialize` and lists its registered
  * tools over an in-memory transport (the same handshake the stdio bundle
  * serves). The tools list starts empty in the lane-0 skeleton and grows as
- * lanes 1-4 and 7 register tools (§4.1) — this test asserts shape, not an
+ * lanes 1-4 and 7 register tools (§4.1), this test asserts shape, not an
  * exact count, so it stays green as the roster grows.
  */
 

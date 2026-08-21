@@ -1,19 +1,29 @@
 /**
- * global-db.ts — Global SQLite database manager for analytics data.
+ * global-db.ts, Global SQLite database manager for analytics data.
  *
  * Uses sql.js (WASM-based SQLite) so the database can be bundled by esbuild
  * without native C++ addon issues. All data is stored at a single global path
  * (~/.claude/.goodvibes/analytics/analytics.db) shared across all projects.
  *
  * Architecture notes:
- * - sql.js operates in-memory; `saveToDisk()` flushes the in-memory state to
- *   the file. This is called after every write, debounced to avoid excessive I/O.
+ * - sql.js operates in-memory, so the whole file is exported and rewritten on
+ *   every write. That file is shared by every concurrent Claude Code session,
+ *   each with its own copy in memory, so each write takes a cross-process lock,
+ *   reloads the file if another process advanced it, applies the mutation, and
+ *   only then exports. Writes are therefore serialized between processes and a
+ *   save can never revert rows another session committed. `transaction()`
+ *   groups a batch under one lock and one export.
  * - WAL mode configured (no-op in sql.js, effective if migrated to native SQLite).
  */
 
-import { readFileSync, existsSync } from 'node:fs';
-import { join, resolve } from 'node:path';
-import { atomicWriteFileSync, engineLogger } from '../runtime.js';
+import { readFileSync, existsSync, statSync } from 'node:fs';
+import { join, resolve, dirname } from 'node:path';
+import {
+  atomicWriteFileSync,
+  engineLogger,
+  acquireFileLock,
+  releaseFileLock,
+} from '../runtime.js';
 import type { SqlJsStatic, Database } from 'sql.js';
 import type {
   GlobalSession,
@@ -30,18 +40,11 @@ import {
   applyMigrations,
 } from './db-schema.js';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Constants
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** Debounce delay for disk saves (ms). Prevents excessive I/O on bulk writes. */
-const SAVE_DEBOUNCE_MS = 500;
-
 /**
  * Thrown by {@link GlobalDB.initialize} when `sql.js` (an externalized WASM dep)
  * is not installed yet. The analytics engine and DB-backed handlers translate
  * it into the standard `nativeDepMessage` setup-pointer instead of a crash or a
- * raw "module not found" — the live JSONL modes need no native dep and keep
+ * raw "module not found", the live JSONL modes need no native dep and keep
  * working.
  */
 export class SqlJsUnavailableError extends Error {
@@ -145,13 +148,13 @@ function rowToAgent(row: Record<string, unknown>): AgentRecord {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * GlobalDB — manages the global analytics SQLite database.
+ * GlobalDB, manages the global analytics SQLite database.
  *
  * All analytics data (sessions, API calls, tool summaries, agents, tags) is
  * stored in a single file at `~/.claude/.goodvibes/analytics/analytics.db`.
  *
- * sql.js operates entirely in-memory, so `saveToDisk()` must be called after
- * writes to persist changes. Saves are debounced (500ms) to coalesce bursts.
+ * sql.js operates entirely in-memory; each mutating method persists itself
+ * under a cross-process lock, so callers need no explicit save.
  *
  * @example
  * ```ts
@@ -165,7 +168,12 @@ export class GlobalDB {
   private readonly dbPath: string;
   private db: Database | null = null;
   private SQL: SqlJsStatic | null = null;
-  private saveTimer: ReturnType<typeof setTimeout> | null = null;
+  /** File descriptor of the cross-process write lock while it is held. */
+  private lockFd: number | null = null;
+  /** Identity of the DB file as of our last load or save. */
+  private diskFingerprint: string | null = null;
+  /** True while a `transaction()` owns the lock on behalf of nested writes. */
+  private inTransaction = false;
 
   /**
    * @param dbPath - Absolute path to the SQLite database file.
@@ -196,42 +204,40 @@ export class GlobalDB {
     const wasmPath = this.resolveWasmPath();
     this.SQL = await initSqlJs({ locateFile: () => wasmPath });
 
-    // Open existing DB or create a new one
-    if (existsSync(this.dbPath)) {
-      const buffer = readFileSync(this.dbPath);
-      this.db = new this.SQL.Database(buffer);
-    } else {
-      this.db = new this.SQL.Database();
+    // Schema application and migrations write, so they run under the same
+    // cross-process lock every other write uses.
+    const fd = acquireFileLock(this.dbPath);
+    try {
+      this.loadFromDisk();
+      const db = this.getDb();
+
+      // WAL mode is a no-op in sql.js (in-memory), but retained for documentation
+      // and effective if migrated to native SQLite in the future.
+      db.run('PRAGMA journal_mode=WAL;');
+      db.run('PRAGMA synchronous=NORMAL;');
+      db.run('PRAGMA foreign_keys=ON;');
+
+      // Safe to run on every init; SCHEMA_SQL is idempotent.
+      db.run(SCHEMA_SQL);
+
+      const currentVersion = getSchemaVersion(db);
+      if (currentVersion < SCHEMA_VERSION) {
+        applyMigrations(db, currentVersion);
+      }
+
+      this.persist();
+    } finally {
+      releaseFileLock(this.dbPath, fd);
+      this.lockFd = null;
     }
-
-    // WAL mode is a no-op in sql.js (in-memory), but retained for documentation
-    // and effective if migrated to native SQLite in the future.
-    this.db.run('PRAGMA journal_mode=WAL;');
-    this.db.run('PRAGMA synchronous=NORMAL;');
-    this.db.run('PRAGMA foreign_keys=ON;');
-
-    // Apply base schema (idempotent)
-    this.db.run(SCHEMA_SQL);
-
-    // Check version and apply any pending migrations
-    const currentVersion = getSchemaVersion(this.db);
-    if (currentVersion < SCHEMA_VERSION) {
-      applyMigrations(this.db, currentVersion);
-    }
-
-    // Persist the initialized database
-    this.saveToDisk();
   }
 
   /**
    * Flush the in-memory database to disk and close it.
-   * Cancels any pending debounced save. Safe to call multiple times.
+   * Safe to call multiple times.
    */
   close(): void {
-    if (this.saveTimer) {
-      clearTimeout(this.saveTimer);
-      this.saveTimer = null;
-    }
+    this.releaseLock();
     if (this.db) {
       this.saveToDisk();
       this.db.close();
@@ -252,27 +258,132 @@ export class GlobalDB {
   }
 
   /**
-   * Write the in-memory database to disk immediately.
-   *
-   * sql.js keeps the entire database in memory and exports a Uint8Array for
-   * persistence. This method performs a synchronous file write.
-   *
-   * Called automatically (debounced) after each write operation.
+   * Flush the in-memory database to disk if nothing else has written the file
+   * since our last save. When another process HAS written it, our snapshot is
+   * older than the file and exporting it would revert their rows, so the flush
+   * is skipped: every mutation persists itself, so there is nothing of ours
+   * left unwritten.
    */
   saveToDisk(): void {
     if (!this.db) {return;}
+    const fd = acquireFileLock(this.dbPath);
     try {
-      const data = this.db.export();
-      // Atomic temp-then-rename so a crash mid-write never corrupts the DB file.
-      atomicWriteFileSync(this.dbPath, Buffer.from(data));
-      // Route the persistence trace to the debug log ONLY — this is the
-      // "SQLiteStore: saved to disk" chatter that used to pollute human logs.
-      engineLogger().debug('GlobalDB saved to disk', { path: this.dbPath, bytes: data.byteLength });
+      const onDisk = this.fingerprint();
+      if (onDisk !== null && onDisk !== this.diskFingerprint) {
+        engineLogger().debug('GlobalDB flush skipped, file advanced in another process', {
+          path: this.dbPath,
+        });
+        return;
+      }
+      this.persist();
     } catch (err) {
       engineLogger().error('GlobalDB saveToDisk failed', {
         error: err instanceof Error ? err.message : String(err),
       });
+    } finally {
+      releaseFileLock(this.dbPath, fd);
     }
+  }
+
+  /**
+   * Run several mutations under a single lock and a single disk write. Without
+   * this a bulk sync would export the whole file once per row.
+   *
+   * @param fn - the mutations to run
+   */
+  transaction<T>(fn: () => T): T {
+    if (this.inTransaction) {return fn();}
+    this.beginWrite();
+    this.inTransaction = true;
+    try {
+      return fn();
+    } finally {
+      this.inTransaction = false;
+      this.commitWrite();
+    }
+  }
+
+  /**
+   * Take the cross-process write lock and make the in-memory copy current.
+   * Reloading BEFORE the mutation is the whole point: the mutation then lands
+   * on top of whatever other processes have committed, so exporting our
+   * snapshot afterwards cannot revert their rows.
+   */
+  private beginWrite(): Database {
+    if (this.inTransaction) {return this.getDb();}
+    // A mutation that threw before committing leaves the lock held; reclaim it
+    // instead of waiting on ourselves.
+    if (this.lockFd !== null) {this.releaseLock();}
+    this.lockFd = acquireFileLock(this.dbPath);
+    this.reloadIfChanged();
+    return this.getDb();
+  }
+
+  /** Persist the mutation begun by {@link beginWrite} and drop the lock. */
+  private commitWrite(): void {
+    if (this.inTransaction) {return;}
+    try {
+      this.persist();
+    } catch (err) {
+      engineLogger().error('GlobalDB commit failed', {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      this.releaseLock();
+    }
+  }
+
+  private releaseLock(): void {
+    if (this.lockFd === null) {return;}
+    releaseFileLock(this.dbPath, this.lockFd);
+    this.lockFd = null;
+  }
+
+  /**
+   * Identity of the DB file on disk. Every save renames a fresh temp file into
+   * place, so the inode changes on each write and this never mistakes another
+   * process's save for our own.
+   */
+  private fingerprint(): string | null {
+    try {
+      const s = statSync(this.dbPath);
+      return `${s.ino}:${s.size}:${s.mtimeMs}`;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Open the file (or an empty DB) and record which bytes we are holding. */
+  private loadFromDisk(): void {
+    if (!this.SQL) {throw new Error('GlobalDB: sql.js not loaded.');}
+    this.db?.close();
+    this.db = existsSync(this.dbPath)
+      ? new this.SQL.Database(readFileSync(this.dbPath))
+      : new this.SQL.Database();
+    this.diskFingerprint = this.fingerprint();
+  }
+
+  /** Reload when another process has written the file since our last save. */
+  private reloadIfChanged(): void {
+    const onDisk = this.fingerprint();
+    if (onDisk === null || onDisk === this.diskFingerprint) {return;}
+    this.loadFromDisk();
+    this.getDb().run('PRAGMA foreign_keys=ON;');
+    engineLogger().debug('GlobalDB reloaded, file advanced in another process', {
+      path: this.dbPath,
+    });
+  }
+
+  /** Export the in-memory DB over the file (caller holds the lock). */
+  private persist(): void {
+    if (!this.db) {return;}
+    const data = this.db.export();
+    // Atomic temp-then-rename so a crash mid-write never corrupts the DB file.
+    atomicWriteFileSync(this.dbPath, Buffer.from(data));
+    this.diskFingerprint = this.fingerprint();
+    // Route the persistence trace to the debug log ONLY, this is the
+    // "SQLiteStore: saved to disk" chatter that used to pollute human logs.
+    engineLogger().debug('GlobalDB saved to disk', { path: this.dbPath, bytes: data.byteLength });
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -289,7 +400,7 @@ export class GlobalDB {
    * @param session - Session fields to persist. `session_id` is required.
    */
   upsertSession(session: Partial<GlobalSession> & { session_id: string }): void {
-    const db = this.getDb();
+    const db = this.beginWrite();
     const s = session;
     db.run(
       `INSERT INTO sessions (
@@ -337,7 +448,7 @@ export class GlobalDB {
         s.status ?? 'active',
       ],
     );
-    this.scheduleSave();
+    this.commitWrite();
   }
 
   /**
@@ -445,9 +556,9 @@ export class GlobalDB {
    * @param status    - New status value ('active' | 'completed' | 'archived').
    */
   updateSessionStatus(sessionId: string, status: string): void {
-    const db = this.getDb();
+    const db = this.beginWrite();
     db.run('UPDATE sessions SET status = ? WHERE session_id = ?', [status, sessionId]);
-    this.scheduleSave();
+    this.commitWrite();
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -460,7 +571,7 @@ export class GlobalDB {
    * @param call - API call data to persist.
    */
   insertApiCall(call: ApiCallRecord): void {
-    const db = this.getDb();
+    const db = this.beginWrite();
     db.run(
       `INSERT INTO api_calls (
         session_id, timestamp, model, input_tokens, output_tokens,
@@ -473,7 +584,7 @@ export class GlobalDB {
         call.cost_usd, call.duration_ms, call.stop_reason ?? null,
       ],
     );
-    this.scheduleSave();
+    this.commitWrite();
   }
 
   /**
@@ -503,7 +614,7 @@ export class GlobalDB {
    * @param summary - Tool summary data to persist or accumulate.
    */
   upsertToolSummary(summary: ToolSummaryRecord): void {
-    const db = this.getDb();
+    const db = this.beginWrite();
     db.run(
       `INSERT INTO tool_summaries (
         session_id, tool_name, call_count, success_count, error_count,
@@ -522,7 +633,7 @@ export class GlobalDB {
         summary.total_duration_ms, summary.total_input_tokens, summary.total_output_tokens,
       ],
     );
-    this.scheduleSave();
+    this.commitWrite();
   }
 
   /**
@@ -549,7 +660,7 @@ export class GlobalDB {
    * @param agent - Agent data to persist.
    */
   upsertAgent(agent: AgentRecord): void {
-    const db = this.getDb();
+    const db = this.beginWrite();
     db.run(
       `INSERT INTO agents (
         session_id, agent_id, agent_type, parent_session_id, model,
@@ -570,7 +681,7 @@ export class GlobalDB {
         agent.total_tokens, agent.duration_ms, agent.exit_code ?? null,
       ],
     );
-    this.scheduleSave();
+    this.commitWrite();
   }
 
   /**
@@ -599,12 +710,12 @@ export class GlobalDB {
    * @param source    - Origin of the tag ('manual' | 'auto'). Defaults to 'manual'.
    */
   addTag(sessionId: string, tag: string, source: 'manual' | 'auto' = 'manual'): void {
-    const db = this.getDb();
+    const db = this.beginWrite();
     db.run(
       `INSERT OR IGNORE INTO tags (session_id, tag, source) VALUES (?, ?, ?)`,
       [sessionId, tag, source],
     );
-    this.scheduleSave();
+    this.commitWrite();
   }
 
   /**
@@ -614,9 +725,9 @@ export class GlobalDB {
    * @param tag       - Tag string to remove.
    */
   removeTag(sessionId: string, tag: string): void {
-    const db = this.getDb();
+    const db = this.beginWrite();
     db.run('DELETE FROM tags WHERE session_id = ? AND tag = ?', [sessionId, tag]);
-    this.scheduleSave();
+    this.commitWrite();
   }
 
   /**
@@ -702,7 +813,7 @@ export class GlobalDB {
    * @param state - Sync state record to persist.
    */
   upsertSyncState(state: SyncStateRecord): void {
-    const db = this.getDb();
+    const db = this.beginWrite();
     db.run(
       `INSERT INTO sync_state (jsonl_path, session_id, last_offset, last_synced_at)
        VALUES (?, ?, ?, ?)
@@ -712,7 +823,7 @@ export class GlobalDB {
          last_synced_at = excluded.last_synced_at`,
       [state.jsonl_path, state.session_id, state.last_offset, state.last_synced_at],
     );
-    this.scheduleSave();
+    this.commitWrite();
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -729,7 +840,7 @@ export class GlobalDB {
    */
   batchInsertApiCalls(calls: ApiCallRecord[]): void {
     if (calls.length === 0) {return;}
-    const db = this.getDb();
+    const db = this.beginWrite();
     db.run('BEGIN');
     try {
       for (const call of calls) {
@@ -751,7 +862,7 @@ export class GlobalDB {
       db.run('ROLLBACK');
       throw err;
     }
-    this.scheduleSave();
+    this.commitWrite();
   }
 
   /**
@@ -763,7 +874,7 @@ export class GlobalDB {
     sessions: Array<Partial<GlobalSession> & { session_id: string }>,
   ): void {
     if (sessions.length === 0) {return;}
-    const db = this.getDb();
+    const db = this.beginWrite();
     db.run('BEGIN');
     try {
       for (const session of sessions) {
@@ -811,7 +922,7 @@ export class GlobalDB {
       db.run('ROLLBACK');
       throw err;
     }
-    this.scheduleSave();
+    this.commitWrite();
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -900,22 +1011,6 @@ export class GlobalDB {
   }
 
   /**
-   * Schedule a debounced disk save.
-   *
-   * Multiple writes within `SAVE_DEBOUNCE_MS` will be coalesced into a
-   * single disk write, reducing I/O pressure during bulk operations.
-   */
-  private scheduleSave(): void {
-    if (this.saveTimer) {clearTimeout(this.saveTimer);}
-    this.saveTimer = setTimeout(() => {
-      this.saveTimer = null;
-      this.saveToDisk();
-    }, SAVE_DEBOUNCE_MS);
-    // Debounced flush must never hold the event loop open (field issue 9).
-    this.saveTimer.unref?.();
-  }
-
-  /**
    * Dynamically load the sql.js module.
    *
    * Handles both ESM (import()) and CJS (require()) environments by trying
@@ -930,12 +1025,12 @@ export class GlobalDB {
       return mod.default as unknown as (config: { locateFile: () => string }) => Promise<SqlJsStatic>;
     } catch {
       try {
-        // CJS fallback — safe because esbuild bundles to CJS format
+        // CJS fallback, safe because esbuild bundles to CJS format
          
         const mod = require('sql.js') as { default?: unknown };
         return (mod.default ?? mod) as (config: { locateFile: () => string }) => Promise<SqlJsStatic>;
       } catch {
-        // Neither loader resolved sql.js — it is not installed yet. Surface a
+        // Neither loader resolved sql.js, it is not installed yet. Surface a
         // typed error so callers show the setup pointer instead of crashing.
         throw new SqlJsUnavailableError();
       }
@@ -963,7 +1058,7 @@ export class GlobalDB {
       baseDir = process.cwd();
     }
 
-    // Option 1: wasm/ subdirectory beside the bundle — the v2 shipped layout
+    // Option 1: wasm/ subdirectory beside the bundle, the v2 shipped layout
     // (build.mjs copies sql-wasm.wasm to server/<name>/wasm/). This candidate
     // was missing in the v1-ported resolver and crashed the first live query.
     const subdirWasm = resolve(join(baseDir, 'wasm', 'sql-wasm.wasm'));
@@ -973,9 +1068,17 @@ export class GlobalDB {
     const distWasm = resolve(join(baseDir, 'sql-wasm.wasm'));
     if (existsSync(distWasm)) {return distWasm;}
 
-    // Option 3: node_modules (development)
-    const nodeWasm = resolve(join(baseDir, '..', '..', '..', 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm'));
-    if (existsSync(nodeWasm)) {return nodeWasm;}
+    // Option 3: node_modules (development and tests). Walk up rather than
+    // guessing a depth: in this workspace sql.js hoists to the repo root, which
+    // a fixed `../../../` from the source tree never reaches.
+    let search = baseDir;
+    for (;;) {
+      const nodeWasm = resolve(join(search, 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm'));
+      if (existsSync(nodeWasm)) {return nodeWasm;}
+      const parent = dirname(search);
+      if (parent === search) {break;}
+      search = parent;
+    }
 
     // Last resort: let sql.js use its own default resolution
     return resolve(join(baseDir, 'sql-wasm.wasm'));

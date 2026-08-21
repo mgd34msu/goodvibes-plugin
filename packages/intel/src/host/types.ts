@@ -3,7 +3,7 @@
  *
  * Ported from project-engine `core/code-intel/types.ts`, trimmed to the shapes
  * the v2 surface actually uses (the breaking-changes / semantic-diff / dead-code
- * tool argument types did not port — those tools retire with the v1 tree).
+ * tool argument types did not port, those tools retire with the v1 tree).
  */
 
 import type ts from 'typescript';
@@ -53,7 +53,7 @@ export interface PositionArgs {
 export interface ReferenceLocation {
   /** File path relative to the analysis root. */
   file: string;
-  /** Absolute resolved path (issue 1 fix #3 — echoed for every file). */
+  /** Absolute resolved path (issue 1 fix #3, echoed for every file). */
   resolved_path: string;
   /** 1-based line. */
   line: number;
@@ -95,7 +95,7 @@ export interface PublicApiExport {
   jsdoc: string | null;
 }
 
-/** An internal (non-public) export — same as public without jsdoc. */
+/** An internal (non-public) export, same as public without jsdoc. */
 export interface InternalApiExport {
   name: string;
   kind: string;

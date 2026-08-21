@@ -1,5 +1,5 @@
 /**
- * MySQL query executor — ported from v1 project-engine
+ * MySQL query executor, ported from v1 project-engine
  * `core/database/executors/mysql.ts`. The `mysql2` driver loads lazily from the
  * target project (honest install hint when absent).
  */
@@ -35,11 +35,19 @@ export function getMysqlTypeName(typeCode: number): string {
   return typeMap[typeCode] || 'unknown';
 }
 
-/** Execute a SQL query against MySQL using a single isolated connection. */
+/**
+ * Execute a SQL query against MySQL using a single isolated connection.
+ * @param connectionInfo - parsed connection details
+ * @param query - SQL to execute
+ * @param params - parameters for `?` placeholders
+ * @param readonly - run inside `START TRANSACTION READ ONLY` so the server
+ * itself rejects a mutation the text classifier failed to recognise
+ */
 export async function executeMysql(
   connectionInfo: DatabaseConnectionInfo,
   query: string,
   params: unknown[] = [],
+  readonly = true,
 ): Promise<ExecutionResult> {
   const mysql = await loadMysqlDriver();
   if (!mysql) {
@@ -66,6 +74,7 @@ export async function executeMysql(
   }
 
   try {
+    if (readonly) {await connection.query('START TRANSACTION READ ONLY');}
     const [rows, fields] = await connection.execute({ sql: query, timeout: 30000 }, params);
     const columns: ColumnInfo[] =
       (fields as Array<{ name: string; type: number }>)?.map((field) => ({
@@ -79,6 +88,9 @@ export async function executeMysql(
       cause,
     );
   } finally {
+    if (readonly) {
+      await connection.query('ROLLBACK').catch(() => undefined);
+    }
     await connection.end();
   }
 }

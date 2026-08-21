@@ -1,18 +1,18 @@
 /**
- * `@goodvibes/core/proc` — process-hygiene layer (field issue 9).
+ * `@goodvibes/core/proc`, process-hygiene layer (field issue 9).
  *
  * BUILT NEW: v1 shipped only a non-firing stdin-close path, so orphaned servers
  * spun at 100% CPU after a session died. Every v2 server calls
  * `installProcessHygiene()` in `main()`. It provides:
  *
- *  (a) Parent-liveness watchdog — exits on stdin close AND on a `ppid` poll that
+ *  (a) Parent-liveness watchdog, exits on stdin close AND on a `ppid` poll that
  *      catches reparent-to-init/systemd (the case stdin-close alone misses).
- *  (b) There is NO idle self-exit — an installed server runs for the life of
+ *  (b) There is NO idle self-exit, an installed server runs for the life of
  *      its session, period (Mike's explicit direction, 2026-07-02).
- *  (c) Per-request time budget via `withBudget(ms, task)` — a handler returns a
+ *  (c) Per-request time budget via `withBudget(ms, task)`, a handler returns a
  *      partial result with honest `budget_exceeded` accounting instead of
  *      hanging the client forever.
- *  (d) Plain SIGTERM/SIGINT death — NO keep-alive exception handlers, NO blocking
+ *  (d) Plain SIGTERM/SIGINT death, NO keep-alive exception handlers, NO blocking
  *      sync loops. Every watchdog timer is `unref()`ed so it never holds the
  *      event loop open on its own.
  */
@@ -42,7 +42,7 @@ const BUDGET_EXPIRED = Symbol('budget-expired');
  * a partial, never an infinite client wait.
  *
  * JavaScript cannot preempt a running function, so cancellation is cooperative:
- * a task that never checks `signal.aborted` and never yields will still block —
+ * a task that never checks `signal.aborted` and never yields will still block,
  * that is the task's contract to honour, and the analyzers/HTTP loops do.
  *
  * @param ms - the budget in milliseconds
@@ -92,15 +92,15 @@ export interface ProcHygieneOptions {
   watchSignals?: boolean;
   /** Optional hook run before exit (must not block; errors are swallowed). */
   onShutdown?: (reason: string) => void | Promise<void>;
-  /** Exit function (default process.exit) — injectable for tests. */
+  /** Exit function (default process.exit), injectable for tests. */
   exit?: (code: number) => void;
-  /** Clock (default Date.now) — injectable for tests. */
+  /** Clock (default Date.now), injectable for tests. */
   now?: () => number;
 }
 
 /** Handle returned by `installProcessHygiene`. */
 export interface ProcHygiene {
-  /** Kept for call-site compatibility; a no-op. There is NO idle self-exit —
+  /** Kept for call-site compatibility; a no-op. There is NO idle self-exit,
    *  an installed server runs for the life of its session, period (Mike's
    *  explicit direction, 2026-07-02). Orphan defense is parent-liveness only. */
   noteActivity(): void;
@@ -163,11 +163,11 @@ export function installProcessHygiene(options: ProcHygieneOptions = {}): ProcHyg
     void shutdown('signal');
   }
 
-  // NO idle self-exit — by Mike's explicit direction (2026-07-02): an
+  // NO idle self-exit, by Mike's explicit direction (2026-07-02): an
   // installed server runs for the life of its session. Orphan cleanup is the
   // parent-liveness watchdog's job alone; it fires only when the session dies.
 
-  // ppid poll — catches reparent-to-init that stdin-close alone misses
+  // ppid poll, catches reparent-to-init that stdin-close alone misses
   const ppidTimer = setInterval(() => {
     const p = process.ppid;
     if (p !== initialPpid || p === 1) {void shutdown('reparented');}

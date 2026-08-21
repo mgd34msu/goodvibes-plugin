@@ -1,16 +1,16 @@
 ---
-description: Re-run the goodvibes native dependency install in the foreground — the manual repair path when the automatic background install did not finish
+description: Re-run the goodvibes native dependency install in the foreground. The manual repair path when the automatic background install did not finish
 allowed-tools:
   - Bash
   - Read
 ---
 
-# GoodVibes Setup (manual repair)
+# GoodVibes setup (manual repair)
 
 Native dependencies normally install automatically: the first session after a plugin install
 (or after an update that changes a server's dependency list) spawns a detached background
 installer, and the tools are ready by the next session. This command is the repair path for
-when that did not work — it re-runs the same installer in the foreground so the output is
+when that did not work. It re-runs the same installer in the foreground so the output is
 visible.
 
 Per-server runtime-only dependencies (native binaries and WASM loaders that do not bundle
@@ -23,7 +23,7 @@ cleanly, listed in `${CLAUDE_PLUGIN_ROOT}/server/<name>/package.json`):
 | `connect` | `sql.js` (database drivers resolve from the target project, not installed here) |
 
 Installs land in the durable home `~/.claude/.goodvibes/deps/<server>/`, and each
-`${CLAUDE_PLUGIN_ROOT}/server/<name>/node_modules` is a link to it — so installs survive
+`${CLAUDE_PLUGIN_ROOT}/server/<name>/node_modules` is a link to it, so installs survive
 plugin updates (the SessionStart hook relinks after an update). Until an install lands, the
 servers still boot and every non-native capability works; native-backed capabilities return an
 honest pointer here instead of crashing.
@@ -42,7 +42,7 @@ honest pointer here instead of crashing.
    done
    ```
    If every server reports `INSTALLED`, report that and stop.
-2. Run the installer in the foreground (safe to run repeatedly — servers that are already
+2. Run the installer in the foreground (safe to run repeatedly: servers that are already
    installed are skipped, and a stale lock older than 10 minutes is ignored):
    ```bash
    node "${CLAUDE_PLUGIN_ROOT}/hooks/lib/deps-install.mjs" "${CLAUDE_PLUGIN_ROOT}"

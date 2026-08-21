@@ -1,5 +1,5 @@
 /**
- * TelemetryReader — read-only SQLite interface for precision-engine's telemetry database.
+ * TelemetryReader, read-only SQLite interface for precision-engine's telemetry database.
  *
  * Opens `.goodvibes/telemetry/telemetry.db` using sql.js (WASM). The database is loaded
  * from the file into memory on first call to `initialize()`. Since sql.js holds an
@@ -9,13 +9,13 @@
  * Design:
  *   - Lazy initialization: WASM loads only on first `initialize()` call.
  *   - Missing DB: returns empty results / null gracefully.
- *   - Read-only intent: no INSERT/UPDATE/DELETE — the writer is precision-engine.
- *   - Thread safety: single-process Node.js — no concurrent access within this module.
+ *   - Read-only intent: no INSERT/UPDATE/DELETE, the writer is precision-engine.
+ *   - Thread safety: single-process Node.js, no concurrent access within this module.
  */
 
 // `sql.js` is an externalized WASM dependency (analytics build.mjs) installed by
-// the one-time plugin setup. Loaded LAZILY inside `initialize()` — never at
-// module load — so the analytics server boots on a fresh install and the live
+// the one-time plugin setup. Loaded LAZILY inside `initialize()`, never at
+// module load, so the analytics server boots on a fresh install and the live
 // JSONL-based modes (live_cost/doctor/agents) work even before setup runs. If
 // the dep is missing, `initialize()`'s existing try/catch marks the reader
 // unavailable (empty results); telemetry never blocks a tool.
@@ -40,7 +40,7 @@ import * as path from 'node:path';
 import type { TelemetryRecord, ToolBreakdown, TokenMetrics } from '../types.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Column indices — must match SELECT order in all queries
+// Column indices, must match SELECT order in all queries
 // ─────────────────────────────────────────────────────────────────────────────
 
 const COL = {
@@ -84,7 +84,7 @@ export class TelemetryReader {
   /**
    * Initialize sql.js WASM and open the database from the file on disk.
    *
-   * Safe to call multiple times — subsequent calls are no-ops if already
+   * Safe to call multiple times, subsequent calls are no-ops if already
    * initialized. If the DB file does not exist, marks as unavailable and
    * returns without error (callers get empty results).
    */
@@ -95,7 +95,7 @@ export class TelemetryReader {
     }
 
     if (!existsSync(this.dbPath)) {
-      // DB does not exist yet — precision-engine may not have run any calls.
+      // DB does not exist yet, precision-engine may not have run any calls.
       this._available = false;
       return;
     }
@@ -107,7 +107,7 @@ export class TelemetryReader {
       try {
         bundleDir = path.dirname(new URL(import.meta.url).pathname);
       } catch {
-        // CJS bundle: import.meta.url is undefined — fall back to __dirname or process.argv[1]
+        // CJS bundle: import.meta.url is undefined, fall back to __dirname or process.argv[1]
         bundleDir = typeof __dirname !== 'undefined' ? __dirname : path.dirname(process.argv[1]);
       }
       // v2 ships the WASM in a wasm/ subdirectory beside the bundle; v1 shipped
@@ -122,7 +122,7 @@ export class TelemetryReader {
 
       const initSqlJs = await loadSqlJsInit();
       if (!initSqlJs) {
-        // sql.js not installed yet — degrade to marked-unavailable (empty
+        // sql.js not installed yet, degrade to marked-unavailable (empty
         // results), exactly like a missing DB file, instead of throwing.
         this.db = null;
         this._available = false;
@@ -133,7 +133,7 @@ export class TelemetryReader {
       this.db = new this._SQL.Database(buffer);
       this._available = true;
     } catch (err) {
-      // Corrupt file or WASM load failure — degrade gracefully.
+      // Corrupt file or WASM load failure, degrade gracefully.
       console.warn('[TelemetryReader] Failed to open database:', String(err));
       this.db = null;
       this._available = false;
@@ -270,8 +270,6 @@ export class TelemetryReader {
         }
       }
 
-      // Build ToolBreakdown records matching the existing types.ts shape:
-      // { calls, avg_ms, cache_hit_rate?, tokens_in, tokens_out, success_rate }
       const byToolOut: Record<string, ToolBreakdown> = {};
       for (const [tool, s] of Object.entries(byTool)) {
         byToolOut[tool] = {
@@ -368,7 +366,7 @@ export class TelemetryReader {
     if (!this.db) {return empty;}
 
     try {
-      // Default to current session — avoids summing all historical sessions.
+      // Default to current session, avoids summing all historical sessions.
       const sid = sessionId ?? this.getCurrentSessionId();
       const where = sid ? 'WHERE session_id = ?' : '';
       const params = sid ? [sid] : undefined;
@@ -500,7 +498,7 @@ export class TelemetryReader {
    * NOTE: The database stores `metadata` as a JSON string (written by precision-engine).
    * The `TelemetryRecord.metadata` field is typed as `string` to match the stored
    * representation. Consumers needing a structured object should call
-   * `JSON.parse(record.metadata)` — the interface intentionally does not auto-parse
+   * `JSON.parse(record.metadata)`, the interface intentionally does not auto-parse
    * to avoid the cost on paths that don't need it.
    */
   private static rowToRecord(row: (string | number | null)[]): TelemetryRecord {

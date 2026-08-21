@@ -10,7 +10,7 @@
  */
 
 export interface ToolModule {
-  /** External MCP tool name — `analytics_` prefix dropped (R13). */
+  /** External MCP tool name, `analytics_` prefix dropped (R13). */
   name: string;
   /** The engine handler-registry key (keeps the `analytics_` prefix). */
   engineTool: string;

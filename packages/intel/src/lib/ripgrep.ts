@@ -1,17 +1,17 @@
 /**
- * ripgrep binary wrapper — the search backend for code_grep and (via
+ * ripgrep binary wrapper, the search backend for code_grep and (via
  * `--files`) code_glob.
  *
  * Ported from v1 `precision-engine/src/core/ripgrep.ts` verbatim aside from
  * one change: binary resolution. `@vscode/ripgrep` is not installed in this
  * workspace yet (it is declared as a runtime dep in
  * `plugins/goodvibes/server/intel/package.json`, installed on first plugin
- * run — see build.mjs externals). `resolveRgPath()` prefers the pinned
+ * run, see build.mjs externals). `resolveRgPath()` prefers the pinned
  * `@vscode/ripgrep` binary when present, and falls back to a `rg` on PATH
  * otherwise (covers this dev sandbox, which has a system ripgrep, and any
  * environment where the plugin's first-run install has not happened yet).
  * FLAG: once `npm install` resolves `@vscode/ripgrep` for this workspace, the
- * fallback branch simply stops firing — no code change needed.
+ * fallback branch simply stops firing, no code change needed.
  */
 
 import { spawn } from 'child_process';
@@ -93,7 +93,7 @@ interface RipgrepJsonSummary {
 
 type RipgrepJsonOutput = RipgrepJsonMatch | RipgrepJsonContext | RipgrepJsonSummary;
 
-// Plain global `require` — NOT `createRequire(import.meta.url)`. This module
+// Plain global `require`, NOT `createRequire(import.meta.url)`. This module
 // is authored as ESM but bundled to CJS by esbuild (build.mjs); esbuild's CJS
 // output provides a real, working `require` global, whereas `import.meta` is
 // spec'd to be EMPTY in CJS output (esbuild warns and `import.meta.url` would
@@ -199,7 +199,7 @@ export class RipgrepCore {
    * Run ripgrep. `cwd` is set to the search root whenever one is known: ripgrep
    * resolves relative `--glob` patterns (e.g. `dir/*.ts`, produced by
    * `splitGlobPattern`/subdirectory-anchored code_glob patterns) against the
-   * PROCESS's working directory, not the positional search-path argument —
+   * PROCESS's working directory, not the positional search-path argument,
    * confirmed empirically (`rg --files --glob 'dir/*.ts' /abs/path` only
    * matches when the process cwd is `/abs/path`). Without this, subdirectory
    * glob patterns silently returned zero results whenever the server's cwd

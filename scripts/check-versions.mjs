@@ -8,8 +8,8 @@
  *   node scripts/check-versions.mjs
  *
  * (The 2.0 carve-out consolidated three plugins into one named "goodvibes" at
- * plugins/goodvibes/. The plugin ships no root package.json — its runtime
- * manifests live under server/<name>/package.json — so only plugin.json ↔
+ * plugins/goodvibes/. The plugin ships no root package.json, its runtime
+ * manifests live under server/<name>/package.json, so only plugin.json ↔
  * marketplace.json are compared.)
  *
  * Prints every version found and exits non-zero when they disagree (or when a

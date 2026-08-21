@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * PreCompact hook — plan §8 PreCompact row, REBUILD
+ * PreCompact hook, plan §8 PreCompact row, REBUILD
  * (tribunal 2026-07-02): "Session summary + analytics backup survive as
- * observe-only behavior; the automatic git checkpoint commit is removed —
+ * observe-only behavior; the automatic git checkpoint commit is removed,
  * hooks inform, never mutate."
  *
  * Ported from `plugins/goodvibes/hooks/scripts/src/pre-compact/**` (v1,
  * read-only) with `createPreCompactCheckpoint` (which ran `git commit` on the
- * user's behalf) deleted outright — that's a mutation a hook must never make
+ * user's behalf) deleted outright, that's a mutation a hook must never make
  * unattended, matching the "zero block/rewrite/steer" invariant plan §11
  * holds every v2 hook to. What's left is genuinely observe-only: write a
  * markdown summary of files touched this session (read from the shared

@@ -89,7 +89,7 @@ describe('HostHealthSampler against a fake /proc', () => {
     clock = 60_000;
     writeProc(4242, { comm: 'node', ppid: 1, utime: 4100, cmdline: PLUGIN_CMD });
     writeProc(4243, { comm: 'node', ppid: 5000, utime: 4100, cmdline: PLUGIN_CMD });
-    // 7777 also busy but non-plugin — must never be flagged.
+    // 7777 also busy but non-plugin, must never be flagged.
     writeProc(7777, { comm: 'firefox', ppid: 1, utime: 4100, cmdline: '/usr/bin/firefox' });
     state = sampler.sampleOnce();
     expect(state.orphans).toHaveLength(0); // streak 1 < sustained 2

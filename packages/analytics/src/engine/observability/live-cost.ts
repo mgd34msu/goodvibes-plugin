@@ -8,7 +8,7 @@
  *
  * Tail tolerance comes for free from {@link JSONLReader.parseFile}: a truncated
  * final line (the file is being appended to as we read) is skipped, and unknown
- * event types are ignored — never fatal. Everything degrades honestly: no
+ * event types are ignored, never fatal. Everything degrades honestly: no
  * transcript path yields a `degraded` report rather than an error.
  *
  * Subagent transcripts live at `<projectDir>/<session-id>/subagents/agent-*.jsonl`
@@ -163,7 +163,7 @@ function labelForSubagent(file: string): string {
 /**
  * Compute the live session cost, split main-loop vs per-subagent.
  *
- * @returns a report even on failure — `degraded` explains any missing section
+ * @returns a report even on failure, `degraded` explains any missing section
  *   rather than throwing.
  */
 export async function computeLiveSessionCost(options: LiveCostOptions): Promise<LiveCostReport> {
@@ -173,7 +173,7 @@ export async function computeLiveSessionCost(options: LiveCostOptions): Promise<
       main: null,
       subagents: [],
       grand_total_usd: 0,
-      degraded: 'no active session transcript found — live cost unavailable',
+      degraded: 'no active session transcript found; live cost unavailable',
     };
   }
 

@@ -1,5 +1,5 @@
 /**
- * Types for client_boundary — Lane 4.
+ * Types for client_boundary, Lane 4.
  * Ported from frontend-engine `core/client-boundary/types.ts`; a `resolved_path`
  * echo is added to per-file entries (issue 1 fix #3), filled at the tool level.
  *

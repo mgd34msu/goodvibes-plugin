@@ -1,5 +1,5 @@
 /**
- * `db_query` — SQL execution under the connect trust boundary (§4.3 db_query row).
+ * `db_query`, SQL execution under the connect trust boundary (§4.3 db_query row).
  *
  * Ported from v1 project-engine `extensions/database/query.ts`, moved onto
  * connect's trust model:
@@ -26,7 +26,7 @@ import { loadConfig } from '@goodvibes/core/config';
 import { withBudget } from '@goodvibes/core/proc';
 import { getConnection } from '../fetch/service-registry.js';
 import { parseConnectionUrl } from '../db/url-parser.js';
-import { isWriteOperation, hasLimitClause, addLimitClause } from '../db/query-analysis.js';
+import { isWriteOperation, addLimitClause } from '../db/query-analysis.js';
 import { formatQueryResult } from '../db/formatters.js';
 import { enhanceDatabaseError } from '../db/errors.js';
 import { executePostgres, executeMysql, executeSqlite } from '../db/executors/index.js';
@@ -37,7 +37,7 @@ import type { TrustMode } from '../trust.js';
 export interface DbQueryInput {
   /** Registered connection name (required in restricted mode). */
   connection?: string;
-  /** Bare connection URL — allowed only in open mode. */
+  /** Bare connection URL, allowed only in open mode. */
   database_url?: string;
   /** The SQL to run. */
   query: string;
@@ -60,7 +60,7 @@ export const dbQueryTool = {
   description:
     'Run a SQL query under the connect trust boundary. Restricted mode requires a ' +
     'connection registered via the service tool; a bare database_url is open-mode ' +
-    'only. Read-only by default — writes require write:true AND a target that permits ' +
+    'only. Read-only by default; writes require write:true AND a target that permits ' +
     'them (a connection allow_writes opt-in, or open mode). Drivers load from the ' +
     'target project.',
   inputSchema: {
@@ -89,9 +89,9 @@ async function executeQuery(
 ): Promise<ExecutionResult> {
   switch (connectionInfo.type) {
     case 'postgresql':
-      return executePostgres(connectionInfo, sql, params);
+      return executePostgres(connectionInfo, sql, params, readonly);
     case 'mysql':
-      return executeMysql(connectionInfo, sql, params);
+      return executeMysql(connectionInfo, sql, params, readonly);
     case 'sqlite':
       return executeSqlite(connectionInfo, sql, params, readonly);
     default:
@@ -194,7 +194,10 @@ export async function handleDbQuery(args: unknown): Promise<CallToolResult> {
     );
   }
 
-  const readonly = !isWrite; // executors open read-only unless this is an opted-in write
+  // Read-only reaches every executor, not just SQLite: PostgreSQL and MySQL run
+  // the statement inside a read-only transaction, so a mutation the classifier
+  // missed is refused by the server rather than committed.
+  const readonly = !isWrite;
   const limit = input.limit ?? 100;
   const format = input.format ?? 'json';
   const explain = input.explain === true;
@@ -204,9 +207,12 @@ export async function handleDbQuery(args: unknown): Promise<CallToolResult> {
     let queryToExecute = input.query!.trim();
 
     let truncated = false;
-    if (limit > 0 && !hasLimitClause(queryToExecute) && /^(SELECT|WITH)\b/i.test(queryToExecute)) {
-      queryToExecute = addLimitClause(queryToExecute, limit);
-      truncated = true;
+    if (limit > 0) {
+      const limited = addLimitClause(queryToExecute, limit);
+      if (limited !== queryToExecute) {
+        queryToExecute = limited;
+        truncated = true;
+      }
     }
 
     let explainOutput: string | undefined;

@@ -2,12 +2,12 @@
  * goodvibes-analytics MCP server (v2).
  *
  * Wraps the ported analytics engine over stdio and serves the seven tools
- * (`query`, `dashboard`, `budget`, `export`, `tag`, `sync`, `config` — the
+ * (`query`, `dashboard`, `budget`, `export`, `tag`, `sync`, `config`, the
  * `analytics_` prefix dropped per R13; the server key is the namespace).
  *
  * Process hygiene (field issue 9) comes from `@goodvibes/core/proc`:
  * `installProcessHygiene()` gives the server a parent-liveness watchdog and
- * plain SIGTERM death — no idle self-exit, ever (servers run for the life of
+ * plain SIGTERM death, no idle self-exit, ever (servers run for the life of
  * their session); every tool call runs under `withBudget`
  * so a slow handler returns with honest `budget_exceeded` accounting instead of
  * hanging the client. All project state lives under the namespaced
@@ -161,7 +161,7 @@ export async function main(): Promise<void> {
   // Host-health sampler (lane 9): slow, unref'd, zero-dep /proc reader that
   // maintains `.goodvibes/health/health-state.json` for the doctor view and
   // intel's SessionStart nudge. Its interval is unref'd, so it can never be the
-  // thing that keeps a dead server alive (field issue 9 — the sin it hunts).
+  // thing that keeps a dead server alive (field issue 9, the sin it hunts).
   const healthSampler = new HostHealthSampler({ goodvibesDir });
   healthSampler.start();
 
@@ -189,7 +189,7 @@ export async function main(): Promise<void> {
   // A fatal fault must never be a silent death. These handlers do NOT keep
   // the process alive (no v1-style keep-alive): they write a diagnostic to
   // the level-split error log, then exit through the same graceful path as
-  // session death — flush, release, die visibly.
+  // session death, flush, release, die visibly.
   const fatal = (kind: string) => (err: unknown) => {
     try {
       logger.error(`[analytics] ${kind}: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}`);

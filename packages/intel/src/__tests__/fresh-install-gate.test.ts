@@ -1,11 +1,11 @@
 /**
- * Fresh-install gate (2.0.5 — the "from GitHub, no setup yet" release theme).
+ * Fresh-install gate (2.0.5, the "from GitHub, no setup yet" release theme).
  *
  * Mike's install exposed the invariant this locks down: a freshly-cloned plugin
  * whose servers have NO node_modules (setup has not run, or a plugin update just
  * replaced the installed deps) must still boot every server, answer the MCP
  * handshake, keep every dep-free capability working, and hand back an honest
- * setup-pointer for anything that needs a native/WASM dep — never a crash, never
+ * setup-pointer for anything that needs a native/WASM dep, never a crash, never
  * a hang, never a raw "Cannot find module".
  *
  * The test copies each COMMITTED server bundle to a bare temp dir with no
@@ -92,7 +92,7 @@ async function handshake(d: Driver): Promise<{ tools: Array<{ name: string }> }>
 let root: string;
 
 beforeAll(() => {
-  // A bare temp dir — no node_modules here or above it (tmpdir lives outside the repo).
+  // A bare temp dir, no node_modules here or above it (tmpdir lives outside the repo).
   root = mkdtempSync(path.join(tmpdir(), 'gv-fresh-gate-'));
   for (const s of SERVERS) {
     cpSync(path.join(SERVER_SRC, s), path.join(root, s), { recursive: true });
@@ -108,7 +108,7 @@ afterAll(() => {
   if (root) {rmSync(root, { recursive: true, force: true });}
 });
 
-describe('fresh-install gate — committed bundles with zero node_modules', () => {
+describe('fresh-install gate: committed bundles with zero node_modules', () => {
   it.skipIf(!BUNDLES_EXIST)(
     'boots all three servers and answers initialize + tools/list',
     async () => {
@@ -145,7 +145,7 @@ describe('fresh-install gate — committed bundles with zero node_modules', () =
         const outlineText = outlineReply.result?.content?.[0]?.text ?? '';
         expect(outlineText).toContain('needs native dependencies that are not installed yet');
         expect(outlineText).toContain('/goodvibes:setup');
-        // The honest envelope — never the raw module-resolution failure.
+        // The honest envelope, never the raw module-resolution failure.
         expect(outlineText).not.toContain('Cannot find module');
 
         // Dep-free: code_read lines needs nothing native and must return content.

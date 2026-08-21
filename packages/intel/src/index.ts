@@ -1,5 +1,5 @@
 /**
- * goodvibes-intel MCP server — the structure-aware code-intelligence server of
+ * goodvibes-intel MCP server, the structure-aware code-intelligence server of
  * the single `goodvibes` plugin (three servers: intel, analytics, connect).
  *
  * Wires `core/proc` (process hygiene) and `core/envelope` (response shape) and
@@ -16,7 +16,7 @@ import { errorEnvelope, toCallToolResult } from '@goodvibes/core/envelope';
 import { loadConfig } from '@goodvibes/core/config';
 import type { ToolDefinition } from './tools/types.js';
 // Lane 7: scaffold tool (§4.1, §6 lane 7). Each lane appends one import line
-// here and one entry to TOOLS below — never reorder/reformat lines you did
+// here and one entry to TOOLS below, never reorder/reformat lines you did
 // not write (carve-out architecture §6 ownership discipline).
 import { scaffoldTool } from './tools/scaffold.js';
 // Lane 2: compiler-host code intel (§4.1 code_surface / code_safe_delete).
@@ -36,7 +36,7 @@ import { componentTreeTool } from './tools/component_tree.js';
 import { hookDependenciesTool } from './tools/hook_dependencies.js';
 import { clientBoundaryTool } from './tools/client_boundary.js';
 import { layoutAnalysisTool } from './tools/layout_analysis.js';
-// Lane 10: structural_edit (§8 addendum, intel tool 15) — the one preview-gated
+// Lane 10: structural_edit (§8 addendum, intel tool 15), the one preview-gated
 // write surface on an otherwise read-only server.
 import { structuralEditTool } from './tools/structural_edit.js';
 
@@ -109,7 +109,7 @@ export async function main(): Promise<void> {
   await server.connect(transport);
 }
 
-// Bootstrap only when run as the process entry — never when imported by tests.
+// Bootstrap only when run as the process entry, never when imported by tests.
 if (!process.env.VITEST) {
   void main().catch((err) => {
     console.error(`[${SERVER_NAME}] fatal:`, err);

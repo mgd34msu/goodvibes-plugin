@@ -9,13 +9,14 @@
  * by the `service` tool; secrets and cookies live in their own 0600 files.
  *
  * The file is read fresh on every access (small, infrequent) so a write by one
- * call is visible to the next without cache-invalidation bugs — the same
+ * call is visible to the next without cache-invalidation bugs, the same
  * property the v1 tests relied on.
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
 import { statePath } from '@goodvibes/core/config';
+import { atomicWriteFile } from '@goodvibes/core/fsx';
 
 /** HTTP methods considered non-mutating (always allowed under read-only default). */
 export const SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS'] as const;
@@ -36,7 +37,7 @@ export interface ServiceConfig {
   description?: string;
   /**
    * Trust boundary (BUILD NEW): write methods this service is allowed to use.
-   * Absent/empty means read-only — only SAFE_METHODS are permitted. Opting into
+   * Absent/empty means read-only, only SAFE_METHODS are permitted. Opting into
    * writes is explicit and per-service.
    */
   write_methods?: string[];
@@ -103,9 +104,13 @@ export function getRegistry(): FetchConfig {
   }
 }
 
-/** Write the registry to disk (creates the state dir as needed). */
+/**
+ * Write the registry to disk (creates the state dir as needed). Temp-then-rename
+ * so a crash mid-write cannot leave a truncated file that `getRegistry` would
+ * silently read as an empty registry, dropping every registered service.
+ */
 export async function saveRegistry(config: FetchConfig): Promise<void> {
   const file = registryPath();
   await fs.promises.mkdir(path.dirname(file), { recursive: true });
-  await fs.promises.writeFile(file, JSON.stringify(config, null, 2) + '\n', 'utf-8');
+  await atomicWriteFile(file, JSON.stringify(config, null, 2) + '\n');
 }

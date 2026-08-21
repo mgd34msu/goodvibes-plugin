@@ -1,5 +1,5 @@
 /**
- * goodvibes-connect — SessionStart open-mode announcement (connect-owned, R9).
+ * goodvibes-connect, SessionStart open-mode announcement (connect-owned, R9).
  *
  * Plain `.mjs`, no build step (R8). Announces the trust mode at session start and
  * enforces the ephemerality contract:
@@ -129,6 +129,6 @@ async function main() {
 // Run only when executed directly (not when imported by tests).
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch(() => {
-    /* fail open — never break session start */
+    /* fail open, never break session start */
   });
 }

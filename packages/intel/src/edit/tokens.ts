@@ -6,11 +6,11 @@
  * token; the store re-reads it, and the tool re-hashes every file so a file that
  * changed since preview is refused (`refused_stale`) rather than silently
  * re-matched. Tokens are:
- *   - SINGLE-USE — `loadAndConsume` deletes the file as it reads it, so a token
+ *   - SINGLE-USE, `loadAndConsume` deletes the file as it reads it, so a token
  *     cannot be replayed and two concurrent applies cannot both win.
- *   - EXPIRING — a 10-minute TTL; `apply` rejects an expired token and the store
+ *   - EXPIRING, a 10-minute TTL; `apply` rejects an expired token and the store
  *     sweeps stale files opportunistically.
- *   - NAMESPACED — stored under `core/config` `getStatePath` (`.goodvibes/
+ *   - NAMESPACED, stored under `core/config` `getStatePath` (`.goodvibes/
  *     edit-tokens/`), honoring R15. The state ROOT defaults to the server cwd
  *     (the project root in production); `GOODVIBES_STATE_ROOT` overrides it,
  *     which the tests use to keep token files inside an isolated temp dir.
@@ -38,7 +38,7 @@ export interface PreviewFileRecord {
 
 /** Per-entry record captured at preview time (keyed like api_request entries). */
 export interface PreviewEntryRecord {
-  /** id or index-as-string — never collapsed with same-file siblings. */
+  /** id or index-as-string, never collapsed with same-file siblings. */
   key: string;
   id?: string;
   path: string;

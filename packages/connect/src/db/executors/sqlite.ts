@@ -1,5 +1,5 @@
 /**
- * SQLite query executor — ported from v1 project-engine
+ * SQLite query executor, ported from v1 project-engine
  * `core/database/executors/sqlite.ts` (parameterized SELECT + write paths via
  * the pool). This is the tested db_query path (sql.js is connect's own dep).
  */

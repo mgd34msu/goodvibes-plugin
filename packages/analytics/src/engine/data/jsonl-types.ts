@@ -24,11 +24,11 @@
  * All fields are optional to account for format evolution across Claude versions.
  */
 export interface JSONLRecordBase {
-  /** Discriminator — determines which sub-interface to use. */
+  /** Discriminator, determines which sub-interface to use. */
   type: 'assistant' | 'user' | 'progress' | 'file-history-snapshot';
-  /** Session UUID — matches the JSONL filename without extension. */
+  /** Session UUID, matches the JSONL filename without extension. */
   sessionId?: string;
-  /** Record UUID — unique identifier for this record. */
+  /** Record UUID, unique identifier for this record. */
   uuid?: string;
   /** UUID of the parent record in the conversation tree, or null for root. */
   parentUuid?: string | null;
@@ -46,24 +46,24 @@ export interface JSONLRecordBase {
 // Content block types (embedded in assistant.message.content)
 // ---------------------------------------------------------------------------
 
-/** Thinking block — extended reasoning output. */
+/** Thinking block, extended reasoning output. */
 export interface ThinkingBlock {
   type: 'thinking';
   /** The raw thinking text produced by Claude. */
   thinking?: string;
 }
 
-/** Text block — normal text response. */
+/** Text block, normal text response. */
 export interface TextBlock {
   type: 'text';
   /** The text content of the block. */
   text?: string;
 }
 
-/** Tool use block — Claude calling a tool. */
+/** Tool use block, Claude calling a tool. */
 export interface ToolUseBlock {
   type: 'tool_use';
-  /** Tool call identifier — referenced by tool_result blocks in the next user record. */
+  /** Tool call identifier, referenced by tool_result blocks in the next user record. */
   id?: string;
   /** Tool name (e.g. 'precision_read', 'Task', 'Bash'). */
   name?: string;
@@ -79,14 +79,14 @@ export type ContentBlock = ThinkingBlock | TextBlock | ToolUseBlock;
 // ---------------------------------------------------------------------------
 
 /**
- * Tool result block — returned by a tool invocation.
+ * Tool result block, returned by a tool invocation.
  * Appears in user records that follow assistant tool_use records.
  */
 export interface ToolResultBlock {
   /** Matches the id field from the corresponding tool_use block. */
   tool_use_id?: string;
   type: 'tool_result';
-  /** Tool result content — may be a plain string or an array of typed content objects. */
+  /** Tool result content, may be a plain string or an array of typed content objects. */
   content?: string | unknown[];
   /** Whether the tool call produced an error. */
   is_error?: boolean;
@@ -107,7 +107,7 @@ export interface AssistantUsage {
   output_tokens?: number;
   /** Tokens written into the context cache (prompt caching write). */
   cache_creation_input_tokens?: number;
-  /** Tokens read from the context cache (prompt caching read — cheaper). */
+  /** Tokens read from the context cache (prompt caching read, cheaper). */
   cache_read_input_tokens?: number;
   /** Extended cache creation breakdown. */
   cache_creation?: {
@@ -123,14 +123,14 @@ export interface AssistantUsage {
 // ---------------------------------------------------------------------------
 
 /**
- * Assistant turn record — the primary data source for API token usage.
+ * Assistant turn record, the primary data source for API token usage.
  *
  * Contains:
  *   - Full token usage breakdown (input, output, cache read/write)
  *   - Array of content blocks (text, thinking, and tool_use calls)
  *   - Model identifier and stop reason
  *
- * NOTE: cost_usd is NOT present — must be calculated from token counts + config rates.
+ * NOTE: cost_usd is NOT present, must be calculated from token counts + config rates.
  */
 export interface JSONLAssistantRecord extends JSONLRecordBase {
   type: 'assistant';
@@ -140,7 +140,7 @@ export interface JSONLAssistantRecord extends JSONLRecordBase {
     /** Token usage breakdown for this API call. */
     usage?: AssistantUsage;
     /**
-     * Content blocks — may include thinking, text, and tool_use entries.
+     * Content blocks, may include thinking, text, and tool_use entries.
      * Array order matches Claude's output order.
      */
     content?: ContentBlock[];
@@ -152,7 +152,7 @@ export interface JSONLAssistantRecord extends JSONLRecordBase {
 }
 
 /**
- * User turn record — human message or tool results.
+ * User turn record, human message or tool results.
  *
  * content is either:
  *   - A plain string (human message)
@@ -168,7 +168,7 @@ export interface JSONLUserRecord extends JSONLRecordBase {
 }
 
 /**
- * Progress record — MCP server or hook tool timing events.
+ * Progress record, MCP server or hook tool timing events.
  *
  * These arrive in pairs:
  *   - status='started'   when the tool begins executing
@@ -187,7 +187,7 @@ export interface JSONLProgressRecord extends JSONLRecordBase {
     serverName?: string;
     /** Tool function name (e.g. 'precision_read'). */
     toolName?: string;
-    /** Total elapsed milliseconds — only present when status='completed'. */
+    /** Total elapsed milliseconds, only present when status='completed'. */
     elapsedTimeMs?: number;
   };
   /** Matches the tool_use id that triggered this progress event. */
@@ -195,8 +195,8 @@ export interface JSONLProgressRecord extends JSONLRecordBase {
 }
 
 /**
- * File history snapshot — records file state for undo/redo functionality.
- * These records are large and irrelevant for analytics — skip them.
+ * File history snapshot, records file state for undo/redo functionality.
+ * These records are large and irrelevant for analytics, skip them.
  */
 export interface JSONLFileHistoryRecord extends JSONLRecordBase {
   type: 'file-history-snapshot';
@@ -265,7 +265,7 @@ export interface ToolCallInfo {
 
 /**
  * Inferred agent activity record.
- * Agents are NOT explicit JSONL record types — they are inferred from
+ * Agents are NOT explicit JSONL record types, they are inferred from
  * assistant records containing tool_use blocks with name === 'Task'.
  */
 export interface AgentActivityInfo {

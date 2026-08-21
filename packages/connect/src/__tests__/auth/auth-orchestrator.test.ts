@@ -104,6 +104,61 @@ describe('auth-orchestrator', () => {
       expect(refreshAndStore).toHaveBeenCalledWith('test-service', auth);
     });
 
+    it('issues one refresh grant for concurrent requests to the same service', async () => {
+      const auth: ServiceAuth = { type: 'oauth2', access_token: 'old-token', expires_at: Date.now() - 1000 };
+      const refreshedAuth: ServiceAuth = { ...auth, access_token: 'new-token', expires_at: Date.now() + 3600000 };
+      (getServiceSecrets as Mock).mockResolvedValue(auth);
+      (isTokenExpired as Mock).mockReturnValue(true);
+      (canRefreshToken as Mock).mockReturnValue(true);
+      (globalCookieJar.getCookies as Mock).mockResolvedValue([]);
+      // A grant that takes a tick, the window in which a batch would fire N of them.
+      (refreshAndStore as Mock).mockImplementation(
+        () => new Promise((resolve) => setTimeout(() => resolve(refreshedAuth), 10)),
+      );
+
+      const batch = [{}, {}, {}, {}].map((headers: Record<string, string>) =>
+        applyAuth(headers, 'https://api.example.com', undefined, 'test-service').then(() => headers),
+      );
+      const results = await Promise.all(batch);
+
+      expect(refreshAndStore).toHaveBeenCalledTimes(1);
+      for (const headers of results) {
+        expect(headers['Authorization']).toBe('Bearer new-token');
+      }
+    });
+
+    it('refreshes again once the previous grant has settled', async () => {
+      const auth: ServiceAuth = { type: 'oauth2', access_token: 'old-token', expires_at: Date.now() - 1000 };
+      (getServiceSecrets as Mock).mockResolvedValue(auth);
+      (isTokenExpired as Mock).mockReturnValue(true);
+      (canRefreshToken as Mock).mockReturnValue(true);
+      (globalCookieJar.getCookies as Mock).mockResolvedValue([]);
+      (refreshAndStore as Mock).mockResolvedValue({ ...auth, access_token: 'new-token' });
+
+      await applyAuth({}, 'https://api.example.com', undefined, 'test-service');
+      await applyAuth({}, 'https://api.example.com', undefined, 'test-service');
+
+      expect(refreshAndStore).toHaveBeenCalledTimes(2);
+    });
+
+    it('keeps refreshes for different services independent', async () => {
+      const auth: ServiceAuth = { type: 'oauth2', access_token: 'old-token', expires_at: Date.now() - 1000 };
+      (getServiceSecrets as Mock).mockResolvedValue(auth);
+      (isTokenExpired as Mock).mockReturnValue(true);
+      (canRefreshToken as Mock).mockReturnValue(true);
+      (globalCookieJar.getCookies as Mock).mockResolvedValue([]);
+      (refreshAndStore as Mock).mockImplementation(
+        () => new Promise((resolve) => setTimeout(() => resolve({ ...auth, access_token: 'new-token' }), 10)),
+      );
+
+      await Promise.all([
+        applyAuth({}, 'https://a.example.com', undefined, 'service-a'),
+        applyAuth({}, 'https://b.example.com', undefined, 'service-b'),
+      ]);
+
+      expect(refreshAndStore).toHaveBeenCalledTimes(2);
+    });
+
     it('should apply cookies alongside other auth', async () => {
       const headers: Record<string, string> = {};
       const requestAuth: RequestAuth = { type: 'bearer', token: 'test-token' };

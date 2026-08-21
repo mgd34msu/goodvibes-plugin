@@ -1,5 +1,5 @@
 /**
- * sync-engine.ts — Orchestrates JSONL scanning, parsing, and GlobalDB insertion.
+ * sync-engine.ts, Orchestrates JSONL scanning, parsing, and GlobalDB insertion.
  *
  * The SyncEngine provides incremental, idempotent backfill of historical JSONL
  * session data into the global analytics database. It uses `JSONLScanner` to
@@ -79,7 +79,7 @@ export interface SyncProgress {
 const TWO_HOURS_MS = 2 * 60 * 60 * 1_000;
 
 /**
- * SyncEngine — orchestrates JSONL file scanning and GlobalDB insertion.
+ * SyncEngine, orchestrates JSONL file scanning and GlobalDB insertion.
  *
  * Typical usage:
  * ```ts
@@ -219,28 +219,23 @@ export class SyncEngine {
     const sessionId = sessionIdFromPath(filePath);
 
     try {
-      // Step 1: Check incremental state
       const syncState: SyncStateRecord | null = this.db.getSyncState(filePath);
       const fromOffset = syncState?.last_offset ?? 0;
 
-      // Step 2: Parse only the new portion of the file
       const parseResult = await this.reader.parseFile(filePath, fromOffset);
 
       const newRecordCount = parseResult.records.length;
 
-      // Step 3: Skip if no new content (including empty first-sync to avoid ghost sessions)
+      // Empty first-sync must still skip here, to avoid creating ghost sessions.
       if (newRecordCount === 0) {
         return { filePath, sessionId, status: 'skipped', newRecords: 0, bytesProcessed: 0 };
       }
 
-      // Compute bytes read during this incremental parse
       const bytesProcessed = parseResult.newOffset - fromOffset;
 
-      // Step 4: Extract structured data
       const apiCalls: ApiCallRecord[] = this.reader.extractApiCalls(parseResult.records);
       const sessionInfo = this.reader.extractSessionInfo(parseResult.records);
 
-      // Compute session-level totals from individual API call records
       let totalInputTokens = 0;
       let totalOutputTokens = 0;
       let totalCacheReadTokens = 0;
@@ -259,7 +254,6 @@ export class SyncEngine {
       const ageMs = Date.now() - new Date(lastActivityAt).getTime();
       const isCompleted = ageMs > TWO_HOURS_MS;
 
-      // Step 5: Upsert the session record
       const session: Partial<GlobalSession> & { session_id: string } = {
         session_id: sessionId,
         project_hash: projectHash,
@@ -281,37 +275,39 @@ export class SyncEngine {
         ...(isCompleted ? { ended_at: lastActivityAt } : {}),
       };
 
-      this.db.upsertSession(session);
+      // One transaction per file: the session, its calls and the new offset land
+      // in a single locked write instead of four, and a concurrent session can
+      // never observe an offset advanced past rows that were not stored.
+      this.db.transaction(() => {
+        this.db.upsertSession(session);
 
-      // Step 6: Batch-insert API calls within a transaction
-      if (apiCalls.length > 0) {
-        this.db.batchInsertApiCalls(apiCalls);
-      }
+        if (apiCalls.length > 0) {
+          this.db.batchInsertApiCalls(apiCalls);
+        }
 
-      // Step 7: For subagent sessions, register parent attribution via agent record
-      if (isSubagent && parentSessionId) {
-        // Record subagent linkage. Use the file modification basename as agent_id
-        // since there is no dedicated agent UUID in the JSONL naming convention.
-        const agentId = path.basename(filePath, '.jsonl');
-        this.db.upsertAgent({
-          session_id: parentSessionId,
-          agent_id: agentId,
-          agent_type: 'subagent',
-          parent_session_id: parentSessionId,
-          model: sessionInfo.model,
-          spawned_at: sessionInfo.startedAt,
-          completed_at: isCompleted ? lastActivityAt : undefined,
-          total_tokens: totalInputTokens + totalOutputTokens,
-          duration_ms: 0,
+        if (isSubagent && parentSessionId) {
+          // Record subagent linkage. Use the file modification basename as agent_id
+          // since there is no dedicated agent UUID in the JSONL naming convention.
+          const agentId = path.basename(filePath, '.jsonl');
+          this.db.upsertAgent({
+            session_id: parentSessionId,
+            agent_id: agentId,
+            agent_type: 'subagent',
+            parent_session_id: parentSessionId,
+            model: sessionInfo.model,
+            spawned_at: sessionInfo.startedAt,
+            completed_at: isCompleted ? lastActivityAt : undefined,
+            total_tokens: totalInputTokens + totalOutputTokens,
+            duration_ms: 0,
+          });
+        }
+
+        this.db.upsertSyncState({
+          jsonl_path: filePath,
+          session_id: sessionId,
+          last_offset: parseResult.newOffset,
+          last_synced_at: new Date().toISOString(),
         });
-      }
-
-      // Step 8: Update sync state
-      this.db.upsertSyncState({
-        jsonl_path: filePath,
-        session_id: sessionId,
-        last_offset: parseResult.newOffset,
-        last_synced_at: new Date().toISOString(),
       });
 
       return { filePath, sessionId, status: 'synced', newRecords: newRecordCount, bytesProcessed };

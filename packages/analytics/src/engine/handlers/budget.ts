@@ -1,5 +1,5 @@
 /**
- * analytics_budget handler — set, check, or clear a session budget.
+ * analytics_budget handler, set, check, or clear a session budget.
  *
  * Delegates budget mutations to the Aggregator (which proxies through
  * BudgetTracker). All operations return formatted text confirming the
@@ -42,10 +42,10 @@ export type BudgetHandler = (
  * Handle the `analytics_budget` MCP tool.
  *
  * Actions:
- *   - set   — configure a budget limit via aggregator.setBudget(), return
+ *   - set  , configure a budget limit via aggregator.setBudget(), return
  *             confirmation with the budget details and current usage.
- *   - check — read current budget state from aggregator and render status.
- *   - clear — remove the active budget via aggregator.clearBudget().
+ *   - check, read current budget state from aggregator and render status.
+ *   - clear, remove the active budget via aggregator.clearBudget().
  *
  * @param aggregator - Live Aggregator instance.
  * @param input      - Validated AnalyticsBudgetInput.

@@ -1,7 +1,7 @@
 # goodvibes
 
 Structure-aware code intelligence, token/cost analytics, and registered HTTP/database access for
-Claude Code — **25 tools across three MCP servers**, in one plugin. The three servers are
+Claude Code: **25 tools across three MCP servers**, in one plugin. The three servers are
 independent stdio processes (`intel`, `analytics`, `connect`); each runs only for the life of the
 session that started it.
 
@@ -14,12 +14,12 @@ session that started it.
 |---|---|---|
 | `intel` | 15 | Structure-aware code search/read + verified static analyzers, plus one preview-gated editor. Read-only except `structural_edit`. |
 | `analytics` | 7 | Token and cost analytics with a self-contained HTML report. Observe-and-report only. |
-| `connect` | 3 | Registered HTTP and database access under an explicit trust boundary — the only server that holds credentials. |
+| `connect` | 3 | Registered HTTP and database access under an explicit trust boundary. The only server that holds credentials. |
 
 Tools surface under the `.mcp.json` server key: `mcp__intel__code_grep`, `mcp__analytics__query`,
 `mcp__connect__api_request`, and so on.
 
-### intel — 15 tools
+### intel: 15 tools
 
 Every filesystem tool takes a `base_path` and echoes the absolute `resolved_path` for each file it
 touches, so results are unambiguous across working directories. Every response is a compact
@@ -47,14 +47,14 @@ envelope with an honest token estimate, `output.max_tokens` enforcement, and tru
 **intel is read-only except `structural_edit`, which is preview-gated.** Every other tool only
 reads, searches, and analyzes. `structural_edit` cannot write blind: a `preview` call writes
 nothing (it returns diffs, a single-use token, and per-file content hashes), and an `apply` call
-only writes when the caller passes that token back AND every target file's hash still matches — a
+only writes when the caller passes that token back AND every target file's hash still matches. A
 file that changed since preview is refused per-entry (`refused_stale`), never silently re-matched.
 Edits are byte-exact outside the changed span (newlines/CRLF preserved), and an atomic batch rolls
 back from pre-apply snapshots if any entry cannot apply. Modes are `exact`, `ast`
 (TypeScript-compiler node matching), and `ast_pattern` (ast-grep, active only when `@ast-grep/napi`
-is installed) — no fuzzy, no regex.
+is installed). No fuzzy matching, no regex.
 
-### analytics — 7 tools
+### analytics: 7 tools
 
 | Tool | What it does |
 |---|---|
@@ -66,11 +66,11 @@ is installed) — no fuzzy, no regex.
 | `sync` | Sync the telemetry store |
 | `config` | Read analytics configuration |
 
-Analytics is purely additive — it observes and reports token/cost history (which Claude Code does
+Analytics is purely additive. It observes and reports token/cost history (which Claude Code does
 not track natively) and never changes model behavior. The HTML report is fully self-contained
 (inline CSS/JS/SVG, no external URLs) and follows the viewer's light/dark preference.
 
-### connect — 3 tools
+### connect: 3 tools
 
 | Tool | What it does |
 |---|---|
@@ -78,11 +78,11 @@ not track natively) and never changes model behavior. The HTML report is fully s
 | `service` | Manage the service registry: register a service, store credentials (0600, `{$env}` indirection), set per-service read-only vs write-methods, remove/purge |
 | `db_query` | Query a **registered** database connection (Postgres / MySQL / SQLite), read-only by default, drivers resolved from the target project |
 
-**connect trust boundary** — connect is the only server that holds credentials, so its defaults are
+**connect trust boundary.** connect is the only server that holds credentials, so its defaults are
 conservative:
 
 - Credentials are pinned to their registered origin and never sent elsewhere (not toggleable).
-- Destination allowlist is on by default — registered services and explicitly allowlisted URLs only.
+- Destination allowlist is on by default: registered services and explicitly allowlisted URLs only.
 - Read-only by default per service / connection; write methods are an explicit opt-in.
 - Open mode is human-only and out-of-band (a config-file edit), announced at session start, and
   reverts to restricted next session unless a separate, loud `dangerously_persist_across_sessions`
@@ -92,12 +92,12 @@ conservative:
 
 ## Token cost
 
-Tool schemas are **deferred behind Tool Search**, which is on by default in current Claude Code —
+Tool schemas are **deferred behind Tool Search**, which is on by default in current Claude Code,
 so the 25 schemas are not loaded into every session; the model pulls a tool's schema when it
 decides to call it. What *is* always-on is a small amount of skill/command metadata (measured via
 `claude plugin details`): intel ~484, analytics ~33, connect ~19 tokens. For comparison, the v1
 monolith carried a ~13,530-token always-on tax. If your client has Tool Search disabled, the tool
-schemas load eagerly — that cost is your client's configuration, not something this plugin's
+schemas load eagerly. That cost is your client's configuration, not something this plugin's
 manifest can change.
 
 ## Measured performance (intel gate 5)
@@ -105,36 +105,36 @@ manifest can change.
 Re-run on this build with `node packages/intel/bench/run-all.mjs`. Token counts use `bytes / 3.5`,
 applied identically to the intel tool and the native baseline.
 
-### code_grep vs native `git grep` — **PASS**
+### code_grep vs native `git grep`: **PASS**
 
 At defaults, `code_grep`'s `files_only` output returned the **same 76 matches** as `git grep` in
-**902 tokens vs 2,415 — a 62.7% reduction** (2.68× fewer tokens). This is the flagship measured
+**902 tokens vs 2,415, a 62.7% reduction** (2.68x fewer tokens). This is the flagship measured
 claim.
 
-### code_read outline — **inconclusive on this build**
+### code_read outline: **inconclusive on this build**
 
 The outline benchmark could not be measured here (a tree-sitter grammar `.wasm` / web-tree-sitter
-ABI version gap — an asset/toolchain issue, not a code defect). Until the grammar assets are
+ABI version gap, an asset/toolchain issue, not a code defect). Until the grammar assets are
 refreshed for web-tree-sitter 0.26.x, this README makes no measured outline token-savings claim.
 The `code_read` line/range paths and every analyzer that rides the bundled TypeScript compiler
-(`code_surface`, `code_safe_delete`, `api_*`, `db_schema` usage) are unaffected — they do not use
+(`code_surface`, `code_safe_delete`, `api_*`, `db_schema` usage) are unaffected. They do not use
 tree-sitter.
 
 ## When native tools are the right choice
 
 Be honest with yourself about the operation:
 
-- **A plain full-file read** — use the native `Read` tool. `code_read` earns its keep on
+- **A plain full-file read.** Use the native `Read` tool. `code_read` earns its keep on
   *structural outline* extraction and line-range reads of large files.
-- **A one-shot grep whose every hit you're going to read anyway** — native `Grep` is simpler.
+- **A one-shot grep whose every hit you're going to read anyway.** Native `Grep` is simpler.
   `code_grep` pays off when you want capped, deduplicated results or batched queries in one call.
-- **A quick one-off edit** — native `Edit`/`Write` are simpler. `structural_edit` earns its keep on
+- **A quick one-off edit.** Native `Edit`/`Write` are simpler. `structural_edit` earns its keep on
   AST-scoped or batched changes where you want a diff preview, a stale-file guard, and atomic
   rollback before any bytes are written.
-- **Reading a public web page or a one-off unauthenticated URL** — use the native `WebFetch` tool.
+- **Reading a public web page or a one-off unauthenticated URL.** Use the native `WebFetch` tool.
   connect is not a general web reader; reach for it only for authenticated, registered-service calls
   or live database access under the trust boundary above.
-- **Per-session token/cost accounting you don't need** — skip analytics; it is purely additive.
+- **Per-session token/cost accounting you don't need.** Skip analytics; it is purely additive.
 
 ## Content
 
@@ -147,7 +147,7 @@ Be honest with yourself about the operation:
 - **Hooks:** SessionStart context + open-mode announcement + silent native-dependency
   relink/background install, Setup (kicks the same background installer on `claude init`),
   SubagentStart pointers, PostToolUseFailure, a warn-first commit guard, and the analytics
-  SessionEnd / Stop / SubagentStop / PreCompact telemetry hooks — all observe/inform only and
+  SessionEnd / Stop / SubagentStop / PreCompact telemetry hooks. All observe/inform only and
   fail open. Project state is written under the `.goodvibes/` directory.
 
 ## Install
@@ -159,7 +159,7 @@ claude plugin install goodvibes@goodvibes-market
 
 Native dependencies install automatically in the background: the first session after install
 spawns a detached installer (nothing blocks, one line tells you it started), installs land in
-`~/.claude/.goodvibes/deps/` and survive plugin updates — the SessionStart hook relinks them
+`~/.claude/.goodvibes/deps/` and survive plugin updates. The SessionStart hook relinks them
 after an update. If the background install fails, one line points at
 `~/.claude/.goodvibes/deps/install.log` and `/goodvibes:setup`, the manual foreground repair
 path. Until an install lands, the servers still boot and every non-native capability works;
@@ -170,10 +170,10 @@ missing.
 
 ## Tests
 
-- `npx vitest run --project intel` — the intel suite (includes the `structural_edit` write-path
+- `npx vitest run --project intel`: the intel suite (includes the `structural_edit` write-path
   suite: preview/apply round trip, stale-hash refusal, atomic rollback, CRLF preservation,
   single-use tokens, token expiry).
-- `npx vitest run --project analytics` — the analytics suite.
-- `npx vitest run --project connect` — the connect suite (HTTP client, cookie jar, service
+- `npx vitest run --project analytics`: the analytics suite.
+- `npx vitest run --project connect`: the connect suite (HTTP client, cookie jar, service
   registry/resolver, secrets store/guard, auth orchestrator, trust boundary, db driver resolution).
-- `npx tsc --noEmit -p packages/<intel|analytics|connect>` — zero errors per package.
+- `npx tsc --noEmit -p packages/<intel|analytics|connect>`: zero errors per package.

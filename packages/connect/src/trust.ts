@@ -1,11 +1,11 @@
 /**
- * connect trust boundary (BUILD NEW — §4.3 service row).
+ * connect trust boundary (BUILD NEW, §4.3 service row).
  *
  * Everything the credential/destination policy needs is expressed here as pure,
  * side-effect-free functions so the whole boundary is unit-testable without a
  * network. The five rules, each non-negotiable at its stated point:
  *
- *  1. Credential pinning to registered origins — NEVER toggleable. Service
+ *  1. Credential pinning to registered origins, NEVER toggleable. Service
  *     credentials attach to a request ONLY when the request's final-URL origin
  *     equals the service's registered base_url origin. Open mode does NOT relax
  *     this: it widens where you may go, never where your secrets may travel.
@@ -15,9 +15,9 @@
  *  3. Per-service read-only default. Only SAFE_METHODS are permitted unless the
  *     service opted specific write methods in via `write_methods`. A bare `url`
  *     (no service) has no opt-in, so writes require open mode.
- *  4. Mode is a stamp, not a lever a tool can pull — it comes from `core/config`
+ *  4. Mode is a stamp, not a lever a tool can pull, it comes from `core/config`
  *     (human-only file edit); this module only reads it.
- *  5. Redaction — known secret values are stripped from echoed responses so a
+ *  5. Redaction, known secret values are stripped from echoed responses so a
  *     server that reflects a token back cannot leak it through the tool result.
  */
 
@@ -69,7 +69,7 @@ export function isSafeMethod(method: string): boolean {
 }
 
 /**
- * Rule 2 — is the destination reachable?
+ * Rule 2, is the destination reachable?
  * @param finalUrl - the fully resolved request URL
  * @param policy - mode + registered origins + allowlist
  */
@@ -106,7 +106,7 @@ export function isDestinationAllowed(finalUrl: string, policy: DestinationPolicy
 }
 
 /**
- * Rule 1 — may this service's credentials travel to this URL?
+ * Rule 1, may this service's credentials travel to this URL?
  * Credentials attach only on an exact origin match with the registered
  * base_url. This holds in EVERY mode; open mode cannot loosen it.
  * @param finalUrl - the resolved request URL
@@ -117,7 +117,7 @@ export function isCredentialAttachAllowed(finalUrl: string, serviceBaseUrl: stri
 }
 
 /**
- * Rule 3 — is this method permitted for this target?
+ * Rule 3, is this method permitted for this target?
  * @param method - the HTTP method
  * @param opts - mode, and (for a registered target) the service's write opt-in
  */
@@ -151,33 +151,54 @@ export function isMethodAllowed(
 }
 
 /**
- * Rule 5 — collect the secret plaintext values that must never be echoed.
- * Draws from the RESOLVED auth actually used for a request: bearer/session/
+ * Anything that can carry credential plaintext into a request: a registered
+ * service's resolved auth, or a caller's per-request `auth` override. Both
+ * reach the outgoing headers, so both must be redacted out of the response.
+ */
+export interface SecretBearingAuth {
+  token?: unknown;
+  key?: unknown;
+  username?: unknown;
+  password?: unknown;
+  access_token?: unknown;
+  refresh_token?: unknown;
+  client_secret?: unknown;
+  headers?: Record<string, unknown>;
+}
+
+/**
+ * Rule 5, collect the secret plaintext values that must never be echoed.
+ * Draws from every auth source ACTUALLY applied to the request: bearer/session/
  * oauth tokens, api keys, basic passwords (and the base64 pair), custom header
  * values, and client secrets. Only non-trivial values (length ≥ 4) are kept so
  * redaction can never blank out an empty string and eat the whole response.
- * @param auth - the resolved auth used for the request
+ * @param auths - each auth applied to the request, service or per-request
  */
-export function collectSecretValues(auth?: ServiceAuth): string[] {
+export function collectSecretValues(
+  ...auths: Array<SecretBearingAuth | ServiceAuth | undefined>
+): string[] {
   const out = new Set<string>();
   const add = (v: unknown): void => {
     if (typeof v === 'string' && v.trim().length >= 4) {out.add(v);}
   };
-  if (!auth) {return [];}
 
-  add(auth.token);
-  add(auth.key);
-  add(auth.password);
-  add(auth.access_token);
-  add(auth.refresh_token);
-  add(auth.client_secret);
+  for (const auth of auths) {
+    if (!auth) {continue;}
 
-  if (typeof auth.username === 'string' && typeof auth.password === 'string') {
-    add(Buffer.from(`${auth.username}:${auth.password}`, 'utf-8').toString('base64'));
-  }
+    add(auth.token);
+    add(auth.key);
+    add(auth.password);
+    add(auth.access_token);
+    add(auth.refresh_token);
+    add(auth.client_secret);
 
-  if (auth.headers) {
-    for (const value of Object.values(auth.headers)) {add(value);}
+    if (typeof auth.username === 'string' && typeof auth.password === 'string') {
+      add(Buffer.from(`${auth.username}:${auth.password}`, 'utf-8').toString('base64'));
+    }
+
+    if (auth.headers) {
+      for (const value of Object.values(auth.headers)) {add(value);}
+    }
   }
 
   return [...out];

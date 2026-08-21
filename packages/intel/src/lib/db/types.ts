@@ -3,7 +3,7 @@
  *
  * `DatabaseTable`/`DatabaseRelation`/`DatabaseColumn` mirror v1 project-engine
  * `core/database/types.ts`'s unified parser output (flat tables + a global
- * relations array) — the three schema parsers (prisma/drizzle/sql) still
+ * relations array), the three schema parsers (prisma/drizzle/sql) still
  * produce this shape near-verbatim, since it is proven, working logic. The
  * tool boundary (`tools/db_schema.ts`) reshapes it into the tribunal's
  * `models[].relations` shape (§4.4.3) on the way out.
@@ -59,7 +59,7 @@ export interface DatabaseSchemaResult {
 // db_schema tool shape (§4.4.3, tribunal merge)
 // =============================================================================
 
-/** A field on a `db_schema` model — same content as DatabaseColumn, tribunal-named. */
+/** A field on a `db_schema` model, same content as DatabaseColumn, tribunal-named. */
 export interface DbField {
   name: string;
   type: string;
@@ -68,7 +68,7 @@ export interface DbField {
   references?: { table: string; column: string };
 }
 
-/** A relation embedded on its owning model (tribunal shape — not a flat global array). */
+/** A relation embedded on its owning model (tribunal shape, not a flat global array). */
 export interface DbModelRelation {
   from_column: string;
   to_model: string;

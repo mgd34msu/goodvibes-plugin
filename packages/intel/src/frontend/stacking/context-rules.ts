@@ -1,7 +1,7 @@
 /**
- * Stacking context detection rules — Lane 4.
+ * Stacking context detection rules, Lane 4.
  * Ported from frontend-engine `core/stacking/context-rules.ts` and extended with
- * {@link allStackingTriggers} — the tribunal "all context-creation triggers per
+ * {@link allStackingTriggers}, the tribunal "all context-creation triggers per
  * element" enhancement (§4.4.2). The v1 `createsStackingContext` returned only the
  * FIRST matching trigger; `allStackingTriggers` returns every one.
  *

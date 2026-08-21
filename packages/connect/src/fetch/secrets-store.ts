@@ -1,7 +1,7 @@
 /**
  * Credential store for connect service authentication.
  *
- * Ported from v1 precision-engine `utils/fetch/secrets-store.ts` — the
+ * Ported from v1 precision-engine `utils/fetch/secrets-store.ts`, the
  * best-engineered v1 feature (0600 perms, `{$env}` indirection, purge-on-remove)
  * is kept intact. The only v2 change is location: the file moves under the
  * namespaced v2 state directory (`.goodvibes/goodvibes.secrets.json`) via
@@ -16,6 +16,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { statePath } from '@goodvibes/core/config';
+import { atomicWriteFile } from '@goodvibes/core/fsx';
 import { ensureGitignore } from './secrets-guard.js';
 
 /** Auth configuration for a service. */
@@ -87,7 +88,9 @@ export async function loadSecrets(): Promise<SecretsFile> {
 
 /**
  * Persist credentials with owner-only (0600) permissions after ensuring the
- * gitignore guard is in place.
+ * gitignore guard is in place. The write is temp-then-rename: a process killed
+ * mid-refresh would otherwise leave a truncated file, and `loadSecrets` treats
+ * a parse failure as fatal for EVERY service, not just the one being written.
  */
 export async function saveSecrets(secrets: SecretsFile): Promise<void> {
   const secretsPath = getSecretsPath();
@@ -96,10 +99,7 @@ export async function saveSecrets(secrets: SecretsFile): Promise<void> {
   await ensureGitignore(process.cwd());
   await fs.promises.mkdir(secretsDir, { recursive: true });
 
-  await fs.promises.writeFile(secretsPath, JSON.stringify(secrets, null, 2) + '\n', {
-    encoding: 'utf-8',
-    mode: 0o600,
-  });
+  await atomicWriteFile(secretsPath, JSON.stringify(secrets, null, 2) + '\n', { mode: 0o600 });
 }
 
 /** Get auth for a service, or undefined when absent. */

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * deps-install — install the servers' native dependencies into the durable home.
+ * deps-install, install the servers' native dependencies into the durable home.
  *
  * For each server (intel, analytics, connect) whose representative probe is
  * missing from the plugin copy: create `~/.claude/.goodvibes/deps/<server>/`,
@@ -48,7 +48,7 @@ import {
 /** Hard cap per server's npm install; the lock refreshes between servers. */
 const NPM_TIMEOUT_MS = 5 * 60 * 1000;
 
-/** A lock file older than this is a leftover from a dead run — ignore it. */
+/** A lock file older than this is a leftover from a dead run, ignore it. */
 const LOCK_STALE_MS = 10 * 60 * 1000;
 
 function lockFile() {
@@ -81,9 +81,9 @@ function log(line) {
 /**
  * Take the single-instance lock with an exclusive create ('wx'), so two
  * installers racing at the same moment can never both acquire it. Returns:
- *   'acquired' — this process owns the lock;
- *   'held'     — a live run owns a fresh lock;
- *   'error'    — the lock file cannot be created at all (e.g. unwritable dir).
+ *   'acquired', this process owns the lock;
+ *   'held'    , a live run owns a fresh lock;
+ *   'error'   , the lock file cannot be created at all (e.g. unwritable dir).
  */
 function acquireLock() {
   const file = lockFile();
@@ -163,7 +163,7 @@ function runNpmInstall(prefix) {
 
 /**
  * Install every missing server's deps into the durable home and link the
- * plugin copy to it. Returns { ok, failed, skipped } — `failed` is the list of
+ * plugin copy to it. Returns { ok, failed, skipped }, `failed` is the list of
  * servers whose deps are still missing afterwards.
  */
 export function installMissingDeps(pluginRoot) {
@@ -230,7 +230,7 @@ export function spawnDetachedInstall(pluginRoot) {
 
 /**
  * Record the run's outcome to `.last-result.json` for the SessionStart hook.
- * Called on every exit path, including failures before any install starts —
+ * Called on every exit path, including failures before any install starts,
  * without a record, SessionStart sees missing deps with no recent failure and
  * re-spawns this installer every session. Never throws; when the durable root
  * itself is unwritable there is nowhere to record the failure.

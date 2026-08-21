@@ -1,5 +1,5 @@
 /**
- * `db_schema` — database schema extraction + Prisma usage analysis.
+ * `db_schema`, database schema extraction + Prisma usage analysis.
  *
  * Ports project-engine `extensions/database/schema.ts` +
  * `core/database/parsers/{prisma-schema,drizzle-schema,sql-schema}.ts`
@@ -50,7 +50,7 @@ interface DbSchemaArgs {
 const definition: Tool = {
   name: 'db_schema',
   description:
-    'Use to read a project data model without hunting for schema files. Extract a project database schema (Prisma, Drizzle, or raw SQL — auto-detected by ' +
+    'Use to read a project data model without hunting for schema files. Extract a project database schema (Prisma, Drizzle, or raw SQL, auto-detected by ' +
     'default) into a unified models/fields/relations shape. Optional usage mode (usage: true) ' +
     'statically maps Prisma client call sites (model, operation, file, line) and flags calls ' +
     'inside loops as N+1 risk (in_loop), plus per-model call frequency. Static analysis; no ' +

@@ -33,7 +33,7 @@ export class SessionReader {
     const files = this.listSessionFiles();
     if (files.length === 0) {return null;}
 
-    // Sort descending by mtime — most recent first.
+    // Sort descending by mtime, most recent first.
     const sorted = files
       .map((f) => {
         try {

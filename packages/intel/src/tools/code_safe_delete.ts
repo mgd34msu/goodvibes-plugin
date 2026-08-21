@@ -1,12 +1,12 @@
 /**
- * `code_safe_delete` — is the symbol at a position safe to delete?
+ * `code_safe_delete`, is the symbol at a position safe to delete?
  *
  * Ports project-engine `extensions/code-intel/safe-delete.ts` onto the shared
  * compiler host (§3.3, §4.1).
  *
  * HARD REQUIREMENT (verified during port): the reference check is the
- * TypeScript LanguageService semantic engine — `service.getReferencesAtPosition`
- * — NOT a text/regex scan. A regex approach would miss aliased imports and
+ * TypeScript LanguageService semantic engine, `service.getReferencesAtPosition`
+ *, NOT a text/regex scan. A regex approach would miss aliased imports and
  * flag string/comment coincidences; only the compiler resolves the actual
  * symbol. If this call is ever swapped for a textual scan the tool is wrong and
  * must not ship. See the reference categorization below and `host/references.ts`.
@@ -66,7 +66,7 @@ const definition: Tool = {
   name: 'code_safe_delete',
   description:
     'Use before deleting a symbol to see every reference that would break, instead of grepping and hoping. Check whether the symbol at a file position can be safely deleted. Uses the ' +
-    'TypeScript LanguageService reference engine (semantic, compiler-resolved — not a ' +
+    'TypeScript LanguageService reference engine (semantic, compiler-resolved, not a ' +
     'text search) to find every usage, then splits them into blocking external ' +
     'references and non-blocking self-references. `safe: true` means no other file ' +
     'uses the symbol. Static analysis; nothing is deleted or executed.',

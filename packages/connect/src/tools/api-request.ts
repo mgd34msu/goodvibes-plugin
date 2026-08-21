@@ -1,5 +1,5 @@
 /**
- * `api_request` — the HTTP half of the v1 precision-fetch split (§4.4.4).
+ * `api_request`, the HTTP half of the v1 precision-fetch split (§4.4.4).
  *
  * REBUILT (not straight-ported): the page-reading stack retired (WebFetch won),
  * so this is a lean, honest HTTP client under the connect trust boundary. The
@@ -8,7 +8,7 @@
  *  - the 401-retry carries its OWN timeout (a fresh AbortController), so a stuck
  *    retry can never hang the batch;
  *  - response capping via the shared token budget;
- *  - honest extract names — json | text | headers | status, nothing called
+ *  - honest extract names, json | text | headers | status, nothing called
  *    "summary";
  *  - a `mode: restricted|open` envelope stamp and a redaction pass that strips
  *    known secret values from echoed responses.
@@ -42,7 +42,7 @@ import {
   type TrustMode,
 } from '../trust.js';
 
-/** Honest extract modes — each named for exactly what it returns. */
+/** Honest extract modes, each named for exactly what it returns. */
 export type ExtractMode = 'json' | 'text' | 'headers' | 'status';
 
 /** Body forms accepted for a request entry. */
@@ -158,7 +158,7 @@ export const apiRequestTool = {
   },
 } as const;
 
-/** fetch with its OWN abort timeout — reused by the main call and the 401 retry. */
+/** fetch with its OWN abort timeout, reused by the main call and the 401 retry. */
 async function fetchWithTimeout(
   url: string,
   options: RequestInit,
@@ -278,7 +278,7 @@ async function runEntry(entry: RequestEntry, mode: TrustMode): Promise<RequestOu
   const method = built.method.toUpperCase();
   const hasService = !!built.service;
 
-  // Trust rule 2 — destination allowlist (default-on in restricted mode).
+  // Trust rule 2, destination allowlist (default-on in restricted mode).
   const services = getFetchServices();
   const registeredOrigins = Object.values(services)
     .map((s) => originOf(s.base_url))
@@ -292,7 +292,7 @@ async function runEntry(entry: RequestEntry, mode: TrustMode): Promise<RequestOu
     return { status: null, resolved_url: finalUrl, truncated: false, error: destDecision.reason ?? 'Destination denied.', warning };
   }
 
-  // Trust rule 3 — per-service read-only default with write opt-in.
+  // Trust rule 3, per-service read-only default with write opt-in.
   const methodDecision = isMethodAllowed(method, {
     mode,
     hasService,
@@ -302,7 +302,7 @@ async function runEntry(entry: RequestEntry, mode: TrustMode): Promise<RequestOu
     return { status: null, resolved_url: finalUrl, truncated: false, error: methodDecision.reason ?? 'Method denied.', warning };
   }
 
-  // Trust rule 1 — attach service credentials ONLY on an origin match. Open mode
+  // Trust rule 1, attach service credentials ONLY on an origin match. Open mode
   // cannot loosen this; it only widens the destination allowlist.
   const pinnedOk = hasService && isCredentialAttachAllowed(finalUrl, built.service!.config.base_url);
   try {
@@ -327,7 +327,7 @@ async function runEntry(entry: RequestEntry, mode: TrustMode): Promise<RequestOu
   try {
     let response = await fetchWithTimeout(finalUrl, fetchOptions, timeoutMs);
 
-    // 401 recovery — bounded to one retry, with its OWN fresh timeout (§1.8).
+    // 401 recovery, bounded to one retry, with its OWN fresh timeout (§1.8).
     if (response.status === 401 && pinnedOk) {
       try {
         const recovery = await handleAuthFailure(response, built.service!.name);
@@ -340,14 +340,16 @@ async function runEntry(entry: RequestEntry, mode: TrustMode): Promise<RequestOu
           );
         }
       } catch {
-        // Recovery failed — keep the original 401 response.
+        // Recovery failed, keep the original 401 response.
       }
     }
 
     const extracted = await extractResponse(response, extract);
 
-    // Trust rule 5 — redact known secret values from the echoed response.
-    const secrets = collectSecretValues(built.service?.auth);
+    // Trust rule 5, redact known secret values from the echoed response. The
+    // entry's own `auth` counts: request-builder already put it in the outgoing
+    // headers, so an echo endpoint can reflect it straight back.
+    const secrets = collectSecretValues(built.service?.auth, entry.auth);
     const body = extracted.body !== undefined ? redactValue(extracted.body, secrets) : undefined;
     const headers = extracted.headers
       ? (redactValue(extracted.headers, secrets) as Record<string, string>)

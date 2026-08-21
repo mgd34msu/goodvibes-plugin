@@ -1,5 +1,5 @@
 /**
- * Stacking JSX analyzer — Lane 4.
+ * Stacking JSX analyzer, Lane 4.
  * Ported from frontend-engine `core/stacking/jsx-analyzer.ts`, scoped to a
  * component/JSX node and rewired to the shared class-extractor + composite element
  * ids (so stacking `node`s cross-reference the hierarchy backbone). Emits ALL

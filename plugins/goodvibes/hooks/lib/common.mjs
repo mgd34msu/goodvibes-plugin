@@ -5,7 +5,7 @@
  * hooks/, so they share this one dependency-free helper module (no build step,
  * no import from @goodvibes/core). Hooks that touch project state use
  * `statePath()` (`.goodvibes/...`), mirroring core/config's getStatePath
- * convention — including its one-time migration of the pre-2.1.0
+ * convention, including its one-time migration of the pre-2.1.0
  * `.goodvibes/v2/` layout.
  */
 
@@ -23,7 +23,7 @@ import {
 } from 'node:fs';
 import * as path from 'node:path';
 
-/** Read and JSON-parse stdin. Never throws — malformed/empty input becomes `{}`. */
+/** Read and JSON-parse stdin. Never throws, malformed/empty input becomes `{}`. */
 export async function readHookInput() {
   const chunks = [];
   for await (const chunk of process.stdin) chunks.push(chunk);
@@ -44,7 +44,7 @@ export function respond(response) {
 
 /**
  * Build a hook response with the CORRECT schema: `additionalContext` lives
- * under `hookSpecificOutput`, not at the top level (v1 bug — plan §8
+ * under `hookSpecificOutput`, not at the top level (v1 bug, plan §8
  * SessionStart row; applied consistently across all v2 hooks here too).
  */
 export function createHookResponse({ hookEventName, systemMessage, additionalContext } = {}) {
@@ -75,13 +75,13 @@ function mergeMoveDir(src, dst) {
         renameSync(s, d);
       }
     } catch {
-      /* skip the entry — migration is best-effort */
+      /* skip the entry, migration is best-effort */
     }
   }
   try {
     rmdirSync(src);
   } catch {
-    /* not empty — harmless, retried next process */
+    /* not empty, harmless, retried next process */
   }
 }
 
@@ -99,7 +99,7 @@ function migrateLegacyStateDir(root) {
   }
 }
 
-/** `.goodvibes/<segments>` — mirrors core/config's getStatePath. */
+/** `.goodvibes/<segments>`, mirrors core/config's getStatePath. */
 export function statePath(cwd, ...segments) {
   const root = path.join(cwd, '.goodvibes');
   migrateLegacyStateDir(root);
@@ -127,14 +127,14 @@ export function writeJsonSafe(file, data) {
     ensureDir(path.dirname(file));
     writeFileSync(file, JSON.stringify(data, null, 2));
   } catch {
-    /* best-effort — a hook must never throw over a state write */
+    /* best-effort, a hook must never throw over a state write */
   }
 }
 
 /**
  * Atomic JSON write: temp file in the same directory, then rename over the
  * target (rename is atomic on one filesystem). A crash mid-write leaves the
- * previous file intact instead of a half-written one — used for the session
+ * previous file intact instead of a half-written one, used for the session
  * cost recap that SessionStart reads. Best-effort: never throws.
  */
 export function writeJsonAtomic(file, data) {
@@ -153,7 +153,7 @@ export function writeJsonAtomic(file, data) {
       throw err;
     }
   } catch {
-    /* best-effort — a hook must never throw over a state write */
+    /* best-effort, a hook must never throw over a state write */
   }
 }
 
@@ -168,7 +168,7 @@ export function appendJsonlSafe(file, entry) {
 
 /**
  * Fail-open hook runner: reads stdin, calls `handler(input)`, and always emits
- * SOME valid response — a bug in the handler still yields `{ continue: true }`.
+ * SOME valid response, a bug in the handler still yields `{ continue: true }`.
  */
 export async function runHook(hookEventName, handler) {
   try {

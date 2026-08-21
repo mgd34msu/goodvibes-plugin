@@ -1,19 +1,19 @@
 #!/usr/bin/env node
 /**
- * PostToolUseFailure hook — silent failure bookkeeping.
+ * PostToolUseFailure hook, silent failure bookkeeping.
  *
  * 2.1.0: the conversational "Fix Loop" banner is gone (Mike's direction,
- * 2026-07-02 — nothing may clutter the conversation). This hook now emits
+ * 2026-07-02, nothing may clutter the conversation). This hook now emits
  * NOTHING, ever. Its only job is bookkeeping: count repeated failures per
  * stable (tool, error) signature in `.goodvibes/state/retries.json`, and when
  * the same failure keeps recurring, record it ONCE to
- * `.goodvibes/memory/failures.json` — the goodvibes-memory skill's
- * documented-failures file — so a later session can read what didn't work.
+ * `.goodvibes/memory/failures.json`, the goodvibes-memory skill's
+ * documented-failures file, so a later session can read what didn't work.
  * Fail-open like every goodvibes hook: any internal error yields a bare
  * `{ continue: true }`.
  *
  * (The v1-ported 3-phase suggestion/research-hint machinery was deleted with
- * the banner — with no conversational surface it was dead weight.)
+ * the banner, with no conversational surface it was dead weight.)
  */
 
 import {
@@ -75,7 +75,7 @@ function writeFailureToMemory(cwd, failure) {
     failures.push(failure);
     writeJsonSafe(file, failures);
   } catch {
-    /* best-effort — a memory write failure must never break the hook */
+    /* best-effort, a memory write failure must never break the hook */
   }
 }
 

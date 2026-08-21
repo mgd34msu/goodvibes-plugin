@@ -6,7 +6,7 @@ Version: 2.0.0 | 26 tools | 68 source files
 
 ## Overview
 
-The project-engine is the largest and most comprehensive MCP server in the GoodVibes plugin. It acts as the **project-wide intelligence layer** — providing deep, cross-cutting analysis of TypeScript/JavaScript projects that requires understanding the entire codebase rather than individual files.
+The project-engine is the largest and most comprehensive MCP server in the GoodVibes plugin. It is the **project-wide intelligence layer** — providing deep, cross-cutting analysis of TypeScript/JavaScript projects that requires understanding the entire codebase rather than individual files.
 
 The server consolidates what were previously two separate engines (`project-engine` and `analysis-engine`) into a single MCP server with a consistent `project_*` naming convention and domain-based organization. It exposes 26 tools across 8 domains covering everything from dead code detection and breaking-change analysis to live database queries, secret scanning, and runtime memory profiling.
 

@@ -1,14 +1,14 @@
 /**
- * tag.ts — Handler for the `analytics_tag` MCP tool.
+ * tag.ts, Handler for the `analytics_tag` MCP tool.
  *
  * Provides multi-tag management backed by the global SQLite database via
  * TagStore. All tag state is persisted across process restarts.
  *
  * Actions:
- *   - `add`    — Add a tag to the current session.
- *   - `remove` — Remove a tag from the current session.
- *   - `list`   — List tags for the current session, or all tags across sessions.
- *   - `auto`   — Suggest tags from JSONL analysis (does not apply them).
+ *   - `add`   , Add a tag to the current session.
+ *   - `remove`, Remove a tag from the current session.
+ *   - `list`  , List tags for the current session, or all tags across sessions.
+ *   - `auto`  , Suggest tags from JSONL analysis (does not apply them).
  *
  * No module-level state is maintained. All persistence is via GlobalDB.
  */
@@ -90,7 +90,7 @@ export async function handleTag(
       case 'list':   return handleList(store, sessionId, input.scope ?? 'session');
       case 'auto':   return handleAuto(store, sessionId);
       default: {
-        // TypeScript exhaustiveness — should never reach here
+        // TypeScript exhaustiveness, should never reach here
         const _exhaustive: never = input.action;
         return text(`analytics_tag: unknown action "${String(_exhaustive)}"`);
       }

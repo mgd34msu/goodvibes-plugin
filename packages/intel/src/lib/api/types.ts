@@ -4,7 +4,7 @@
  * Trimmed from v1 project-engine `core/api/types.ts` to the shapes v2 actually
  * uses: `project_api_sync` retired (writes code; §4.1 port map), and
  * `api_validate` dropped every live-probe field (`base_url`, `timeout`,
- * `auth_header`, network-error issue types) per R11 — static spec-vs-routes
+ * `auth_header`, network-error issue types) per R11, static spec-vs-routes
  * only, no HTTP.
  *
  * @module lib/api/types
@@ -153,7 +153,7 @@ export interface MissingType {
   missing: 'request' | 'response' | 'both';
 }
 
-/** Result of static OpenAPI spec generation (never written to disk — read-only). */
+/** Result of static OpenAPI spec generation (never written to disk, read-only). */
 export interface GenerateOpenApiResult {
   spec: OpenAPISpec;
   spec_version: string;
@@ -165,7 +165,7 @@ export interface GenerateOpenApiResult {
 }
 
 // =============================================================================
-// api_validate types — STATIC spec-vs-routes only (R11)
+// api_validate types, STATIC spec-vs-routes only (R11)
 // =============================================================================
 
 export type ValidationIssueType = 'missing_route' | 'undocumented_route' | 'parameter_mismatch';

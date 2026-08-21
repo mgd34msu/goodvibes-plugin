@@ -1,5 +1,5 @@
 /**
- * `hook_dependencies` — audit React hook dependency arrays.
+ * `hook_dependencies`, audit React hook dependency arrays.
  *
  * Straight port (§4.1, §3 KEEP) of frontend-engine `extensions/hook-dependencies.ts`
  * + `core/hooks/*` onto the shared compiler host and `core/envelope`. v2 wrappers:
@@ -47,7 +47,7 @@ interface HookDependenciesArgs {
   output?: { max_tokens?: number };
 }
 
-/** A hook serialized for output — the internal `body`/`bodyRefs` are dropped. */
+/** A hook serialized for output, the internal `body`/`bodyRefs` are dropped. */
 interface SerializedHook {
   name: string;
   line: number;

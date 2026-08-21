@@ -6,7 +6,7 @@
  * hint instead of a crash. The v2 change is HOW they resolve: rather than a
  * static `import('pg')` (which esbuild would try to bundle), the module name is
  * resolved through a `require` rooted at the target project's cwd and then
- * dynamically imported. sql.js — connect's own dependency — resolves from
+ * dynamically imported. sql.js, connect's own dependency, resolves from
  * connect. The mock-driver hooks are retained for tests.
  */
 

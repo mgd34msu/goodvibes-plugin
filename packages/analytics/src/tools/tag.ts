@@ -1,4 +1,4 @@
-/** `tag` — add/remove/list/auto-suggest session tags. */
+/** `tag`, add/remove/list/auto-suggest session tags. */
 import type { ToolModule } from './types.js';
 
 export const tagTool: ToolModule = {

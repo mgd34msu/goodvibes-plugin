@@ -2,7 +2,7 @@
  * OpenAPI generation helpers for `api_spec`.
  *
  * Ported near-verbatim from v1 project-engine `core/api/openapi.ts`. The
- * disk-write path (`fs.writeFileSync` in the v1 extension) does NOT port —
+ * disk-write path (`fs.writeFileSync` in the v1 extension) does NOT port,
  * intel is read-only by design (§4.1 api_spec row: "read-only"); `toYaml`
  * still produces the YAML text in-memory for callers that want it in the
  * response, but nothing here touches the filesystem.
@@ -216,7 +216,7 @@ export function resolvePathParams(urlPath: string, params: Array<{ name: string;
   return resolvedPath;
 }
 
-/** Serialize a value to YAML (in-memory only — no filesystem write). */
+/** Serialize a value to YAML (in-memory only, no filesystem write). */
 export function toYaml(obj: unknown): string {
   return yaml.dump(obj, { lineWidth: -1, noRefs: true });
 }

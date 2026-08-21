@@ -1,5 +1,5 @@
 /**
- * AnomalyDetector — rule-based anomaly detection for session telemetry.
+ * AnomalyDetector, rule-based anomaly detection for session telemetry.
  *
  * Evaluates a fixed set of rules against the current DashboardState and
  * TelemetryReader. Each rule inspects a rolling time window and returns an
@@ -75,7 +75,7 @@ export interface AnomalyRule {
 /** Minimum number of total tool-call records required before rules fire. */
 const MIN_RECORDS_THRESHOLD = 10;
 
-/** Build commands regex — matches typical build/test command strings. */
+/** Build commands regex, matches typical build/test command strings. */
 const BUILD_CMD_RE = /npm\s+run\s+(build|test|lint|typecheck)|npx\s+tsc|jest|vitest/i;
 
 /**
@@ -207,7 +207,7 @@ const tokenBurnRule: AnomalyRule = {
       0,
     );
     // Rate: tokens per millisecond over the actual recorded span, not the full
-    // window duration — avoids artificially deflating the rate when records
+    // window duration, avoids artificially deflating the rate when records
     // only cover a fraction of the window.
     const earliest = Math.min(...windowRecords.map((r) => new Date(r.created_at).getTime()));
     const span = Math.max(Date.now() - earliest, 1);
@@ -308,8 +308,8 @@ const conflictStormRule: AnomalyRule = {
   windowMs: WINDOW_5_MIN,
   description: '>3 file conflicts detected in a 5-min window',
   check(telemetry, state) {
-    // First check the aggregated conflict count from DashboardState
-    // (faster than scanning records). If the session total is low, skip.
+    // Cheaper than scanning records: bail out early via the aggregated count
+    // before falling through to the full window scan below.
     if (state.metrics.files.conflicts === 0) {return null;}
 
     const windowRecords = telemetry.getRecordsInWindow(WINDOW_5_MIN);
@@ -572,7 +572,7 @@ export class AnomalyDetector {
       (a) => new Date(a.timestamp).getTime() > cutoff,
     );
 
-    // Collect stale keys first, then delete — avoids mutating Map during iteration.
+    // Collect stale keys first, then delete, avoids mutating Map during iteration.
     const toDelete: string[] = [];
     for (const [key, ts] of this.fired.entries()) {
       if (ts < cutoff) {toDelete.push(key);}

@@ -1,5 +1,5 @@
 /**
- * Layout core types — Lane 4.
+ * Layout core types, Lane 4.
  * Ported from frontend-engine `core/layout/types.ts`.
  *
  * @module frontend/layout/types
@@ -14,7 +14,7 @@ export interface SizingStrategy {
   value?: string;
 }
 
-/** Parsed CSS properties — layout hierarchy variant. */
+/** Parsed CSS properties, layout hierarchy variant. */
 export interface ParsedCssProperties {
   width?: SizingStrategy;
   height?: SizingStrategy;

@@ -15,6 +15,5 @@ The best way to make sure your message is always delivered is to send two separa
 ## Collaboration
 
 You may use the other session to your advantage with complex work. Each session has access to its own WRFC chains, so this essentially doubles your potential throughput.
-Other sessions also make great top-level reviewers for things like implementation specs etc. You can have it look for things you might have missed or correct things that don't make sense. This is very valuable.
-And really, the most benefit comes from those things that we have yet to even think about. The possibilities are endless.
+Other sessions also make great top-level reviewers for things like implementation specs etc. Have it look for things you might have missed, or correct things that don't make sense.
 

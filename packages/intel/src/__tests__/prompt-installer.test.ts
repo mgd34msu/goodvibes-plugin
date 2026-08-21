@@ -4,7 +4,7 @@
  *
  * SAFETY: this script's target-resolution logic prefers the real `~/.claude/`
  * directory over an explicit project directory when it exists and is
- * writable (matching v1's documented behavior) — every test here overrides
+ * writable (matching v1's documented behavior), every test here overrides
  * `HOME` to an isolated temp directory so no test can ever touch the actual
  * user's home directory or its real CLAUDE.md.
  */

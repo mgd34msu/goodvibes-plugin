@@ -42,7 +42,7 @@ export async function runLiveCost(aggregator: Aggregator): Promise<string> {
  * Host-health doctor view. Primary source is the background sampler's persisted
  * state file (sustained-CPU orphan detection needs its multi-sample history).
  * When that file is absent, fall back to a best-effort one-shot sample and say
- * so — a single read cannot know a process is *stuck* busy.
+ * so, a single read cannot know a process is *stuck* busy.
  */
 export function runDoctor(goodvibesDir: string): string {
   const stateFile = join(goodvibesDir, ...HEALTH_STATE_SEGMENTS);
@@ -53,7 +53,7 @@ export function runDoctor(goodvibesDir: string): string {
       return renderDoctorReport(state, { stale_ms: staleMs });
     }
   } catch {
-    /* no persisted state — fall through to a one-shot sample */
+    /* no persisted state, fall through to a one-shot sample */
   }
 
   // Fallback: one-shot sample. CPU deltas need two reads, so orphan detection

@@ -1,5 +1,5 @@
 /**
- * connect service resolver — combines registry config with stored credentials.
+ * connect service resolver, combines registry config with stored credentials.
  *
  * Ported verbatim from v1 precision-engine `utils/fetch/service-resolver.ts`
  * (only import paths change). Produces a fully resolved service ready for
@@ -85,7 +85,7 @@ export function resolveBaseUrl(service: ResolvedService | undefined, urlOrPath: 
     new URL(urlOrPath);
     return urlOrPath;
   } catch {
-    // Not absolute — fall through to base_url resolution.
+    // Not absolute, fall through to base_url resolution.
   }
 
   if (!service?.config.base_url) {

@@ -1,5 +1,5 @@
 /**
- * Query-result formatters — ported from v1 project-engine
+ * Query-result formatters, ported from v1 project-engine
  * `core/database/formatters.ts` (ASCII table + cell formatting). The
  * schema-result formatter is dropped (schema lives in intel's `db_schema`).
  */

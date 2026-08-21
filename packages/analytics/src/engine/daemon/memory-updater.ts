@@ -1,9 +1,9 @@
 /**
- * MemoryUpdater — Writes analytics-derived insights back to .goodvibes/memory/.
+ * MemoryUpdater, Writes analytics-derived insights back to .goodvibes/memory/.
  *
  * Analyses a DashboardState snapshot and produces:
- *   - PatternUpdate[] — new or updated entries for patterns.json
- *   - PreferenceUpdate[] — usage-driven updates for preferences.json
+ *   - PatternUpdate[], new or updated entries for patterns.json
+ *   - PreferenceUpdate[], usage-driven updates for preferences.json
  *
  * All file operations are synchronous (called during daemon shutdown where
  * async teardown is unreliable). Writes are atomic: content is written to a
@@ -93,7 +93,7 @@ export class MemoryUpdater {
   /**
    * Analyse a dashboard state snapshot and produce pattern/preference updates.
    *
-   * Does NOT write anything to disk — call apply() to persist the results.
+   * Does NOT write anything to disk, call apply() to persist the results.
    *
    * @param state - Current DashboardState from the analytics daemon.
    * @returns Object with `patterns` and `preferences` arrays.
@@ -151,7 +151,7 @@ export class MemoryUpdater {
         name: 'HighCacheHitRate',
         description:
           `Cache hit rate was ${Math.round(cache.hit_rate * 100)}% this session. ` +
-          'Current precision_read usage patterns are token-efficient — maintain them.',
+          'Current precision_read usage patterns are token-efficient; maintain them.',
         when_to_use:
           'When deciding whether to change file-reading patterns; current approach is working well.',
         example_files: [],
@@ -200,7 +200,6 @@ export class MemoryUpdater {
    * @param updates - Output from analyze().
    */
   apply(updates: { patterns: PatternUpdate[]; preferences: PreferenceUpdate[] }): void {
-    // Ensure memory directory exists.
     try {
       mkdirSync(this.memoryDir, { recursive: true });
     } catch (err: unknown) {
@@ -243,7 +242,6 @@ export class MemoryUpdater {
     updates: T[],
     mergeKey: keyof T & string,
   ): void {
-    // Read existing data.
     const existing = this.readJsonArray<T>(filePath);
 
     // Build a map of existing entries for O(1) lookup.

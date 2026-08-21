@@ -4,7 +4,7 @@
  *
  * 1. Manifest/tree consistency: for every template under
  *    plugins/goodvibes/templates/{minimal,full}/*, the template.yaml
- *    `files:` list must exactly match what's physically under `files/` — this
+ *    `files:` list must exactly match what's physically under `files/`, this
  *    is the regression guard for the "3 phantom manifest files" class of bug
  *    (plan §9.5).
  * 2. Scaffold dry-run: the tool reports created files and post-create commands

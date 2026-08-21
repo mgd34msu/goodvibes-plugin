@@ -1,7 +1,7 @@
 /**
  * MCP argument-normalization helpers shared by the search/read trio.
  * Ported from v1 `precision-engine/src/utils/index.ts` (`ensureArray`,
- * `parseJsonField`) — these handle client serialization quirks (arrays
+ * `parseJsonField`), these handle client serialization quirks (arrays
  * arriving as JSON strings or as `{"0":..,"1":..}` objects, a single object
  * sent instead of a one-element array).
  */

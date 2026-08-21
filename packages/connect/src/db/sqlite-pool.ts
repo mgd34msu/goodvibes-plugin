@@ -9,9 +9,10 @@
  * pool has no cross-tree import.
  */
 
-import { readFile, writeFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
+import { existsSync, statSync } from 'node:fs';
 import * as nodePath from 'node:path';
+import { atomicWriteFile, withFileLock } from '@goodvibes/core/fsx';
 
 import type { SqliteDatabase, SqliteConnectionOptions } from './types.js';
 
@@ -19,7 +20,7 @@ function logWarn(message: string, err?: unknown): void {
   console.warn(`[connect:db] ${message}${err ? `: ${String(err)}` : ''}`);
 }
 
-/** @internal sql.js module interface (kept local — no @types/sql.js needed). */
+/** @internal sql.js module interface (kept local, no @types/sql.js needed). */
 interface SqlJsStatic {
   Database: new (data?: ArrayLike<number> | Buffer | null) => SqliteDatabase;
 }
@@ -76,13 +77,38 @@ interface PooledConnection {
   lastUsed: number;
   inUse: boolean;
   isOpen: boolean;
+  /** Identity of the file when this connection's copy was loaded from it. */
+  fingerprint: string | null;
+}
+
+/**
+ * Identity of a database file. sql.js loads the whole file into memory, so a
+ * pooled connection's copy goes stale the moment anything rewrites the file;
+ * every save renames a fresh temp file into place, so the inode alone already
+ * distinguishes one save from the next.
+ */
+function fileFingerprint(filepath: string): string | null {
+  if (filepath === ':memory:') {return null;}
+  try {
+    const s = statSync(filepath);
+    return `${s.ino}:${s.size}:${s.mtimeMs}`;
+  } catch {
+    return null;
+  }
 }
 
 /** Simple SQLite connection pool. */
 class SqliteConnectionPool {
   private connections: Map<string, PooledConnection[]> = new Map();
   private waiters: Map<string, Array<(conn: PooledConnection) => void>> = new Map();
-  private readonly maxConnectionsPerDb = 5;
+  /**
+   * Read-write pools hold ONE connection per file. Each connection is an
+   * independent in-memory copy that is written back whole, so two of them
+   * against one file would each export their own copy and the second save
+   * would drop the first's rows.
+   */
+  private readonly maxReadConnectionsPerDb = 5;
+  private readonly maxWriteConnectionsPerDb = 1;
   private readonly idleTimeoutMs = 60_000;
   private cleanupInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -95,8 +121,40 @@ class SqliteConnectionPool {
     return `${filepath}:${readonly ? 'ro' : 'rw'}`;
   }
 
+  /**
+   * Check a connection out of the pool and make sure its in-memory copy still
+   * matches the file. Reloading here is what stops a read from serving rows
+   * that a write (in this process or another) has already replaced.
+   */
   async acquire(options: SqliteConnectionOptions): Promise<PooledConnection> {
+    const connection = await this.checkout(options);
+    await this.refreshIfStale(connection, options);
+    return connection;
+  }
+
+  private async refreshIfStale(
+    connection: PooledConnection,
+    options: SqliteConnectionOptions,
+  ): Promise<void> {
+    if (options.filepath === ':memory:') {return;}
+    const current = fileFingerprint(options.filepath);
+    if (current === connection.fingerprint) {return;}
+
+    try {
+      connection.database.close();
+    } catch (err) {
+      logWarn('Failed to close a stale SQLite connection', err);
+    }
+    connection.database = await this.createConnection(options);
+    connection.isOpen = true;
+    connection.fingerprint = fileFingerprint(options.filepath);
+  }
+
+  private async checkout(options: SqliteConnectionOptions): Promise<PooledConnection> {
     const key = this.getPoolKey(options.filepath, options.readonly ?? true);
+    const maxConnections = (options.readonly ?? true)
+      ? this.maxReadConnectionsPerDb
+      : this.maxWriteConnectionsPerDb;
     let poolConnections = this.connections.get(key);
 
     if (!poolConnections) {
@@ -111,7 +169,7 @@ class SqliteConnectionPool {
       return available;
     }
 
-    if (poolConnections.length < this.maxConnectionsPerDb) {
+    if (poolConnections.length < maxConnections) {
       const db = await this.createConnection(options);
       const pooled: PooledConnection = {
         database: db,
@@ -120,6 +178,7 @@ class SqliteConnectionPool {
         lastUsed: Date.now(),
         inUse: true,
         isOpen: true,
+        fingerprint: fileFingerprint(options.filepath),
       };
       poolConnections.push(pooled);
       return pooled;
@@ -174,7 +233,10 @@ class SqliteConnectionPool {
   async saveToFile(connection: PooledConnection): Promise<void> {
     if (connection.filepath === ':memory:' || connection.readonly) {return;}
     const data = connection.database.export();
-    await writeFile(connection.filepath, Buffer.from(data));
+    // Temp-then-rename: a crash mid-export would otherwise leave a truncated,
+    // unopenable database where the caller's data used to be.
+    await atomicWriteFile(connection.filepath, Buffer.from(data));
+    connection.fingerprint = fileFingerprint(connection.filepath);
   }
 
   private async createConnection(options: SqliteConnectionOptions): Promise<SqliteDatabase> {
@@ -190,7 +252,7 @@ class SqliteConnectionPool {
       db = new SQL.Database();
       if (!options.readonly) {
         const data = db.export();
-        await writeFile(options.filepath, Buffer.from(data));
+        await atomicWriteFile(options.filepath, Buffer.from(data));
       }
     }
 
@@ -275,14 +337,24 @@ export async function withConnection<T>(
   options: SqliteConnectionOptions,
   callback: (db: SqliteDatabase) => T | Promise<T>,
 ): Promise<T> {
-  const pool = getConnectionPool();
-  const connection = await pool.acquire(options);
+  const run = async (): Promise<T> => {
+    const pool = getConnectionPool();
+    const connection = await pool.acquire(options);
+    try {
+      const result = await callback(connection.database);
+      if (!options.readonly) {await pool.saveToFile(connection);}
+      return result;
+    } finally {
+      pool.release(connection);
+    }
+  };
 
-  try {
-    const result = await callback(connection.database);
-    if (!options.readonly) {await pool.saveToFile(connection);}
-    return result;
-  } finally {
-    pool.release(connection);
+  // A write is load-file, mutate-in-memory, rewrite-file. Two processes doing
+  // that at once would each rewrite the file from their own copy and the second
+  // would drop the first's rows, so writes serialize on a lock file and reload
+  // inside it.
+  if (options.readonly === false && options.filepath !== ':memory:') {
+    return withFileLock(options.filepath, run);
   }
+  return run();
 }

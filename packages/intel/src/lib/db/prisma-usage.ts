@@ -1,5 +1,5 @@
 /**
- * `db_schema` usage mode — Prisma call-chain mapping.
+ * `db_schema` usage mode, Prisma call-chain mapping.
  *
  * Ported from v1 project-engine `core/database/prisma-utils.ts`
  * (`extensions/database/prisma.ts`'s N+1 detector), REWIRED onto the shared
@@ -7,7 +7,7 @@
  * file discovery uses `findSourceFiles` instead of the v1 bespoke walker, and
  * the AST comes from ONE shared `Program` (`getServiceForFiles`) instead of a
  * throwaway `ts.createSourceFile` per file. `query-analysis.ts`'s raw-SQL
- * read/write classifiers do NOT port here — they analyze SQL query text, not
+ * read/write classifiers do NOT port here, they analyze SQL query text, not
  * TypeScript call chains, and belong to connect's `db_query` trust model
  * (§4.3), not this static analyzer.
  *

@@ -3,7 +3,7 @@
  *
  * Ported verbatim from v1 precision-engine `utils/fetch/auth/oauth2-browser.ts`.
  * Starts a local callback server, opens the browser, exchanges the code for
- * tokens, and stores them. NEVER auto-triggered on 401 — only on explicit human
+ * tokens, and stores them. NEVER auto-triggered on 401, only on explicit human
  * request (via the services command).
  */
 
@@ -165,7 +165,7 @@ export async function startOAuth2Flow(config: OAuth2FlowConfig): Promise<OAuth2F
       const parsedRedirectUri = new URL(auth.redirect_uri);
       if (parsedRedirectUri.port) {port = parseInt(parsedRedirectUri.port, 10);}
     } catch {
-      // Invalid URI — fall back to default ports.
+      // Invalid URI, fall back to default ports.
     }
   }
 
@@ -192,8 +192,8 @@ export async function startOAuth2Flow(config: OAuth2FlowConfig): Promise<OAuth2F
           const returnedState = reqUrl.searchParams.get('state');
           if (returnedState !== state) {
             res.writeHead(400);
-            res.end('Invalid state parameter — possible CSRF attack. Please try again.');
-            resolve({ error: 'State mismatch — possible CSRF' });
+            res.end('Invalid state parameter, possible CSRF attack. Please try again.');
+            resolve({ error: 'State mismatch, possible CSRF' });
             return;
           }
 
@@ -226,7 +226,7 @@ export async function startOAuth2Flow(config: OAuth2FlowConfig): Promise<OAuth2F
 
         server.listen(port, () => {
           openBrowser(authorizeUrl).catch(() => {
-            // Browser failed — the user copies the URL manually.
+            // Browser failed, the user copies the URL manually.
           });
         });
 

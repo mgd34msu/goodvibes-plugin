@@ -174,4 +174,20 @@ describe('service-registry', () => {
       expect(summaries.map((s) => s.name)).toContain('y');
     });
   });
+  describe('durable persistence', () => {
+    it('replaces services.json by rename, never opening it for writing', async () => {
+      const registryPath = path.join(tmpDir, '.goodvibes', 'services.json');
+      await registry.addService('x', { base_url: 'https://x.com' });
+      // Only a rename over the path can update a file this process cannot write
+      // to, so a truncating in-place write would fail here.
+      await fs.promises.chmod(registryPath, 0o444);
+      await expect(fs.promises.writeFile(registryPath, 'direct')).rejects.toThrow();
+
+      await registry.addService('y', { base_url: 'https://y.com' });
+
+      expect(Object.keys(registry.getFetchServices()).sort()).toEqual(['x', 'y']);
+      const entries = await fs.promises.readdir(path.join(tmpDir, '.goodvibes'));
+      expect(entries.filter((e) => e.includes('.tmp'))).toEqual([]);
+    });
+  });
 });

@@ -24,7 +24,7 @@ export async function detectEntryPoints(dirPath: string): Promise<string[]> {
     const content = await node_fs.readFile(path.join(dirPath, 'package.json'), 'utf-8');
     packageJson = JSON.parse(content) as Record<string, unknown>;
   } catch {
-    // no/invalid package.json — fall through to conventions
+    // no/invalid package.json, fall through to conventions
   }
 
   const addIfExists = async (p: string): Promise<void> => {
@@ -32,7 +32,7 @@ export async function detectEntryPoints(dirPath: string): Promise<string[]> {
       await node_fs.access(p);
       if (!entryPoints.includes(p)) {entryPoints.push(p);}
     } catch {
-      // does not exist — skip
+      // does not exist, skip
     }
   };
 

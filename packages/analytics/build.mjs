@@ -1,7 +1,7 @@
 /**
  * Build the goodvibes-analytics server bundle.
  *
- * esbuild pattern per §5.1 with a single external — sql.js (does not bundle
+ * esbuild pattern per §5.1 with a single external, sql.js (does not bundle
  * cleanly; it ships as a runtime dep in server/package.json). sql-wasm.wasm is
  * copied to server/wasm/ (sql.js loads its WASM at runtime; every server
  * imports core/telemetry). Output is committed under
@@ -44,7 +44,7 @@ const SHARED = {
   target: 'node20',
   format: 'cjs',
   // Bundle module-key comments are rendered relative to esbuild's working
-  // directory — pin it to the repo root so output is byte-identical no
+  // directory, pin it to the repo root so output is byte-identical no
   // matter where the build is invoked from.
   absWorkingDir: join(__dirname, '../..'),
   sourcemap: true,

@@ -4,7 +4,7 @@
  * Ported from project-engine `core/code-intel/constants.ts` and
  * `shared/constants.ts` (SOURCE_EXTENSIONS / SKIP_DIRECTORIES folded in so the
  * host is self-contained). The v1 background-cleanup knobs (`CACHE_TTL_MS`) do
- * NOT carry forward: the v2 host holds no `setInterval` (field issue 9 — no
+ * NOT carry forward: the v2 host holds no `setInterval` (field issue 9, no
  * timers that keep the event loop alive); it bounds its cache by count instead.
  */
 
@@ -12,7 +12,7 @@ import ts from 'typescript';
 
 /**
  * Default TypeScript compiler options used when no tsconfig.json is discovered.
- * Permissive on purpose — the host analyzes source, it never emits.
+ * Permissive on purpose, the host analyzes source, it never emits.
  */
 export const TS_ANALYSIS_OPTIONS: ts.CompilerOptions = {
   allowJs: true,

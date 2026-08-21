@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * SessionStart hook — one line of real value every session (Mike, 2026-07-02).
+ * SessionStart hook, one line of real value every session (Mike, 2026-07-02).
  *
  * 2.0.3 made this hook silent by default. 2.0.5 replaces that silence with a
  * single always-present value line built from the cost recap SessionEnd wrote
@@ -11,18 +11,18 @@
  * The first time a project is seen (no summary yet) that line points at the
  * live-cost view instead. Nothing else is emitted unless it is real: existing
  * project-health notes, the host-health nudge, and one native-deps line
- * (only when the durable install can't be silently relinked — see
+ * (only when the durable install can't be silently relinked, see
  * `nativeDepsAction`). `systemMessage` mirrors the same information compactly.
  *
  * Native deps install themselves: when a server's probe is missing and the
  * durable home can't cover it, this hook kicks `lib/deps-install.mjs` as a
- * DETACHED background process (stdio ignored, unref'd — SessionStart never
+ * DETACHED background process (stdio ignored, unref'd, SessionStart never
  * blocks on npm) and says so in one line. A recent (<24h) failed install is
  * reported instead of retried, pointing at the log and /goodvibes:setup.
  *
  * Still retired (never coming back): stack/framework detection, git status, the
  * TODO walker, "ready" banners, CLAUDE.md/prompt-chain writing, crash recovery,
- * project file indexing, and the background-refresh cache machinery — the
+ * project file indexing, and the background-refresh cache machinery, the
  * 2.0.2/2.0.3 noise the value-line contract exists to keep out.
  */
 
@@ -73,7 +73,7 @@ function valueLine(cwd) {
 
 /**
  * True when every dependency the plugin copy's package.json declares is
- * present in the durable install's package.json at the same version range —
+ * present in the durable install's package.json at the same version range,
  * i.e. the durable install covers the plugin copy (superset-or-equal). An
  * update that only REMOVES dependencies still relinks; one that adds a
  * dependency or changes a range does not, and a reinstall runs instead.
@@ -176,7 +176,7 @@ const HEALTH_LOAD_PER_CORE = 1.5;
  * Loose file coupling to the analytics host-health sampler: when its state
  * file exists and a threshold trips (per-core load above 1.5, or any orphaned
  * busy-loop plugin process detected), surface a single nudge line. Fully
- * graceful when the file is absent — analytics may not be installed.
+ * graceful when the file is absent, analytics may not be installed.
  * Returns a one-line string or null.
  */
 function healthNudge(cwd) {

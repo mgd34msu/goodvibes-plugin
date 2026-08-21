@@ -1,13 +1,13 @@
 /**
- * analytics_dashboard handler — HTML report, host-health doctor, engine status.
+ * analytics_dashboard handler, HTML report, host-health doctor, engine status.
  *
  * Actions:
- *   - report — write a fully self-contained HTML analytics report to
+ *   - report, write a fully self-contained HTML analytics report to
  *              `<goodvibesDir>/reports/analytics-report.html` (stable name,
  *              overwritten each run) and return the absolute path plus a
  *              3-line stats summary.
- *   - doctor — read-only host-health + agent-liveness report.
- *   - status — brief engine/server status text.
+ *   - doctor, read-only host-health + agent-liveness report.
+ *   - status, brief engine/server status text.
  */
 
 import { resolve } from 'node:path';
@@ -85,7 +85,7 @@ async function handleReport(
 
 /**
  * Read-only host-health + agent-liveness report (lane 9). Never kills a
- * process — orphan offenders are listed with ready-to-run kill commands the
+ * process, orphan offenders are listed with ready-to-run kill commands the
  * human runs (or doesn't).
  */
 function handleDoctor(aggregator: Aggregator, goodvibesDir: string): HandlerResponse {

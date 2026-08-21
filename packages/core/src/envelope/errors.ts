@@ -55,9 +55,9 @@ export function formatMutualExclusivityError(fieldName: string, providedSources:
  * ast-grep, ripgrep). These install automatically in the background on the
  * first session (the SessionStart hook kicks a detached installer into the
  * durable home `~/.claude/.goodvibes/deps/`), so reaching this message means
- * that install has not finished yet — or failed, which /goodvibes:setup
+ * that install has not finished yet, or failed, which /goodvibes:setup
  * repairs in the foreground. A tool that reaches a missing dep returns this
- * as a NORMAL error envelope — never a crash, never a hang.
+ * as a NORMAL error envelope, never a crash, never a hang.
  *
  * @param capability - the user-facing capability name (e.g. "code_read outline mode").
  */

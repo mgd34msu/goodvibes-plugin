@@ -2,7 +2,7 @@
  * Language detection and grammar-name mapping for tree-sitter.
  *
  * Ported verbatim from v1 `precision-engine/src/core/languages.ts` (the module
- * had no defects to fix — it is a pure extension→language lookup table).
+ * had no defects to fix, it is a pure extension→language lookup table).
  */
 
 export type SupportedLanguage = 'typescript' | 'javascript' | 'python' | 'rust' | 'go' | 'tsx' | 'jsx';

@@ -1,5 +1,5 @@
 /**
- * Overflow fix generator — Lane 4.
+ * Overflow fix generator, Lane 4.
  * Ported from frontend-engine `core/overflow/fix-generator.ts` (the `generateFixes`
  * fix-option list the tribunal keeps, §4.4.2). The v1 recommendation/related-element
  * helpers are not needed by the merged shape.

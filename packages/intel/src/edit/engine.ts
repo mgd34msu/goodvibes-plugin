@@ -2,13 +2,13 @@
  * structural_edit match/apply engine (lane 10, intel tool 15).
  *
  * Ported from v1 `precision-engine/src/handlers/precision-edit.ts`, carrying
- * ONLY the three modes the plan §14.B allows — and nothing else:
- *  - `exact`       — exact-string matching (the only text mode; no fuzzy, no
+ * ONLY the three modes the plan §14.B allows, and nothing else:
+ *  - `exact`      , exact-string matching (the only text mode; no fuzzy, no
  *                    regex, no plain find/replace beyond byte-exact).
- *  - `ast`         — TypeScript-compiler node matching (function / variable /
+ *  - `ast`        , TypeScript-compiler node matching (function / variable /
  *                    method / class / import / type / interface / enum), the
  *                    v1 `astMatch` predicates verbatim.
- *  - `ast_pattern` — ast-grep structural pattern matching. `@ast-grep/napi` is
+ *  - `ast_pattern`, ast-grep structural pattern matching. `@ast-grep/napi` is
  *                    NOT installed in this build (nor declared), so this mode
  *                    degrades to an honest "unavailable" error via a lazy,
  *                    non-static import (see `loadAstGrep`); the matching code is
@@ -36,7 +36,7 @@ export type EditMatchMode = 'exact' | 'ast' | 'ast_pattern';
 export type Occurrence = 'first' | 'last' | 'all' | number;
 
 /** A half-open character span `[start, end)` in the ORIGINAL file content.
- *  `replacement`, when present, overrides the entry-level replace template —
+ *  `replacement`, when present, overrides the entry-level replace template,
  *  ast_pattern uses it to carry per-match metavariable substitutions. */
 interface Span {
   start: number;
@@ -93,7 +93,7 @@ function detectEol(content: string): '\r\n' | '\n' {
  * Build an LF-normalized view of `original` plus a map from each normalized
  * character index to its index in `original` (with a trailing sentinel equal to
  * `original.length`). A match found at normalized `[ns, ne)` maps to original
- * `[map[ns], map[ne])` — so we splice the exact original bytes and never touch
+ * `[map[ns], map[ne])`, so we splice the exact original bytes and never touch
  * the `\r` characters outside the span.
  */
 function normalizeWithMap(original: string): { norm: string; map: number[] } {
@@ -289,7 +289,7 @@ async function astPatternSpans(
       available: false,
       reason:
         nativeDepMessage('structural_edit ast_pattern mode') +
-        ' Meanwhile, use mode "ast" (TypeScript-compiler node matching) or "exact" — neither needs a native dependency.',
+        ' Meanwhile, use mode "ast" (TypeScript-compiler node matching) or "exact"; neither needs a native dependency.',
     };
   }
   const langName = languageOverride
@@ -389,7 +389,7 @@ export interface EditRequest {
 
 /**
  * Compute one entry's edit against `content` (the file's CURRENT content for
- * this entry — later entries on the same file see earlier entries' output).
+ * this entry, later entries on the same file see earlier entries' output).
  * Never writes; returns the full post-edit content and a status.
  */
 export async function computeEdit(content: string, req: EditRequest): Promise<ComputedEdit> {

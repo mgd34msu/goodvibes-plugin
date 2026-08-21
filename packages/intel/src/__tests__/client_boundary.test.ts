@@ -1,5 +1,5 @@
 /**
- * client_boundary fixture tests — the client/ tree in fixtures/frontend-app:
+ * client_boundary fixture tests, the client/ tree in fixtures/frontend-app:
  * Page ("use client") → Widget (client-inherited); Server (server); Leaky
  * (client APIs, no directive → missing_directive). Asserts classification, the
  * issue, and the resolved_path echo (issue 1).

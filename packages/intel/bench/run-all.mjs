@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
  * Runs the full EXP measurement suite (gate 5: "intel beats native on kept
- * operations at defaults, or the README claim comes off" — plan §5.3).
+ * operations at defaults, or the README claim comes off", plan §5.3).
  * Ported from the deep-review-2026-07-01.md Appendix A methodology; scoped
- * to the operations code_read/code_grep actually kept (outline + search —
+ * to the operations code_read/code_grep actually kept (outline + search,
  * content/symbols/ast retired, so EXP1/EXP2/EXP5-7 do not port).
  *
  * Runnable standalone; no CI wiring (lane 8 reruns this after the full v2

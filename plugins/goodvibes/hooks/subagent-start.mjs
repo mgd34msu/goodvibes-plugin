@@ -1,18 +1,18 @@
 #!/usr/bin/env node
 /**
- * SubagentStart hook — plan §8 SubagentStart row, KEEP+FIX.
+ * SubagentStart hook, plan §8 SubagentStart row, KEEP+FIX.
  *
  * v1 (`plugins/goodvibes/hooks/scripts/src/subagent-start/**`, read-only)
  * injected ~1.8KB of doctrine per subagent spawn (protocol-skill descriptions,
  * full skill catalog, validation-script instructions referencing retired
  * tools). Carve-out architecture §2.4 calls for "pointers at 500 tokens max":
  * a short reminder of which of the four v2 agents' skills exist and their
- * one-line purpose, not the skill content itself — the agent loads a skill by
+ * one-line purpose, not the skill content itself, the agent loads a skill by
  * name via the Skill tool when the task actually calls for it.
  *
  * Also writes a minimal entry to the project's `.goodvibes/state/
  * agent-tracking.json` (shared project state, R15) so the analytics
- * SubagentStop hook — reading the same project-scoped namespace — can correlate
+ * SubagentStop hook, reading the same project-scoped namespace, can correlate
  * a completion back to its start time and compute duration even though the two
  * hooks run as separate short-lived processes.
  */

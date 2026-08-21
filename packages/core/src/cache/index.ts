@@ -1,12 +1,12 @@
 /**
- * `@goodvibes/core/cache` — the §7.1 file-cache rebuild.
+ * `@goodvibes/core/cache`, the §7.1 file-cache rebuild.
  *
  * Three features, no more:
  *  1. Freshness metadata on normal full responses: the handler always delivers
  *     the requested content; the cache only adds `unchanged_since_last_read` and
  *     a content hash. Information, never refusal.
  *  2. Explicit probe mode: "did these files change?" returns change-status with
- *     NO content — the caller opts into contentlessness.
+ *     NO content, the caller opts into contentlessness.
  *  3. Stub-on-read is deleted; `tokens_saved` self-crediting is deleted. The
  *     legacy `tokensSaved` accumulator stays pinned at 0 so no self-credit can
  *     leak back in (the ported no-self-credit test asserts this).
@@ -43,7 +43,7 @@ export interface CacheEntry {
   limit?: number;
   readCount: number;
   tokenCost: number;
-  /** Legacy accumulator — self-crediting removed in the v2 rebuild (stays 0). */
+  /** Legacy accumulator, self-crediting removed in the v2 rebuild (stays 0). */
   tokensSaved: number;
   version: number;
   lastModifiedBy?: string;
@@ -70,7 +70,7 @@ export interface Freshness {
   content_hash: string;
 }
 
-/** Probe result — change status with NO content. */
+/** Probe result, change status with NO content. */
 export interface ProbeResult {
   path: string;
   status: 'miss' | 'unchanged' | 'modified';
@@ -215,7 +215,7 @@ export class FileStateCache {
     existing.offset = offset;
     existing.limit = limit;
 
-    // Unchanged: a freshness hit. No token self-crediting — the handler always
+    // Unchanged: a freshness hit. No token self-crediting, the handler always
     // delivers the requested content; the cache only adds freshness.
     if (contentHash === existing.contentHash) {
       return { status: 'unchanged', entry: existing, previousReadAt };
@@ -256,7 +256,7 @@ export class FileStateCache {
     const contentHash = this.computeHash(content);
     const existing = this.cache.get(filePath);
     if (!existing) {
-      // Register the hash (readCount 0 — a probe is not a content read) so a
+      // Register the hash (readCount 0, a probe is not a content read) so a
       // subsequent probe/lookup can report freshness against it.
       const now = Date.now();
       const contentBytes = Buffer.byteLength(content, 'utf8');

@@ -1,5 +1,5 @@
 /**
- * Unit tests for `lib/args.ts` — ported from v1 precision-engine
+ * Unit tests for `lib/args.ts`, ported from v1 precision-engine
  * `__tests__/handlers/bug-fixes.test.ts` (`ensureArray` describe block). These
  * cover MCP serialization edge cases the search/read trio's batch inputs
  * (`files`, `queries`, `patterns_base64`) rely on.

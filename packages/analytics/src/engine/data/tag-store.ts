@@ -1,5 +1,5 @@
 /**
- * tag-store.ts — Tag operations layer for the analytics engine.
+ * tag-store.ts, Tag operations layer for the analytics engine.
  *
  * Thin wrapper around GlobalDB tag methods with additional batch operations
  * and local JSONL-based auto-tagging heuristics.
@@ -175,9 +175,13 @@ export class TagStore {
     tags: string[],
     source: 'manual' | 'auto' = 'manual',
   ): void {
-    for (const tag of tags) {
-      this.addTag(sessionId, tag, source);
-    }
+    // One transaction for the whole set: each tag would otherwise take the DB
+    // write lock and rewrite the file on its own.
+    this.db.transaction(() => {
+      for (const tag of tags) {
+        this.addTag(sessionId, tag, source);
+      }
+    });
   }
 
   /**
@@ -243,7 +247,7 @@ export class TagStore {
    * 4. Detects activity type from tool usage patterns (write-heavy = feature dev).
    *
    * Returns deduplicated, sorted suggestions with confidence levels.
-   * Does NOT apply tags automatically — callers confirm before persisting.
+   * Does NOT apply tags automatically, callers confirm before persisting.
    *
    * Note: For higher-quality inference on complex or ambiguous sessions,
    * consider using precision_agent with LLM-based analysis. This heuristic

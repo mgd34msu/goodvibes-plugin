@@ -29,7 +29,7 @@ export function utf8SafeSlice(input: string, maxUnits: number): string {
   let end = maxUnits;
   const lastKept = input.charCodeAt(end - 1);
   // A high surrogate at the boundary means its low surrogate sits at `end`
-  // (or beyond) and would be severed — drop the high surrogate too.
+  // (or beyond) and would be severed, drop the high surrogate too.
   if (lastKept >= 0xd800 && lastKept <= 0xdbff) {
     end -= 1;
   }

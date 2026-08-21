@@ -1,6 +1,6 @@
 /**
  * `db_schema` fixture tests: one fixture per schema source (prisma, drizzle,
- * sql), plus the tribunal-required usage-mode accuracy spot-check — a planted
+ * sql), plus the tribunal-required usage-mode accuracy spot-check, a planted
  * query-in-loop must be flagged `in_loop: true` and a clean call must NOT be
  * (§4.1 db_schema port row; §4.4.3 tribunal condition).
  */
@@ -17,7 +17,7 @@ const fixturesDir = fileURLToPath(new URL('./fixtures', import.meta.url));
 
 afterAll(() => disposeCompilerHost());
 
-describe('db_schema — schema extraction', () => {
+describe('db_schema: schema extraction', () => {
   it('parses a Prisma schema into models[].relations (tribunal shape)', async () => {
     const base = `${fixturesDir}/db-prisma-project`;
     const env = expectSuccess<DbSchemaData>(await handler({ base_path: base }));
@@ -73,7 +73,7 @@ describe('db_schema — schema extraction', () => {
   });
 });
 
-describe('db_schema — usage mode (accuracy spot-check, tribunal condition)', () => {
+describe('db_schema: usage mode (accuracy spot-check, tribunal condition)', () => {
   it('flags planted query-in-loop call sites as in_loop: true and leaves clean calls in_loop: false', async () => {
     const base = `${fixturesDir}/db-prisma-usage-project`;
     const env = expectSuccess<DbSchemaData>(await handler({ base_path: base, usage: true }));
@@ -94,7 +94,7 @@ describe('db_schema — usage mode (accuracy spot-check, tribunal condition)', (
     expect(findUniqueInLoop).toHaveLength(1);
     expect(findUniqueInLoop[0].in_loop).toBe(true);
 
-    // Clean: prisma.user.findMany is top-level, NOT in a loop — must not be a false positive.
+    // Clean: prisma.user.findMany is top-level, NOT in a loop, must not be a false positive.
     const findManyClean = byOp('user', 'findMany');
     expect(findManyClean).toHaveLength(1);
     expect(findManyClean[0].in_loop).toBe(false);

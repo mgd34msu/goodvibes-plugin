@@ -1,5 +1,5 @@
 /**
- * jsonl-scanner.ts — Discovers JSONL session files across Claude project directories.
+ * jsonl-scanner.ts, Discovers JSONL session files across Claude project directories.
  *
  * Scans `~/.claude/projects/<project-hash>/` directories and returns structured
  * metadata for each JSONL file found. Handles both main session files and
@@ -240,7 +240,6 @@ export class JSONLScanner {
     const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
     if (UUID_RE.test(sessionId)) {
-      // Standard UUID-named session — not a subagent
       return { isSubagent: false, parentSessionId: null };
     }
 
@@ -253,7 +252,6 @@ export class JSONLScanner {
       }
     }
 
-    // Non-UUID, no dot — treat as a standalone session (not a subagent)
     return { isSubagent: false, parentSessionId: null };
   }
 

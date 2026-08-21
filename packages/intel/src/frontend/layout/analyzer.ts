@@ -1,10 +1,10 @@
 /**
- * Layout hierarchy analyzer (backbone) — Lane 4.
+ * Layout hierarchy analyzer (backbone), Lane 4.
  *
  * Ported from frontend-engine `core/layout/analyzer.ts`, trimmed to the tree
  * backbone the merged `layout_analysis` needs (§4.4.2): JSX → LayoutNode tree via
  * the shared corrected Tailwind class dictionary. The v1 generic issue-detector /
- * constraint-notes / summary do NOT port — overflow/sizing/stacking are their own
+ * constraint-notes / summary do NOT port, overflow/sizing/stacking are their own
  * sections in the merged shape.
  *
  * @module frontend/layout/analyzer

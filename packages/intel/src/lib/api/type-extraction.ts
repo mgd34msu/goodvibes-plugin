@@ -3,7 +3,7 @@
  *
  * Ported near-verbatim from v1 project-engine `core/api/type-extraction.ts`
  * (regex-based Zod/interface/NextResponse detection over the handler's raw
- * text — deliberately NOT wired onto the shared compiler host: this is a
+ * text, deliberately NOT wired onto the shared compiler host: this is a
  * best-effort, low-confidence signal for the OpenAPI generator, and the
  * `extractTypesFromHandler` variant already parses its own throwaway
  * `ts.createSourceFile` per file, which needs no type-checking Program).

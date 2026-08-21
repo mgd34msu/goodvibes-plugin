@@ -2,7 +2,7 @@
  * Export collection over the shared program's type checker.
  *
  * Ported from project-engine `core/code-intel/exports.ts`. These are pure over a
- * `ts.LanguageService` — the caller acquires it from {@link CompilerHost}. Used
+ * `ts.LanguageService`, the caller acquires it from {@link CompilerHost}. Used
  * by code_surface here and available to lanes 3/4.
  */
 

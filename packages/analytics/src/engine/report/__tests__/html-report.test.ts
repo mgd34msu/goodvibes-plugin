@@ -3,7 +3,7 @@
  *
  * The renderer is pure, so these tests drive it with synthetic data and
  * assert the contract: every section present, fully self-contained output
- * (no external URLs — the page must render offline under Claude's strict
+ * (no external URLs, the page must render offline under Claude's strict
  * page policy), dark/light handled via prefers-color-scheme, and the writer
  * persists to the stable path and overwrites on re-run.
  */
@@ -143,7 +143,7 @@ describe('renderAnalyticsReportHtml', () => {
 
   it('is fully self-contained: no external URL anywhere in the output', () => {
     const html = renderAnalyticsReportHtml(synthData());
-    // Strict: not even inside comments — the page must never dial out.
+    // Strict: not even inside comments, the page must never dial out.
     expect(html.toLowerCase()).not.toContain('http');
     expect(html).not.toContain('//cdn');
     expect(html).not.toContain('@import');
@@ -173,7 +173,7 @@ describe('renderAnalyticsReportHtml', () => {
 
   it('omits DB-backed sections and shows the note when the global DB is absent', () => {
     const html = renderAnalyticsReportHtml(
-      synthData({ history: null, cross_project: null, global_db_note: 'global analytics DB unavailable — historical and cross-project sections omitted' }),
+      synthData({ history: null, cross_project: null, global_db_note: 'global analytics DB unavailable; historical and cross-project sections omitted' }),
     );
     expect(html).not.toContain('Project history');
     expect(html).not.toContain('All projects');

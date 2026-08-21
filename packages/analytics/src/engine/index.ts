@@ -1,10 +1,10 @@
 /**
- * Analytics Engine — Library Entry Point
+ * Analytics Engine, Library Entry Point
  *
  * Initializes the analytics daemon (Aggregator) and exposes 7 MCP tools
  * for session intelligence, budget tracking, and data export.
  *
- * Usage: `import { AnalyticsEngine } from './index.js'` — instantiate and manage lifecycle.
+ * Usage: `import { AnalyticsEngine } from './index.js'`, instantiate and manage lifecycle.
  */
 
 import type { AnalyticsConfig, ToolResponse } from './types.js';
@@ -76,7 +76,7 @@ export function getToolDefinitions(): Array<{
 // ============================================================
 
 /**
- * Core analytics engine — manages the Aggregator lifecycle and routes
+ * Core analytics engine, manages the Aggregator lifecycle and routes
  * incoming MCP tool calls to the appropriate handler.
  *
  * Designed for library usage: instantiate, call `initialize()`, then
@@ -121,11 +121,11 @@ export class AnalyticsEngine {
    * @throws If the aggregator fails to initialize.
    */
   async initialize(): Promise<void> {
-    // Initialize the global analytics database. On a fresh install (or a
-    // post-update install that has not run setup yet) sql.js is missing and
-    // this throws; that must NOT sink the whole engine — the live modes read
-    // JSONL/proc and need no native dep. Degrade to a null global DB and record
-    // the reason; DB-backed modes surface the setup pointer, live modes work.
+    // On a fresh install (or a post-update install that has not run setup
+    // yet) sql.js is missing and this throws; that must NOT sink the whole
+    // engine, since the live modes read JSONL/proc and need no native dep.
+    // Degrade to a null global DB and record the reason; DB-backed modes
+    // surface the setup pointer, live modes work.
     try {
       this.globalDb = await initializeGlobalDb();
     } catch (err) {
@@ -134,7 +134,7 @@ export class AnalyticsEngine {
         err instanceof SqlJsUnavailableError
           ? nativeDepMessage('Cross-project analytics history')
           : `Cross-project analytics history unavailable: ${err instanceof Error ? err.message : String(err)}`;
-      engineLogger().warn('GlobalDB unavailable — live modes only', {
+      engineLogger().warn('GlobalDB unavailable; live modes only', {
         error: err instanceof Error ? err.message : String(err),
       });
     }
@@ -157,7 +157,7 @@ export class AnalyticsEngine {
    * Dispatch an MCP tool call by name.
    *
    * Validates the tool name and input schema before invoking the handler.
-   * Returns a structured `ToolResponse` — never throws.
+   * Returns a structured `ToolResponse`, never throws.
    *
    * @param name - MCP tool name (e.g. `"analytics_query"`).
    * @param args - Raw (unvalidated) arguments from the MCP client.
@@ -168,12 +168,10 @@ export class AnalyticsEngine {
       return toolResponse('Analytics engine not initialized. Call initialize() first.', true);
     }
 
-    // Validate tool name
     if (!(name in SCHEMA_MAP)) {
       return toolResponse(`Unknown analytics tool: ${name}`, true);
     }
 
-    // Parse and validate input against the Zod schema
     const schema = SCHEMA_MAP[name as ToolName];
     const parseResult = (schema as { safeParse: (v: unknown) => { success: boolean; data?: unknown; error?: { issues: Array<{ path: (string | number)[]; message: string }> } } }).safeParse(args);
     if (!parseResult.success) {
@@ -195,7 +193,7 @@ export class AnalyticsEngine {
       return await handler(this.aggregator, parseResult.data, this.goodvibesDir) as ToolResponse;
     } catch (err: unknown) {
       // A handler that needs the SQLite-backed store (sync, tag, cross-project
-      // query) fails with a typed error when sql.js is not installed yet —
+      // query) fails with a typed error when sql.js is not installed yet,
       // return the honest setup pointer instead of a raw "module not found".
       if (err instanceof SqlJsUnavailableError) {
         return toolResponse(nativeDepMessage(`analytics ${name} (historical / cross-project data)`), true);

@@ -1,5 +1,5 @@
 /**
- * File scanner for client boundary analysis — Lane 4.
+ * File scanner for client boundary analysis, Lane 4.
  *
  * Ported from frontend-engine `core/client-boundary/scanner.ts`, rewired off the
  * v1 per-file `ts.createSourceFile` onto the shared compiler host (§3.3): the

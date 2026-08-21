@@ -1,6 +1,6 @@
 ---
 name: service-integration
-description: How to reach authenticated APIs and project databases through the connect trust boundary — register a service or connection, store credentials safely, then call api_request / db_query. Load when a task needs an authenticated HTTP call or a live database query (not a public URL — use native WebFetch for that).
+description: How to reach authenticated APIs and project databases through the connect trust boundary. Register a service or connection, store credentials safely, then call api_request or db_query. Load when a task needs an authenticated HTTP call or a live database query (not a public URL; use native WebFetch for that).
 ---
 
 # service-integration
@@ -8,7 +8,7 @@ description: How to reach authenticated APIs and project databases through the c
 connect is the only goodvibes server that holds credentials, so it is deliberately conservative.
 This skill is the usage guide for its three tools and the trust model they enforce. If you only
 need to read a public web page or hit a one-off unauthenticated URL, use the native `WebFetch`
-tool instead — connect is not a general web reader.
+tool instead. connect is not a general web reader.
 
 ## The three tools
 
@@ -24,33 +24,33 @@ registry operations.
 ## Trust model (enforced by the server)
 
 - **Credentials are pinned to their registered origin** (protocol + host + port) and never sent
-  elsewhere. Not toggleable — open mode widens *where* you may go, never *where secrets may travel*.
+  elsewhere. Not toggleable: open mode widens *where* you may go, never *where secrets may travel*.
 - **Destination allowlist is on by default.** In restricted mode a destination is reachable only if
   its origin is a registered service origin or its host is on the allowlist. An unregistered,
   non-allowlisted `url` (api_request) or a bare `database_url` (db_query) is refused.
 - **Read-only by default.** HTTP write methods (anything beyond GET/HEAD/OPTIONS) require the
   service's `write_methods` opt-in; `db_query` writes require `write: true` AND a target that permits
   writes (a connection `allow_writes` opt-in, or open mode for a bare `database_url`).
-- **Open (unrestricted) mode is human-only and out-of-band** — a person edits
+- **Open (unrestricted) mode is human-only and out-of-band.** A person edits
   `.goodvibes/config.json`, it is announced at session start, and it reverts to restricted the
   next session unless the separate, loud `dangerously_persist_across_sessions` flag is set. Agents
   cannot enable it.
 - Every response carries a `mode: restricted | open` stamp.
 - **Secrets are write-only.** `set_auth` stores at mode 0600 and never echoes the value back; `get`
-  returns an auth STATUS, and `list`/`status` return names and summaries only — never the secret.
+  returns an auth STATUS, and `list`/`status` return names and summaries only, never the secret.
 
 ## Typical flow
 
-1. `service` `status` — check the current mode and what is already registered.
-2. `service` `register` — register the API service (`config.base_url` required). Add `write_methods`
+1. `service` `status`: check the current mode and what is already registered.
+2. `service` `register`: register the API service (`config.base_url` required). Add `write_methods`
    only if the service needs non-GET methods.
-3. `service` `set_auth` — store the credential (0600, never echoed). Prefer `{ "$env": "VAR_NAME" }`
+3. `service` `set_auth`: store the credential (0600, never echoed). Prefer `{ "$env": "VAR_NAME" }`
    env references over a literal secret value.
-4. `api_request` — call the registered service by `service` name + `path` (or an allowlisted `url`).
+4. `api_request`: call the registered service by `service` name + `path` (or an allowlisted `url`).
    Batch related calls; each result is keyed by `id` (or array index) and error-isolated. Choose
    `extract`: json | text | headers | status (default json). An entry may carry a per-request
    `auth` override (`none` | `bearer` | `basic` | `api-key` | `custom-headers`), applied to the
-   headers when the request is built — useful for one-off credentials on allowlisted URLs. It is
+   headers when the request is built, useful for one-off credentials on allowlisted URLs. It is
    caller-supplied, not origin-pinned; for an origin-matched registered service the stored
    credential is applied after it and wins on the same header (usually `Authorization`).
 5. For databases: `service` `register_connection` (`url` for a secret-free target such as a SQLite
@@ -63,5 +63,5 @@ registry operations.
 - Never paste a raw secret into a prompt or a committed file. Use a `{ "$env": "VAR_NAME" }` env
   reference in the `auth` object, or `url_env` for a database connection.
 - The connect commit-guard hook warns once, then blocks, on a `git add`/`commit` of a known
-  credential file — do not work around it; move the secret out of the tree.
+  credential file. Do not work around it; move the secret out of the tree.
 - Removing a service (`service` `remove`) purges its stored credentials.

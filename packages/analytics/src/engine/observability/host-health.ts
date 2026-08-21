@@ -2,7 +2,7 @@
  * Host-health sampler (lane 9, field-issue-9 follow-on).
  *
  * A slow, unref'd, zero-dependency sampler that reads `/proc` to report host
- * pressure and — critically — to catch the exact failure mode field issue 9
+ * pressure and, critically, to catch the exact failure mode field issue 9
  * described: a plugin server that got orphaned (reparented to init / the user's
  * systemd manager) and is now spinning at 100% CPU with nobody watching it.
  *
@@ -24,7 +24,7 @@ import { atomicWriteJson } from '../runtime.js';
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Sampler cadence (ms). Deliberately slow — this is a watchdog, not a profiler. */
+/** Sampler cadence (ms). Deliberately slow, this is a watchdog, not a profiler. */
 export const SAMPLE_INTERVAL_MS = 60_000;
 
 /** Kernel USER_HZ. 100 on effectively every mainstream Linux; overridable for tests. */
@@ -45,7 +45,7 @@ export const HEALTH_STATE_SEGMENTS = ['health', 'health-state.json'] as const;
 /**
  * Default matcher for "a plugin cache or plugin server path" in a process
  * cmdline. Matches the v2 plugin server bundles, the marketplace plugin-cache
- * layout, and the v1 engine dist paths — anything that is one of our (or a
+ * layout, and the v1 engine dist paths, anything that is one of our (or a
  * sibling plugin's) long-running node processes. Overridable via options.
  */
 const DEFAULT_PLUGIN_PATH_RE =
@@ -129,7 +129,7 @@ interface ProcStat {
 /**
  * Parse `/proc/<pid>/stat`. The comm field (2) is parenthesised and may itself
  * contain spaces and parens, so we split on the LAST ')' before tokenising the
- * remainder — the standard robust approach.
+ * remainder, the standard robust approach.
  */
 function parseStat(content: string): ProcStat | null {
   const open = content.indexOf('(');
@@ -182,7 +182,7 @@ function readLoadavg(procRoot: string): [number, number, number] | null {
 /**
  * Reads `/proc` on a slow, unref'd interval and maintains a compact
  * {@link HealthState} on disk. CPU%% is a delta measurement, so orphan
- * detection needs at least two samples — that is what "sustained" means and
+ * detection needs at least two samples, that is what "sustained" means and
  * why the persisted, long-running snapshot is the authoritative source for the
  * doctor view (a one-shot read cannot know a process is *stuck* busy).
  */
@@ -220,7 +220,7 @@ export class HostHealthSampler {
 
   /**
    * Start the slow sampler. The interval is `unref()`ed so it never keeps the
-   * process alive on its own (field issue 9 — this feature must not become the
+   * process alive on its own (field issue 9, this feature must not become the
    * bug it hunts). Takes one sample immediately so a state file exists promptly.
    */
   start(): void {
@@ -267,7 +267,7 @@ export class HostHealthSampler {
     try {
       entries = readdirSync(this.procRoot);
     } catch {
-      // No /proc at all — honest degradation, keep whatever load we could read.
+      // No /proc at all, honest degradation, keep whatever load we could read.
       const degraded: HealthState = {
         schema: 1,
         sampled_at: sampledAt,
@@ -278,7 +278,7 @@ export class HostHealthSampler {
         session_root_pid: this.sessionRootPid,
         session_child_count: 0,
         orphans: [],
-        degraded: `process table unavailable at ${this.procRoot} — orphan detection offline`,
+        degraded: `process table unavailable at ${this.procRoot}; orphan detection offline`,
       };
       this.lastState = degraded;
       return degraded;
@@ -286,7 +286,6 @@ export class HostHealthSampler {
 
     const pids = entries.filter((e) => /^\d+$/.test(e)).map(Number);
 
-    // First pass: parse every stat, and discover the systemd --user manager pids.
     const stats = new Map<number, ProcStat>();
     const systemdUserPids = new Set<number>();
     for (const pid of pids) {
@@ -382,7 +381,7 @@ export class HostHealthSampler {
       mkdirSync(dirname(this.stateFilePath()), { recursive: true });
       atomicWriteJson(this.stateFilePath(), state);
     } catch {
-      /* best-effort — a state write must never take the host down */
+      /* best-effort, a state write must never take the host down */
     }
   }
 }
@@ -403,7 +402,7 @@ export function healthThresholdTripped(state: HealthState): boolean {
 
 /**
  * Render the doctor view: load, session children, and any orphaned busy-loops
- * with ready-to-run kill commands. Read-only — this function never kills.
+ * with ready-to-run kill commands. Read-only, this function never kills.
  */
 export function renderDoctorReport(state: HealthState, opts: { stale_ms?: number } = {}): string {
   const lines: string[] = ['=== Host Health (doctor) ==='];
@@ -440,7 +439,7 @@ export function renderDoctorReport(state: HealthState, opts: { stale_ms?: number
           `${o.cpu_percent}% CPU x${o.sustained_windows} windows`,
       );
       lines.push(`    cmd: ${o.cmdline}`);
-      lines.push(`    run: ${o.kill_command}   # review first — goodvibes never kills processes for you`);
+      lines.push(`    run: ${o.kill_command}   # review first; goodvibes never kills processes for you`);
     }
   }
 

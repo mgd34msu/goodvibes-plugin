@@ -1,7 +1,7 @@
 /**
  * Build the goodvibes-connect server bundle.
  *
- * esbuild pattern per §5.1. External: sql.js (+ wasm copy) — every server imports
+ * esbuild pattern per §5.1. External: sql.js (+ wasm copy), every server imports
  * core/telemetry, so sql-wasm.wasm ships in server/wasm/. connect's DB drivers
  * resolve from the *target project* per the kept v1 `drivers.ts` pattern, so they
  * are not deps of this package at all. Output is committed under
@@ -49,7 +49,7 @@ async function build() {
     format: 'cjs',
     outfile: join(serverDir, 'index.cjs'),
     // Bundle module-key comments are rendered relative to esbuild's working
-    // directory — pin it to the repo root so output is byte-identical no
+    // directory, pin it to the repo root so output is byte-identical no
     // matter where the build is invoked from.
     absWorkingDir: join(__dirname, '../..'),
     sourcemap: true,

@@ -1,5 +1,5 @@
 /**
- * `@goodvibes/core/envelope` — the shared v2 response envelope.
+ * `@goodvibes/core/envelope`, the shared v2 response envelope.
  *
  * One representation per payload, serialized to compact JSON with honest
  * accounting: `meta.token_estimate` is always recomputed from the exact string

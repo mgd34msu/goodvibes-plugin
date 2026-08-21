@@ -1,5 +1,5 @@
 /**
- * `api_request` tool tests — the §1.8/§4.4.4 behaviors and the F8 lesson.
+ * `api_request` tool tests, the §1.8/§4.4.4 behaviors and the F8 lesson.
  *
  * fetch is stubbed on globalThis so no network is touched; the rate limiter is
  * reset per test to avoid inter-test delay. Config is pinned via a project
@@ -94,7 +94,7 @@ describe('api_request', () => {
     expect(r.body).toEqual({ ok: true, id: 42 });
   });
 
-  it('isolates a malformed entry — the rest of the batch still runs', async () => {
+  it('isolates a malformed entry; the rest of the batch still runs', async () => {
     await registry.addService('demo', { base_url: 'https://api.demo.test' });
     globalThis.fetch = vi.fn(async () => jsonResponse({ ok: true })) as typeof fetch;
 
@@ -159,6 +159,50 @@ describe('api_request', () => {
     const body = env.data!.results.x.body as { reflected: string; note: string };
     expect(body.reflected).toBe('***REDACTED***');
     expect(body.note).not.toContain(token);
+  });
+
+  it('redacts a per-request auth override the server echoes back', async () => {
+    const token = 'sk_live_perrequestsecret';
+    await registry.addService('demo', { base_url: 'https://api.demo.test' });
+    globalThis.fetch = vi.fn(async () =>
+      jsonResponse({ reflected: token, note: `auth was Bearer ${token}` }),
+    ) as typeof fetch;
+
+    const env = await call({
+      requests: [
+        {
+          id: 'x',
+          service: 'demo',
+          path: '/echo',
+          extract: 'json',
+          auth: { type: 'bearer', token },
+        },
+      ],
+    });
+    const body = env.data!.results.x.body as { reflected: string; note: string };
+    expect(body.reflected).toBe('***REDACTED***');
+    expect(body.note).not.toContain(token);
+  });
+
+  it('redacts a per-request api-key override echoed in response headers', async () => {
+    const key = 'apikey_perrequestsecret';
+    await registry.addService('demo', { base_url: 'https://api.demo.test' });
+    globalThis.fetch = vi.fn(async () =>
+      new Response('ok', { status: 200, headers: { 'x-echo-key': key } }),
+    ) as typeof fetch;
+
+    const env = await call({
+      requests: [
+        {
+          id: 'k',
+          service: 'demo',
+          path: '/echo',
+          extract: 'headers',
+          auth: { type: 'api-key', header: 'X-API-Key', key },
+        },
+      ],
+    });
+    expect(env.data!.results.k.headers?.['x-echo-key']).toBe('***REDACTED***');
   });
 
   it('honors extract modes (text and headers)', async () => {

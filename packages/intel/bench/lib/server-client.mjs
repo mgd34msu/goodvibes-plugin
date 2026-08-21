@@ -3,7 +3,7 @@
  *
  * Deliberately dependency-free (no `@modelcontextprotocol/sdk` client import)
  * so these scripts run with plain `node` against the committed bundle, the
- * same way a real MCP host would talk to it — no test framework, no build
+ * same way a real MCP host would talk to it, no test framework, no build
  * step. Part of the EXP measurement-harness port (plan §5.3 "Measurement
  * suite"): re-run by lane 8 against the finished v2 build (gate 5).
  */
@@ -93,7 +93,7 @@ export async function withServer(fn) {
   }
 }
 
-/** Payload-true token estimate (bytes / 3.5) — matches `@goodvibes/core/envelope`'s formula, used uniformly for both intel and native comparisons so the numbers are apples-to-apples. */
+/** Payload-true token estimate (bytes / 3.5), matches `@goodvibes/core/envelope`'s formula, used uniformly for both intel and native comparisons so the numbers are apples-to-apples. */
 export function estimateTokens(str) {
   return Math.ceil(Buffer.byteLength(str, 'utf8') / 3.5);
 }

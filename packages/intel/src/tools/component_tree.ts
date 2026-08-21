@@ -1,5 +1,5 @@
 /**
- * `component_tree` — React component hierarchy with four opt-in annotation modes.
+ * `component_tree`, React component hierarchy with four opt-in annotation modes.
  *
  * §3 tribunal MERGE, shape per §4.4.1. Backbone ports frontend-engine
  * `extensions/component-tree.ts` + `core/react/*`; the four annotation modes are

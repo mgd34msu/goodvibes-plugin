@@ -1,6 +1,6 @@
 /**
  * First-party pricing fetcher tests. The fixture is a verbatim trim of the
- * live platform.claude.com pricing.md as of 2026-07-02 — the exact shapes the
+ * live platform.claude.com pricing.md as of 2026-07-02, the exact shapes the
  * parser must survive: markdown links, parentheticals, date-qualified rows,
  * and the Claude 5 family that v1's parser silently skipped.
  */

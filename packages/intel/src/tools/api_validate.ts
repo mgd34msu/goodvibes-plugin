@@ -1,10 +1,10 @@
 /**
- * `api_validate` — static spec-vs-routes contract validation (R11).
+ * `api_validate`, static spec-vs-routes contract validation (R11).
  *
  * REBUILD of project-engine `extensions/api/validate.ts` + `core/api/
  * {matching,validation}.ts` (§4.1, §7 R11): the v1 tool made live HTTP
- * requests against a running server. v2 keeps it entirely static — spec vs.
- * the routes `api_routes` finds in source — because live probing needs
+ * requests against a running server. v2 keeps it entirely static, spec vs.
+ * the routes `api_routes` finds in source, because live probing needs
  * credentials, which is connect's trust model, not intel's read-only one.
  * The JSONPath-precise mismatch reporting the tribunal required is preserved
  * (see `lib/api/validate-static.ts`), now pointing at spec document
@@ -42,7 +42,7 @@ interface ApiValidateArgs {
 const definition: Tool = {
   name: 'api_validate',
   description:
-    'Use to catch drift between a written spec and the actual routes before it ships. Validate an OpenAPI/Swagger spec against actual API routes found in source — statically, ' +
+    'Use to catch drift between a written spec and the actual routes before it ships. Validate an OpenAPI/Swagger spec against actual API routes found in source: statically, ' +
     'spec-vs-routes only (no live HTTP requests). Reports routes the spec declares but code does ' +
     'not implement (missing_route), routes code implements but the spec omits ' +
     '(undocumented_route), and path-parameter name mismatches (parameter_mismatch), each with a ' +

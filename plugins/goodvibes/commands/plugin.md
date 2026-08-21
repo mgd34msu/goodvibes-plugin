@@ -1,12 +1,12 @@
 ---
-description: goodvibes plugin management — native dependency repair, health status, and optional prompt-chain install
+description: goodvibes plugin management. Native dependency repair, health status, and optional prompt-chain install
 argument-hint: <setup|status|install-prompts|uninstall-prompts>
 allowed-tools:
   - Bash
   - Read
 ---
 
-# GoodVibes Plugin
+# GoodVibes plugin
 
 Manage the goodvibes plugin installation (intel / analytics / connect servers, hooks, and native dependencies).
 
@@ -16,18 +16,18 @@ Manage the goodvibes plugin installation (intel / analytics / connect servers, h
 /goodvibes:plugin <subcommand>
 ```
 
-(`/goodvibes:setup` is the direct shortcut for `/goodvibes:plugin setup` — same steps.)
+(`/goodvibes:setup` is the direct shortcut for `/goodvibes:plugin setup`, same steps.)
 
 ## Subcommands
 
 | Subcommand | Description |
 |------------|-------------|
-| `setup` | Re-run the native dependency install in the foreground — the repair path when the automatic background install did not finish. |
+| `setup` | Re-run the native dependency install in the foreground. The repair path when the automatic background install did not finish. |
 | `status` | Show plugin health: version, server bundle, hooks, native-dependency install state. |
 | `install-prompts` | Opt in: install a compact pointer file (may write to `~/.claude/`). |
 | `uninstall-prompts` | Cleanly remove everything `install-prompts` wrote. |
 
-There is no `update` subcommand — updates flow through the marketplace install path, not a
+There is no `update` subcommand. Updates flow through the marketplace install path, not a
 plugin-managed script (v1's `update.sh`/`update.ps1` referenced a nonexistent `update.ps1` and
 did not survive the carve-out).
 
@@ -35,7 +35,7 @@ did not survive the carve-out).
 
 Parse the subcommand from $ARGUMENTS.
 
-### `setup` — Native Dependency Repair
+### `setup`: native dependency repair
 
 Each of the three committed server bundles externalizes a few runtime-only dependencies (native
 binaries and WASM loaders that do not bundle cleanly), listed in that server's own
@@ -53,7 +53,7 @@ the durable home `~/.claude/.goodvibes/deps/<server>/` and links each
 `${CLAUDE_PLUGIN_ROOT}/server/<name>/node_modules` to it. A plugin update replaces the plugin
 copy but not the durable home; the SessionStart hook silently relinks at the next session.
 Until an install lands, native-backed capabilities return an honest "run /goodvibes:setup"
-message and everything else keeps working — nothing crashes.
+message and everything else keeps working. Nothing crashes.
 
 This subcommand is the repair path: it re-runs the same installer in the foreground with
 visible output. Follow the steps in `/goodvibes:setup` (probe each server, run
@@ -61,9 +61,9 @@ visible output. Follow the steps in `/goodvibes:setup` (probe each server, run
 the outcome from `~/.claude/.goodvibes/deps/.last-result.json` and, on failure, the relevant
 tail of `~/.claude/.goodvibes/deps/install.log`).
 
-### `status` — Plugin Health
+### `status`: plugin health
 
-Gather status directly from the filesystem — there is no `plugin_status` MCP tool (v1 referenced
+Gather status directly from the filesystem. There is no `plugin_status` MCP tool (v1 referenced
 one that never existed; it does not carry forward):
 
 1. Read `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` for the version.
@@ -85,7 +85,7 @@ Native dependencies:
   intel:     {Installed | Not installed}
   analytics: {Installed | Not installed}
   connect:   {Installed | Not installed}
-  {if any are "Not installed": "The background installer may still be running — check
+  {if any are "Not installed": "The background installer may still be running. Check
    ~/.claude/.goodvibes/deps/.last-result.json, or run /goodvibes:setup to repair."}
 Project state: {.goodvibes/ present ? "Present" : "None yet"}
 ```
@@ -94,17 +94,17 @@ Project state: {.goodvibes/ present ? "Present" : "None yet"}
 
 Installing the pointer file is an EXPLICIT OPT-IN and much smaller than v1's chain: one compact
 file (~1,500 tokens or less), not seven doctrine files. SessionStart never performs this
-installation — it only detects and reports whether it's installed.
+installation. It only detects and reports whether it's installed.
 
 **Target directory** (first match wins, resolved by the script below): `~/.claude/` if it exists
 and is writable and the project isn't inside it; otherwise the highest ancestor directory of the
 project containing a `CLAUDE.md`; otherwise the project root itself.
 
 **Exactly what gets written:**
-- `CLAUDE.md` in the target directory — a `<!-- GOODVIBES IMPORTS -->` marker plus the import
+- `CLAUDE.md` in the target directory: a `<!-- GOODVIBES IMPORTS -->` marker plus the import
   line `@.goodvibes/GOODVIBES.md` is appended (file created if missing; existing content is
   never modified or removed).
-- `.goodvibes/GOODVIBES.md` — the compact tool-introduction card (~500 tokens): one
+- `.goodvibes/GOODVIBES.md`: the compact tool-introduction card (~500 tokens). One
   when-to-reach-for-it line per tool, with the measured numbers. Content updates with
   plugin releases; the CLAUDE.md import line never changes.
 
@@ -122,7 +122,7 @@ Removes exactly what `install-prompts` wrote and nothing else:
 - Drops the `<!-- GOODVIBES IMPORTS -->` block and its import line from the target `CLAUDE.md`;
   the file itself is deleted only when nothing else remains in it.
 - Deletes `.goodvibes/GOODVIBES.md`; removes the now-empty `.goodvibes/` directory if it is left
-  empty (never removes it if other files are present — that directory is shared project state).
+  empty (never removes it if other files are present; that directory is shared project state).
 
 **Steps:**
 1. Run:

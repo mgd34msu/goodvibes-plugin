@@ -1,5 +1,5 @@
 /**
- * Overflow diagnosis types — Lane 4.
+ * Overflow diagnosis types, Lane 4.
  * Ported from frontend-engine `core/overflow/types.ts` (subset the merged
  * layout_analysis needs).
  *

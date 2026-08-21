@@ -1,5 +1,5 @@
 /**
- * Overflow utilities — Lane 4.
+ * Overflow utilities, Lane 4.
  * Ported from frontend-engine `core/overflow/utils.ts`.
  *
  * @module frontend/overflow/utils

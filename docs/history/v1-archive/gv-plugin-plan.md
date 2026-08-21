@@ -298,7 +298,7 @@ export function helper() {}
 export function help() {}
 ```
 
-This is a quality issue because the repository’s actual implementation lives under `plugins/goodvibes/`, while root `src/` suggests an unfinished package.
+This is a quality issue because the repository's actual implementation lives under `plugins/goodvibes/`, while root `src/` suggests an unfinished package.
 
 Recommended improvement:
 
@@ -920,7 +920,7 @@ Create behavior conformance tests or snapshot tests that validate:
 - output style names
 - command list
 - registry entries
-- README “At a Glance” table values
+- README "At a Glance" table values
 
 #### 2. Registry size and generated content
 
@@ -1013,7 +1013,7 @@ Recommended improvement:
 2. Add architecture docs.
 3. Add contributor onboarding.
 4. Add generated-file policy.
-5. Add “how to debug daemon/runtime issues” guide.
+5. Add "how to debug daemon/runtime issues" guide.
 
 ---
 
@@ -1157,7 +1157,7 @@ plugins/goodvibes/skills/
 2. Add architecture overview.
 3. Add daemon troubleshooting guide.
 4. Add generated-file policy.
-5. Sync “At a Glance” counts with actual registry.
+5. Sync "At a Glance" counts with actual registry.
 
 **Checkpoint:**
 

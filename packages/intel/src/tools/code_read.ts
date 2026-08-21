@@ -1,30 +1,30 @@
 /**
- * code_read — outline and lines/range file reading, cache-aware, token-budget
+ * code_read, outline and lines/range file reading, cache-aware, token-budget
  * paginated.
  *
  * Ported from v1 `precision-engine/src/handlers/precision-read.ts`, narrowed
- * per plan §4.1 code_read row to the outline + lines/range paths ONLY — the
+ * per plan §4.1 code_read row to the outline + lines/range paths ONLY, the
  * content/symbols/ast/pdf/notebook/image branches retire (native tools and
  * WebFetch cover them; §4.1 gate 2 also deletes the stub-cache assumption
  * those paths leaned on).
  *
  * Fixes carried in:
- *  - Honest `exported` flags — the fix lives in `lib/tree-sitter.ts`
+ *  - Honest `exported` flags, the fix lives in `lib/tree-sitter.ts`
  *    (`getOutline` only sets `exported` on top-level entries).
  *  - `output.max_tokens` enforcement (v1 ignored it for outline/lines; a
- *    104KB context-bomb was observed) — trims the oversized `outline`/`lines`
+ *    104KB context-bomb was observed), trims the oversized `outline`/`lines`
  *    array and flags `truncated` instead of returning an oversized payload.
  *  - `include_line_numbers` honored in `lines` mode (numbers from the range
  *    start line, or line 1 with no range).
  *  - Batch results keyed by ENTRY, not path (field issue 3): two entries for
  *    the same path with different ranges both survive.
  *  - Extracts served from the session cache, never a stub (field issue 4 /
- *    §7.1 — `@goodvibes/core/cache`, F4's unit tests live there; this file
+ *    §7.1, `@goodvibes/core/cache`, F4's unit tests live there; this file
  *    carries the integration case: a real code_read call against a
  *    cache-registered file returns full content, not a stub).
  *  - `token_budget` pagination REBUILT to one representation per page (field
  *    issue 6): a paginated page only ever touches the array field the
- *    extract mode actually produced (`lines` or `outline`) — v1's pager
+ *    extract mode actually produced (`lines` or `outline`), v1's pager
  *    unconditionally added BOTH a `content` string and a `lines` array to
  *    every page regardless of extract mode; that bug is structurally
  *    impossible here since `content` mode does not exist in v2 at all, and
@@ -243,12 +243,12 @@ async function readSingleFile(
 
   const cache = FileStateCache.getInstance();
 
-  // Probe mode: freshness metadata only (hash, changed status) — never content.
+  // Probe mode: freshness metadata only (hash, changed status), never content.
   if (spec.probe) {
     const buffer = await fs.readFile(resolved_path);
     result.probe = true;
     if (isBinaryFile(buffer)) {
-      result.error = 'Binary file — code_read only reads text content (outline/lines).';
+      result.error = 'Binary file: code_read only reads text content (outline/lines).';
       return result;
     }
     const content = buffer.toString('utf-8');
@@ -270,7 +270,7 @@ async function readSingleFile(
     return result;
   }
 
-  // Pre-read size gate (extract:lines only — outline needs the whole file to
+  // Pre-read size gate (extract:lines only, outline needs the whole file to
   // parse structurally; paging its input would not be meaningful). UTF-8-safe:
   // never splits a multi-byte character or returns a partial final line.
   const lineRange = spec.range ?? defaultRange;
@@ -310,7 +310,7 @@ async function readSingleFile(
 
   const buffer = await fs.readFile(resolved_path);
   if (isBinaryFile(buffer)) {
-    result.error = 'Binary file — code_read only reads text content (outline/lines).';
+    result.error = 'Binary file: code_read only reads text content (outline/lines).';
     return result;
   }
   const content = buffer.toString('utf-8');
@@ -318,7 +318,7 @@ async function readSingleFile(
   result.line_count = allLines.length;
 
   // FileStateCache: content is ALWAYS served from the just-read disk state;
-  // the cache only contributes freshness metadata (never a stub — issue 4).
+  // the cache only contributes freshness metadata (never a stub, issue 4).
   const lookup = cache.lookup(resolved_path, content, extract);
   if (!spec.force && lookup.status === 'unchanged') {
     result.cache_hit = true;
@@ -389,7 +389,7 @@ function resultCost(result: FileReadResult): number {
 
 /**
  * Split ONE oversized result's native array representation (`lines` or
- * `outline` — whichever the extract mode produced) into token-budgeted pages.
+ * `outline`, whichever the extract mode produced) into token-budgeted pages.
  * Never invents a field the extract mode didn't already produce (field issue
  * 6's one-representation rebuild).
  */
@@ -553,8 +553,8 @@ const definition: Tool = {
  * per-file reads (`Promise.all`); threading cooperative cancellation through
  * that batch to return whichever files finished would be a materially
  * bigger change for a batch that is typically fast. This wrapper keeps the
- * hard, safety-critical guarantee — the client never waits past
- * `search_ms` — via an honest `budget_exceeded` error instead of a partial
+ * hard, safety-critical guarantee, the client never waits past
+ * `search_ms`, via an honest `budget_exceeded` error instead of a partial
  * envelope; see the lane report for the tradeoff.
  */
 export async function handler(args: unknown): Promise<CallToolResult> {

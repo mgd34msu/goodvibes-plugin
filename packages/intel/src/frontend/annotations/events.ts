@@ -1,11 +1,11 @@
 /**
- * `events` annotation for component_tree — Lane 4 (§4.4.1).
+ * `events` annotation for component_tree, Lane 4 (§4.4.1).
  *
  * Distilled from frontend-engine `core/event-flow/*`. Per tribunal, events keep
  * ONLY the two accurate predicates:
  *  - `nested_interactive_double_fire`: a click handler whose element is nested
  *    inside an ancestor that also has a click handler, and this handler does not
- *    call stopPropagation — clicking the child fires the ancestor too.
+ *    call stopPropagation, clicking the child fires the ancestor too.
  *  - `handler_on_non_interactive`: a click handler on a non-interactive HTML
  *    element (div/span/…), which does not receive keyboard events by default.
  * The v1 form-submit / multi-handler heuristics are dropped. Shape per §4.4.1:

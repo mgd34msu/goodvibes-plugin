@@ -1,5 +1,5 @@
 /**
- * Auth orchestrator — coordinates the auth tiers and 401 recovery.
+ * Auth orchestrator, coordinates the auth tiers and 401 recovery.
  *
  * Ported verbatim from v1 precision-engine
  * `utils/fetch/auth/auth-orchestrator.ts` (per-request override → service auth →
@@ -11,9 +11,34 @@
 import { applyStaticAuth } from './static-auth.js';
 import { isTokenExpired, canRefreshToken, refreshAndStore } from './oauth2-refresh.js';
 import { canAcquireSession, acquireAndStore } from './session-auth.js';
-import { getServiceSecrets } from '../secrets-store.js';
+import { getServiceSecrets, type ServiceAuth } from '../secrets-store.js';
 import { globalCookieJar } from '../cookie-jar.js';
 import type { RequestAuth } from '../request-builder.js';
+
+/**
+ * Refreshes in flight, keyed by service name.
+ *
+ * `api_request` runs a batch through `Promise.all`, so N entries for one
+ * service with an expired token would each fire their own refresh_token grant.
+ * Providers that rotate the refresh token on use invalidate it for the losers
+ * of that race, and those entries fall back to the expired access token and
+ * return spurious 401s. Concurrent callers share one grant instead.
+ */
+const refreshesInFlight = new Map<string, Promise<ServiceAuth | null>>();
+
+/** Refresh a service's token, joining a refresh already running for it. */
+async function refreshOnce(serviceName: string, auth: ServiceAuth): Promise<ServiceAuth | null> {
+  const running = refreshesInFlight.get(serviceName);
+  if (running) {return running;}
+
+  const pending = refreshAndStore(serviceName, auth);
+  refreshesInFlight.set(serviceName, pending);
+  try {
+    return await pending;
+  } finally {
+    refreshesInFlight.delete(serviceName);
+  }
+}
 
 /** Auth status enum. */
 export type AuthStatus =
@@ -74,7 +99,7 @@ export async function applyAuth(
       if (auth.type === 'oauth2') {
         let currentAuth = auth;
         if (isTokenExpired(currentAuth) && canRefreshToken(currentAuth)) {
-          const refreshedAuth = await refreshAndStore(serviceName, currentAuth);
+          const refreshedAuth = await refreshOnce(serviceName, currentAuth);
           if (refreshedAuth) {currentAuth = refreshedAuth;}
         }
         if (currentAuth.access_token?.trim()) {
@@ -111,7 +136,7 @@ export async function applyAuth(
 
 /**
  * Handle a 401 by refreshing or re-acquiring. Caller enforces max 1 retry.
- * @returns { retry, hint? } — whether to retry, and an optional recovery hint
+ * @returns { retry, hint? }, whether to retry, and an optional recovery hint
  */
 export async function handleAuthFailure(
   response: { status: number },
@@ -126,7 +151,7 @@ export async function handleAuthFailure(
 
     if (auth.type === 'oauth2') {
       if (canRefreshToken(auth)) {
-        const refreshed = await refreshAndStore(serviceName, auth);
+        const refreshed = await refreshOnce(serviceName, auth);
         if (refreshed) {return { retry: true };}
       }
       return { retry: false, hint: 'needs_browser_auth' };

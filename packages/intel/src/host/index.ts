@@ -1,9 +1,9 @@
 /**
- * `packages/intel/src/host` — the intel compiler host public interface.
+ * `packages/intel/src/host`, the intel compiler host public interface.
  *
  * ONE TypeScript LanguageService/Program per tsconfig scope (§3.3, R4), shared
  * by every intel analyzer. Lanes 2 (code_surface, code_safe_delete), 3 (api_*,
- * db_schema usage) and 4 (frontend analyzers) all consume THIS surface — it is
+ * db_schema usage) and 4 (frontend analyzers) all consume THIS surface, it is
  * stable once lane 2's tests pass. Do not reach past it into the internal
  * modules; add capabilities by extending this barrel.
  *
@@ -12,7 +12,7 @@
  *    calling the host. The host does no `base_path` handling and no path
  *    rewriting beyond slash-normalization for TypeScript's own key space.
  *  - Acquire a program with {@link CompilerHost.getServiceForFile} (single file)
- *    or {@link CompilerHost.getServiceForFiles} (whole directory — every path is
+ *    or {@link CompilerHost.getServiceForFiles} (whole directory, every path is
  *    added to one program so `program.getSourceFile()` is deterministic).
  *  - Share one host via {@link getCompilerHost}; the alpha server holds a single
  *    instance. No background timers run (field issue 9); call
@@ -87,7 +87,7 @@ export type { ExportWithOrigin } from './exports.js';
 // Entry-point detection.
 export { detectEntryPoints } from './entry-points.js';
 
-// Semantic reference finding (safe_delete + usage analysis) — never regex.
+// Semantic reference finding (safe_delete + usage analysis), never regex.
 export {
   countReferences,
   isSameLine,

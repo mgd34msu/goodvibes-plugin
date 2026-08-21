@@ -27,14 +27,14 @@ export const AnalyticsQueryInput = z.object({
    */
   scope: z.enum(['tokens', 'cache', 'commands', 'agents', 'files', 'cost', 'health', 'project', 'all']).default('all'),
   /**
-   * Observability mode (lane 9) — a MODE of `query`, not a new tool. When set,
+   * Observability mode (lane 9), a MODE of `query`, not a new tool. When set,
    * it overrides `scope`:
    *   - 'live_cost': price the current session's still-growing transcript,
    *                  per model, split main-loop vs per-subagent.
-   *   - 'doctor':    host-health report — load, session children, and any
+   *   - 'doctor':    host-health report, load, session children, and any
    *                  orphaned sustained-CPU plugin processes with ready-to-run
    *                  kill commands (never executed).
-   *   - 'agents':    background-agent liveness — thinking / executing / wedged.
+   *   - 'agents':    background-agent liveness, thinking / executing / wedged.
    */
   mode: z.enum(['live_cost', 'doctor', 'agents']).optional(),
   time_range: z.enum(['session', 'last_5m', 'last_30m', 'last_1h']).default('session'),

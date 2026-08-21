@@ -1,5 +1,5 @@
 /**
- * `db_query` tool tests — a real SQLite fixture (seeded via the ported executor)
+ * `db_query` tool tests, a real SQLite fixture (seeded via the ported executor)
  * plus driver-resolution unit tests and the connect trust rules (registered
  * connection only, read-only default, write opt-in, open-mode bare url).
  */
@@ -128,6 +128,116 @@ describe('db_query', () => {
     expect(env.success).toBe(true);
     expect(env.meta.mode).toBe('open');
     expect(env.data!.row_count).toBe(1);
+  });
+
+  describe('write statements that used to read as SELECTs', () => {
+    it.each([
+      ['a DELETE inside a CTE', 'WITH d AS (DELETE FROM users RETURNING *) SELECT count(*) FROM d'],
+      ['an UPDATE inside a CTE', 'WITH u AS (UPDATE users SET name = NULL RETURNING id) SELECT * FROM u'],
+      ['a DROP behind a leading SELECT', 'SELECT 1; DROP TABLE users'],
+      ['EXPLAIN ANALYZE wrapping a DELETE', 'EXPLAIN ANALYZE DELETE FROM users'],
+      ['an ATTACH of another database file', "ATTACH DATABASE '/tmp/gv-other.db' AS other"],
+      ['a PRAGMA assignment', 'PRAGMA journal_mode = WAL'],
+    ])('blocks %s on a read-only connection', async (_label, query) => {
+      await registry.addConnection('testdb', { url: fixture, allow_writes: false });
+      const env = await call({ connection: 'testdb', query });
+      expect(env.success).toBe(false);
+      expect(env.error).toContain('read-only by default');
+    });
+
+    it('still refuses a CTE write when write:true but the connection did not opt in', async () => {
+      await registry.addConnection('testdb', { url: fixture, allow_writes: false });
+      const env = await call({
+        connection: 'testdb',
+        query: 'WITH d AS (DELETE FROM users RETURNING *) SELECT count(*) FROM d',
+        write: true,
+      });
+      expect(env.success).toBe(false);
+      expect(env.error).toContain('not permitted');
+    });
+
+    it('leaves the rows intact after a blocked CTE write', async () => {
+      await registry.addConnection('testdb', { url: fixture, allow_writes: false });
+      await call({
+        connection: 'testdb',
+        query: 'WITH d AS (DELETE FROM users RETURNING *) SELECT count(*) FROM d',
+      });
+      const readBack = await call({ connection: 'testdb', query: 'SELECT COUNT(*) AS n FROM users' });
+      expect(readBack.data!.rows[0].n).toBe(2);
+    });
+
+    it('keeps a SELECT that only calls REPLACE() a read', async () => {
+      await registry.addConnection('testdb', { url: fixture, allow_writes: false });
+      const env = await call({
+        connection: 'testdb',
+        query: "SELECT REPLACE(name, 'A', 'Z') AS n FROM users ORDER BY id",
+      });
+      expect(env.success).toBe(true);
+      expect(env.data!.rows[0].n).toBe('Zlice');
+    });
+  });
+
+  describe('read-only enforcement reaches the network drivers', () => {
+    interface Recorded { sql: string }
+
+    function mockPg(recorded: Recorded[]): void {
+      setMockDriver('pg', {
+        Client: class {
+          async connect(): Promise<void> {}
+          async query(sql: string): Promise<{ rows: unknown[]; fields: unknown[] }> {
+            recorded.push({ sql });
+            return { rows: [], fields: [] };
+          }
+          async end(): Promise<void> {}
+        },
+      });
+    }
+
+    function mockMysql(recorded: Recorded[]): void {
+      setMockDriver('mysql2/promise', {
+        createConnection: async () => ({
+          async query(sql: string): Promise<void> {
+            recorded.push({ sql });
+          },
+          async execute(spec: { sql: string }): Promise<[unknown[], unknown[]]> {
+            recorded.push({ sql: spec.sql });
+            return [[], []];
+          },
+          async end(): Promise<void> {},
+        }),
+      });
+    }
+
+    it('wraps a PostgreSQL read in a read-only transaction', async () => {
+      const recorded: Recorded[] = [];
+      mockPg(recorded);
+      await registry.addConnection('pgdb', { url: 'postgresql://u:p@localhost:5432/app' });
+      const env = await call({ connection: 'pgdb', query: 'SELECT 1' });
+      expect(env.success).toBe(true);
+      expect(recorded.map((r) => r.sql)).toEqual(['BEGIN READ ONLY', 'SELECT 1\nLIMIT 100', 'ROLLBACK']);
+    });
+
+    it('does not open a read-only transaction for an opted-in PostgreSQL write', async () => {
+      const recorded: Recorded[] = [];
+      mockPg(recorded);
+      await registry.addConnection('pgdb', { url: 'postgresql://u:p@localhost:5432/app', allow_writes: true });
+      const env = await call({ connection: 'pgdb', query: 'DELETE FROM users', write: true });
+      expect(env.success).toBe(true);
+      expect(recorded.map((r) => r.sql)).toEqual(['DELETE FROM users']);
+    });
+
+    it('wraps a MySQL read in a read-only transaction', async () => {
+      const recorded: Recorded[] = [];
+      mockMysql(recorded);
+      await registry.addConnection('mydb', { url: 'mysql://u:p@localhost:3306/app' });
+      const env = await call({ connection: 'mydb', query: 'SELECT 1' });
+      expect(env.success).toBe(true);
+      expect(recorded.map((r) => r.sql)).toEqual([
+        'START TRANSACTION READ ONLY',
+        'SELECT 1\nLIMIT 100',
+        'ROLLBACK',
+      ]);
+    });
   });
 
   describe('driver resolution', () => {

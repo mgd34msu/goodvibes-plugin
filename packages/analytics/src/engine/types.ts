@@ -1,7 +1,7 @@
 // === Configuration ===
 export interface AnalyticsConfig {
   enabled: boolean;
-  /** Last-resort flat rates for models the pricing table does not list —
+  /** Last-resort flat rates for models the pricing table does not list,
    *  per-model rates (~/.claude/model-pricing.json over the built-in table)
    *  take precedence everywhere a reader prices records. */
   cost_per_1k_input_tokens: number;

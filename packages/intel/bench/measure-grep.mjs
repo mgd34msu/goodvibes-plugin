@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * EXP4 equivalent (deep-review Appendix A) — search vs native `git grep`,
+ * EXP4 equivalent (deep-review Appendix A), search vs native `git grep`,
  * ground-truthed by match count. v1 measured "files_only 7,813t vs native
- * 4,370t (1.79×)" — a case where the old defaults LOST to native; the row's
+ * 4,370t (1.79×)", a case where the old defaults LOST to native; the row's
  * required fixes (field issue 2's cap-honesty rebuild) are what this reruns
  * against, to see whether the v2 defaults actually close that gap on kept
  * operations (gate 5).
@@ -24,7 +24,7 @@ async function nativeGitGrep(pattern, subdir) {
   try {
     // --no-index: search the working tree like code_grep/ripgrep do (still
     // honors .gitignore). Plain `git grep` only searches the git INDEX
-    // (tracked/staged files) — in a tree with uncommitted new files that
+    // (tracked/staged files), in a tree with uncommitted new files that
     // undercounts relative to a filesystem-walking search, which is not a
     // fair native baseline (confirmed empirically: this workspace's own new
     // files caused a 23-vs-57 "mismatch" that was a baseline bug, not a
@@ -36,7 +36,7 @@ async function nativeGitGrep(pattern, subdir) {
     });
     return out;
   } catch (err) {
-    // git grep exits 1 when there are no matches — that's not a failure.
+    // git grep exits 1 when there are no matches, that's not a failure.
     if (err.status === 1) return '';
     throw err;
   }
@@ -61,7 +61,7 @@ async function main() {
   const codeGrepMatchCount = q?.match_count ?? 0;
   const codeGrepTokens = estimateTokens(JSON.stringify(env?.data ?? {}));
 
-  console.log(`EXP4 — search vs native git grep (tokens = bytes/3.5)\n`);
+  console.log(`EXP4: search vs native git grep (tokens = bytes/3.5)\n`);
   console.log(`Pattern: ${JSON.stringify(pattern)}  Path: ${subdir}\n`);
   console.log('| | Matches | Tokens |');
   console.log('|---|---|---|');
@@ -74,8 +74,8 @@ async function main() {
   console.log(`Ground truth: ${countsMatch ? 'MATCH' : `MISMATCH (native ${nativeMatchCount} vs code_grep ${codeGrepMatchCount})`}`);
   console.log(
     beatsNative
-      ? `VERDICT: PASS — code_grep files_only (${codeGrepTokens}t) beats native git grep (${nativeTokens}t).`
-      : `VERDICT: FAIL — code_grep files_only (${codeGrepTokens}t) did not beat native git grep (${nativeTokens}t).`,
+      ? `VERDICT: PASS; code_grep files_only (${codeGrepTokens}t) beats native git grep (${nativeTokens}t).`
+      : `VERDICT: FAIL; code_grep files_only (${codeGrepTokens}t) did not beat native git grep (${nativeTokens}t).`,
   );
   process.exitCode = countsMatch && beatsNative ? 0 : 1;
 }

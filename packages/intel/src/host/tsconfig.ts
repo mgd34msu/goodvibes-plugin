@@ -21,7 +21,7 @@ import { toTsPath } from './paths.js';
 import { TS_ANALYSIS_OPTIONS } from './constants.js';
 
 /**
- * Walk up from `startPath` to find the nearest `tsconfig.json` (synchronous —
+ * Walk up from `startPath` to find the nearest `tsconfig.json` (synchronous,
  * used inside the synchronous language-service host callbacks).
  * @param startPath - file or directory to start from
  * @returns TS-normalized absolute path to the tsconfig, or null
@@ -56,7 +56,7 @@ export async function findTsConfig(startPath: string): Promise<string | null> {
       await node_fs.access(tsconfigPath);
       return toTsPath(tsconfigPath);
     } catch {
-      // not here — keep walking
+      // not here, keep walking
     }
     const parentDir = path.dirname(dir);
     if (parentDir === dir) {break;}
@@ -77,7 +77,7 @@ export function readTsConfigSync(configPath: string): ts.CompilerOptions {
  * Parse a tsconfig synchronously, returning BOTH the merged compiler options and
  * the resolved project file list. The file list seeds the program's root set so
  * project-wide reference searches (code_safe_delete) see sibling files that do
- * not import the target — TypeScript's reference engine only searches files that
+ * not import the target, TypeScript's reference engine only searches files that
  * are part of the program.
  * @param configPath - absolute path to tsconfig.json
  */

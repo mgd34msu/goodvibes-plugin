@@ -5,7 +5,7 @@
  * analytics engine uses (packages/analytics/src/engine/data/jsonl-reader.ts and
  * observability/live-cost.ts): read the session transcript JSONL, sum
  * `message.usage` tokens per model, and price with per-model $/MTok rates. No
- * imports from @goodvibes/core or the analytics bundle — the hooks are unbuilt
+ * imports from @goodvibes/core or the analytics bundle, the hooks are unbuilt
  * .mjs (§7 R8), so this must run on Node built-ins alone.
  *
  * Everything is fail-open: a missing/short/truncated transcript yields a
@@ -121,7 +121,7 @@ function modelFamily(modelId) {
 /**
  * Read up to the last {@link MAX_READ_BYTES} of a file and return its lines. If
  * the read started mid-file, the first (partial) line is dropped. The final
- * line may be truncated (the file is appended to live) — the caller tolerates
+ * line may be truncated (the file is appended to live), the caller tolerates
  * unparseable lines.
  */
 function readTailLines(file) {
@@ -262,7 +262,7 @@ function collectSubagentTranscripts(mainPath, sessionId) {
  * Compute a compact recap of one session: total priced cost, API call count,
  * the distinct model families, and a per-model breakdown. Sums the main
  * transcript plus any subagent/task transcripts (their cost is part of the
- * session). Never throws — returns a zero recap when nothing is readable.
+ * session). Never throws, returns a zero recap when nothing is readable.
  *
  * @param {{ transcriptPath?: string|null, sessionId?: string, cwd?: string }} opts
  * @returns {{ session_id: string, cost_usd: number, calls: number, model_families: string[], by_model: object }}

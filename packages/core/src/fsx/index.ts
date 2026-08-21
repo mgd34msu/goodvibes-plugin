@@ -1,8 +1,8 @@
 /**
- * `@goodvibes/core/fsx` — filesystem path handling shared by intel and connect.
+ * `@goodvibes/core/fsx`, filesystem path handling shared by intel and connect.
  *
  * Field issue 1 fixes, non-negotiable:
- *  - `base_path` resolution is plain `path.resolve` — NO git-bash rewrite (the
+ *  - `base_path` resolution is plain `path.resolve`, NO git-bash rewrite (the
  *    v1 `normalizePath` that mangled paths is deleted).
  *  - Every resolved input echoes its absolute `resolved_path` (fix #3), so a
  *    caller can always see exactly which file was touched.
@@ -10,13 +10,14 @@
  *    cwd) but carries a `warning` field so the ambiguity is visible.
  *
  * Plus a real `.gitignore` reader (re-exported), UTF-8-safe slicing, and path
- * validation ported from v1 `utils/path-validation.ts` — with the
+ * validation ported from v1 `utils/path-validation.ts`, with the
  * agent-reachable sandbox toggle removed (plan §1.12); the project-root boundary
  * is now an explicit, opt-in argument, never a hidden config switch.
  */
 
 import * as path from 'path';
 import * as fsPromises from 'fs/promises';
+import { randomBytes } from 'crypto';
 
 export {
   gitignoreLineToGlobs,
@@ -27,7 +28,7 @@ export { utf8SafeSlice, utf8SafeSliceBytes, utf8ByteLength } from '../shared/utf
 
 /** The outcome of resolving a caller-supplied path against an optional base. */
 export interface ResolvedInput {
-  /** Absolute, resolved path — always echoed to the caller (issue 1 fix #3). */
+  /** Absolute, resolved path, always echoed to the caller (issue 1 fix #3). */
   resolved_path: string;
   /** Present only when a relative path was resolved without a base_path. */
   warning?: string;
@@ -153,5 +154,101 @@ export async function validateFilePath(
         ancestor = parent;
       }
     }
+  }
+}
+
+/**
+ * Write a file atomically: a uniquely named temp file in the same directory,
+ * then a rename over the target. Rename is atomic on one filesystem, so a
+ * crash mid-write leaves the previous file intact instead of a truncated one,
+ * and a concurrent reader never observes a half-written file.
+ *
+ * @param filePath - destination path (its directory must already exist)
+ * @param data - bytes or UTF-8 string to write
+ * @param options - `mode` is applied to the temp file before the rename, so the
+ * destination never exists with wider permissions than requested
+ */
+export async function atomicWriteFile(
+  filePath: string,
+  data: string | Buffer,
+  options: { mode?: number } = {},
+): Promise<void> {
+  const tmp = `${filePath}.${process.pid}.${randomBytes(6).toString('hex')}.tmp`;
+  try {
+    await fsPromises.writeFile(tmp, data, options.mode !== undefined ? { mode: options.mode } : {});
+    // writeFile only honours `mode` when it creates the file, and umask can
+    // still clear bits, so set it explicitly before the rename.
+    if (options.mode !== undefined) {await fsPromises.chmod(tmp, options.mode);}
+    await fsPromises.rename(tmp, filePath);
+  } catch (err) {
+    await fsPromises.unlink(tmp).catch(() => undefined);
+    throw err;
+  }
+}
+
+/** Serialize `value` as pretty JSON (trailing newline) and write it atomically. */
+export async function atomicWriteJson(
+  filePath: string,
+  value: unknown,
+  options: { mode?: number } = {},
+): Promise<void> {
+  await atomicWriteFile(filePath, JSON.stringify(value, null, 2) + '\n', options);
+}
+
+/** How long a lock file may sit untouched before its owner is presumed dead. */
+const LOCK_TAKEOVER_MS = 15_000;
+/** Poll interval while waiting for another holder to release a lock. */
+const LOCK_POLL_MS = 20;
+
+/**
+ * Run `fn` holding an exclusive cross-process lock on `target`, taken as a
+ * sibling `.lock` file created with `wx` (create-if-absent-or-fail, which is
+ * what makes this a mutex between OS processes rather than only between callers
+ * inside one process).
+ *
+ * A lock left behind by a process that died is taken over once it goes stale,
+ * and a lock still held after `waitMs` is broken rather than blocking forever.
+ *
+ * @param target - path of the file being protected (not the lock file itself)
+ * @param fn - the critical section
+ * @param waitMs - how long to wait before breaking an existing lock
+ */
+export async function withFileLock<T>(
+  target: string,
+  fn: () => T | Promise<T>,
+  waitMs = 10_000,
+): Promise<T> {
+  const lockPath = `${target}.lock`;
+  const deadline = Date.now() + waitMs;
+  let handle: fsPromises.FileHandle | undefined;
+
+  for (;;) {
+    try {
+      handle = await fsPromises.open(lockPath, 'wx', 0o600);
+      break;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'EEXIST') {throw err;}
+
+      let age: number;
+      try {
+        age = Date.now() - (await fsPromises.stat(lockPath)).mtimeMs;
+      } catch {
+        continue;
+      }
+
+      if (age > LOCK_TAKEOVER_MS || Date.now() > deadline) {
+        await fsPromises.unlink(lockPath).catch(() => undefined);
+        continue;
+      }
+
+      await new Promise((r) => setTimeout(r, LOCK_POLL_MS));
+    }
+  }
+
+  try {
+    return await fn();
+  } finally {
+    await handle.close().catch(() => undefined);
+    await fsPromises.unlink(lockPath).catch(() => undefined);
   }
 }

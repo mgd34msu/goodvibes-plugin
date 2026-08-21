@@ -1,5 +1,5 @@
 /**
- * `@goodvibes/core/config` — configuration file loader for the servers.
+ * `@goodvibes/core/config`, configuration file loader for the servers.
  *
  * Rebuilt minimal per plan §1.12: a config FILE plus command-surface, never an
  * MCP config tool. The v1 dotted-key get/set asymmetry and the agent-reachable
@@ -9,7 +9,7 @@
  * Project state lives under `.goodvibes/` in the target project. `getStatePath`
  * is the single helper the telemetry, cache, logging, and overflow modules use
  * to locate their files. (R15's `.goodvibes/v2/` coexistence namespace was
- * retired in 2.1.0 — v1 is uninstallable — and a legacy `v2/` subdirectory is
+ * retired in 2.1.0, v1 is uninstallable, and a legacy `v2/` subdirectory is
  * migrated up automatically, once, on first path resolution.)
  *
  * Config keys are documented from ONE source of truth (`CONFIG_KEYS`), so the
@@ -144,7 +144,7 @@ const migratedRoots = new Set<string>();
 
 /**
  * Merge-move every entry of `src` into `dst`, recursing into directories that
- * exist on both sides. On a file conflict the `src` (legacy-`v2`) copy wins —
+ * exist on both sides. On a file conflict the `src` (legacy-`v2`) copy wins,
  * it is the live state; anything at the destination is a v1 leftover.
  */
 function mergeMoveDir(src: string, dst: string): void {
@@ -162,13 +162,13 @@ function mergeMoveDir(src: string, dst: string): void {
         fs.renameSync(s, d);
       }
     } catch {
-      /* skip the entry — migration is best-effort */
+      /* skip the entry, migration is best-effort */
     }
   }
   try {
     fs.rmdirSync(src);
   } catch {
-    /* not empty (skipped entries) — harmless, retried next process */
+    /* not empty (skipped entries), harmless, retried next process */
   }
 }
 
@@ -186,7 +186,7 @@ function migrateLegacyStateDir(root: string): void {
       mergeMoveDir(legacy, root);
     }
   } catch {
-    /* fail-open — a migration problem must never block a path lookup */
+    /* fail-open, a migration problem must never block a path lookup */
   }
 }
 
@@ -249,7 +249,7 @@ let cached: { key: string; value: GoodvibesConfig } | null = null;
 
 /**
  * Load the effective config: defaults, overlaid by the user file, overlaid by
- * the project file. `mode: 'open'` is only honoured from a file on disk — there
+ * the project file. `mode: 'open'` is only honoured from a file on disk, there
  * is no in-process setter, so a tool can never toggle it.
  *
  * @param cwd - project root (defaults to process.cwd())
@@ -306,7 +306,7 @@ export function configForEnvelope(cfg: GoodvibesConfig = loadConfig()): {
 export function describeConfigKeys(): string {
   const lines = ['# GoodVibes config keys', ''];
   for (const [key, doc] of Object.entries(CONFIG_KEYS)) {
-    lines.push(`- \`${key}\` (default: ${JSON.stringify(doc.default)}) — ${doc.description}`);
+    lines.push(`- \`${key}\` (default: ${JSON.stringify(doc.default)}): ${doc.description}`);
   }
   return lines.join('\n');
 }

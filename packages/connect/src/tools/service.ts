@@ -1,5 +1,5 @@
 /**
- * `service` — the registry / auth / trust-config surface (§4.3 service row).
+ * `service`, the registry / auth / trust-config surface (§4.3 service row).
  *
  * The agent-facing CRUD for registered services, their stored credentials, URL
  * patterns, and the destination allowlist. Two invariants the trust model
@@ -61,7 +61,7 @@ export interface ServiceInput {
   force?: boolean;
   /** For `register`. */
   config?: ServiceConfig;
-  /** For `set_auth` — stored 0600; NEVER echoed back. */
+  /** For `set_auth`, stored 0600; NEVER echoed back. */
   auth?: ServiceAuth;
   /** For `register_connection`. */
   connection?: DbConnection;

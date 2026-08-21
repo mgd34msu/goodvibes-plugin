@@ -1,7 +1,7 @@
 /**
  * Dashboard tool contract tests: the tool accepts only
- * { action: report | doctor | status, scope? } — the old pane targets and
- * pane actions are gone — and each action answers per the contract:
+ * { action: report | doctor | status, scope? }, the old pane targets and
+ * pane actions are gone, and each action answers per the contract:
  * report writes the self-contained HTML file and returns its absolute path
  * plus a 3-line summary; status returns brief engine text; doctor stays the
  * read-only observability view (covered in observability-modes.test.ts).

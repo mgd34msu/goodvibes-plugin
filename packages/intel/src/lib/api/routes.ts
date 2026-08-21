@@ -1,5 +1,5 @@
 /**
- * `api_routes` orchestration — framework-dispatch route scanning.
+ * `api_routes` orchestration, framework-dispatch route scanning.
  *
  * Ported from v1 project-engine `extensions/api/routes.ts`, rewired per §3.3:
  * file discovery rides the shared intel compiler host's `findSourceFiles`

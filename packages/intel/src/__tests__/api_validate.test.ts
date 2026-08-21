@@ -16,7 +16,7 @@ const fixturesDir = fileURLToPath(new URL('./fixtures', import.meta.url));
 const base = `${fixturesDir}/api-validate-app`;
 
 describe('api_validate', () => {
-  it('catches a missing_route, an undocumented_route, and a parameter_mismatch — no false alarms on the correct route', async () => {
+  it('catches a missing_route, an undocumented_route, and a parameter_mismatch; no false alarms on the correct route', async () => {
     const env = expectSuccess<ApiValidateResult>(
       await handler({ base_path: base, spec_path: 'openapi.json', framework: 'express' }),
     );
@@ -50,7 +50,7 @@ describe('api_validate', () => {
     expect(paramMismatch[0].actual).toEqual(['postId']);
     expect(paramMismatch[0].json_path).toBe("$.paths['/api/posts/{id}'].get.parameters");
 
-    // GET /api/users/{id} matches the spec exactly — must NOT appear as any issue (zero false alarms).
+    // GET /api/users/{id} matches the spec exactly, must NOT appear as any issue (zero false alarms).
     const usersById = data.issues.filter((i) => i.path.includes('/api/users/'));
     expect(usersById).toHaveLength(0);
 
@@ -78,7 +78,7 @@ describe('api_validate', () => {
 
   it('errors cleanly on an unparsable spec file', async () => {
     const env = expectError(await handler({ base_path: base, spec_path: 'package.json', framework: 'express' }));
-    // package.json parses as JSON but has no "paths" — must be rejected, not silently treated as empty.
+    // package.json parses as JSON but has no "paths", must be rejected, not silently treated as empty.
     expect(env.error).toMatch(/paths/i);
   });
 });

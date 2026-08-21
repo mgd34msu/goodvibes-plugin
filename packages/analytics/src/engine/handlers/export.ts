@@ -162,9 +162,9 @@ function renderMarkdown(data: Record<string, unknown>, title: string): string {
  * Exports session data in JSON, CSV, or markdown format.
  *
  * Scopes:
- * - `current`         — Export the live session from the Aggregator.
- * - `historical`      — Export all archived sessions from HistoricalStore.
- * - `session:<id>`    — Export a specific archived session by ID.
+ * - `current`        , Export the live session from the Aggregator.
+ * - `historical`     , Export all archived sessions from HistoricalStore.
+ * - `session:<id>`   , Export a specific archived session by ID.
  *
  * If `output_path` is provided, the export is written to disk.
  * Otherwise, the content is returned inline in the MCP response.
@@ -192,7 +192,7 @@ export async function handleExport(
     if (input.scope === 'current') {
       const state = aggregator.getState();
       data = extractSections(state, sections);
-      title = `Session Export — ${state.session_id}`;
+      title = `Session Export: ${state.session_id}`;
     } else if (input.scope === 'historical' || input.scope === 'all_projects') {
       // Retrieve all archived sessions; filter by tags if specified
       const allArchives = store.list();
@@ -212,7 +212,7 @@ export async function handleExport(
         entries[archive.session_id] = extractArchiveSections(archive, sections);
       }
       data = entries;
-      title = `Historical Export — ${archives.length} sessions`;
+      title = `Historical Export: ${archives.length} sessions`;
     } else {
       // scope = 'session:<id>'
       const sessionId = input.scope.replace(/^session:/, '');
@@ -221,7 +221,7 @@ export async function handleExport(
         return text(`Session not found: ${sessionId}`);
       }
       data = extractArchiveSections(archive, sections);
-      title = `Session Export — ${archive.tags?.[0] ?? archive.name ?? sessionId}`;
+      title = `Session Export: ${archive.tags?.[0] ?? archive.name ?? sessionId}`;
     }
 
     // === Render format ===

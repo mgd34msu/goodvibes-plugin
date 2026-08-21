@@ -2,7 +2,7 @@
  * code_safe_delete fixture tests:
  *  - delete-safe: `countdown` has no external references (its recursive call is a
  *    self-reference; the comment/string mentions of "countdown" in consumer.ts do
- *    NOT count — proving the check is compiler-based, not a regex scan).
+ *    NOT count, proving the check is compiler-based, not a regex scan).
  *  - delete-breaks: `shared` is called by consumer.ts, so deletion breaks it.
  *  - resolved_path echo + argument validation.
  */
@@ -68,7 +68,7 @@ describe('code_safe_delete', () => {
     // The recursive call is a non-blocking self-reference.
     expect(data.self_references.length).toBeGreaterThanOrEqual(1);
     // Critically: the comment + string mentions of "countdown" in consumer.ts are
-    // NOT counted — a regex scan would have flagged them as external references.
+    // NOT counted, a regex scan would have flagged them as external references.
     expect(data.external_references).toEqual([]);
     // resolved_path echo (issue 1 fix #3).
     expect(data.resolved_path).toBe(targetPath);

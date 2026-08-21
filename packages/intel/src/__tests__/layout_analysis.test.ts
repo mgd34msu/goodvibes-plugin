@@ -1,5 +1,5 @@
 /**
- * layout_analysis fixture tests — the Panel component in fixtures/frontend-app:
+ * layout_analysis fixture tests, the Panel component in fixtures/frontend-app:
  * a nested flex without min-h-0 (overflow), a fixed z-50 modal (stacking, all
  * triggers), a guarded absolute-positioning flag, and a `.results` sizing chain
  * (§4.4.2). Responsive is asserted ABSENT in this alpha.

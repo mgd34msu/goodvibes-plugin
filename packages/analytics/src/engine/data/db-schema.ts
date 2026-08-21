@@ -1,5 +1,5 @@
 /**
- * db-schema.ts — Global analytics SQLite schema definitions and migration logic.
+ * db-schema.ts, Global analytics SQLite schema definitions and migration logic.
  *
  * Defines the canonical schema SQL, migration registry, and schema version
  * management helpers used by GlobalDB during initialization.
@@ -137,7 +137,7 @@ CREATE TABLE IF NOT EXISTS schema_version (
  * When adding a new schema version:
  *   1. Increment SCHEMA_VERSION.
  *   2. Add an entry: MIGRATIONS.set(newVersion, 'ALTER TABLE ...').
- *   3. Do NOT modify SCHEMA_SQL retroactively — it represents the current
+ *   3. Do NOT modify SCHEMA_SQL retroactively, it represents the current
  *      canonical state for fresh installs.
  *
  * @example
@@ -145,7 +145,7 @@ CREATE TABLE IF NOT EXISTS schema_version (
  * MIGRATIONS.set(2, 'ALTER TABLE sessions ADD COLUMN workspace TEXT;');
  */
 export const MIGRATIONS: Map<number, string> = new Map();
-// No migrations yet — version 1 is the baseline schema.
+// No migrations yet, version 1 is the baseline schema.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Schema Version Helpers

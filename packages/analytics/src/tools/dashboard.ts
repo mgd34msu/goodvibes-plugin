@@ -1,4 +1,4 @@
-/** `dashboard` — HTML analytics report, host-health doctor, or engine status. */
+/** `dashboard`, HTML analytics report, host-health doctor, or engine status. */
 import type { ToolModule } from './types.js';
 
 export const dashboardTool: ToolModule = {

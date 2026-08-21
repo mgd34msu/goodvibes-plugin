@@ -1,4 +1,4 @@
-/** `config` — view/update/reload analytics engine settings. */
+/** `config`, view/update/reload analytics engine settings. */
 import type { ToolModule } from './types.js';
 
 export const configTool: ToolModule = {

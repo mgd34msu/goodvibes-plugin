@@ -1,7 +1,7 @@
 /**
- * Hook smoke tests (§ lane 7 brief: "Hooks get smoke tests — node script piping
+ * Hook smoke tests (§ lane 7 brief: "Hooks get smoke tests, node script piping
  * synthetic stdin"). Each goodvibes analytics hook is a plain, unbuilt `.mjs`
- * file (§7 R8) — these tests spawn it as a real `node` subprocess and pipe
+ * file (§7 R8), these tests spawn it as a real `node` subprocess and pipe
  * synthetic hook input on stdin, then assert on the JSON it writes to stdout.
  */
 

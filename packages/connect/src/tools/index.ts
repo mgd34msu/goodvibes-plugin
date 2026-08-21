@@ -1,5 +1,5 @@
 /**
- * connect tool registry — the three tools and their dispatch map.
+ * connect tool registry, the three tools and their dispatch map.
  *
  * `TOOLS` is the ListTools payload (schemas are deferred by the client);
  * `HANDLERS` maps a tool name to its handler. `src/index.ts` consumes both, so

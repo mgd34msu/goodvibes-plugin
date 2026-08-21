@@ -1,5 +1,5 @@
 /**
- * Aggregator — Central state aggregator for the analytics-engine daemon.
+ * Aggregator, Central state aggregator for the analytics-engine daemon.
  *
  * Composes all data readers (TelemetryReader, SessionReader, IndexReader,
  * JSONLReader) and daemon components (AnomalyDetector, BudgetTracker,
@@ -231,7 +231,7 @@ function toolToActivityType(
 /**
  * Encode a project root path the way Claude Code names its per-project JSONL
  * directories under ~/.claude/projects/: every character that is not a Latin
- * letter or digit becomes '-'. Replacing only '/' is not enough — dots and
+ * letter or digit becomes '-'. Replacing only '/' is not enough, dots and
  * underscores in the path (e.g. `/home/user/my.app`) are also encoded as '-',
  * and the mismatch silently sent the aggregator to the wrong project's data
  * via the most-recent-directory fallback.
@@ -309,7 +309,7 @@ function resolveJsonlProjectDir(
 
   if (latestDir !== null) {
     // Route through the engine logger (activity.log + stderr) like every other
-    // aggregator warning — stdout stays clean for the MCP transport.
+    // aggregator warning, stdout stays clean for the MCP transport.
     engineLogger().warn(
       `[analytics:aggregator] no JSONL project directory named "${encodedName}"; falling back to most recent directory "${basename(latestDir)}"`,
     );
@@ -387,16 +387,16 @@ export class Aggregator {
   private session!: SessionReader;
   private index!: IndexReader;
 
-  // Model pricing map — loaded on initialize() from ~/.claude/model-pricing.json.
+  // Model pricing map, loaded on initialize() from ~/.claude/model-pricing.json.
   private pricingMap: ModelPricingMap = {};
 
-  // JSONL reader — created in initialize() from config pricing.
+  // JSONL reader, created in initialize() from config pricing.
   private jsonlReader: JSONLReader | null = null;
 
   // Accumulated JSONL records from the current file, merged in batches.
   private jsonlRecords: JSONLRecord[] = [];
 
-  // Cumulative tool counters — never decrease even when sliding window drops old records.
+  // Cumulative tool counters, never decrease even when sliding window drops old records.
   private cumulativeToolTotal = 0;
   private cumulativeToolFailures = 0;
 
@@ -409,13 +409,13 @@ export class Aggregator {
   // Aggregated totals from JSONL records (recomputed after each accumulation).
   private jsonlTotals: JsonlTotals = emptyJsonlTotals();
 
-  /** Cache for subagent file reads keyed by file path — avoids re-reading unchanged files. */
+  /** Cache for subagent file reads keyed by file path, avoids re-reading unchanged files. */
   private subagentCache = new Map<string, { mtime: number; data: { tokens_in: number; tokens_out: number; tool_calls: number } }>();
 
-  /** Cache for subagent directory listing — avoids re-reading unchanged directories. */
+  /** Cache for subagent directory listing, avoids re-reading unchanged directories. */
   private subagentDirCache: { mtime: number; files: string[] } | null = null;
 
-  // GlobalDB instance — injected by AnalyticsEngine before initialize().
+  // GlobalDB instance, injected by AnalyticsEngine before initialize().
   private globalDb: GlobalDB | null = null;
 
   // Debounce timer for GlobalDB upserts.
@@ -471,7 +471,7 @@ export class Aggregator {
    * Inject the GlobalDB instance from the owning AnalyticsEngine.
    *
    * Must be called before `initialize()` if GlobalDB write-back is desired.
-   * Safe to call at any time — if called after initialize(), subsequent
+   * Safe to call at any time, if called after initialize(), subsequent
    * GlobalDB upserts will use the new instance.
    *
    * @param db - Initialized GlobalDB instance, or null to disable write-back.
@@ -542,18 +542,14 @@ export class Aggregator {
 
     this.startedAt = new Date().toISOString();
 
-    // Instantiate data readers
     this.telemetry = new TelemetryReader(this.goodvibesDir);
     this.session = new SessionReader(this.goodvibesDir);
     this.index = new IndexReader(this.goodvibesDir);
 
-    // Initialize the telemetry reader (loads SQLite)
     await this.telemetry.initialize();
 
-    // Load dynamic model pricing.
     this.pricingMap = loadModelPricing();
 
-    // Create the JSONL reader with configured pricing rates and dynamic pricing map.
     this.jsonlReader = new JSONLReader(
       {
         cost_per_1k_input_tokens: this.config.cost_per_1k_input_tokens,
@@ -593,13 +589,13 @@ export class Aggregator {
     this.watcher.on('index-change', () => { void this.refresh(); });
     this.watcher.on('config-change', () => { void this.refresh(); });
 
-    // Wire JSONL records event — accumulate new records and trigger refresh.
+    // Wire JSONL records event, accumulate new records and trigger refresh.
     this.watcher.on('jsonl-records', (records: JSONLRecord[]) => {
       this.accumulateJsonlRecords(records);
       void this.refresh();
     });
 
-    // Mark initialized before watcher starts — watcher events call refresh()
+    // Mark initialized before watcher starts, watcher events call refresh()
     // which checks this flag.
     this.initialized = true;
 
@@ -695,7 +691,7 @@ export class Aggregator {
    * Clean shutdown: stop the DataWatcher, close the TelemetryReader,
    * and flush any pending GlobalDB write.
    *
-   * Safe to call multiple times — subsequent calls are no-ops.
+   * Safe to call multiple times, subsequent calls are no-ops.
    *
    * @returns Promise that resolves once shutdown is complete.
    */
@@ -768,7 +764,8 @@ export class Aggregator {
       this.activeJsonlPath = activeFile;
       this.jsonlSessionId = sessionIdFromPath(activeFile);
 
-      // Parse the full file from the start to seed historical data.
+      // Offset 0, not a resume point: this seeds historical data the first
+      // time the file is seen.
       const result = await this.jsonlReader.parseFile(activeFile, 0);
       if (result.records.length > 0) {
         this.accumulateJsonlRecords(result.records);
@@ -795,7 +792,7 @@ export class Aggregator {
   private static readonly MAX_JSONL_RECORDS = 10000;
   private static readonly MAX_SEEN_UUIDS = 50000;
 
-  /** UUIDs already accumulated — records arrive twice at startup (the initial
+  /** UUIDs already accumulated, records arrive twice at startup (the initial
    *  full-file parse plus the watcher's own offset-0 catch-up read), and any
    *  watcher re-attach resets its offset; without this every early event (and
    *  its tokens) counted double. */
@@ -886,7 +883,7 @@ export class Aggregator {
 
     // ── Telemetry summary (precision-engine data) ─────────────────────────
     const telemetrySummary = this.safeCall(() => this.telemetry.getSessionSummary(), null);
-    // Pass no session ID — let TelemetryReader resolve its own (8-char) session ID.
+    // Pass no session ID, let TelemetryReader resolve its own (8-char) session ID.
     // The aggregator's sessionId may be a JSONL UUID which won't match the telemetry DB.
     const tokenMetrics = this.safeCall(() => this.telemetry.getTokenMetrics(), null);
 
@@ -958,7 +955,7 @@ export class Aggregator {
         const scale = rawTotal > 0 ? jsonl.cost_usd / rawTotal : 1;
         const inputCost = rawInputCost * scale;
         const outputCost = rawOutputCost * scale;
-        // Saved tokens are input tokens — use input rate for cost saved.
+        // Saved tokens are input tokens, use input rate for cost saved.
         const savedRate = rates.inputPrice / 1_000_000;
         const saved = tokens.saved * savedRate;
         return {
@@ -1129,14 +1126,13 @@ export class Aggregator {
         this.cumulativeToolTotal = jsonlToolTotal;
         this.cumulativeToolFailures = jsonlToolFailures;
       }
-      // Use whichever is higher — protects against window truncation causing count to drop.
+      // Use whichever is higher, protects against window truncation causing count to drop.
       const effectiveToolTotal = Math.max(jsonlToolTotal, this.cumulativeToolTotal);
       const effectiveToolFailures = Math.min(this.cumulativeToolFailures, effectiveToolTotal);
 
       if (effectiveToolTotal > 0) {
         // JSONL-derived: accurate tool call counts.
         const successRate = (effectiveToolTotal - effectiveToolFailures) / effectiveToolTotal;
-        // Get avg_duration_ms from telemetry if available, else 0.
         const execBreakdown = telemetrySummary?.by_tool['exec'];
         const avgDuration = execBreakdown?.avg_ms ?? 0;
         return {
@@ -1290,7 +1286,7 @@ export class Aggregator {
   ): ActivityEvent[] {
     const events: ActivityEvent[] = [];
 
-    // Build events from JSONL tool calls (primary source — telemetry DB is often empty).
+    // JSONL is the primary source here, since the telemetry DB is often empty.
     for (const tc of jsonlToolCalls) {
       const toolName = Aggregator.extractBaseToolName(tc.name ?? '');
       events.push({
@@ -1305,7 +1301,6 @@ export class Aggregator {
       });
     }
 
-    // Build events from agent spawn/complete records.
     for (const a of agentActivities) {
       events.push({
         timestamp: a.spawnedAt,
@@ -1581,7 +1576,6 @@ export class Aggregator {
 
     if (subagentFile === null) {return null;}
 
-    // Check file mtime cache before re-reading.
     try {
       const fileStat = statSync(subagentFile);
       const cached = this.subagentCache.get(subagentFile);
@@ -1742,7 +1736,7 @@ export class Aggregator {
   /**
    * Execute a function and return its result, or a fallback value on error.
    *
-   * Errors are logged at warn level but do not propagate — a single reader
+   * Errors are logged at warn level but do not propagate, a single reader
    * failure must not abort the full aggregation cycle.
    *
    * @param fn       - Function to execute.
@@ -1786,7 +1780,7 @@ export class Aggregator {
     try {
       const stat = statSync(filePath);
       const ageMs = Date.now() - stat.mtimeMs;
-      // Treat the file as stale after STATUSLINE_STALENESS_MS — the daemon
+      // Treat the file as stale after STATUSLINE_STALENESS_MS, the daemon
       // refreshes frequently, so stale data could mislead the dashboard.
       if (ageMs > STATUSLINE_STALENESS_MS) {
         return null;
@@ -1794,14 +1788,13 @@ export class Aggregator {
       const raw = readFileSync(filePath, 'utf-8');
        
       const json = JSON.parse(raw);
-      // Validate required structure before extracting values.
-       
+
       if (typeof json?.context_window?.used_percentage !== 'number') {
         return null;
       }
       // Use Number() coercion with || 0 fallback to handle non-number values at
       // runtime without relying on `as number ?? 0` (which is a TypeScript-only
-      // assertion — the ?? 0 never fires because `as number` always "succeeds").
+      // assertion, the ?? 0 never fires because `as number` always "succeeds").
       return {
          
         contextPercent:    Number(json.context_window.used_percentage)                                     || 0,
@@ -1819,7 +1812,7 @@ export class Aggregator {
         costUsd:           Number(json.cost?.total_cost_usd)                                                || 0,
       };
     } catch {
-      // File doesn't exist or failed to parse — return null to use fallback.
+      // File doesn't exist or failed to parse, return null to use fallback.
       return null;
     }
   }

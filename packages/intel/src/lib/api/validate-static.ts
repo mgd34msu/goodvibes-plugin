@@ -3,7 +3,7 @@
  *
  * REBUILD, not a straight port: v1 `extensions/api/validate.ts` made live HTTP
  * requests against a running server and validated response bodies against the
- * spec schema. R11 retires that — live probing needs credentials, which is
+ * spec schema. R11 retires that, live probing needs credentials, which is
  * connect's trust model, not intel's. This module instead compares the
  * OpenAPI spec's declared paths/methods/path-parameters against the routes
  * `api_routes` actually found in source, purely statically. The tribunal's
@@ -12,7 +12,7 @@
  * (e.g. `$.paths['/api/users/{id}'].get`) rather than into a live response
  * body.
  *
- * Deliberately scoped to route/method/path-parameter existence — NOT a
+ * Deliberately scoped to route/method/path-parameter existence, NOT a
  * request/response body schema diff. v1's schema inference (`parseHandlerTypes`)
  * is regex-based and would produce false positives if used as a hard
  * mismatch signal here; the tribunal's "zero false alarms on correct routes"

@@ -1,5 +1,5 @@
 /**
- * JSX class extractor — Lane 4.
+ * JSX class extractor, Lane 4.
  * Ported verbatim from frontend-engine `core/jsx/class-extractor.ts`.
  *
  * @module frontend/jsx/class-extractor

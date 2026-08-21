@@ -1,10 +1,10 @@
 /**
- * `layout_analysis` — CSS layout hierarchy + overflow/sizing/stacking sections.
+ * `layout_analysis`, CSS layout hierarchy + overflow/sizing/stacking sections.
  *
  * §3 tribunal MERGE, shape per §4.4.2. Backbone ports frontend-engine
  * `extensions/layout-hierarchy.ts` + `core/layout/*`; sections merge `core/overflow`
  * (nested-flex min-height detector + fix list, absolute-positioning demoted to a
- * guarded low-confidence flag), `core/sizing` (ancestor constraint chain — active
+ * guarded low-confidence flag), `core/sizing` (ancestor constraint chain, active
  * only with `selector`), and `core/stacking` (as-is + all-triggers-per-element).
  * The responsive section is ABSENT in alpha (it ships after the CSS-first rebuild).
  * v2 wrappers: `base_path` contract with `resolved_path` echo; `core/proc` budget;
@@ -106,7 +106,7 @@ const definition: Tool = {
     'hierarchy backbone (element, classes, layout_role, children) plus opt-in ' +
     'sections: "overflow" (nested-flex min-height risks + fix options; the ' +
     'absolute-positioning heuristic is a guarded low-confidence flag), "sizing" ' +
-    '(ancestor constraint chain — requires a selector), and "stacking" (z-index ' +
+    '(ancestor constraint chain, requires a selector), and "stacking" (z-index ' +
     'contexts with every context-creation trigger per element). Responsive analysis ' +
     'is not available in this alpha. Static analysis; no code is executed.',
   inputSchema: {

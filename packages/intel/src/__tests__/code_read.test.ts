@@ -1,9 +1,9 @@
 /**
- * Tests for code_read (outline + lines/range only — content/symbols/ast retire).
+ * Tests for code_read (outline + lines/range only, content/symbols/ast retire).
  * Named regression classes live where their fix lives (plan §5.3):
  *  - F1 base_path / resolved_path echo
  *  - F3 same-path batch entries
- *  - F4 integration — cache serves content, never a stub (unit home: core/cache)
+ *  - F4 integration, cache serves content, never a stub (unit home: core/cache)
  *  - F6 one-representation token_budget pagination
  */
 
@@ -31,7 +31,7 @@ beforeAll(async () => {
      
     console.warn(
       '[code_read.test] tree-sitter grammar wasm is ABI-incompatible with this web-tree-sitter version ' +
-        '(see test-utils.ts treeSitterOutlineAvailable doc) — outline-mode assertions are skipped.',
+        '(see test-utils.ts treeSitterOutlineAvailable doc); outline-mode assertions are skipped.',
     );
   }
 });
@@ -64,7 +64,7 @@ afterEach(async () => {
   await cleanupTempDir(dir);
 });
 
-describe('code_read — input validation', () => {
+describe('code_read: input validation', () => {
   it('errors when files array is missing', async () => {
     const result = await handler({ base_path: dir });
     const parsed = expectError(result);
@@ -72,7 +72,7 @@ describe('code_read — input validation', () => {
   });
 });
 
-describe('code_read — extract: lines (default)', () => {
+describe('code_read: extract: lines (default)', () => {
   it('returns lines as an array', async () => {
     await writeFile(dir, 'file.ts', 'line 1\nline 2\nline 3');
     const result = await handler({ files: ['file.ts'], base_path: dir });
@@ -117,7 +117,7 @@ describe('code_read — extract: lines (default)', () => {
   });
 });
 
-describe('code_read — extract: outline', () => {
+describe('code_read: extract: outline', () => {
   it('extracts a document outline with honest exported flags', async (ctx) => {
     if (!outlineAvailable) {ctx.skip();}
     await writeFile(dir, 'sample.ts', SAMPLE_TS_CODE);
@@ -131,7 +131,7 @@ describe('code_read — extract: outline', () => {
     expect(cls.children).toBeDefined();
 
     // Honest exported flags (plan §4.1 code_read row): a class member never
-    // inherits the class's own export status — the bug this fixes marked
+    // inherits the class's own export status, the bug this fixes marked
     // every method of an exported class as itself "exported".
     const method = (cls.children as Array<{ name: string; exported?: boolean }>).find((c) => c.name === 'getValue');
     expect(method?.exported).toBeUndefined();
@@ -150,7 +150,7 @@ describe('code_read — extract: outline', () => {
   });
 });
 
-describe('code_read — F1 base_path / resolved_path echo', () => {
+describe('code_read: F1 base_path / resolved_path echo', () => {
   it('resolves relative paths against base_path and echoes an absolute resolved_path', async () => {
     await writeFile(dir, 'sub/target.ts', 'in sub');
     const result = await handler({ files: ['target.ts'], base_path: path.join(dir, 'sub') });
@@ -172,7 +172,7 @@ describe('code_read — F1 base_path / resolved_path echo', () => {
   });
 });
 
-describe('code_read — F3 same-path batch entries', () => {
+describe('code_read: F3 same-path batch entries', () => {
   beforeEach(async () => {
     await writeFile(dir, 'dup.ts', 'line 1\nline 2\nline 3\nline 4\nline 5\nline 6');
   });
@@ -201,7 +201,7 @@ describe('code_read — F3 same-path batch entries', () => {
   });
 });
 
-describe('code_read — F4 integration: cache serves content, never a stub', () => {
+describe('code_read: F4 integration: cache serves content, never a stub', () => {
   it('returns full content for a read of a file another tool registered in the cache', async () => {
     const fullPath = await writeFile(dir, 'written.ts', 'written by another process');
     const realPath = await fs.realpath(fullPath);
@@ -255,7 +255,7 @@ describe('code_read — F4 integration: cache serves content, never a stub', () 
   });
 });
 
-describe('code_read — F6 one-representation token_budget pagination', () => {
+describe('code_read: F6 one-representation token_budget pagination', () => {
   it('paginates across many small files without ever adding a field the extract mode did not produce', async () => {
     const files: Record<string, string> = {};
     for (let i = 0; i < 8; i++) {files[`f${i}.ts`] = `content of file ${i}`;}
@@ -291,8 +291,8 @@ describe('code_read — F6 one-representation token_budget pagination', () => {
   });
 });
 
-describe('code_read — output.max_tokens enforcement', () => {
-  // Generalized trim loop (§4.1 code_read row) — exercised here via `lines`
+describe('code_read: output.max_tokens enforcement', () => {
+  // Generalized trim loop (§4.1 code_read row), exercised here via `lines`
   // mode, which needs no tree-sitter grammar, so this case runs regardless of
   // the wasm-asset gap (see treeSitterOutlineAvailable doc). The `outline`
   // variant below exercises the identical code path for the other array field.
@@ -344,7 +344,7 @@ describe('code_read — output.max_tokens enforcement', () => {
   });
 });
 
-describe('code_read — size gate UTF-8 safety', () => {
+describe('code_read: size gate UTF-8 safety', () => {
   it('does not split multi-byte characters or return a partial final line', async () => {
     const line = 'é'.repeat(1000);
     const content = Array.from({ length: 300 }, () => line).join('\n');
@@ -363,7 +363,7 @@ describe('code_read — size gate UTF-8 safety', () => {
   });
 });
 
-describe('code_read — binary files', () => {
+describe('code_read: binary files', () => {
   it('reports a clear error instead of returning binary content', async () => {
     const binPath = path.join(dir, 'image.bin');
     await fs.writeFile(binPath, Buffer.from([0x00, 0x01, 0x02, 0x03, 0x00, 0x05]));
@@ -373,7 +373,7 @@ describe('code_read — binary files', () => {
   });
 });
 
-describe('code_read — edge cases', () => {
+describe('code_read: edge cases', () => {
   it('handles a non-existent file', async () => {
     const result = await handler({ files: ['missing.ts'], base_path: dir });
     const data = expectSuccess<ReadData>(result).data!;

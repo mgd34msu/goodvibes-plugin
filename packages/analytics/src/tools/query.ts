@@ -1,4 +1,4 @@
-/** `query` — ad-hoc queries against the current session's analytics data. */
+/** `query`, ad-hoc queries against the current session's analytics data. */
 import type { ToolModule } from './types.js';
 
 export const queryTool: ToolModule = {

@@ -180,7 +180,7 @@ function makePrecisionCall(opts: { isError?: boolean } = {}): MockToolCall {
   };
 }
 
-/** @deprecated Use makePrecisionCall — kept for backward compat in tests */
+/** @deprecated Use makePrecisionCall, kept for backward compat in tests */
 const makeBashCall = makePrecisionCall;
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -308,7 +308,7 @@ describe('Aggregator cumulative tool counter (high-water mark)', () => {
       ]);
       const state = callAggregate(agg);
 
-      // effectiveToolTotal = max(3, 8) = 8 — count is preserved.
+      // effectiveToolTotal = max(3, 8) = 8, count is preserved.
       expect(state.metrics.tools.total).toBe(8);
       // cumulativeToolTotal stays at 8 (3 < 8, no update).
       expect(getCumulativeCounters(agg).cumulativeToolTotal).toBe(8);
@@ -355,7 +355,7 @@ describe('Aggregator cumulative tool counter (high-water mark)', () => {
       // Seed unrealistic state: 10 cumulative total, 10 failures.
       setInternals(agg, { cumulativeToolTotal: 10, cumulativeToolFailures: 10 });
 
-      // Window now shows only 2 commands (all successful) — total drops, failures capped.
+      // Window now shows only 2 commands (all successful), total drops, failures capped.
       mockJsonlReader.extractToolCalls.mockReturnValue([
         makeBashCall(), makeBashCall(),
       ]);
@@ -373,7 +373,7 @@ describe('Aggregator cumulative tool counter (high-water mark)', () => {
       // Seed: 20 total, 15 failures.
       setInternals(agg, { cumulativeToolTotal: 20, cumulativeToolFailures: 15 });
 
-      // Window shows 3 successes — effective total is still 20 (high-water mark).
+      // Window shows 3 successes, effective total is still 20 (high-water mark).
       mockJsonlReader.extractToolCalls.mockReturnValue([
         makeBashCall(), makeBashCall(), makeBashCall(),
       ]);
@@ -396,7 +396,7 @@ describe('Aggregator cumulative tool counter (high-water mark)', () => {
       let state = callAggregate(agg);
       expect(state.metrics.tools.total).toBe(3);
 
-      // Cycle 2: 5 commands (window grew — e.g. new records added).
+      // Cycle 2: 5 commands (window grew, e.g. new records added).
       mockJsonlReader.extractToolCalls.mockReturnValue([
         makeBashCall(), makeBashCall(), makeBashCall(), makeBashCall(), makeBashCall(),
       ]);

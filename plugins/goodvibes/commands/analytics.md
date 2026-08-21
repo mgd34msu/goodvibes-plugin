@@ -14,7 +14,7 @@ allowed-tools:
 
 # Analytics
 
-goodvibes analytics: token usage, cost, cache performance, and agent activity — computed from
+goodvibes analytics: token usage, cost, cache performance, and agent activity, computed from
 transcript actuals, never tool self-estimates.
 
 Parse the subcommand from $ARGUMENTS (empty = session summary) and make the matching call. If

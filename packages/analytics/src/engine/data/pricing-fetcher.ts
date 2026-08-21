@@ -1,10 +1,10 @@
 /**
  * First-party model-pricing fetcher (v2 home: the analytics engine, NOT a
- * session hook — network in hooks was a v1 timeout hazard).
+ * session hook, network in hooks was a v1 timeout hazard).
  *
  * Fetches https://platform.claude.com/docs/en/about-claude/pricing.md (the
  * official platform docs, markdown form), parses the "Model pricing" table,
- * and atomically caches it at ~/.claude/model-pricing.json — the overlay file
+ * and atomically caches it at ~/.claude/model-pricing.json, the overlay file
  * `loadModelPricing()` already reads. Refresh is lazy and non-blocking: cost
  * paths call `refreshPricingIfStale()` fire-and-forget; the current call uses
  * the existing overlay/fallback and the NEXT call sees fresh data.
@@ -15,7 +15,7 @@
  *  - keeps ALL model versions (v1 kept only the latest per family), keyed to
  *    match the fallback table's ids (claude-opus-4-8, claude-fable-5, ...);
  *  - date-qualified rows ("through Aug 31, 2026" / "starting September 1,
- *    2026") are resolved to whichever rate is effective TODAY — the live page
+ *    2026") are resolved to whichever rate is effective TODAY, the live page
  *    currently lists Sonnet 5 at introductory pricing that the static
  *    fallback table does not know about.
  */
@@ -125,7 +125,7 @@ export function parsePricingMarkdown(markdown: string, now: Date = new Date()): 
   }
 
   if (Object.keys(models).length === 0) {
-    throw new Error('pricing table parsed to zero models — page layout may have changed');
+    throw new Error('pricing table parsed to zero models; page layout may have changed');
   }
   return models;
 }
@@ -148,7 +148,7 @@ let inFlight: Promise<boolean> | null = null;
 /**
  * Refresh the pricing cache from the first-party page when it is older than
  * the TTL. Non-blocking by design: callers fire-and-forget. Returns true when
- * a refresh was performed and written. Never throws — a failed fetch leaves
+ * a refresh was performed and written. Never throws, a failed fetch leaves
  * the previous cache (or the fallback table) in effect. Disable with
  * GOODVIBES_NO_PRICING_FETCH=1 (tests, offline work).
  */

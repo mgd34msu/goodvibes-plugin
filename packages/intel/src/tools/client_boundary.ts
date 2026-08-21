@@ -1,5 +1,5 @@
 /**
- * `client_boundary` — Next.js App Router "use client"/"use server" analysis.
+ * `client_boundary`, Next.js App Router "use client"/"use server" analysis.
  *
  * Straight port (§4.1, §3 KEEP) of frontend-engine `extensions/client-boundary.ts`
  * + `core/client-boundary/*` onto the shared compiler host and `core/envelope`.
@@ -204,7 +204,7 @@ export async function handler(rawArgs: unknown): Promise<CallToolResult> {
         ambiguous: classifications.filter((c) => c.classification === 'ambiguous').length,
         ...(clientFiles.length === 0 && !args.entry
           ? {
-              note: 'No "use client" directives found in the scanned directory — all files are treated as server components.',
+              note: 'No "use client" directives found in the scanned directory: all files are treated as server components.',
             }
           : {}),
       };

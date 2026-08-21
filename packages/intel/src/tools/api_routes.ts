@@ -1,5 +1,5 @@
 /**
- * `api_routes` — multi-framework API route discovery.
+ * `api_routes`, multi-framework API route discovery.
  *
  * Ports project-engine `extensions/api/routes.ts` + `core/api/{detection,
  * parsers/*}.ts` (§4.1). v2 wrappers per the port row:

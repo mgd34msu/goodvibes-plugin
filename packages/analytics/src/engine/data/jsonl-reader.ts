@@ -1,5 +1,5 @@
 /**
- * JSONLReader — Parse Claude session JSONL files.
+ * JSONLReader, Parse Claude session JSONL files.
  *
  * Reads Claude Code JSONL files line-by-line with byte-offset tracking for
  * incremental / tail-style parsing. Each line is a self-contained JSON object.
@@ -9,7 +9,7 @@
  *     the entire file into memory.
  *   - Byte-offset tracking: callers can persist `newOffset` from JSONLParseResult
  *     and pass it back as `fromOffset` on the next call to read only new lines.
- *   - Defensive parsing: malformed lines are warned and skipped — never fatal.
+ *   - Defensive parsing: malformed lines are warned and skipped, never fatal.
  *   - No external dependencies: only Node.js built-ins (fs, readline, path).
  */
 
@@ -168,7 +168,7 @@ export class JSONLReader {
 
       const trimmed = line.trim();
       if (trimmed === '') {
-        // Empty line — count bytes and skip.
+        // Empty line, count bytes and skip.
         bytesConsumed += lineByteLength;
         linesSkipped++;
         continue;
@@ -185,7 +185,7 @@ export class JSONLReader {
         errors.push(`Skipped malformed line at ~offset ${fromOffset + bytesConsumed - lineByteLength}: ${trimmed.slice(0, 80)}...`);
         linesSkipped++;
       } else {
-        // kind === 'skipped': valid JSON but unrecognised record type — skip silently.
+        // kind === 'skipped': valid JSON but unrecognised record type, skip silently.
         linesSkipped++;
       }
     }
@@ -225,7 +225,7 @@ export class JSONLReader {
    * Parse a single JSON line into a JSONLRecord.
    *
    * Returns null on any parse failure (invalid JSON, missing type field,
-   * or unrecognised type value) — never throws.
+   * or unrecognised type value), never throws.
    *
    * @param line - Single trimmed line of text from a JSONL file.
    * @returns Parsed record, or null if the line is malformed or unrecognised.
@@ -253,7 +253,7 @@ export class JSONLReader {
       if (type === 'progress') {return { kind: 'record', record: record as unknown as JSONLProgressRecord };}
       if (type === 'file-history-snapshot') {return { kind: 'record', record: record as unknown as JSONLFileHistoryRecord };}
 
-      // Valid JSON but unrecognised record type — skip silently.
+      // Valid JSON but unrecognised record type, skip silently.
       return { kind: 'skipped' };
     } catch {
       return { kind: 'error' };
@@ -366,7 +366,6 @@ export class JSONLReader {
   extractToolCalls(records: JSONLRecord[]): ToolCallInfo[] {
     const results: ToolCallInfo[] = [];
 
-    // Build a lookup map: tool_use_id -> ToolResultBlock
     const resultMap = new Map<string, ToolResultBlock>();
     for (const record of records) {
       if (record.type !== 'user') {continue;}
@@ -382,7 +381,6 @@ export class JSONLReader {
       }
     }
 
-    // Now extract tool_use blocks from assistant records.
     for (const record of records) {
       if (record.type !== 'assistant') {continue;}
       const assistant = record as JSONLAssistantRecord;
@@ -428,7 +426,7 @@ export class JSONLReader {
   extractAgentActivity(records: JSONLRecord[]): AgentActivityInfo[] {
     const taskCalls = this.extractToolCalls(records).filter(tc => tc.name === 'Task');
 
-    // Build map: tool_use_id -> user record timestamp (= agent completion time).
+    // tool_use_id -> user record timestamp, which is the agent completion time.
     const resultTimestamps = new Map<string, string>();
     for (const record of records) {
       if (record.type !== 'user') {continue;}
@@ -521,7 +519,7 @@ export class JSONLReader {
   /**
    * Extract precision tool timing data from JSONL progress records.
    *
-   * Only 'completed' progress records contain elapsedTimeMs — 'started'
+   * Only 'completed' progress records contain elapsedTimeMs, 'started'
    * records are ignored since we only need the total duration.
    *
    * @param records - Parsed JSONL records to scan.

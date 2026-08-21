@@ -3,17 +3,17 @@
  * code_grep (`expand_to: function|class` context expansion).
  *
  * Ported from v1 `precision-engine/src/core/tree-sitter.ts`, trimmed to the
- * surface v2 actually uses (outline + enclosing-function/class lookup — the
+ * surface v2 actually uses (outline + enclosing-function/class lookup, the
  * `symbols`/`ast` extraction and cross-file reference search do not port; no
  * v2 tool in this lane calls them).
  *
  * API note: v1 targeted an older `web-tree-sitter` release with a default
  * export (`import Parser from 'web-tree-sitter'`) and `Parser.SyntaxNode`.
  * The pinned v2 version (0.26.10) ships named exports only (`Parser`,
- * `Language`, `Node`, `Tree`) and `Parser.parse()` returns `Tree | null` —
+ * `Language`, `Node`, `Tree`) and `Parser.parse()` returns `Tree | null`,
  * adapted below; behavior is unchanged.
  *
- * Fix (plan §4.1 code_read row, "honest exported flags" — currently marks
+ * Fix (plan §4.1 code_read row, "honest exported flags", currently marks
  * private/nested members exported): v1's `isExported()` walked every ancestor
  * looking for an `export_statement`, so a method or property inside an
  * exported class inherited the CLASS's export status even though individual
@@ -26,7 +26,7 @@
 
 // `web-tree-sitter` is an externalized WASM dependency (intel build.mjs) that
 // the one-time plugin setup installs into server/intel/node_modules. It is
-// loaded LAZILY on first parse — never at module load — so a fresh install (or
+// loaded LAZILY on first parse, never at module load, so a fresh install (or
 // a post-update install that has not run setup yet) boots and answers
 // `initialize`/`tools/list` instead of crashing on a missing
 // `require('web-tree-sitter')`. Only the runtime VALUE import (the `Parser` and
@@ -88,7 +88,7 @@ export class TreeSitterUnavailableError extends Error {
   }
 }
 
-// `__dirname` — NOT `import.meta.url` — for the same reason as
+// `__dirname`, NOT `import.meta.url`, for the same reason as
 // lib/ripgrep.ts's `resolveRgPath`: esbuild bundles this ESM source to CJS
 // (build.mjs), where `import.meta` is spec'd empty; esbuild's CJS output
 // (and the vitest/vite-node dev transform) both provide a real `__dirname`.
@@ -122,7 +122,7 @@ export interface OutlineNode {
   start: Position;
   end: Position;
   signature?: string;
-  /** Present ONLY on top-level entries — never a misleading inherited value on members. */
+  /** Present ONLY on top-level entries, never a misleading inherited value on members. */
   exported?: boolean;
   children?: OutlineNode[];
 }
@@ -161,7 +161,7 @@ function extractSymbolName(node: Node): string | null {
   return null;
 }
 
-/** True ONLY when `node` is directly wrapped by an `export_statement`/`export_declaration` — does not cross a class/interface/namespace body boundary (that crossing is what produced the honest-exported-flags bug in v1). */
+/** True ONLY when `node` is directly wrapped by an `export_statement`/`export_declaration`, does not cross a class/interface/namespace body boundary (that crossing is what produced the honest-exported-flags bug in v1). */
 function isDirectlyExported(node: Node): boolean {
   let current: Node | null = node;
   while (current) {
@@ -306,7 +306,7 @@ export class TreeSitterCore {
   /**
    * Initialize the parser, loading `web-tree-sitter` lazily on first use.
    * @throws {TreeSitterUnavailableError} when the native/WASM dep is not
-   *   installed yet — callers surface the standard setup-pointer envelope.
+   *   installed yet, callers surface the standard setup-pointer envelope.
    */
   async init(): Promise<void> {
     if (this.initialized) {return;}
@@ -346,7 +346,7 @@ export class TreeSitterCore {
     } catch (error) {
       // web-tree-sitter's dylink-metadata parser throws with an EMPTY message
       // for one specific check (a missing-argument bug in its own failIf()
-      // call) — that empty message is itself diagnostic: it means the .wasm's
+      // call), that empty message is itself diagnostic: it means the .wasm's
       // custom section is named "dylink" (legacy) instead of "dylink.0" (the
       // format this web-tree-sitter version requires), i.e. the grammar was
       // built for an older toolchain/ABI. Surface a concrete hint either way.
@@ -354,7 +354,7 @@ export class TreeSitterCore {
       this.lastLoadError = raw
         ? raw
         : `the .wasm grammar's dylink section format is incompatible with this web-tree-sitter version ` +
-          `(built for an older tree-sitter ABI) — rebuild it or install a matching tree-sitter-wasms release.`;
+          `(built for an older tree-sitter ABI). Rebuild it or install a matching tree-sitter-wasms release.`;
       return null;
     }
   }
@@ -378,7 +378,7 @@ export class TreeSitterCore {
 
   /**
    * Hierarchical outline with start+end positions. `exported` is set ONLY on
-   * top-level entries (direct children of the source file) — never inherited
+   * top-level entries (direct children of the source file), never inherited
    * onto nested class/interface/namespace members.
    */
   getOutline(tree: Tree, filePath: string): OutlineNode[] {
