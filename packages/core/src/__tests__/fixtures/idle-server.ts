@@ -5,7 +5,7 @@
  * detached child so that killing its parent exercises the ppid reparent path.
  *
  * stdin is deliberately not watched here so that ONLY the ppid poll can end the
- * process — the test is verifying the reparent watchdog, not stdin close.
+ * process. The test verifies the reparent watchdog, not stdin close.
  */
 
 import { installProcessHygiene } from '../../proc/index.js';

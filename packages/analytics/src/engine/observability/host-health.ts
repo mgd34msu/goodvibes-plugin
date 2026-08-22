@@ -293,7 +293,7 @@ export class HostHealthSampler {
       try {
         statRaw = readFileSync(join(this.procRoot, String(pid), 'stat'), 'utf8');
       } catch {
-        continue; // process vanished between readdir and read — normal, skip.
+        continue; // process vanished between readdir and read, which is normal
       }
       const stat = parseStat(statRaw);
       if (!stat) {continue;}

@@ -36,7 +36,7 @@ interface Driver {
 
 function drive(bundle: string, cwd: string): Driver {
   const env: NodeJS.ProcessEnv = { ...process.env, GOODVIBES_DIR: path.join(cwd, '.goodvibes') };
-  delete env.VITEST; // entry guard skips main() under VITEST — the child must run for real
+  delete env.VITEST; // entry guard skips main() under VITEST. The child must run for real.
   const child = spawn('node', [bundle], { cwd, env, stdio: ['pipe', 'pipe', 'pipe'] });
   const responses = new Map<number, { result?: unknown; error?: unknown }>();
   let buffer = '';

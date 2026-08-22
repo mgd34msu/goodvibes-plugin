@@ -377,7 +377,7 @@ export class JSONLWatcher extends EventEmitter {
           lastMtime = s.mtimeMs;
           onChange();
         }
-      } catch { /* file may have been removed — ignore */ }
+      } catch { /* file may have been removed, ignore */ }
     }, this.pollIntervalMs);
     interval.unref?.();
 

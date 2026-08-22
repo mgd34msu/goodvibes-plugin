@@ -78,7 +78,7 @@ export async function findSourceFiles(dirPath: string): Promise<string[]> {
     try {
       entries = await fsPromises.readdir(dir, { withFileTypes: true });
     } catch {
-      return; // unreadable directory — skip
+      return; // unreadable directory, skip
     }
 
     for (const entry of entries) {

@@ -155,7 +155,7 @@ function readMaxAgentChains(goodvibesDir: string): number {
       const parsed = JSON.parse(raw) as Record<string, unknown>;
       const val = parsed['max_parallel_agent_chains'];
       if (typeof val === 'number' && val > 0) {return val;}
-    } catch { /* file missing or unparseable — try next */ }
+    } catch { /* file missing or unparseable, try the next path */ }
   }
   return DEFAULT;
 }

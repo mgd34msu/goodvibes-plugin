@@ -74,7 +74,7 @@ export function createLogger(options: LoggerOptions = {}): Logger {
     try {
       size = statSync(file).size;
     } catch {
-      return; // file does not exist yet — nothing to rotate
+      return; // file does not exist yet, nothing to rotate
     }
     if (size < maxBytes) {return;}
     // Shift file.(keep-1) → file.keep, ... , file → file.1

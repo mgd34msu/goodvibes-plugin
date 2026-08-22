@@ -73,7 +73,7 @@ interface ScaffoldArgs {
 }
 
 interface ScaffoldData {
-  content: string; // envelope enforceMaxTokens contract — human-readable summary
+  content: string; // envelope enforceMaxTokens contract: human-readable summary
   template: string;
   output_dir: string;
   resolved_path: string;

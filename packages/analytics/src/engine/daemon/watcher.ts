@@ -349,7 +349,7 @@ export class DataWatcher extends EventEmitter {
           lastMtime = stat.mtimeMs;
           this.debounceEmit(event);
         }
-      } catch { /* best-effort — file does not exist yet; poll again next interval */
+      } catch { /* best-effort: file does not exist yet, poll again next interval */
       }
     }, this.pollIntervalMs);
     // Polling fallback holds no wake-lock and exits with the process (issue 9).
@@ -368,7 +368,7 @@ export class DataWatcher extends EventEmitter {
   private pathIsDirectory(targetPath: string): boolean {
     try {
       return statSync(targetPath).isDirectory();
-    } catch { /* best-effort — path may not exist */
+    } catch { /* best-effort: path may not exist */
       return false;
     }
   }
