@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "plugin": "goodvibes",
-  "version": "2.3.5",
+  "version": "2.3.6",
   "algorithm": "sha256",
   "files": [
     {
       "path": ".claude-plugin/plugin.json",
       "bytes": 742,
-      "sha256": "42e958857e57cc4a88ac7868b20a5ce2a34784f283fcc3215f17c31046c2f67e"
+      "sha256": "5cf746873d9467395831cdeea7be1854b04009730d1336112a3af64fda31a7a6"
     },
     {
       "path": ".mcp.json",
@@ -152,17 +152,17 @@
     {
       "path": "server/analytics/index.cjs",
       "bytes": 1577877,
-      "sha256": "20dcfe4e796f2570d7a8b4db76a39dbf9bf119ede7691599f08baa96bc6e45df"
+      "sha256": "4b152aa25ef4e1e584d8a9699b2fd045e8af7297f27bcf4d2f893bb080badd9f"
     },
     {
       "path": "server/analytics/package-lock.json",
       "bytes": 554,
-      "sha256": "e61d1834902b2caa4b736cd70fb88955fd18853f511de7fd28be017387ead607"
+      "sha256": "4fdaeb427cc2c0a8c7839983422c8c898cf6c8434663ee4c18aaf50c0549aea1"
     },
     {
       "path": "server/analytics/package.json",
       "bytes": 492,
-      "sha256": "51b97022afa1175010148c7c47f60219a1b64337649475f05fc541cde691fb13"
+      "sha256": "fa0207b61c22ecd9d00830fcbdf560f443649a5a5bf8e2ef37db63843e1784f9"
     },
     {
       "path": "server/analytics/wasm/sql-wasm.wasm",
@@ -172,17 +172,17 @@
     {
       "path": "server/connect/index.cjs",
       "bytes": 941077,
-      "sha256": "052ed59dc60318db2c1d5ff212801cebe8792f10407d23c46b6cd25a3b972e77"
+      "sha256": "7cc1506479e3dc94134e6e1fb5c246750a7375bbf7f79171e6983319e465d467"
     },
     {
       "path": "server/connect/package-lock.json",
       "bytes": 550,
-      "sha256": "dd508261386520894d37e22355818609e300034b1b2d672658497ff61b22d40a"
+      "sha256": "16d21541bd9bd70eb9df8d184bd41c035e7b7aa6cffb6816469f4f60a6e2d230"
     },
     {
       "path": "server/connect/package.json",
       "bytes": 561,
-      "sha256": "3a7224e616b4f1dac7306f48913c95fd7f2d68bcad17badc1b63294086685c62"
+      "sha256": "dfff9c6ec7ea580c62393157a33d3af7986c4ebcd59644ef07f5e0bfae97b6ad"
     },
     {
       "path": "server/connect/wasm/sql-wasm.wasm",
@@ -192,17 +192,17 @@
     {
       "path": "server/intel/index.cjs",
       "bytes": 12591240,
-      "sha256": "5acceead0912686ba064fa95d323b7e16b6be9c9bd455753c7abfafd439d58b5"
+      "sha256": "a35d0c3abe3c3e9bcb8125a15551dfeec95c1395960ef4272f5cffb757414f97"
     },
     {
       "path": "server/intel/package-lock.json",
       "bytes": 10040,
-      "sha256": "5a746a3ce510a8febc24686b8e69352cf33548bd9f88918828811f81e0c89748"
+      "sha256": "c9d6ca6dc10b51df2323a3d442d483f63207af15b4ea41930ec8589f3be4f80b"
     },
     {
       "path": "server/intel/package.json",
       "bytes": 633,
-      "sha256": "282d8efd064f8c3efc4f75501e814232f963c997f77279aa8f0a2df3118f9315"
+      "sha256": "b1b427a82a70ddc262881c7ac859c75376a20f84f8a21981e2e88e0ff5080737"
     },
     {
       "path": "server/intel/wasm/sql-wasm.wasm",

@@ -1,6 +1,6 @@
 {
   "name": "goodvibes-plugin",
-  "version": "2.3.5",
+  "version": "2.3.6",
   "private": true,
   "description": "GoodVibes — structure-aware code intelligence, session cost analytics, and an API workbench for Claude Code",
   "type": "module",

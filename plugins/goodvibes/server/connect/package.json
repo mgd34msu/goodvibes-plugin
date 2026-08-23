@@ -1,6 +1,6 @@
 {
   "name": "goodvibes-connect-server",
-  "version": "2.3.5",
+  "version": "2.3.6",
   "private": true,
   "description": "Runtime-only dependency manifest for the committed goodvibes-connect server bundle. sql.js installs on first run via the Setup hook / services command (explicit consent), no postinstall chain. Database drivers resolve from the target project per the v1 drivers.ts pattern, so they are not listed here. Versions are exact and paired with package-lock.json so every user machine resolves the same tree CI tested.",
   "dependencies": {

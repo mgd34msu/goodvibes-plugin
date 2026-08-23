@@ -1,6 +1,6 @@
 {
   "name": "@goodvibes/analytics",
-  "version": "2.3.5",
+  "version": "2.3.6",
   "description": "GoodVibes analytics MCP server — token/cost analytics and HTML reports (7 tools).",
   "private": true,
   "type": "module",

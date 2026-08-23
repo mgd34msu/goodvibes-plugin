@@ -1,6 +1,6 @@
 {
   "name": "@goodvibes/connect",
-  "version": "2.3.5",
+  "version": "2.3.6",
   "description": "GoodVibes connect MCP server — registered HTTP + database access under a trust boundary (3 tools). Alpha scaffold.",
   "private": true,
   "type": "module",
