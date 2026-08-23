@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.6] - 2026-08-23
+
+### Changed
+
+- Em dashes in code comments become periods, commas, or colons across
+  eleven source and test files in packages/analytics, packages/core, and
+  packages/intel. Comment-only: the bundled server output is byte-identical,
+  so this release carries no behavior change.
+
 ## [2.3.5] - 2026-08-21
 
 ### Fixed
